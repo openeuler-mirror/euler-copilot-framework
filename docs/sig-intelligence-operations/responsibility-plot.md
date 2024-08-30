@@ -8,3 +8,6 @@
 | openeuler/euler-copilot-shell             | EulerCopilot Shell 客户端   | 史鸿宇[@hongyu-shi](https://gitee.com/hongyu-shi) |
 | openeuler/euler-copilot-web               | EulerCopilot Web 前端       |  |
 | src-openeuler/metagpt                     | MetaGPT                | 刘峯[@liu-feng-D](https://gitee.com/liu-feng-D) |
+
+## 成员联系方式
+https://gitee.com/openeuler/community/tree/master/sig/sig-intelligence
