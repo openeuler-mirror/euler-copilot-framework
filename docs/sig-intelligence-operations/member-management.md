@@ -12,7 +12,7 @@
 
 **上述5条须满足至少4条**
 
-如果您想正式申请，建议整理出具体的贡献案例、文档记录以及参与活动的情况，准备好这些材料后可以在 [https://gitee.com/openeuler/euler-copilot-framework](https://gitee.com/openeuler/euler-copilot-framework) 新建 issue 提出申请。同时，确保与现任 maintainer 沟通并获得他们的支持和提名。
+如果您想正式申请，请整理出具体的贡献案例、文档记录以及参与活动的情况，准备好这些材料后可以在 [https://gitee.com/openeuler/euler-copilot-framework](https://gitee.com/openeuler/euler-copilot-framework) 新建 issue 提出申请。同时，确保与现任 maintainer 沟通并获得他们的支持和提名。
 
 ## 新增 Committer
 
@@ -25,7 +25,7 @@
 
 **上述4条须满足至少3条**
 
-为了准备申请，您可以做以下几件事：
+为了提出申请，您可以做以下准备：
 
 1. **量化贡献**：记录过去3个月内在 AI 相关开源项目中的具体贡献，包括提交的 PR 数量和代码审查意见的数量。
 2. **会议记录**：提供参与 sig-intelligence 例会的记录，以证明符合与会率的要求。
