@@ -11,6 +11,6 @@ enable: True
 +   更新环境
 
 ```bash
-helm upgrade service .
+helm upgrade euler-copilot .
 ```
 
