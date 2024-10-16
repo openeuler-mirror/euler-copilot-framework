@@ -1,0 +1,7 @@
+感谢您使用Euler Copilot！
+当前为Euler Copilot 0.9.1版本。
+当前Chart的功能为：AuthHub统一登录系统部署。
+
+说明：
+AuthHub的默认用户名为：administrator
+AuthHub的默认密码为：changeme
