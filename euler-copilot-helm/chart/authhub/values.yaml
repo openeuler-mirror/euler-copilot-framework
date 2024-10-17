@@ -1,0 +1,76 @@
+# 全局设置
+globals:
+  # [必填] 镜像仓库
+  imageRegistry: "hub.oepkgs.net/neocopilot"
+  # [必填] 镜像拉取策略
+  imagePullPolicy: IfNotPresent
+  # [必填] AuthHub部署域名
+  # 需要修改为AuthHub域名。单机部署时，服务基于Host进行区分，无法使用IP地址
+  domain: 
+  # 数据库设置
+  databases:
+    # [必填] database helm安装时的app name
+    app_name: 
+    # [必填] database helm安装时的namespace
+    app_namespace:
+    # 数据库密码
+    passwords:
+      # [必填] MySQL数据库的密码
+      mysql: 
+      # [必填] Redis数据库的密码
+      redis: 
+
+# 部署AuthHub本地鉴权服务
+authhub:
+  web:
+    # [必填] 是否部署AuthHub前端服务
+    enabled: true
+    # 镜像设置
+    image:
+      # 镜像仓库。留空则使用全局设置。
+      registry: ""
+      # [必填] 镜像名
+      name: authhub-web
+      # [必填] 镜像Tag
+      tag: "0.9.1"
+      # 拉取策略。留空则使用全局设置。
+      imagePullPolicy: ""
+    # [必填] 容器根目录只读
+    readOnly: false
+    # 性能限制设置
+    resources: {}
+    # Service设置
+    service:
+      # [必填] Service类型，ClusterIP或NodePort
+      type: ClusterIP
+      # 当类型为nodePort时，填写主机的端口号
+      nodePort: 
+    # Ingress设置
+    ingress:
+      # [必填] 是否启用Ingress
+      enabled: true
+      # [必填] URI前缀
+      prefix: /
+  backend:
+    # [必填] 是否部署AuthHub后端服务
+    enabled: true
+    # 镜像设置
+    image:
+      # 镜像仓库。留空则使用全局设置。
+      registry: ""
+      # [必填] 镜像名
+      name: authhub
+      # 镜像Tag
+      tag: "0.9.1"
+      # 拉取策略。留空则使用全局设置。
+      imagePullPolicy: ""
+    # [必填] 容器根目录只读
+    readOnly: false
+    # 性能限制设置
+    resources: {}
+    # Service设置
+    service:
+      # [必填] Service类型，ClusterIP或NodePort
+      type: ClusterIP
+      # 当类型为nodePort时，填写主机的端口号
+      nodePort: 

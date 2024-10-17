@@ -1,0 +1,53 @@
+{{- if .Values.databases.pgsql.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pgsql-deploy-{{ .Release.Name }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: pgsql-{{ .Release.Name }}
+spec:
+  replicas: {{ .Values.globals.replicaCount }}
+  selector:
+    matchLabels:
+      app: pgsql-{{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app: pgsql-{{ .Release.Name }}
+    spec:
+      automountServiceAccountToken: false
+      containers:
+        - name: pgsql
+          image: "{{if ne ( .Values.databases.pgsql.image.registry | toString ) ""}}{{ .Values.databases.pgsql.image.registry }}{{ else }}{{ .Values.globals.imageRegistry }}{{ end }}/{{ .Values.databases.pgsql.image.name }}:{{ .Values.databases.pgsql.image.tag | toString }}"
+          imagePullPolicy: {{ if ne ( .Values.databases.pgsql.image.imagePullPolicy | toString ) "" }}{{ .Values.databases.pgsql.image.imagePullPolicy }}{{ else }}{{ .Values.globals.imagePullPolicy }}{{ end }}
+          ports:
+            - containerPort: 5432
+              protocol: TCP
+          livenessProbe:
+            exec:
+              command:
+                - pg_isready
+                - -d postgres -U postgres
+            failureThreshold: 5
+            initialDelaySeconds: 60
+            periodSeconds: 90
+          env:
+            - name: TZ
+              value: "Asia/Shanghai"
+            - name: POSTGRES_DB
+              value: "postgres"
+            - name: POSTGRES_USER
+              value: "postgres"
+            - name: POSTGRES_PASSWORD
+              value: "{{ .Values.databases.pgsql.password }}"
+          volumeMounts:
+            - mountPath: /var/lib/postgresql/data
+              name: pgsql-data
+          resources:
+            {{- toYaml .Values.databases.pgsql.resources | nindent 12 }}
+      volumes:
+        - name: pgsql-data
+          persistentVolumeClaim:
+            claimName: pgsql-pvc-{{ .Release.Name }}
+{{- end }}
