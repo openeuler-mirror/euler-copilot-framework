@@ -1,0 +1,51 @@
+{{- if .Values.authhub.backend.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: authhub-backend-deploy-{{ .Release.Name }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: authhub-backend-{{ .Release.Name }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: authhub-backend-{{ .Release.Name }}
+  template:
+    metadata:
+      annotations:
+        checksum/secret: {{ include (print $.Template.BasePath "/backend/authhub-backend-secret.yaml") . | sha256sum }}
+      labels:
+        app: authhub-backend-{{ .Release.Name }}
+    spec:
+      automountServiceAccountToken: false
+      containers:
+        - name: authhub-backend
+          image: "{{if ne ( .Values.authhub.backend.image.registry | toString ) ""}}{{ .Values.authhub.backend.image.registry }}{{ else }}{{ .Values.globals.imageRegistry }}{{ end }}/{{ .Values.authhub.backend.image.name }}:{{ .Values.authhub.backend.image.tag | toString }}"
+          imagePullPolicy: {{ if ne ( .Values.authhub.backend.image.imagePullPolicy | toString ) "" }}{{ .Values.authhub.backend.image.imagePullPolicy }}{{ else }}{{ .Values.globals.imagePullPolicy }}{{ end }}
+          ports:
+            - containerPort: 11120
+              protocol: TCP
+          volumeMounts:
+            - name: authhub-secret-volume
+              mountPath: /etc/aops
+          livenessProbe:
+            httpGet:
+              path: /oauth2/applications
+              port: 11120
+              scheme: HTTP
+            failureThreshold: 5
+            initialDelaySeconds: 60
+            periodSeconds: 90
+          securityContext:
+            readOnlyRootFilesystem: {{ .Values.authhub.backend.readOnly }}
+      volumes:
+        - name: authhub-secret-volume
+          secret:
+            secretName: authhub-backend-secret-{{ .Release.Name }}
+            items:
+              - key: aops-config.yml
+                path: aops-config.yml
+              - key: authhub.yml
+                path: conf.d/authhub.yml
+{{- end }}

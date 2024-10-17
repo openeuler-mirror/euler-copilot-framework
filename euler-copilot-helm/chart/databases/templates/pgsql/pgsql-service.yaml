@@ -1,0 +1,17 @@
+{{- if .Values.databases.pgsql.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: pgsql-db-{{ .Release.Name }}
+  namespace: {{ .Release.Namespace }}
+spec:
+  type: {{ .Values.databases.pgsql.service.type }}
+  selector:
+    app: pgsql-{{ .Release.Name }}
+  ports:
+    - port: 5432
+      targetPort: 5432
+      {{- if (and (eq .Values.databases.pgsql.service.type "NodePort") .Values.databases.pgsql.service.nodePort) }}
+      nodePort: {{ .Values.databases.pgsql.service.nodePort }}
+      {{- end }}
+{{- end }}

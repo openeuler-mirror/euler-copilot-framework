@@ -1,0 +1,3 @@
+uwsgi:
+  port: 11120
+  processes: 1

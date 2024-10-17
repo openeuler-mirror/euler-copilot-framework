@@ -1,0 +1,17 @@
+{{- if .Values.databases.redis.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis-db-{{ .Release.Name }}
+  namespace: {{ .Release.Namespace }}
+spec:
+  type: {{ .Values.databases.redis.service.type }}
+  selector:
+    app: redis-{{ .Release.Name }}
+  ports:
+    - port: 6379
+      targetPort: 6379
+      {{- if (and (eq .Values.databases.redis.service.type "NodePort") .Values.databases.redis.service.nodePort) }}
+      nodePort: {{ .Values.databases.redis.service.nodePort }}
+      {{- end }}
+{{- end }}

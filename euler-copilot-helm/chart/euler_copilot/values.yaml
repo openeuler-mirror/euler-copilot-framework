@@ -1,0 +1,215 @@
+# 全局设置
+globals:
+  # [必填] 镜像仓库
+  imageRegistry: "hub.oepkgs.net/neocopilot"
+  # [必填] 镜像拉取策略
+  imagePullPolicy: IfNotPresent
+  # [必填] 部署域名
+  domain:   # 需要修改为EulerCopilot域名。单节点部署时，服务基于Host进行区分，无法使用IP地址
+  # 用于问答和推理的大模型
+  llm:
+    # [必填] 模型类型
+    choice: openai
+    # OpenAI兼容接口的设置
+    openai:
+      # [必填] 模型URL
+      url: ""
+      # [必填] 模型 API Key
+      key: ""
+      # [必填] 模型名称
+      model: "Qwen1.5-32B-chat-GPTQ-Int4"
+      # [必填] 模型最大token数
+      max_tokens: 8096
+  # 用于Function Call的模型
+  scheduler:
+    # 推理框架类型
+    backend: sglang
+    # 模型地址
+    url: ""
+    # 模型 API Key
+    key: ""
+  # 数据库设置
+  databases:
+    # [必填] database helm安装时的app name
+    app_name: 
+    # [必填] database helm安装时的namespace
+    app_namespace:
+    # 数据库密码
+    passwords:
+      # [必填] MySQL数据库的密码
+      mysql: 
+      # [必填] Redis数据库的密码
+      redis: 
+      # [必填] PostgreSQL数据库密码
+      postgres:
+
+euler_copilot:
+  # 配置文件安全复制工具
+  init:
+    # 镜像设置
+    image:
+      # 镜像仓库。留空则使用全局设置。
+      registry: ""
+      # [必填] 镜像名
+      name: secret_inject
+      # [必填] 镜像标签，为latest或arm
+      tag: latest
+      # 拉取策略。留空则使用全局设置。
+      imagePullPolicy: ""
+  vectorize:
+    # [必填] 是否部署Vectorize模型服务工具
+    enabled: true
+    # 镜像设置
+    image:
+      # 镜像仓库。留空则使用全局设置。
+      registry: ""
+      # [必填] 镜像名
+      name: euler-copilot-vectorize-agent
+      # [必填] 镜像标签
+      tag: "0.9.1"
+      # 拉取策略。留空则使用全局设置。
+      imagePullPolicy: ""
+    # [必填] 容器根目录只读
+    readOnly: true
+    # 性能限制设置
+    resources: {}
+    # Volume设置
+    volume:
+      # [必填] Embedding模型的位置
+      models: /home/euler-copilot/models
+    # Service设置
+    service:
+      # [必填] Service类型，ClusterIP或NodePort
+      type: ClusterIP
+      # 当类型为nodePort时，填写主机的端口号
+      nodePort: 
+    # 模型名称  
+    model:
+      # [必填] Embedding模型名称
+      embedding: bge-mixed-model
+      # [必填] 检索模型名称
+      rerank: bge-reranker-large
+  rag:
+    # [必填] 是否部署RAG知识库服务
+    enabled: true
+    # 镜像设置
+    image:
+      # 镜像仓库。留空则使用全局设置。
+      registry: ""
+      # [必填] 镜像名
+      name: euler-copilot-rag
+      # [必填] 镜像标签
+      tag: "0.9.1"
+      # 拉取策略。留空则使用全局设置
+      imagePullPolicy: ""
+    # [必填] 容器根目录只读
+    readOnly: false
+    # 性能限制设置
+    resources: {}
+    # Service设置
+    service:
+      # [必填] Service类型，ClusterIP或NodePort
+      type: ClusterIP
+      # 当类型为nodePort时，填写主机的端口号（RAG主服务API）
+      nodePort: 
+      # 当类型为nodePort时，填写主机的端口号（RAG Dagaster API）
+      nodePortDagster: 
+    # [必填] RAG知识库名
+    knowledgebaseID: default_test
+    # [必填] 待向量化的文档位置
+    docs_dir: "/home/euler-copilot/docs"
+    # 向量化服务设置
+    vectorize:
+      # [必填] 是否使用集群内的Vectorize？
+      useInternal: true
+      # 如果不使用集群内的Vectorize，此处填写独立Vectorize服务的地址
+      address: ""
+  framework:
+    # [必填] 是否部署Framework后端框架服务
+    enabled: true
+    # 镜像设置
+    image:
+      # 镜像仓库。留空则使用全局设置。
+      registry: ""
+      # [必填] 镜像名
+      name: euler-copilot-framework
+      # [必填] 镜像标签
+      tag: "0.9.1"
+      # 拉取策略。留空则使用全局设置
+      imagePullPolicy: ""
+    # [必填] 容器根目录只读
+    readOnly: true
+    # 性能限制设置
+    resources: {}
+    # Service设置
+    service:
+      # [必填] Service类型，ClusterIP或NodePort
+      type: ClusterIP
+      # 当类型为nodePort时，填写主机的端口号
+      nodePort:
+    # Volume设置
+    volume:
+      # [必填] 插件包路径
+      plugin_dir:    # 修改为实际的插件文件夹地址
+    # [必填] JWT Key
+    jwtKey: 13e46d8963c997814f996c3294ccc92d
+    # 加密密钥设置
+    half_keys:
+      # [必填] 加密密钥1
+      key1: aB3cDfGhI5JkLmN7O
+      # [必填] 加密密钥2
+      key2: pQ6rStUvWxYzA1B9C
+      # [必填] 加密密钥3
+      key3: D4eFgHjKlMnOpQrS3
+    # [必填] Web前端地址，需要添加http/https前缀
+    web_url: 
+    # 登录设置
+    login:
+      # [必填] 是否启用登录
+      enabled: true
+      # [enabled为false时必填] 若不启用登录，则需要手动填写默认登录的用户ID
+      user_id:
+      # OIDC 设置
+      oidc:
+        # [enabled为true时必填] OIDC 客户端ID
+        client_id:
+        # [enabled为true时必填] OIDC 客户端密钥
+        client_secret:
+        # [enabled为true时必填] OIDC Token获取地址；<authhub> 替换为AuthHub的实际域名；下同
+        token_url: http://<authhub>/oauth2/token
+        # [enabled为true时必填] OIDC 用户信息地址
+        user_url: http://<authhub>/oauth2/introspect
+        # [enabled为true时必填] OIDC 刷新Token地址
+        refresh_token_url: http://<authhub>/oauth2/refresh-token
+        # [enabled为true时必填] EulerCopilot主页地址；<domain> 替换为 EulerCopilot 实际的域名；下同
+        euler_copilot_front: https://<domain>/api/auth/login
+        # [enabled为true时必填] OIDC登录跳转地址，包括Scope、Client ID、Redirect URI等参数；<client_id> 替换为实际的Client ID
+        redirect: http://<authhub>/oauth2/authorize?client_id=<client_id>&redirect_uri=https://<domain>/api/auth/login&scope=openid offline_access&access_type=offline&response_type=code&prompt=consent&state=235345&nonce=loser
+  web:
+    # [必填] 是否部署Web前端用户界面
+    enabled: true
+    # 镜像设置
+    image:
+      # 镜像仓库。留空则使用全局设置。
+      registry: ""
+      # [必填] 镜像名
+      name: euler-copilot-web
+      # [必填] 镜像标签
+      tag: "0.9.1"
+      # 拉取策略。留空则使用全局设置
+      imagePullPolicy: ""
+    # [必填] 容器根目录只读
+    readOnly: true
+    # 性能限制设置
+    resources: {}
+    # Service设置
+    service:
+      # [必填] Service类型，ClusterIP或NodePort
+      type: ClusterIP
+      nodePort: 
+    # Ingress设置
+    ingress:
+      # [必填] 是否启用Ingress
+      enabled: true
+      # [必填] URI前缀
+      prefix: /
