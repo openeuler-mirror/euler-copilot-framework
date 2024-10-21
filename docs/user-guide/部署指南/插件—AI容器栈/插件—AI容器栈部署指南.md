@@ -18,6 +18,10 @@ helm upgrade euler-copilot .
 
 +  检查Compatibility-AI-Infra目录下的openapi.yaml 中 servers.url 字段，确保AI容器服务的启动地址被正确设置
 
++  获取 $plugin_dir 插件文件夹的路径，该变量位于 euler-copilot-helm/chart/euler_copilot/values.yaml 中的framework模块
+
++  如果插件目录不存在，需新建该目录
+
 +  将该目录下的Compatibility-AI-Infra文件夹放到 $PLUGIN_DIR 中
 
 ```bash
