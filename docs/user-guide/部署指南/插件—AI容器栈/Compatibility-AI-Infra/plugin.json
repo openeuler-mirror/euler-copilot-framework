@@ -1,0 +1,6 @@
+{
+  "id": "ai_docker_images",
+  "name": "AI容器镜像",
+  "description": "该插件接受用户的输入，检查当前支持哪些AI容器，拉取容器，运行容器",
+  "predefined_question": "查看当前支持哪些AI容器，拉取指定的容器，运行指定的容器"
+}
