@@ -22,7 +22,7 @@ helm upgrade euler-copilot .
 
 +  如果插件目录不存在，需新建该目录
 
-+  将该目录下的Compatibility-AI-Infra文件夹放到 $PLUGIN_DIR 中
++  将该目录下的Compatibility-AI-Infra文件夹放到 $plugin_dir 中
 
 ```bash
 cp -r ./Compatibility-AI-Infra $PLUGIN_DIR
