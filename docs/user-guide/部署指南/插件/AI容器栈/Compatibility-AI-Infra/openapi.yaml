@@ -1,0 +1,190 @@
+openapi: 3.0.2
+info:
+  title: compatibility-ai-infra
+  version: 0.1.0
+servers:
+  - url: http://ai-infra-service.compatibility-ai-infra.svc.cluster.local:8101
+paths:
+  /docker/images:
+    get:
+      description: 获取所有支持的AI容器信息，返回容器名字和tag
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseData'
+  /docker/pull:
+    post:
+      description: 输入容器镜像名字和容器镜像tag，返回拉取该容器的shell命令
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PullDockerImages'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseData'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /docker/run:
+    post:
+      description: 输入容器名字和tag，返回运行该容器的shell命令
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RunDockerImages'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseData'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+components:
+  schemas:
+    HTTPValidationError:
+      description: HTTP校验错误
+      type: object
+      properties:
+        detail:
+          title: Detail
+          type: array
+          items:
+            $ref: '#/components/schemas/ValidationError'
+    PullDockerImages:
+      description: 生成容器拉取命令的接口的入参
+      required:
+        - image_name
+        - image_tag
+      type: object
+      properties:
+        image_name:
+          description: 容器镜像的名字,不要包含转义符
+          type: string
+          enum:
+            - cann
+            - oneapi-runtime
+            - oneapi-basekit
+            - llm-server
+            - mlflow
+            - llm
+            - tensorflow
+            - pytorch
+            - cuda
+        image_tag:
+          description: 容器镜像的tag，不要包含转义符
+          type: string
+          enum:
+            - "8.0.RC1-oe2203sp4"
+            - "cann7.0.RC1.alpha002-oe2203sp2"
+            - "2024.2.0-oe2403lts"
+            - "1.0.0-oe2203sp3"
+            - "2.11.1-oe2203sp3"
+            - "2.13.1-oe2203sp3"
+            - "chatglm2_6b-pytorch2.1.0.a1-cann7.0.RC1.alpha002-oe2203sp2"
+            - "llama2-7b-q8_0-oe2203sp2"
+            - "chatglm2-6b-q8_0-oe2203sp2"
+            - "fastchat-pytorch2.1.0.a1-cann7.0.RC1.alpha002-oe2203sp2"
+            - "tensorflow2.15.0-oe2203sp2"
+            - "tensorflow2.15.0-cuda12.2.0-devel-cudnn8.9.5.30-oe2203sp2"
+            - "pytorch2.1.0-oe2203sp2"
+            - "pytorch2.1.0-cuda12.2.0-devel-cudnn8.9.5.30-oe2203sp2"
+            - "pytorch2.1.0.a1-cann7.0.RC1.alpha002-oe2203sp2"
+            - "cuda12.2.0-devel-cudnn8.9.5.30-oe2203sp2"
+    ResponseData:
+      description: 接口返回值的固定格式
+      required:
+        - code
+        - message
+        - data
+      type: object
+      properties:
+        code:
+          description: 状态码
+          type: integer
+        message:
+          description: 状态信息
+          type: string
+        data:
+          description: 返回数据
+          type: any
+    RunDockerImages:
+      description: 生成容器运行命令的接口的入参
+      required:
+        - image_name
+        - image_tag
+      type: object
+      properties:
+        image_name:
+          description: 容器镜像的名字，不要包含转义符
+          type: string
+          enum: 
+            - cann
+            - oneapi-runtime
+            - oneapi-basekit
+            - llm-server
+            - mlflow
+            - llm
+            - tensorflow
+            - pytorch
+            - cuda
+        image_tag:
+          description: 容器镜像的tag，不要包含转义符
+          type: string
+          enum:
+            - "8.0.RC1-oe2203sp4"
+            - "cann7.0.RC1.alpha002-oe2203sp2"
+            - "2024.2.0-oe2403lts"
+            - "1.0.0-oe2203sp3"
+            - "2.11.1-oe2203sp3"
+            - "2.13.1-oe2203sp3"
+            - "chatglm2_6b-pytorch2.1.0.a1-cann7.0.RC1.alpha002-oe2203sp2"
+            - "llama2-7b-q8_0-oe2203sp2"
+            - "chatglm2-6b-q8_0-oe2203sp2"
+            - "fastchat-pytorch2.1.0.a1-cann7.0.RC1.alpha002-oe2203sp2"
+            - "tensorflow2.15.0-oe2203sp2"
+            - "tensorflow2.15.0-cuda12.2.0-devel-cudnn8.9.5.30-oe2203sp2"
+            - "pytorch2.1.0-oe2203sp2"
+            - "pytorch2.1.0-cuda12.2.0-devel-cudnn8.9.5.30-oe2203sp2"
+            - "pytorch2.1.0.a1-cann7.0.RC1.alpha002-oe2203sp2"
+            - "cuda12.2.0-devel-cudnn8.9.5.30-oe2203sp2"
+    ValidationError:
+      description: 接口的入参校验错误时返回的内容格式
+      required:
+        - loc
+        - msg
+        - type
+      type: object
+      properties:
+        loc:
+          title: Location
+          type: array
+          items:
+            anyOf:
+              - type: string
+              - type: integer
+        msg:
+          title: Message
+          type: string
+        type:
+          title: Error Type
+          type: string
