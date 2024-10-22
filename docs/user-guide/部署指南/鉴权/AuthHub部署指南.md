@@ -2,15 +2,14 @@
 
 ## 准备工作
 
-+   将 values.yaml 中的 authHub-web，authHub 的 enable 字段改为True
++ 将 values.yaml 中的 `authHub-web`、`authHub` 的 `enable` 字段改为 `True`
 
-```bash
+```yaml
 enable: True
 ```
 
-+   更新环境
++ 更新环境
 
 ```bash
 helm upgrade euler-copilot .
 ```
-
