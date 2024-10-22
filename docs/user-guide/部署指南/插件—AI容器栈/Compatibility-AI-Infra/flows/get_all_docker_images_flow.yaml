@@ -1,0 +1,15 @@
+name: get_all_supported_AI_docker_images
+description: "获取所有支持的docker容器镜像,输入为空，输出为支持的AI容器镜像列表，包括名字、tag、registry、repository"
+steps:
+  - name: start
+    call_type: api
+    params:
+      endpoint: GET /docker/images
+    next: list2markdown
+  - name: list2markdown
+    call_type: llm
+    params:
+      user_prompt: |
+        当前已有的docker容器及tag为：{data}。请将这份内容输出为markdown表格，表头为registry、repository、image_name、tag,请注意如果一个容器镜像有多个tag版本，请分多行展示。
+next_flow:
+  - docker_pull_specified_AI_docker_images

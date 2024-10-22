@@ -1,0 +1,147 @@
+openapi: 3.0.2
+info:
+  title: 智能诊断
+  version: 1.0.0
+servers:
+  - url: http://euler-copilot-tune.euler-copilot.svc.cluster.local:8100
+paths:
+  /performance_metric:
+    post:
+      description: 对指定机器进行性能指标采集，返回指标值
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PerformanceMetricRequestData'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /performance_report:
+    post:
+      description: 基于采集到的指标，对指定机器进行性能诊断，生成性能分析报告
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PerformanceReportRequestData'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /optimization_suggestion:
+    post:
+      description: 根据性能分析报告，以及指定的机器应用信息，生成调优建议
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OptimizationSuggestionRequestData'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+components:
+  schemas:
+    HTTPValidationError:
+      type: object
+      description: HTTP 校验错误
+      properties:
+        detail:
+          type: array
+          items:
+            $ref: '#/components/schemas/ValidationError'
+    OptimizationSuggestionRequestData:
+      type: object
+      description: 生成优化建议的接口的入参
+      required:
+        - app
+        - ip
+      properties:
+        app:
+          type: string
+          description: 应用名称
+          default: mysql
+          enum:
+            - mysql
+            - none
+        ip:
+          type: string
+          description: 点分十进制的ipv4地址, 例如192.168.10.43
+          example: "192.168.10.43"
+    PerformanceMetricRequestData:
+      type: object
+      description: 性能指标采集的接口的入参
+      required:
+        - app
+        - ip
+      properties:
+        ip:
+          type: string
+          description: 点分十进制的ipv4地址, 例如192.168.10.43
+          example: "192.168.10.43"
+        app:
+          type: string
+          description: App
+          default: none
+          enum:
+            - mysql
+            - none
+    PerformanceReportRequestData:
+      type: object
+      description: 生成性能报告接口的入参
+      required:
+        - ip
+      properties:
+        ip:
+          type: string
+          description: 点分十进制的ipv4地址, 例如192.168.10.43
+          example: "192.168.10.43"
+    ValidationError:
+      type: object
+      required:
+        - loc
+        - msg
+        - type
+      title: ValidationError
+      properties:
+        loc:
+          type: array
+          items:
+            anyOf:
+              - type: string
+              - type: integer
+          title: Location
+        msg:
+          type: string
+          title: Message
+        type:
+          type: string
+          title: Error Type
