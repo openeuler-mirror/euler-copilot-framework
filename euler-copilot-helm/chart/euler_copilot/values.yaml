@@ -76,7 +76,7 @@ euler_copilot:
     # Volume设置
     volume:
       # [必填] Embedding模型的位置
-      models: /home/euler-copilot/models
+      models: /home/EulerCopilot/models
     # Service设置
     service:
       # [必填] Service类型，ClusterIP或NodePort
@@ -116,8 +116,8 @@ euler_copilot:
       nodePortDagster: 
     # [必填] RAG知识库名
     knowledgebaseID: default_test
-    # [必填] 待向量化的文档位置
-    docs_dir: "/home/euler-copilot/docs"
+    # [必填] 待向量化的文档位置，需要手动创建目录
+    docs_dir: "/home/EulerCopilot/docs"
     # 向量化服务设置
     vectorize:
       # [必填] 是否使用集群内的Vectorize？
