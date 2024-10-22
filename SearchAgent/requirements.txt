@@ -1,0 +1,9 @@
+torch
+transformers==4.41.0
+scikit-learn
+requests
+beautifulsoup4
+lxml
+readability
+chardet
+
