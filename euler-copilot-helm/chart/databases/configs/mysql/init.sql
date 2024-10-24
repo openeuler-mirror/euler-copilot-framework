@@ -4,6 +4,9 @@ GRANT ALL ON `euler_copilot`.* TO 'euler_copilot'@'%';
 CREATE DATABASE IF NOT EXISTS oauth2 DEFAULT CHARACTER SET utf8mb4 DEFAULT COLLATE utf8mb4_bin;
 GRANT ALL ON `oauth2`.* TO 'euler_copilot'@'%';
 use oauth2;
+
+SET FOREIGN_KEY_CHECKS = 0;
+
 CREATE TABLE IF NOT EXISTS `manage_user` (
     `id` int NOT NULL AUTO_INCREMENT,
     `username` varchar(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL,
