@@ -13,7 +13,6 @@ from typing import List, Optional
 from readability import Document
 import chardet
 import time
-import os
 from modelSet import getModel
 import argparse
 
