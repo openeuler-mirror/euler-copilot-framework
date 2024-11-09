@@ -1,0 +1,3046 @@
+openapi: 3.0.1
+info:
+  title: 漏洞管理软件包接口
+  description: 漏洞管理软件包接口
+  version: 2.0.0
+servers:
+  - url: http://116.63.164.87
+paths:
+  /vulnerabilities/repo/import:
+    post:
+      description: 向当前集群新增repo源信息
+      requestBody:
+        description: 需要设置的repo源信息
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RepoImportReq"
+        required: true
+      responses:
+        "200":
+          description: "http状态码,200表示正常返回"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GeneralRsp"
+        "400":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorRsp"
+  /vulnerabilities/repo/get:
+    post:
+      description: 查询数据库中的repo源信息
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RepoGetReq"
+        required: true
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RepoGetRsp"
+        "400":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorRsp"
+  /vulnerabilities/repo/delete:
+    delete:
+      summary: 删除repo源
+      description: 根据传入的repo ID,删除对应repo源信息，如果被删除的repo id在使用中则不能删除。
+      parameters:
+        - name: repo_id_list
+          in: query
+          style: deepObject
+          schema:
+            description: "repo id列表,非空"
+            minItems: 1
+            type: array
+            items:
+              type: string
+            example: ["repo-id-1", "repo-id-2"]
+          required: true
+      responses:
+        "200":
+          description: "成功响应状态码，非200状态码视为异常状态码"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RepoDeleteRsp"
+        "400":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorRsp"
+  /repo/update:
+    post:
+      summary: 更新repo源
+      description: 更新指定repo源内容
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RepoImportReq"
+        required: false
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GeneralRsp"
+      deprecated: true
+      x-codegen-request-body-name: param
+  /vulnerabilities/repo/template/get:
+    get:
+      description: "获取repo模板文件，文件内容为repo源示例信息"
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GetRepoTemplateRsp"
+  /vulnerabilities/cve/overview:
+    get:
+      description: 统计当前用户可访问的主机上的所有CVE，并按照CVE等级进行统计，用于web界面饼图渲染
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QueryOverviewRsp"
+        "400":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorRsp"
+  /vulnerabilities/cve/list/get:
+    post:
+      description: 获取CVE列表，获取所有有权限访问的主机的CVE列表
+      requestBody:
+        description: 查询条件
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/QueryCveListReq"
+        required: false
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QueryCveListRsp"
+        "400":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorRsp"
+  /vulnerabilities/cves/recommended:
+    get:
+      summary: 获取推荐修复cve汇总
+      description: 查询输入CVE的筛选条件，包括集群id:cluster_id，cve安全等级:severity，cve最小分数:min_score，cve最大分数:max_score，是否含有热补丁:hot_patch
+      parameters:
+        - name: fixed
+          in: query
+          description: cve是否修复
+          schema:
+            type: boolean
+          required: true
+        - name: cluster_id
+          in: query
+          description: cve所在集群的集群id
+          schema:
+            type: string
+          required: false
+        - name: min_score
+          in: query
+          description: cve最小分数
+          schema:
+            type: integer
+          required: false
+        - name: max_score
+          in: query
+          description: cve最大分数
+          schema:
+            type: integer
+          required: false
+        - name: hot_patch
+          in: query
+          description: 是否含有热补丁
+          schema:
+            type: boolean
+          required: false
+      responses:
+        "200":
+          description: "http状态码信息"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QueryCvesRecommendedRsp"
+        "400":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorRsp"
+  /vulnerabilities/cve/info/get:
+    get:
+      summary: 获取某CVE详细信息
+      description: 查询输入CVE的详细信息，包括CVE公开时间，等级，CVSS评分，影响的软件包信息
+      parameters:
+        - name: cve_id
+          in: query
+          description: 需要查询的CVE ID
+          schema:
+            type: string
+            example: CVE-2022-44033
+            minLength: 1
+            maxLength: 20
+          required: true
+      responses:
+        "200":
+          description: "http状态码信息"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QueryCveInfoRsp"
+        "400":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorRsp"
+  /vulnerabilities/cve/host/get:
+    post:
+      summary: 获取存在特定 CVE 漏洞的所有主机相关详细信息
+      description: 获取存在特定 CVE 漏洞的所有主机相关详细信息
+      requestBody:
+        description: 查询条件
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/QueryCveHostReq"
+        required: false
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QueryCveHostRsp"
+        "400":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorRsp"
+  /vulnerabilities/cve/task/host/get:
+    post:
+      summary: "获取多个cve对应的主机基本信息（id, ip, name）"
+      description: "获取多个cve对应的主机基本信息（id, ip, name）"
+      requestBody:
+        description: cve id 列表，不为空
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/QueryCveTaskHostReq"
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QueryCveTaskHostRsp"
+        "400":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorRsp"
+  /vulnerabilities/cve/advisory/upload:
+    post:
+      description: 安全公告导入,用于解析openeuler官网发布安全公告信息中 受版本影响的CVE信息
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        "200":
+          description: ""
+          content:
+            multipart/form-data:
+              schema:
+                $ref: "#/components/schemas/GeneralRsp"
+        "400":
+          description: ""
+          content:
+            multipart/form-data:
+              schema:
+                $ref: "#/components/schemas/ErrorRsp"
+  /vulnerabilities/cve/unaffected/upload:
+    post:
+      description: 安全公告导入,用于解析openeuler官网发布安全公告信息中 不受版本影响的CVE信息
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        "200":
+          description: ""
+          content:
+            multipart/form-data:
+              schema:
+                $ref: "#/components/schemas/GeneralRsp"
+        "400":
+          description: ""
+          content:
+            multipart/form-data:
+              schema:
+                $ref: "#/components/schemas/ErrorRsp"
+  /vulnerabilities/cve/info/export:
+    post:
+      summary: 导出cve信息
+      description: "以csv文件格式导出选中主机的cve统计信息"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ExportCveReq"
+        required: true
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                type: string
+                format: binary
+  /vulnerabilities/cve/unfixed/packages/get:
+    post:
+      summary: 查询未修复CVE的关联软件包信息
+      description: 查询未修复CVE的关联软件包信息
+      requestBody:
+        description: CVE信息与主机ID列表
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/QueryUnfixedPackagesReq"
+        required: false
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QueryUnfixedPackagesRsp"
+        "400":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorRsp"
+  /vulnerabilities/cve/fixed/packages/get:
+    post:
+      summary: 查询已修复CVE的关联软件包信息
+      description: 查询已修复CVE的关联软件包信息
+      requestBody:
+        description: CVE信息与主机ID列表
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/QueryUnfixedPackagesReq"
+        required: false
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QueryFixedPackagesRsp"
+        "400":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorRsp"
+  /vulnerabilities/cve/packages/host/get:
+    post:
+      summary: 查询未修复CVE的关联软件包关联的主机数
+      description: 查询未修复CVE的关联软件包关联的主机数
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/QueryCvePackagesHostReq"
+        required: false
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QueryCvePackagesHostRsp"
+        "400":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorRsp"
+  /vulnerabilities/host/status/get:
+    post:
+      summary: 查询主机的扫描状态
+      description: 查询状态为扫描状态的主机
+      requestBody:
+        description: 主机id数组，数组为空表示查询所有主机
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/QueryHostStatusReq"
+        required: false
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QueryHostScanStatusRsp"
+        "400":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorRsp"
+  /vulnerabilities/host/list/get:
+    post:
+      summary: 获取主机列表
+      description: 获取主机列表,支持主机名称检索,集群过滤,主机组过滤;查询结果分页返回
+      requestBody:
+        description: 查询条件
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/QueryHostListReq"
+        required: false
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QueryHostListRsp"
+        "400":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorRsp"
+  /vulnerabilities/host/info/get:
+    get:
+      summary: 获取主机的详细信息
+      description: 获取主机的详细信息,包括主机组,已修复与未修复的数量,上次漏洞扫描时间,重启后内核是否回变动等信息
+      parameters:
+        - name: host_id
+          in: query
+          description: 主机ID
+          schema:
+            type: string
+            example: 3
+            minLength: 1
+            maxLength: 36
+          required: true
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QueryHostInfoRsp"
+        "400":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorRsp"
+  /vulnerabilities/host/cve/get:
+    post:
+      summary: 获取指定主机的详细cve信息
+      description: 获取指定主机的详细cve信息,默认情况下查询受影响的CVE信息,支持CVE ID与CVE ID对应的二进制软件包包名过滤,支持通过CVE严重等级进行筛选
+      requestBody:
+        description: 查询条件
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/QueryHostCveInfoReq"
+        required: false
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QueryHostCveInfoRsp"
+        "400":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorRsp"
+  /vulnerabilities/host/scan:
+    post:
+      summary: 扫描主机cve信息,
+      description: 扫描主机漏洞信息，对输入的主机生成CVE扫描任务并执行
+      requestBody:
+        description: 主机id列表，为空表示所有
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ScanHostReq"
+        required: false
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GeneralRsp"
+        "400":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorRsp"
+  /vulnerabilities/task/list/get:
+    post:
+      summary: 获取任务列表
+      description: 获取任务的列表，分页返回任务的基本信息;支持任务名称检索,通过任务类型筛选
+      requestBody:
+        description: 查询条件
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/QueryTaskListReq"
+        required: false
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QueryTaskListRsp"
+        "400":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorRsp"
+  /vulnerabilities/task/progress/get:
+    post:
+      summary: 获取任务的最新进度
+      description: 获取任务的执行进度，任务涉及主机的执行情况，哪些在执行中，那些已经执行完成，哪些执行失败
+      requestBody:
+        description: "任务ID列表,非空"
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/QueryTaskProgressReq"
+        required: false
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QueryTaskProgressRsp"
+        "400":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorRsp"
+  /vulnerabilities/task/info/get:
+    get:
+      summary: 获取任务的基础信息
+      description: 获取任务的基础信息
+      parameters:
+        - name: task_id
+          in: query
+          description: 任务ID
+          schema:
+            type: string
+            example: 6e3a6122ec0611eeb4a35254001a9e0d
+            minLength: 1
+            maxLength: 32
+          required: true
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QueryTaskInfoRsp"
+        "400":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorRsp"
+  /vulnerabilities/task/cve-fix/generate:
+    post:
+      summary: 生成漏洞修复任务
+      description: 生成漏洞修复任务,任务名称,任务描述可以修改;其中热补丁与冷补丁单独生成任务;任务生成后不会自动执行, 需要手动触发;
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GenerateCveTaskReq"
+        required: true
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenerateCveTaskRsp"
+        "400":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorRsp"
+  /vulnerabilities/task/cve-fix/info/get:
+    post:
+      summary: 获取cve修复任务的详细信息
+      description: 获取cve修复任务的详细信息
+      requestBody:
+        description: 查询条件
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/QueryCveFixTaskInfoReq"
+        required: false
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QueryCveFixTaskInfoRsp"
+        "400":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorRsp"
+  /vulnerabilities/task/cve-fix/result/get:
+    post:
+      summary: 获取cve修复任务的最新结果
+      description: 获取cve修复任务的任务执行报告,报告内容包括执行结果与远程执行日志信息
+      requestBody:
+        description: 任务ID与CVE列表
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/QueryCveTaskResultReq"
+        required: false
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QueryCveTaskResultRsp"
+        "400":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorRsp"
+  /vulnerabilities/task/repo/generate:
+    post:
+      summary: 创建设置指定主机的update repo源的任务
+      description: 创建设置repo源的任务，根据传入的REPO ID和主机 生成为每个主机设置指定repo源的任务，接口调用成功后返回任务ID信息；其中任务的描述信息和任务名称可以修改
+      requestBody:
+        description: 任务信息
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GenerateUpdateRepoTaskReq"
+        required: false
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenerateUpdateRepoTaskRsp"
+        "400":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorRsp"
+  /vulnerabilities/task/repo/info/get:
+    post:
+      summary: 获取repo设置任务的详细信息
+      description: 获取repo设置任务的详细信息，包括任务名称，任务描述，涉及主机数量，上次执行时间，关联集群信息
+      requestBody:
+        description: 查询条件
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/QueryRepoSetTaskInfoReq"
+        required: false
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QueryRepoSetTaskInfoRsp"
+        "400":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorRsp"
+  /vulnerabilities/task/repo/result/get:
+    post:
+      summary: 获取repo设置任务的执行报告
+      description: 获取repo设置任务的执行报告
+      requestBody:
+        description: 任务ID与主机ID列表
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/QueryRepoSetTaskResultReq"
+        required: false
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QueryRepoSetTaskResultRsp"
+        "400":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorRsp"
+  /vulnerabilities/task/execute:
+    post:
+      summary: 执行任务
+      dangerous: True
+      description: 执行任务;入参结构体的key值为任务ID对应的集群ID,即执行某个集群的某个任务ID
+      requestBody:
+        description: 任务ID
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ExecuteTaskReq"
+        required: false
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GeneralRsp"
+        "400":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorRsp"
+  /vulnerabilities/task/delete:
+    delete:
+      summary: 删除任务
+      description: 删除传入的任务
+      parameters:
+        - name: task_list
+          in: query
+          description: 任务列表
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeleteTaskReq"
+          required: false
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeleteTaskRsp"
+        "400":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorRsp"
+  /vulnerabilities/task/cve-fix/rpm/get:
+    post:
+      summary: CVE修复任务RPM包信息查询
+      description: CVE修复任务RPM包信息查询
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CveFixTaskRpmInfoQueryReq"
+        required: false
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CveFixTaskRpmInfoQueryRsp"
+  /vulnerabilities/task/cve-rollback/generate:
+    post:
+      summary: 生成漏洞回滚任务
+      description: 生成漏洞回滚任务;
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GenerateRollbackTaskReq"
+        required: true
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenerateRollbackTaskRsp"
+        "400":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorRsp"
+  /vulnerabilities/task/cve-rollback/result/get:
+    post:
+      summary: CVE 回滚任务报告查询
+      description: CVE 回滚任务报告查询
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CveRollbackTaskResultReq"
+        required: false
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CveRollbackTaskResultRsp"
+        "400":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorRsp"
+  /vulnerabilities/task/cve-rollback/info/get:
+    post:
+      summary: CVE 回滚任务信息查询
+      description: CVE 回滚任务信息查询
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CveRollbackTaskInfoQueryReq"
+        required: false
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CveRollbackTaskInfoQueryRsp"
+        "400":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorRsp"
+  /vulnerabilities/task/cve-rollback/rpm/get:
+    post:
+      summary: CVE回滚任务rpm信息包查询
+      description: CVE回滚任务rpm包信息查询
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CveRollbackRpmInfoQueryReq"
+        required: false
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CveRollbackRpmInfoQueryRsp"
+        "400":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorRsp"
+  /vulnerabilities/task/hotpatch-remove/generate:
+    post:
+      summary: 生成热补丁移除任务
+      description: 生成热补丁移除任务。
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GenerateHotpatchRemoveTaskReq"
+        required: false
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenerateHotpatchRemoveTaskRsp"
+  /vulnerabilities/task/hotpatch-remove/info/get:
+    post:
+      summary: 热补丁移除任务信息查询
+      description: 热补丁移除任务信息查询
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/HotpatchRemoveTaskInfoQueryReq"
+        required: false
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HotpatchRemoveTaskInfoQueryRsp"
+  /vulnerabilities/task/hotpatch-remove/result/get:
+    post:
+      summary: 热补丁移除任务报告查询
+      description: 热补丁移除任务报告查询,返回此任务主机的执行结果以及执行日志
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/HotpatchRemoveTaskResultQueryReq"
+        required: false
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HotpatchRemoveTaskResultQueryRsp"
+  /vulnerabilities/task/hotpatch-remove/status/get:
+    post:
+      summary: 热补丁移除任务-CVE关联主机信息查询
+      description: 热补丁移除任务-CVE关联主机信息查询
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/HotpatchRemoveTaskCveHostInfoQueryReq"
+        required: false
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HotpatchRemoveTaskCveHostInfoQueryRsp"
+  /vulnerabilities/task/hotpatch-remove/progress/get:
+    post:
+      summary: 热补丁移除任务-任务执行进度查询
+      description: 热补丁移除任务-任务执行进度查询
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/HotpatchRemoveTaskProcessQueryReq"
+        required: false
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HotpatchRemoveTaskProcessQueryRsp"
+components:
+  schemas:
+    GetRepoTemplateRsp:
+      allOf:
+        - $ref: "#/components/schemas/GeneralRsp"
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                result:
+                  type: string
+    DeleteTaskReq:
+      properties:
+        task_list:
+          type: array
+          description: 任务id列表
+          items:
+            type: string
+    DeleteTaskRsp:
+      allOf:
+        - $ref: "#/components/schemas/GeneralRsp"
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                running_task:
+                  type: array
+                  items:
+                    type: string
+    ExecuteTaskReq:
+      description: 指定某个集群的某个ID
+      type: object
+      required:
+        - task_id
+      properties:
+        task_id:
+          type: string
+          description: 任务id
+          minLength: 1
+          maxLength: 32
+    QueryRepoSetTaskResultReq:
+      required:
+        - task_id
+      type: object
+      properties:
+        task_id:
+          type: string
+          minLength: 1
+          maxLength: 32
+    QueryRepoSetTaskResultRsp:
+      allOf:
+        - $ref: "#/components/schemas/GeneralRsp"
+        - type: object
+          properties:
+            data:
+              type: array
+              items:
+                type: object
+                properties:
+                  host_id:
+                    type: integer
+                  task_id:
+                    type: string
+                  task_type:
+                    type: string
+                  latest_execute_time:
+                    type: integer
+                  task_result:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        host_id:
+                          type: string
+                        host_name:
+                          type: string
+                        host_ip:
+                          type: string
+                        status:
+                          type: string
+                        check_items:
+                          $ref: "#/components/schemas/CheckItemResultStruct"
+                        log:
+                          type: string
+                        repo:
+                          type: string
+    QueryRepoSetTaskInfoReq:
+      required:
+        - task_id
+      type: object
+      properties:
+        task_id:
+          type: string
+          description: 需要查询的任务ID
+          minLength: 1
+          maxLength: 32
+        filter:
+          type: object
+          properties:
+            host_name:
+              type: string
+              description: 需要检索的主机名
+              minLength: 1
+              maxLength: 50
+            status:
+              type: array
+              items:
+                type: string
+                description: 该任务在目标主机的执行状态
+                enum:
+                  - succeed
+                  - fail
+                  - running
+                  - unknown
+              
+
+    QueryRepoSetTaskInfoRsp:
+      allOf:
+        - $ref: "#/components/schemas/GeneralRsp"
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                total_count:
+                  type: integer
+                total_page:
+                  type: integer
+                result:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      host_id:
+                        type: string
+                      host_name:
+                        type: string
+                      host_ip:
+                        type: string
+                      repo_name:
+                        type: string
+                      status:
+                        type: string
+    GenerateUpdateRepoTaskReq:
+      required:
+        - description
+        - host_list
+        - repo_id
+        - task_name
+      type: object
+      properties:
+        task_name:
+          type: string
+          description: 任务名称
+          minLength: 1
+          maxLength: 20
+        description:
+          type: string
+          description: 任务描述
+          minLength: 1
+          maxLength: 100
+        repo_id:
+          description: 需要设置的repo源的repo id,用于判断给主机设置哪个repo
+          type: string
+          minLength: 1
+          maxLength: 36
+        host_list:
+          type: array
+          items:
+            type: string
+            description: 需要设置的主机ID列表,原则上主机ID列表与设置的repo存在于同一个集群中
+            minLength: 1
+            maxLength: 36
+    GenerateUpdateRepoTaskRsp:
+      allOf:
+        - $ref: "#/components/schemas/GeneralRsp"
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                task_id:
+                  type: string
+    QueryCveTaskResultReq:
+      type: object
+      required:
+        - task_id
+      properties:
+        task_id:
+          type: string
+          minLength: 1
+          maxLength: 32
+    QueryCveTaskResultRsp:
+      allOf:
+        - $ref: "#/components/schemas/GeneralRsp"
+        - type: object
+          properties:
+            data:
+              type: array
+              items:
+                type: object
+                allOf:
+                  - $ref: "#/components/schemas/CallbackTaskBaseProperties"
+                  - type: object
+                    properties:
+                      last_execution_time:
+                        type: integer
+                      task_type:
+                        type: string
+                        default: cve fix
+                      task_result:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            timed:
+                              type: boolean
+                            rpms:
+                              $ref: "#/components/schemas/RpmFixResult"
+                            check_items:
+                              $ref: "#/components/schemas/CheckItemResultStruct"
+
+    QueryCveFixTaskInfoReq:
+      required:
+        - task_id
+      type: object
+      properties:
+        task_id:
+          type: string
+          description: 任务ID
+          minLength: 1
+          maxLength: 32
+        page:
+          type: integer
+          description: 当前页码
+          example: 1
+          minimum: 1
+          maximum: 999999
+        per_page:
+          type: integer
+          description: "每页数量,最大值50"
+          example: 10
+          minimum: 1
+          maximum: 999
+#        filter:
+#          type: object
+#          properties:
+#            search_key:
+#              type: string
+#              description: 检索字段
+#              minLength: 1
+#              maxLength: 50
+#            status:
+#              type: array
+#              description: 任务的执行状态列表
+#              example:
+#                - fail
+#                - succeed
+#                - running
+#                - unknown
+#              items:
+#                type: string
+#                description: 任务执行状态
+#                enum:
+#                  - succeed
+#                  - fail
+#                  - running
+#                  - unknown
+    QueryCveFixTaskInfoRsp:
+      allOf:
+        - $ref: "#/components/schemas/GeneralRsp"
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                total_count:
+                  type: integer
+                total_page:
+                  type: integer
+                result:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      cve_num:
+                        type: integer
+                        example: 12
+                      host_id:
+                        type: integer
+                      host_ip:
+                        type: string
+                        example: 127.0.0.1
+                      host_name:
+                        type: string
+                        example: Test_Host
+                      status:
+                        type: string
+                        example: unknown
+    GenerateCveTaskReq:
+      required:
+        - description
+        - info
+        - task_name
+        - takeover
+        - accepted
+      type: object
+      properties:
+        task_name:
+          type: string
+          description: 任务名称,此字段用户可以自定义输入
+          minLength: 1
+          maxLength: 20
+        description:
+          type: string
+          description: 任务描述信息,此字段用户可以自定义输入
+          minLength: 1
+          maxLength: 100
+        accepted:
+          type: boolean
+          description: 默认为False,此字段适用热补丁修复,表示热补丁修复后设置热补丁的状态为accepted状态;当主机应用此补丁并设置accepted状态后,机器重启后会自动激活该补丁
+          default: false
+          enum:
+            - true
+            - false
+        check_items:
+          type: array
+          description: 预设检查项,预留字段
+          items:
+            type: string
+            minLength: 1
+            maxLength: 32
+        takeover:
+          type: boolean
+          description: 默认值为false
+          default: false
+          enum:
+            - true
+            - false
+        info:
+          type: array
+          description: 需要修复的主机与cve的信息
+          minItems: 1
+          items:
+            type: object
+            required:
+              - cve_id
+              - host_info
+            properties:
+              cve_id:
+                type: string
+                description: cveid编号
+                minLength: 1
+                maxLength: 20
+              host_info:
+                type: array
+                minItems: 1
+                items:
+                  type: object
+                  required:
+                    - host_id
+                  properties:
+                    host_id:
+                      type: string
+                      description: 需要修复的主机ID，host_id
+                      minLength: 1
+                      maxLength: 36
+              rpms:
+                type: array
+                description: 可选参数，指定方式修复cve,未指定则不传
+                default: []
+                items:
+                  required:
+                    - available_rpm
+                    - fix_way
+                    - installed_rpm
+                  type: object
+                  properties:
+                    installed_rpm:
+                      type: string
+                      description: 可选参数，当前主机被CVE影响的软件包
+                      minLength: 1
+                      maxLength: 100
+                    available_rpm:
+                      type: string
+                      description: 可选参数，可升级的软件包,修复展示CVE ID的漏洞问题
+                      minLength: 1
+                      maxLength: 100
+                    fix_way:
+                      type: string
+                      description: 可选参数，软件包的修复方式(hotpatch/coldpatch)
+                      minLength: 1
+                      maxLength: 20
+                      enum:
+                        - hotpatch
+                        - coldpatch
+    GenerateCveTaskRsp:
+      allOf:
+        - $ref: "#/components/schemas/GeneralRsp"
+        - type: object
+          properties:
+            data:
+              type: array
+              items:
+                type: object
+                properties:
+                  task_id:
+                    type: string
+                    description: 任务ID
+                  fix_way:
+                    type: string
+                    description: 修复任务类型
+                    enum:
+                      - hotpatch
+                      - coldpatch
+
+    QueryTaskInfoRsp:
+      allOf:
+        - $ref: "#/components/schemas/GeneralRsp"
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                task_name:
+                  type: string
+                  description: 任务名称
+                description:
+                  type: string
+                  description: 任务的描述信息
+                host_num:
+                  type: integer
+                  description:  此任务涉及主机数量
+                latest_execute_time:
+                  type: integer
+                  description: 任务上次执行的时间
+                takerover:
+                  type: boolean
+                accept:
+                  type: boolean
+                  description: 此项仅在热补丁修复的任务下有效,为True的情况下,当热补丁修复成功时,会将应用的热补丁的状态设置为accepted,表示机器重启后会自动激活此补丁.
+                cluster_id:
+                  type: string
+                  description: 集群ID
+                cluster_name:
+                  type: string
+                  description: 集群名称
+                task_type:
+                  type: string
+                  description: 任务类型
+                  
+    QueryTaskProgressReq:
+      type: object
+      required:
+        - task_list
+      properties:
+        task_list:
+          type: array
+          description: 任务id列表，不为空
+          items:
+            type: string
+            description: 任务ID
+            minLength: 1
+            maxLength: 32
+          minItems: 1
+    QueryTaskProgressRsp:
+      allOf:
+        - $ref: "#/components/schemas/GeneralRsp"
+        - type: object
+          properties:
+            data:
+              type: array
+              items:
+                type: object
+                properties:
+                  task_id:
+                    type: string
+                  cluster_id:
+                    type: string
+                  succeed:
+                    description: 值为1表示执行成功
+                    type: integer
+                  fail:
+                    description: 值为1表示执行失败
+                    type: integer
+                  running:
+                    description: 值为1表示执行中
+                    type: integer
+                  unknown:
+                    description: 值为1表示状态未知
+                    type: integer
+    QueryTaskListReq:
+      type: object
+      properties:
+        sort:
+          type: string
+          description: "可选host_num、create_time,不传入该字段的时候默认create_time"
+          enum:
+            - host_num
+            - create_time
+        direction:
+          type: string
+          description: 升序(asc)，降序(desc)，默认:desc
+          default: desc
+          enum:
+            - asc
+            - desc
+        page:
+          type: integer
+          description: 当前页码
+          example: 1
+          minimum: 1
+          maximum: 999999
+        per_page:
+          type: integer
+          description: "每页数量"
+          example: 10
+          minimum: 1
+          maximum: 999
+        filter:
+          type: object
+          description: 可选参数，过滤条件
+          properties:
+            task_name:
+              type: string
+              description: 任务名
+              minLength: 1
+              maxLength: 20
+            task_type:
+              type: array
+              description: 任务类型，可选cve scan、cve fix、repo set、hotpatch remove
+              items:
+                type: string
+                enum:
+                  - cve scan
+                  - cve fix
+                  - repo set
+                  - hotpatch remove
+            cluster_list:
+              description: 集群列表
+              type: array
+              items:
+                type: string
+                minLength: 1
+                maxLength: 36
+    QueryTaskListRsp:
+      allOf:
+        - $ref: "#/components/schemas/GeneralRsp"
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                total_count:
+                  type: integer
+                total_page:
+                  type: integer
+                result:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      task_id:
+                        type: string
+                      task_name:
+                        type: string
+                      task_type:
+                        type: string
+                      description:
+                        type: string
+                      host_num:
+                        type: integer
+                      create_time:
+                        type: integer
+                      cluster_id:
+                        type: string
+                      cluster_name:
+                        type: string
+    QueryHostCveInfoReq:
+      required:
+        - host_id
+      type: object
+      properties:
+        host_id:
+          type: string
+          minLength: 1
+          maxLength: 36
+        cluster_id:
+          type: string
+        sort:
+          type: string
+          description: 可选publish_time、cvss_score
+          enum:
+            - publish_time
+            - cvss_score
+        direction:
+          type: string
+          description: 升序(asc)，降序(desc)，默认:asc
+          default: asc
+          enum:
+            - asc
+            - desc
+        page:
+          type: integer
+          description: 当前页码
+          example: 1
+          minimum: 1
+          maximum: 999999
+        per_page:
+          type: integer
+          description: "每页数量"
+          example: 10
+          minimum: 1
+          maximum: 999
+        filter:
+          type: object
+          properties:
+            search_key:
+              type: string
+              example: CVE
+            severity:
+              type: array
+              items:
+                type: string
+                enum:
+                  - Critical
+                  - High
+                  - Medium
+                  - Low
+                  - Unknown
+            affected:
+              type: boolean
+              description: 默认为True
+              default: true
+            fixed:
+              type: boolean
+    QueryCveTaskHostReq:
+      type: object
+      properties:
+        fixed:
+          type: boolean
+          description: 用于判断查询已修复的CVE还是未修复的CVE
+          enum:
+            - true
+            - false
+          default: false
+        cve_list:
+          type: array
+          items:
+            type: object
+            properties:
+              cve_id:
+                type: string
+                description: CVE ID信息
+              rpms:
+                type: array
+                description: CVE关联的RPM信息,可能存在多个不同软件或者不同版本的软件存在同一个CVE的情况
+                items:
+                  type: object
+                  properties:
+                    available_rpm:
+                      type: string
+                      description: 可安装的软件包信息
+                    fix_way:
+                      type: string
+                      enum:
+                        - coldpatch
+                        - hotpatch
+                    installed_rpm:
+                      type: string
+                      description: 当前系统已经安装的软件包信息,存在漏洞的软件包信息
+    QueryHostCveInfoRsp:
+      allOf:
+        - $ref: "#/components/schemas/GeneralRsp"
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                total_count:
+                  type: integer
+                total_page:
+                  type: integer
+                result:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      cve_id:
+                        type: string
+                      publish_time:
+                        type: string
+                      severity:
+                        type: string
+                      description:
+                        type: string
+                      cvss_score:
+                        type: string
+                      status:
+                        type: string
+    QueryHostInfoRsp:
+      allOf:
+        - $ref: "#/components/schemas/GeneralRsp"
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                result:
+                  type: object
+                  properties:
+                    host_name:
+                      type: string
+                    host_ip:
+                      type: string
+                    host_group:
+                      type: string
+                    repo:
+                      type: string
+                    affected_cve_num:
+                      type: integer
+                    unaffected_cve_num:
+                      type: integer
+                    fixed_cve_num:
+                      type: integer
+                    last_scan:
+                      type: timestamp
+                    reboot:
+                      type: boolean
+                    cluster_id:
+                      type: string
+    QueryHostListReq:
+      type: object
+      required:
+        - page
+        - per_page
+      properties:
+        sort:
+          type: string
+          description: 排序依据, 可选last_scan、cve_num
+          enum:
+            - last_scan
+            - cve_num
+        direction:
+          type: string
+          description: 排序方式，升序(asc)，降序(desc)，默认:asc
+          default: asc
+          enum:
+            - asc
+            - desc
+        page:
+          type: integer
+          description: 当前页码
+          example: 1
+          minimum: 1
+          maximum: 999999
+        per_page:
+          type: integer
+          description: "每页数量"
+          example: 10
+          minimum: 1
+          maximum: 999
+        filter:
+          type: object
+          description: 可选参数，查询主机过滤条件，未指定过滤条件则不传
+          properties:
+            host_name:
+              type: string
+              description: 可选参数，主机名，输入主机名进行模糊搜索，未指定则不传
+              minLength: 1
+              maxLength: 50
+            host_group_ids:
+              type: array
+              items:
+                type: string
+                description: 可选参数，主机组 id，输入主机组ID进行搜索，未指定则不传
+                example: aops
+                minLength: 1
+                maxLength: 36
+            repo:
+              type: array
+              items:
+                type: string
+                description: 可选参数，主机设置的repo ID，未指定则不传
+                example: aops
+                minLength: 1
+                maxLength: 36
+            cluster_list:
+              type: array
+              items:
+                type: string
+                minLength: 1
+                maxLength: 36
+              description: 可选参数，集群ID列表，未指定则不传
+    QueryHostListRsp:
+      allOf:
+        - $ref: "#/components/schemas/GeneralRsp"
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                total_count:
+                  type: integer
+                  description: 所有主机数量
+                total_page:
+                  type: integer
+                  description: 分页查询总页数 
+                result:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      host_id:
+                        type: string
+                        description: 主机ID
+                      host_name:
+                        type: string
+                        description: 主机名称
+                      host_ip:
+                        type: string
+                        description: 主机IP
+                      host_group_id:
+                        type: string
+                        description: 主机所在主机组ID
+                      host_group_name:
+                        type: string
+                        description: 主机所在主机组名称
+                      repo_id:
+                        type: string
+                        description: 主机已设置的rpm repoid
+                      repo_name:
+                        type: string
+                        description: 主机已设置的rpm repo名
+                      unfixed_cve_num:
+                        type: integer
+                        description: 未修复CVE(漏洞)数量
+                      fixed_cve_num:
+                        type: integer
+                        description: 已修复CVE(漏洞)数量
+                      last_scan:
+                        type: timestamp
+                        description: 上次执行CVE扫描(漏洞扫描)的时间,用yyyy-MM-dd HH:mm:ss格式展示
+                      cluster_id:
+                        type: string
+                        description: 主机所在集群ID
+                      cluster_name:
+                        type: string
+                        description: 主机所在集群名称
+    QueryHostStatusReq:
+      type: object
+      properties:
+        host_list:
+          type: array
+          description: 主机id数组，数组为空表示查询所有主机
+          items:
+            type: string
+            minLength: 1
+            maxLength: 36
+          example: []
+
+    ScanHostReq:
+      type: object
+      required:
+        - host_list
+      properties:
+        host_list:
+          type: array
+          default: []
+          description: 主机id列表，为空表示所有
+          items:
+            type: string
+            minLength: 1
+            maxLength: 36
+        filter:
+          description: 可选参数，过滤条件
+          type: object
+          properties:
+            host_name:
+              description: 可选参数,主机名
+              type: string
+              minLength: 1
+            host_group:
+              description: 可选参数,主机所在的主机组
+              type: array
+              items:
+                type: string
+                minLength: 1
+            repo:
+              description: 可选参数,主机设置的rpm repo
+              type: array
+              items:
+                type: string
+#            status:
+#              description: 主机状态
+#              type: array
+#              items:
+#                type: string
+#                enum:
+#                  - scanning
+#                  - done
+#
+    QueryHostScanStatusRsp:
+      allOf:
+        - $ref: "#/components/schemas/GeneralRsp"
+        - type: object
+          properties:
+            data:
+              type: array
+              items:
+                type: object
+                properties:
+                  host_id:
+                    type: integer
+                  cluster_id:
+                    type: string
+                  status:
+                    type: integer
+
+    QueryCveTaskHostRsp:
+      allOf:
+        - $ref: "#/components/schemas/GeneralRsp"
+        - type: object
+          properties:
+            data:
+              type: object
+              additionalProperties:
+                type: object
+                properties:
+                  hosts:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        host_id:
+                          type: integer
+                        host_name:
+                          type: string
+                        host_ip:
+                          type: string
+                        cluster_id:
+                          type: string
+                        cluster_name:
+                          type: string
+                  package:
+                    type: string
+                description: "cve的相关主机的基本信息, key为CVE ID"
+    QueryCveHostReq:
+      required:
+        - cve_id
+      type: object
+      properties:
+        cve_id:
+          type: string
+          description: cve_id
+          minLength: 1
+          maxLength: 20
+        sort:
+          type: string
+          description: 查询结果根据该字段进行排序，可选last_scan
+          enum:
+            - last_scan
+        direction:
+          type: string
+          description: 升序(asc)，降序(desc)，默认:asc
+          default: asc
+          enum:
+            - asc
+            - desc
+        page:
+          type: integer
+          description: 当前页码
+          example: 1
+          minimum: 1
+          maximum: 999999
+        per_page:
+          type: integer
+          description: "每页数量,最大值50"
+          example: 10
+          minimum: 1
+          maximum: 999
+        filter:
+          required:
+            - fixed
+          type: object
+          properties:
+            host_name:
+              type: string
+              description: 可选参数，主机名，可模糊搜索
+              minLength: 1
+            host_group_ids:
+              type: array
+              minItems: 0
+              description: 主机组id list
+              example:
+                - group1
+                - group2
+              items:
+                type: string
+            fixed:
+              type: boolean
+              description:  用于标识查询的主机是已经修复该漏洞的主机还是未修复该漏洞的主机,如果是true,标识查询已经修复的主机,如果是false,标识查询未修复该漏洞的主机
+              enum:
+                - false
+                - true
+            repo:
+              type: array
+              minItems: 0
+              example:
+                - repo1
+                - repo2
+              items:
+                type: string
+                minLength: 1
+            cluster_list:
+              description: 集群列表信息,为空表示所有
+              type: array
+              minItems: 0
+              items:
+                type: string
+                minLength: 1
+                maxLength: 36
+              example:
+                - cluster_id_1
+                - cluster_id_2
+    QueryCveHostRsp:
+      allOf:
+        - $ref: "#/components/schemas/GeneralRsp"
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                total_count:
+                  type: integer
+                  description: 总数
+                total_page:
+                  type: integer
+                  description: 总页数
+                result:
+                  type: array
+                  description: CVE信息
+                  items:
+                    type: object
+                    properties:
+                      host_id:
+                        description: 主机id
+                        type: string
+                      host_name:
+                        description: 主机名
+                        type: string
+                      host_ip:
+                        description: 主机ip
+                        type: string
+                        example: 127.0.0.1
+                      host_group:
+                        description: 主机组名
+                        type: string
+                        example: group_name
+                      repo:
+                        description: 主机repo名
+                        type: string
+                        example: repo_name
+                      last_scan:
+                        description: 上次扫描时间
+                        type: timestamp
+                        example: 1704308400
+                      cluster_id:
+                        type: string
+                        description: 集群ID
+                      cluster_name:
+                        type: string
+                        description: 集群名称
+    QueryCvesRecommendedRsp:
+      allOf:
+        - $ref: "#/components/schemas/GeneralRsp"
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                cluster_cve_num:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      cluster_id:
+                        description: 集群id
+                        type: string
+                      cluster_name:
+                        description: 集群名
+                        type: string
+                      cve_num:
+                        type: integer
+                        description: cve数量
+                      hot_patch_num:
+                        description: 热补丁数量
+                        type: string
+                packages:
+                  type: array
+                  description: 包含的软件包
+                  items:
+                    type: string
+                severity_proportion:
+                  type: array
+                  description: cve安全等级占比
+                  items:
+                    type: object
+                    properties:
+                      num:
+                        description: cve数量
+                        type: integer
+                      severity:
+                        description: cve安全等级
+                        type: string
+
+    QueryCveInfoRsp:
+      allOf:
+        - $ref: "#/components/schemas/GeneralRsp"
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                result:
+                  type: object
+                  properties:
+                    cve_id:
+                      description: cve id
+                      type: string
+                      example: CVE-2022-44033
+                    publish_time:
+                      description: cve发布时间
+                      type: string
+                      example: 2023-11-03
+                    severity:
+                      type: string
+                      example: Medium
+                      description: 严重性等级，与CVSS评分对应。
+                    description:
+                      description: cve描述
+                      type: string
+                    cvss_score:
+                      type: string
+                      example: "6.4"
+                      description: cve漏洞评分，用于评估漏洞风险程度.分数越高,则对应漏洞风险越大
+                    related_cve:
+                      type: array
+                      description: 关联的cve
+                      items:
+                        type: string
+                        example: CVE-2022-45884
+                    package:
+                      type: array
+                      items:
+                        type: object
+                        properties:
+                          os_version:
+                            description: 受此漏洞cve影响的操作系统版本
+                            type: string
+                            example: openEuler-20.03-LTS-SP1
+                          package:
+                            type: string
+                            example: kernel
+                            description: 此漏洞影响的软件包
+    QueryCveListReq:
+      type: object
+      required:
+       - page
+       - per_page
+      properties:
+        sort:
+          type: string
+          description: 可选cve_id、publish_time、cvss_score、host_num，cve_id为CVE编号，publish_time指漏洞公开的时间，cvss_score分数用于评估漏洞风险程度.分数越高,则对应漏洞风险越大，host_num为主机数量
+          example: cve_id
+          default: cvss_score
+          enum:
+           - cve_id
+           - publish_time
+           - cvss_score
+           - host_num
+        direction:
+          type: string
+          description: 升序(asc)，降序(desc)，默认:desc
+          default: desc
+          enum:
+            - asc
+            - desc
+        page:
+          type: integer
+          description: 当前页码
+          example: 1
+          default: 1
+          minimum: 1
+          maximum: 999999
+        per_page:
+          type: integer
+          description: "每页数量"
+          example: 10
+          default: 5
+          pattern: "5"
+          minimum: 1
+          maximum: 999
+        filter:
+          required:
+            - fixed
+          type: object
+          properties:
+            search_key:
+              type: string
+              description: "可模糊搜索,CVE ID或者软件包名, 传入此字段时必须携带有效值,或者不传入"
+              example: CVE-2022-34378
+              minLength: 1
+              maxLength: 40
+            severity:
+              type: array
+              minItems: 0
+              description: cve严重等级
+              items:
+                type: string
+                enum:
+                  - "Critical"
+                  - "High"
+                  - "Medium"
+                  - "Low"
+                  - "Unknown"
+            affected:
+              type: boolean
+              description: 该字段表示查询的CVE是否为受影响的CVE,默认为True
+              default: true
+              enum:
+                - true
+                - false
+            fixed:
+              type: boolean
+              default: false
+              enum:
+                - true
+                - false
+              description: 该字段用于区分查询已修复CVE还是未修复的CVE,false表示未修复,true表示已修复
+    QueryCveListRsp:
+      allOf:
+        - $ref: "#/components/schemas/GeneralRsp"
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                total_count:
+                  type: integer
+                  description: 总数
+                total_page:
+                  type: integer
+                  description: 总页数，total_page > 1 提示用户目前只展示了部分cve，其余cve请去cve页面查看
+                result:
+                  type: array
+                  description: CVE信息
+                  items:
+                    type: object
+                    properties:
+                      cve_id:
+                        description: cve id
+                        type: string
+                        example: CVE-2022-44033
+                      publish_time:
+                        description: cve 发布时间
+                        type: string
+                        example: 2023-11-03
+                      severity:
+                        description: cve 严重等级
+                        type: string
+                        example: Medium
+                      description:
+                        description: cve描述,不需要翻译
+                        type: string
+                        example: An issue was discovered in the Linux kernel...
+                      cvss_score:
+                        description: cve评分
+                        type: string
+                        example: "6.4"
+                      hosts_num:
+                        description: 主机数
+                        type: integer
+                      package:
+                        description: 受影响的软件包
+                        type: string
+                        example: kernel
+    QueryOverviewRsp:
+      allOf:
+        - $ref: "#/components/schemas/GeneralRsp"
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                result:
+                  type: object
+                  properties:
+                    critical:
+                      type: integer
+                    high:
+                      type: integer
+                    medium:
+                      type: integer
+                    low:
+                      type: integer
+                    unknown:
+                      type: integer
+                      format: int32
+    RepoDeleteRsp:
+      allOf:
+        - $ref: "#/components/schemas/GeneralRsp"
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                succeed_list:
+                  type: array
+                  items:
+                    type: string
+                fail_list:
+                  type: array
+                  items:
+                    type: string
+    RepoGetReq:
+      required:
+        - repo_id_list
+      type: object
+      properties:
+        repo_id_list:
+          default: []
+          description: 查询的repo id 列表
+          minItems: 0
+          type: array
+          items:
+            type: string
+            minLength: 1
+            maxLength: 36
+            example: repo_id
+    RepoGetRsp:
+      allOf:
+        - $ref: "#/components/schemas/GeneralRsp"
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                result:
+                  type: array
+                  items:
+                    $ref: "#/components/schemas/RepoData"
+    RepoImportReq:
+      required:
+        - repo_data
+        - repo_name
+      type: object
+      properties:
+        repo_name:
+          type: string
+          description: repo名字
+          minLength: 1
+          maxLength: 20
+        repo_data:
+          type: string
+          description: repo内容
+          minLength: 1
+          maxLength: 512
+    RepoData:
+      type: object
+      properties:
+        repo_id:
+          type: string
+          description: Repo id
+        repo_name:
+          type: string
+        repo_data:
+          type: string
+        repo_attr:
+          type: string
+          description: os版本
+        cluster_id:
+          type: string
+          description: 集群id
+        cluster_name:
+          type: string
+          description: 集群名称
+    GeneralRsp:
+      required:
+        - code
+        - label
+        - message
+      type: object
+      properties:
+        code:
+          maxLength: 36
+          minLength: 8
+          type: string
+          description: 业务状态码，200表示正常处理并返回，其它状态码参考message或label字段值
+          example: "200"
+        message:
+          maxLength: 512
+          minLength: 2
+          type: string
+          description: 报错描述信息，简短描述
+          example: operation succeed
+        label:
+          maxLength: 512
+          minLength: 2
+          type: string
+          description: 状态码对应的含义
+          example: Succeed
+      description: 通用返回信息
+    ErrorRsp:
+      required:
+        - code
+        - label
+        - msg
+      type: object
+      properties:
+        code:
+          maxLength: 36
+          minLength: 8
+          type: string
+          description: 错误码
+        msg:
+          maxLength: 512
+          minLength: 2
+          type: string
+          description: 错误描述
+        label:
+          maxLength: 512
+          minLength: 2
+          type: string
+          description: 错误状态码的含义
+      description: 失败时返回的错误对象
+      example:
+        code: "400"
+        msg: error msg
+        label: 请求出错
+
+    CallbackTaskBaseProperties:
+      type: object
+      properties:
+        task_id:
+          type: string
+        host_id:
+          type: integer
+        host_ip:
+          type: string
+        host_name:
+          type: string
+        status:
+          type: string
+    CheckItemResultStruct:
+      type: array
+      items:
+        type: object
+        properties:
+          item:
+            type: string
+          result:
+            type: boolean
+          log:
+            type: string
+    RpmFixResult:
+      type: array
+      items:
+        type: object
+        properties:
+          available_rpm:
+            type: string
+          result:
+            type: string
+          log:
+            type: string
+    ExportCveReq:
+      required:
+        - host_list
+      type: object
+      properties:
+        host_list:
+          type: array
+          description: 空表示全部
+          items:
+            type: object
+            properties:
+              host_id:
+                type: integer
+                description: 主机ID
+              cluster_id:
+                type: string
+                description: 集群ID
+    GenerateRollbackTaskReq:
+      type: object
+      required: 
+        - fix_task_id
+      properties:
+        fix_task_id:
+          type: string
+          description: 已修复的任务ID
+          minLength: 1
+          maxLength: 32
+    GenerateRollbackTaskRsp:
+      allOf:
+        - $ref: "#/components/schemas/GeneralRsp"
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                task_id:
+                  type: string
+
+    QueryUnfixedPackagesReq:
+      type: object
+      required:
+          - cve_id
+      properties:
+        cve_id:
+          type: string
+          example: CVE-2022-44033
+          description: 需要被查询的CVE ID
+          minLength: 1
+          maxLength: 20
+        host_ids:
+          type: array
+          description: 可选参数，主机ID列表,用于限制查询的主机范围,例如需要查询此CVE存在于这些主机的那些软件包中
+          example:
+            - 1
+            - 2
+            - 3
+          items:
+            type: string
+            description: 主机ID信息
+            minLength: 1
+            maxLength: 36
+
+    QueryUnfixedPackagesRsp:
+      allOf:
+        - $ref: "#/components/schemas/GeneralRsp"
+        - type: object
+          properties:
+            data:
+              type: array
+              items:
+                type: object
+                properties:
+                  installed_rpm:
+                    type: string
+                    example: kernel-5.10.0-153.12.0.92.oe2203sp2.aarch64
+                    description: 主机上安装的软件包, 存在对应漏洞的软件报名
+                  available_rpm:
+                    type: string
+                    description: 可升级的软件包,可以修复此漏洞(CVE)的软件包
+                    example: kernel-5.10.0-153.31.0.108.oe2203sp2.aarch64
+                  support_way:
+                    type: string
+                    description: 修复方式，hotpatch即实时patch，不重启或者中断运行的情况下将补丁应用到软件中。相反coldpatch则需要软件停止运行的情况下进行升级
+                    enum:
+                      - hotpatch
+                      - coldpatch
+                  host_num:
+                    type: integer
+                    description: 影响主机数量,即存在同一个漏洞的主机数量
+                    example: 3
+    QueryFixedPackagesReq:
+      allOf:
+        - $ref: "#/components/schemas/QueryUnfixedPackagesReq"
+    QueryFixedPackagesRsp:
+      allOf:
+        - $ref: "#/components/schemas/GeneralRsp"
+        - type: object
+          properties:
+            data:
+              type: array
+              items:
+                type: object
+                properties:
+                  installed_rpm:
+                    type: string
+                    example: kernel-5.10.0-153.12.0.92.oe2203sp2.aarch64
+                    description: 主机上安装的软件包, 已经修复该CVE的软件包
+                  fixed_way:
+                    type: string
+                    description: 修复方式,热补丁或者冷不丁
+                    enum:
+                      - hotpatch
+                      - coldpatch
+                  host_num:
+                    type: integer
+                    example: 3
+                    description: 涉及主机数量
+                  hp_status:
+                    type: string
+                    description: 如果是热补丁修复的主机,此项表示该热补丁在主机上的运行状态,仅激活(ACTIVED)还是被设置为ACCEPTED状态
+                    enum:
+                      - ACCEPTED
+                      - ACTIVED
+    QueryCvePackagesHostReq:
+      type: object
+      required:
+        - cve_id
+        - installed_rpm
+        - fixed
+      properties:
+        direction:
+          type: string
+          enum:
+            - asc
+            - desc
+        cve_id:
+          type: string
+          example: CVE-2022-44033
+          minLength: 1
+          maxLength: 20
+        installed_rpm:
+          type: string
+          example: kernel-5.10.0-153.12.0.92.oe2203sp2.aarch64
+          minLength: 1
+          maxLength: 100
+        available_rpm:
+          type: string
+          example: kernel-5.10.0-153.31.0.108.oe2203sp2.aarch64
+          minLength: 1
+          maxLength: 100
+        hp_status:
+          type: string
+          enum:
+            - ACCEPTED
+            - ACTIVED
+          minLength: 1
+          maxLength: 20
+        fixed:
+          type: boolean
+          default: false
+          enum:
+            - true
+            - false
+        host_ids:
+          type: array
+          items:
+            type: string
+            minLength: 1
+            maxLength: 36
+    QueryCvePackagesHostRsp:
+      allOf:
+        - $ref: "#/components/schemas/GeneralRsp"
+        - type: object
+          properties:
+            result:
+              type: array
+              items:
+                type: object
+                properties:
+                  host_ip:
+                    type: string
+                    example: 127.0.0.1
+                  host_name:
+                    type: string
+                    example: Test_host
+    CveRollbackTaskResultReq:
+      type: object
+      required: 
+        - task_id
+      properties:
+        task_id:
+          type: string
+          description: 任务ID
+          minLength: 1
+          maxLength: 32
+    CveRollbackResultAboutRpms:
+      type: array
+      items:
+        type: object
+        properties:
+          cves:
+            type: string
+          installed_rpm:
+            type: string
+          target_rpm:
+            type: string
+    CveRollbackTaskResultRsp:
+      allOf:
+        - $ref: "#/components/schemas/GeneralRsp"
+        - type: object
+          properties:
+            data:
+              type: array
+              items:
+                type: object
+                properties:
+                  host_id:
+                    type: integer
+                    format: int32
+                  host_ip:
+                    type: string
+                    example: 127.0.0.1
+                  host_name:
+                    type: string
+                    example: Test_host
+                  last_execution_time:
+                    type: integer
+                  task_type:
+                    type: string
+                    default: cve rollback
+                  task_result:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        check_items:
+                          $ref: "#/components/schemas/CheckItemResultStruct"
+                        log:
+                          type: string
+                        rpms:
+                          $ref: "#/components/schemas/CveRollbackResultAboutRpms"
+                        result:
+                          type: string
+    CveRollbackTaskInfoQueryReq:
+      type: object
+      required:
+        - task_id
+      properties:
+        page:
+          type: integer
+          example: 1
+          minimum: 1
+          maximum: 999999
+        per_page:
+          type: integer
+          example: 10
+          minimum: 1
+          maximum: 999
+        task_id:
+          type: string
+          description: 需要查询的任务ID
+          minLength: 1
+          maxLength: 32
+        filter:
+          type: object
+          properties:
+            search_key:
+              type: string
+              description: 检索关键词
+              minLength: 1
+              maxLength: 50
+            status:
+              type: string
+              description: 任务执行状态
+              enum:
+                - succeed
+                - fail
+                - running
+                - unknown
+    CveRollbackTaskInfoQueryRsp:
+      allOf:
+        - $ref: "#/components/schemas/GeneralRsp"
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                result:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      cve_num:
+                        type: integer
+                      host_id:
+                        type: integer
+                      host_ip:
+                        type: string
+                        example: 172.168.235.132
+                      host_name:
+                        type: string
+                      status:
+                        type: string
+    CveRollbackRpmInfoQueryReq:
+      type: object
+      required:
+        - task_id
+        - host_id
+      properties:
+        task_id:
+          description: 需要查询的任务ID
+          type: string
+          minLength: 1
+          maxLength: 32
+        host_id:
+          type: string
+          description: 需要查询的主机ID
+          minLength: 1
+          maxLength: 36
+    CveRollbackRpmInfoQueryRsp:
+      allOf:
+        - $ref: "#/components/schemas/GeneralRsp"
+        - type: object
+          properties:
+            data:
+              type: array
+              items:
+                type: object
+                properties:
+                  cves:
+                    type: string
+                  installed_rpm:
+                    type: string
+                  status:
+                    type: string
+                  target_rpm:
+                    type: string
+    CveFixTaskRpmInfoQueryReq:
+      allOf:
+        - $ref: "#/components/schemas/CveRollbackRpmInfoQueryReq"
+    CveFixTaskRpmInfoQueryRsp:
+      allOf:
+        - $ref: "#/components/schemas/GeneralRsp"
+        - type: object
+          properties:
+            data:
+              type: array
+              items:
+                type: object
+                properties:
+                  available_rpm:
+                    type: string
+                  cves:
+                    type: string
+                  installed_rpm:
+                    type: string
+                  status:
+                    type: string
+    HotpatchRemoveInfoSchema:
+      type: object
+      required:
+        - host_id
+        - cves
+      properties:
+        host_id:
+          description: 主机id
+          type: string
+          minLength: 1
+          maxLength: 36
+        cves:
+          type: array
+          minItems: 1
+          items:
+            type: object
+            properties:
+              cve_id:
+                type: string
+                description: 主机对应已通过热补丁修复的CVE ID
+                minLength: 1
+                maxLength: 20
+    GenerateHotpatchRemoveTaskReq:
+      type: object
+      required:
+        - task_name
+        - description
+        - info
+      properties:
+        task_name:
+          description: 任务名称
+          type: string
+          minLength: 1
+          maxLength: 20
+        description:
+          description: 任务描述
+          type: string
+          minLength: 1
+          maxLength: 100
+        info:
+          type: array
+          items:
+            $ref: "#/components/schemas/HotpatchRemoveInfoSchema"
+          minItems: 1
+    GenerateHotpatchRemoveTaskRsp:
+      allOf:
+        - $ref: "#/components/schemas/GenerateUpdateRepoTaskRsp"
+    HotpatchRemoveTaskInfoQueryFilter:
+      type: object
+      description: 过滤条件
+      properties:
+        cve_id:
+          type: string
+          description: 需要查询的CVE ID
+          minLength: 1
+          maxLength: 20
+        status:
+          type: string
+          description: 执行状态
+          enum:
+            - succeed
+            - fail
+            - running
+            - unknown
+    HotpatchRemoveTaskInfoQueryReq:
+      type: object
+      required:
+        - task_id
+      properties:
+        page:
+          type: integer
+          example: 1
+          description: 查询页数
+          minimum: 1
+          maximum: 999999
+        per_page:
+          type: integer
+          description: 每页显示数量
+          example: 10
+          minimum: 1
+          maximum: 999
+        task_id:
+          type: string
+          description: 被查询的任务ID
+          minLength: 1
+          maxLength: 32
+        sort:
+          type: string
+          description: 排序依据
+          enum:
+            - host_num
+        direction:
+          type: string
+          description: 排序规则
+          default: asc
+          enum:
+            - asc
+            - desc
+        filter:
+          $ref: "#/components/schemas/HotpatchRemoveTaskInfoQueryFilter"
+    HotpatchRemoveTaskInfoQueryRsp:
+      allOf:
+        - $ref: "#/components/schemas/GeneralRsp"
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                result:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      cve_id:
+                        type: string
+                      host_num:
+                        type: integer
+                      package:
+                        type: string
+                        example: kernel
+                      status:
+                        type: string
+                        enum:
+                          - succeed
+                          - fail
+                          - running
+                          - unknown
+    HotpatchRemoveTaskResultQueryReq:
+      type: object
+      properties:
+        task_id:
+          type: string
+          description: 需要查询的任务ID信息
+          minLength: 1
+          maxLength: 32
+      required:
+        - task_id
+    HotpatchRemoveResultAboutCve:
+      type: object
+      properties:
+        cve_id:
+          type: string
+        log:
+          type: string
+        result:
+          type: string
+    HotpatchRemoveTaskResultQueryRsp:
+      allOf:
+        - $ref: "#/components/schemas/GeneralRsp"
+        - type: object
+          properties:
+            data:
+              type: array
+              items:
+                type: object
+                allOf:
+                  - $ref: "#/components/schemas/CallbackTaskBaseProperties"
+                  - type: object
+                    properties:
+                      last_execution_time:
+                        type: integer
+                      task_type:
+                        type: string
+                        default: cve fix
+                      task_result:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            timed:
+                              type: boolean
+                            cves:
+                              $ref: "#/components/schemas/HotpatchRemoveResultAboutCve"
+    HotpatchRemoveTaskCveHostInfoQueryReq:
+      type: object
+      properties:
+        task_id:
+          type: string
+        cve_list:
+          type: array
+          items:
+            type: string
+    HotpatchRemoveTaskCveHostInfoQueryRsp:
+      allOf:
+        - $ref: "#/components/schemas/GeneralRsp"
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                result:
+                  type: object
+    HotpatchRemoveTaskProcessQueryReq:
+      type: object
+      properties:
+        task_id:
+          type: string
+          example: 0aaceac2adf311eeaa6c5254001a9e0d
+        cve_list:
+          type: array
+          example:
+            - CVE-2022-1001
+            - CVE-2022-1002
+          items:
+            type: string
+    HotpatchRemoveTaskProcessQueryRsp:
+      allOf:
+        - $ref: "#/components/schemas/GeneralRsp"
+        - type: object
+          properties:
+            result:
+              type: object
+x-original-swagger-version: "2.0"

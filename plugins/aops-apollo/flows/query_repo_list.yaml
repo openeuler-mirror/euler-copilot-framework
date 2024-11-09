@@ -1,0 +1,10 @@
+name: query_repo_list
+description: 查看当前aops系统存在的repo信息，结果用表格展示
+steps:
+  - name: start
+    call_type: api
+    params:
+      endpoint: POST /vulnerabilities/repo/get
+    next: end
+  - name: end
+    call_type: none

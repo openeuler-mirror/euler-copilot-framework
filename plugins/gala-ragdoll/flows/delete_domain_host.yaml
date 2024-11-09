@@ -1,0 +1,28 @@
+name: 删除业务域主机
+description: 删除业务域主机，将从domain_host表中删除该主机，并从/home/confTraceTest/业务域名称/hostRecord.txt中删除主机信息，并将删除之后的业务域现有添加的主机以表格形式展示
+steps:
+  - name: start
+    call_type: api
+    params:
+      endpoint: DELETE /conftrace/host/deleteHost
+    next: query_hosts_in_domain
+  - name: query_hosts_in_domain
+    call_type: api
+    params:
+      endpoint: POST /conftrace/host/getHost
+    next: generate_response
+  - name: generate_response
+    call_type: llm
+    params:
+      system_prompt: 你是一个擅长Linux系统性能优化，且能够根据具体情况撰写分析报告的智能助手。
+      user_prompt: |
+        用户指示：
+        {question}
+
+        参考信息：
+        {context}
+
+        根据上述信息，撰写系统性能分析报告。
+    next: end
+  - name: end
+    call_type: none

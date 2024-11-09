@@ -1,0 +1,10 @@
+name: query_specific_cve_info
+description: 查看指定CVE ID信息，结果用表格展示
+steps:
+  - name: start
+    call_type: api
+    params:
+      endpoint: GET /vulnerabilities/cve/info/get
+    next: end
+  - name: end
+    call_type: none

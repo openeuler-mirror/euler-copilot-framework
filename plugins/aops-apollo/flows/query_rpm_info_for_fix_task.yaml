@@ -1,0 +1,10 @@
+name: query_rpm_info_for_fix_task
+description: 查看漏洞（CVE）修复任务中用于修复某CVE的软件包信息
+steps:
+  - name: start
+    call_type: api
+    params:
+      endpoint: POST /vulnerabilities/task/cve-fix/rpm/get
+    next: end
+  - name: end
+    call_type: none

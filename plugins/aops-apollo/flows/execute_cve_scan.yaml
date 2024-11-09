@@ -1,0 +1,10 @@
+name: execute_cve_scan
+description: 对目标主机执行cve扫描;对目标主机执行漏洞扫描;扫描目标主机;主机ID可传入，没有声明主机ID的情况下 默认扫描所有主机
+steps:
+  - name: start
+    call_type: api
+    params:
+      endpoint: POST /vulnerabilities/host/scan
+    next: end
+  - name: end
+    call_type: none

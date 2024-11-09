@@ -1,0 +1,10 @@
+name: 查询业务域
+description: 查询集群下所有的业务域，查询结果根据page和per_page进行分页，查询结果可根据字段domain_id或domain_name进行升序或降序排序，结果以表格形式展示
+steps:
+  - name: start
+    call_type: api
+    params:
+      endpoint: POST /conftrace/domain/queryDomain
+    next: end
+  - name: end
+    call_type: none

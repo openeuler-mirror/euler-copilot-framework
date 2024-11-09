@@ -1,0 +1,10 @@
+name: generate_remove_hotpatch
+description: 生成移除系统漏洞修复已生效的热补丁任务,待移除的热补丁信息通过/vulnerabilities/cve/list/get接口可查询任务信息,任务名称可以由用户指定；任务生成后将生成的任务id返回给用户并通知用户需要执行生成的任务
+steps:
+  - name: start
+    call_type: api
+    params:
+      endpoint: POST /vulnerabilities/task/hotpatch-remove/generate
+    next: end
+  - name: end
+    call_type: none

@@ -1,0 +1,10 @@
+name: query_all_host_info
+description: 查看所有主机信息;不设置过滤条件查询所有主机列表，结果用表格展示，时间用yyyy-MM-dd HH:mm:ss格式展示
+steps:
+  - name: start
+    call_type: api
+    params:
+      endpoint: POST /vulnerabilities/host/list/get
+    next: end
+  - name: end
+    call_type: none

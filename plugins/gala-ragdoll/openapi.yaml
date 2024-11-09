@@ -1,0 +1,1367 @@
+openapi: 3.0.1
+info:
+  version: 2.0.0
+  title: "gala-ragdoll接口文档"
+servers:
+  - url: http://116.63.164.87
+paths:
+  /accounts/cluster:
+    get:
+      description: "用户管理集群信息查看"
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: "#/components/schemas/GeneralRsp"
+                - type: object
+                  properties:
+                    data:
+                      type: array
+                      items:
+                        properties:
+                          cluster_id:
+                            type: string
+                            description: 集群id
+                          cluster_ip:
+                            type: string
+                            description: 集群ip
+                          cluster_name:
+                            type: string
+                            description: 集群用户名
+                          description:
+                            type: string
+                            description: 描述
+                          subcluster:
+                            type: boolean
+                            description: 是否为子集群
+                          synchronous_state:
+                            type: string
+                            description: 同步状态
+
+  /conftrace/domain/createDomain:
+    post:
+      description: '创建业务域'
+      requestBody:
+        description: "创建业务域请求体"
+        content:
+          application/json:
+            schema:
+              required:
+                - domainName
+                - clusterId
+                - priority
+              type: object
+              properties:
+                domainName:
+                  type: string
+                  example: "aops"
+                  description: "业务域名称"
+                clusterId:
+                  type: string
+                  example: "38ed453d-00b4-4074-ab84-b9564d8593f3"
+                  description: "业务域归属的集群ID"
+                priority:
+                  type: integer
+                  example: 0
+                  description: "业务域优先级"
+      responses:
+        '200':
+          description: "创建业务域的响应"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: string
+                    example: "200"
+                    description: "响应码"
+                  label:
+                    type: string
+                    example: "Succeed"
+                    description: "响应标签"
+                  message:
+                    type: string
+                    example: "All domain created successfully, 1 domain in total."
+                    description: "响应信息"
+  /conftrace/domain/queryDomain:
+    post:
+      description: '查询集群下的业务域'
+      requestBody:
+        description: "查询集群下的业务域请求体"
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                cluster_list:
+                  type: array
+                  description: "集群ID列表，如果未指定，则为空"
+                  items:
+                    type: string
+                sort:
+                  type: string
+                  enum:
+                  - "domain_id"
+                  - "domain_name"
+                  - ""
+                  example: "domain_id"
+                  description: "排序字段"
+                direction:
+                  type: string
+                  enum:
+                  - "desc"
+                  - "asc"
+                  example: "desc"
+                  description: "排序顺序，正序或倒序"
+                page:
+                  type: integer
+                  example: 1
+                  description: "页码"
+                  minimum: 1
+                  maximum: 999999
+                per_page:
+                  type: integer
+                  example: 10
+                  description: "每页展示数量"
+                  default: 20
+                  minimum: 1
+                  maximum: 50
+      responses:
+        '200':
+          description: "查询集群下的业务域响应"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: string
+                    example: "200"
+                    description: "响应码"
+                  data:
+                    type: object
+                    properties:
+                      domain_infos:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            cluster_id:
+                              type: string
+                              example: "38ed453d-00b4-4074-ab84-b9564d8593f3"
+                              description: "集群ID"
+                            cluster_name:
+                              type: string
+                              example: "local-cluster"
+                              description: "集群名称"
+                            domain_id:
+                              type: string
+                              example: "d1e48cd1-2a43-488f-af86-92f8fe52c9b8"
+                              description: "业务域ID"
+                            domain_name:
+                              type: string
+                              example: "aops"
+                              description: "业务域名称"
+                            priority:
+                              type: integer
+                              example: 0
+                              description: "业务域优先级"
+                      total_count:
+                        type: integer
+                        example: 2
+                        description: "数据总数"
+                      total_page:
+                        type: integer
+                        example: 1
+                        description: "总页数"
+                  label:
+                    type: string
+                    example: "Succeed"
+                    description: "响应标签"
+                  message:
+                    type: string
+                    example: "operation succeed"
+                    description: "响应信息"
+  /conftrace/domain/deleteDomain:
+    delete:
+      description: '删除业务域'
+      requestBody:
+        description: "删除业务域请求体"
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                domainName:
+                  type: string
+                  example: "aops"
+                  description: "业务域名称"
+                domainId:
+                  type: string
+                  example: "64d781f3-2614-4a91-8596-fce7d6f1657e"
+                  description: "业务域ID"
+      responses:
+        '200':
+          description: "删除业务域响应"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: string
+                    example: "200"
+                    description: "响应码"
+                  label:
+                    type: string
+                    example: "Succeed"
+                    description: "响应标签"
+                  message:
+                    type: string
+                    example: "All domain delete successfully, 1 domain in total."
+                    description: "响应信息"
+  /conftrace/host/addHost:
+    post:
+      description: '添加业务域主机'
+      requestBody:
+        description: "添加业务域主机请求体"
+        content:
+          application/json:
+            schema:
+              required:
+                - domainName
+                - hostInfos
+              type: object
+              properties:
+                domainName:
+                  type: string
+                  example: "aops"
+                  description: "业务域名称"
+                hostInfos:
+                  type: array
+                  items:
+                    required:
+                      - hostId
+                      - ip
+                      - ipv6
+                    type: object
+                    properties:
+                      hostId:
+                        type: string
+                        example: "372caa4d-66b8-47d7-85f3-48e485a4660d"
+                        description: "主机ID"
+                      ip:
+                        type: string
+                        example: "192.168.234.150"
+                        description: "ip地址"
+                      ipv6:
+                        type: string
+                        example: "ipv6"
+                        default: "ipv6"
+                        description: "ip地址类型(ipv6或ipv4)"
+      responses:
+        '200':
+          description: "添加业务域主机响应"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: string
+                    example: "200"
+                    description: "响应码"
+                  label:
+                    type: string
+                    example: "Succeed"
+                    description: "响应标签"
+                  message:
+                    type: string
+                    example: "All host add hosts successfully, 1 host in total."
+                    description: "响应信息"
+  /conftrace/host/deleteHost:
+    delete:
+      description: '删除业务域主机'
+      requestBody:
+        description: "删除业务域主机请求体"
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                domainName:
+                  type: string
+                  example: "aops"
+                  description: "业务域名称"
+                hostInfos:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      hostId:
+                        type: string
+                        example: "372caa4d-66b8-47d7-85f3-48e485a4660d"
+                        description: "主机ID"
+      responses:
+        '200':
+          description: "删除业务域主机响应"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: string
+                    example: "200"
+                    description: "响应码"
+                  label:
+                    type: string
+                    example: "Succeed"
+                    description: "响应标签"
+                  message:
+                    type: string
+                    example: "All host delete successfully, 1 host in total."
+                    description: "响应信息"
+  /conftrace/host/getHost:
+    post:
+      description: '查询业务域主机'
+      requestBody:
+        description: "查询业务域主机请求体"
+        content:
+          application/json:
+            schema:
+              required:
+                - domainName
+              type: object
+              properties:
+                domainName:
+                  type: string
+                  example: "aops"
+                  description: "业务域名"
+      responses:
+        '200':
+          description: "查询业务域主机响应"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: string
+                    example: "200"
+                    description: "响应码"
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        hostId:
+                          type: string
+                          example: "d175eb94-d108-490b-b8de-27883ae0722b"
+                          description: "主机ID"
+                        ip:
+                          type: string
+                          example: "192.168.234.150"
+                          description: "主机ip地址"
+                        ipv6:
+                          type: string
+                          example: "ipv4"
+                          description: "主机ip协议"
+                  label:
+                    type: string
+                    example: "Succeed"
+                    description: "响应标签"
+                  message:
+                    type: string
+                    example: "Get host info in the domain successfully"
+                    description: "响应信息"
+  /conftrace/host/getNonexistentHost:
+    post:
+      description: '获取集群内可添加的主机'
+      requestBody:
+        description: "获取集群内可添加的主机请求体"
+        content:
+          application/json:
+            schema:
+              required:
+                - clusterId
+              type: object
+              properties:
+                clusterId:
+                  type: string
+                  example: "7800c2cb-0fa4-4966-9c92-76917783298a"
+                  description: "集群ID"
+      responses:
+        '200':
+          description: "获取集群内可添加的主机响应"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: string
+                    example: "200"
+                    description: "响应码"
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        cluster_id:
+                          type: string
+                          example: "38ed453d-00b4-4074-ab84-b9564d8593f3"
+                          description: "集群ID"
+                        host_group_id:
+                          type: string
+                          example: "9631b0de-1e2f-45f9-a7b7-d439662a09e6"
+                          description: "主机组ID"
+                        host_group_name:
+                          type: string
+                          example: "test"
+                          description: "主机组名称"
+                        host_id:
+                          type: string
+                          example: "d175eb94-d108-490b-b8de-27883ae0722b"
+                          description: "主机ID"
+                        host_ip:
+                          type: string
+                          example: "192.168.234.150"
+                          description: "主机IP"
+                        host_name:
+                          type: string
+                          example: "aops3"
+                          description: "主机名称"
+                        last_scan:
+                          type: integer
+                          example: 1722931419
+                          description: "漏洞扫描上次扫描的时间(时间戳)"
+                        management:
+                          type: boolean
+                          example: true
+                          description: "是否为管理节点"
+                        os_version:
+                          type: string
+                          example: ""
+                          description: "主机系统版本"
+                        pkey:
+                          type: string
+                          example: "-----BEGIN RSA PRIVATE KEY-----\nMIIEpQIBAAKCAQEAzteUuKzYpvOrW6hf5YHNqf3+s62u7KhFr5B2bF4BgDRIhLZ7\nEnU9pYqVRKwP3dYh7YNs5RDWm0XHCOAHACnoG24RXeZASKRx4Hnkg3DC9Gp2++uT\nwFoGgFjLsaL7ePQuiSp1Q4STPtM28mnHxDz7EojIoOy6m+ncAe/Vq/63cb26p41i\nrU2GXoHMUajdYNuIZAWnd4HRUNDN1rCFiF9jocuBQrzYKhRO+ioCppIbMpYUsbfz\nB6128MsF16IlpvqH5NX+fvgwhI2kwMMdCefnJg022PsPQiI2aj4cpko6fTwIZbrj\nIrhFoBVidsRqruT8X/E3yv34PS71+hK0WokWAQIDAQABAoIBAFoen5Oe635CKGT1\nBWMvnPX1zmVmxRIjdsk5ff9VLf43yWjZQOIX5tYbfVHATeFvjLS5UFa1cWuRiVia\nkzJFD/XzjOmGineb/mm5chC6rpZjVJgKWgOytaZyCb3JrxtR+HyW3SSfvK/gws33\nvKwJjbLTmeZTfjK0P8EwR756al7JbFSusnwQhQvj4XQsN+i/J84uE1oc9yvgrNzW\nNZ1gvGZptbFxGMQlOzIHL6VeRGuiWrhhvyqgXXyKx3wn+m/w6x8NlC47FZPi8Vs4\nJ10Muj90KOY0jhQkvDtzcy8JU0yZpL/ckGBZ2HQAqeVmvHq+0dDSU7+WX/CqS60o\n9JnnfKkCgYEA+CVoK+dGGIfjj3NJ6QFSArTzHoYvMC2d6fgAzQzxPCjFtw3dSaMs\nTGXyaM1litNxdtTEJ94G6hWVMfWjg/s6+obvqwakudusRL6XYzOYhKWaCXAxUMUc\nL6y1l/Lne/QxdaBfzfIs9K9NsFKvQSRBcFJesAs15gUcrzTqVLulHzcCgYEA1WOC\nlntozVEhxF9MG8JBYY8aRHHd58u3EgKzNo7rBvi5zC/BgKxUA5b5onNBYjfioKvx\nYIGR9ujfCqvdr+QOotSUDEAC9I/hRjRT+cShHsr8M9NI6GL/mosdRIoaqK2cqZn4\nFXx60AAjCXbK24dYiXTMrNlZlcBFzpDmuwHHYIcCgYEAwXTASwIKFtPSKCL0azA5\nVJznsVNhdIkLxL0xOqstYv5SbgzkCSWqQoF0RBplYJ7JpZ/osUAaWeKrpwBfE2UI\nrQoHzWjngXJuUkXYVmGCNV+5wEP0XojdGZnnFOgtaeiNqqt2JWP5gmUtBxrfQMTY\nM44z/cEvqv0vSLTTP23vJG8CgYEAtVYsKk9Tf29b37IQTmKlBxACBXoyVoIC4BZV\nT57iUXlbAw7uRLetaaOKHqgNPzc4qsuTgyx46zd4G2x0Jr4KRguaiFJ5cHU4vl1H\no7CaLz3WVwBNK9a9WgqwY4dtIjzvLh2++htfjpUfMTK3Lxl0ftM4AAdwntbXO7Rd\nrzvSv88CgYEArUWf9y7K1990KOULRovDNQu6hS2UUlqOv0PeUcadq/Q9HcXNJHof\nYLOevQgq7WRcm8SXXgysFJhzgquY7DE1BMQWcQ3HHInuRJ1gW2RFXo+MR+OZw/KB\nC3HujxAqiPcBOQVUUY3Qmsbco+ASt0uLcBj9iv/sgm6u7TZXxKOACuY=\n-----END RSA PRIVATE KEY-----\n"
+                          description: "主机RSA私钥"
+                        reboot:
+                          type: boolean
+                          example: false
+                          description: "重启后内核是否变更"
+                        repo_id:
+                          type: string
+                          example: "65a87f6c-53cb-11ef-9f55-2cf05d4c345e"
+                          description: "yum源ID"
+                        scene:
+                          type: string
+                          example: "normal"
+                          description: "场景"
+                        ssh_port:
+                          type: integer
+                          example: "22"
+                          description: "ssh连接端口"
+                        ssh_user:
+                          type: string
+                          example: "root"
+                          description: "ssh连接用户"
+                        status:
+                          type: integer
+                          example: 0
+                          description: "主机状态"
+                  label:
+                    type: string
+                    example: "Succeed"
+                    description: "响应标签"
+                  message:
+                    type: string
+                    example: "get host succeed"
+                    description: "响应信息"
+  /conftrace/management/addManagementConf:
+    post:
+      description: '添加业务域配置'
+      requestBody:
+        description: "添加业务域配置请求体"
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - $ref: '#/components/schemas/addManagementConfByContent'
+                - $ref: '#/components/schemas/addManagementConfByHost'
+      responses:
+        '200':
+          description: "添加业务域配置响应"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: string
+                    example: "200"
+                    description: "响应码"
+                  label:
+                    type: string
+                    example: "Succeed"
+                    description: "响应标签"
+                  message:
+                    type: string
+                    example: "All confs add management conf successfully, 1 confs in total."
+                    description: "响应信息"
+  /conftrace/management/getManagementConf:
+    post:
+      description: '获取业务域配置'
+      requestBody:
+        description: "获取业务域配置请求体"
+        content:
+          application/json:
+            schema:
+              required:
+                - domainName
+              type: object
+              properties:
+                domainName:
+                  type: string
+                  example: "aops"
+                  description: "业务域名称"
+      responses:
+        '200':
+          description: "获取业务域配置响应"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: string
+                    example: "200"
+                    description: "响应码"
+                  data:
+                    type: object
+                    properties:
+                      confFiles:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            contents:
+                              type: string
+                              example: "[\n    \"aops1\"\n]"
+                              description: "配置文件基线内容"
+                            filePath:
+                              type: string
+                              example: "/etc/hostname"
+                              description: "配置文件路径"
+                      domainName:
+                        type: string
+                        example: "aops"
+                        description: "业务域名称"
+                  label:
+                    type: string
+                    example: "Succeed"
+                    description: "响应标签"
+                  message:
+                    type: string
+                    example: "Get management configuration items and expected values in the domain successfully"
+                    description: "响应信息"
+  /conftrace/management/deleteManagementConf:
+    delete:
+      description: '删除业务域配置'
+      requestBody:
+        description: "删除业务域配置请求体"
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                domainName:
+                  type: string
+                  example: "aops"
+                  description: "业务域名称"
+                confFiles:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      filePath:
+                        type: string
+                        example: "/etc/hostname"
+                        description: "配置文件路径"
+      responses:
+        '200':
+          description: "删除业务域配置响应"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: string
+                    example: "200"
+                    description: "响应码"
+                  label:
+                    type: string
+                    example: "Succeed"
+                    description: "响应标签"
+                  message:
+                    type: string
+                    example: "All confs delete management conf successfully, 1 confs in total."
+                    description: "响应信息"
+  /conftrace/management/queryManageConfChange:
+    post:
+      description: '查询业务域配置历史记录'
+      requestBody:
+        description: "查询业务域配置历史记录请求体"
+        content:
+          application/json:
+            schema:
+              required:
+                - domainName
+                - confFiles
+              type: object
+              properties:
+                domainName:
+                  type: string
+                  example: "aops"
+                  description: "业务域名称"
+                confFiles:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      filePath:
+                        type: string
+                        example: "/etc/hostname"
+                        description: "配置文件地址"
+      responses:
+        '200':
+          description: "查询业务域配置历史记录响应"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DomainConfChangeInfoRep'
+  /conftrace/management/uploadManagementConf:
+    post:
+      description: '本地通过上传配置文件进行配置添加'
+      requestBody:
+        description: "上传配置文件添加配置请求体"
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                filePath:
+                  type: string
+                  example: "/etc/hostname"
+                  description: "配置文件路径"
+                domainName:
+                  type: string
+                  example: "aops"
+                  description: "业务域名称"
+                file:
+                  type: string
+                  format: binary
+                  description: "配置二进制文件"
+      responses:
+        '200':
+          description: "上传配置文件添加配置响应"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: string
+                    example: "200"
+                    description: "响应码"
+                  label:
+                    type: string
+                    example: "Succeed"
+                    description: "响应标签"
+                  message:
+                    type: string
+                    example: "All confs add management conf successfully, 1 confs in total."
+                    description: "响应信息"
+  /conftrace/confs/getDomainStatus:
+    post:
+      dangerous: True
+      description: '获取业务域主机同步状态'
+      requestBody:
+        description: "获取业务域主机同步状态请求体"
+        content:
+          application/json:
+            schema:
+              required:
+                - domainName
+                - ip
+              type: object
+              properties:
+                domainName:
+                  type: string
+                  example: "aops"
+                  description: "业务域名称"
+                ip:
+                  type: string
+                  example: "192.168.234.150"
+                  description: "主机ip地址"
+      responses:
+        '200':
+          description: "获取业务域主机同步状态响应"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: string
+                    example: "200"
+                    description: "响应码"
+                  data:
+                    type: object
+                    properties:
+                      domainName:
+                        type: string
+                        example: "aops"
+                        description: "业务域名称"
+                      hostStatus:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            hostId:
+                              type: string
+                              example: "d175eb94-d108-490b-b8de-27883ae0722b"
+                              description: "主机ID"
+                            syncStatus:
+                              type: array
+                              items:
+                                type: object
+                                properties:
+                                  file_path:
+                                    type: string
+                                    example: "/etc/hostname"
+                                    description: "配置文件路径"
+                                  isSynced:
+                                    type: string
+                                    example: "SYNCHRONIZED"
+                                    description: "配置文件是否同步"
+                  label:
+                    type: string
+                    example: "Succeed"
+                    description: "响应标签"
+                  message:
+                    type: string
+                    example: "successfully get the sync status of domain"
+                    description: "响应信息"
+  /conftrace/confs/queryExpectedConfs:
+    post:
+      description: '查询业务域预期配置'
+      requestBody:
+        description: "查询业务域预期配置请求体"
+        content:
+          application/json:
+            schema:
+              required:
+                - domainNames
+              type: object
+              properties:
+                domainNames:
+                  type: array
+                  items:
+                    properties:
+                      domainName:
+                        type: string
+                        example: "aops"
+                        description: "业务域名称"
+      responses:
+        '200':
+          description: "查询业务域预期配置响应"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: string
+                    example: "200"
+                    description: "响应码"
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        confBaseInfos:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              expectedContents:
+                                type: string
+                                example: "[\n    \"111\"\n]\n"
+                                description: "预期配置文件内容"
+                              filePath:
+                                type: string
+                                example: "/etc/hostname"
+                                description: "配置文件地址"
+                        domainName:
+                          type: string
+                          example: "aops"
+                          description: "业务域名称"
+                  label:
+                    type: string
+                    example: "Succeed"
+                    description: "响应标签"
+                  message:
+                    type: string
+                    example: "Successfully get the expected configuration file information."
+                    description: "响应信息"
+  /conftrace/confs/queryRealConfs:
+    post:
+      description: '获取业务域主机实际配置'
+      requestBody:
+        description: "获取业务域主机实际配置请求体"
+        content:
+          application/json:
+            schema:
+              required:
+                - domainName
+                - hostIds
+              type: object
+              properties:
+                domainName:
+                  type: string
+                  example: "aops"
+                  description: "业务域名称"
+                hostIds:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      hostId:
+                        type: string
+                        example: "d175eb94-d108-490b-b8de-27883ae0722b"
+                        description: "主机ID"
+      responses:
+        '200':
+          description: "获取业务域主机实际配置响应"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: string
+                    example: "200"
+                    description: "响应码"
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        confBaseInfos:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              confContents:
+                                type: string
+                                example: "[\n    \"111\"\n]"
+                                description: "配置文件实际内容"
+                              fileAttr:
+                                type: string
+                                example: "0644"
+                                description: "配置文件权限"
+                              fileOwner:
+                                type: string
+                                example: "(root, root)"
+                                description: "配置文件归属者"
+                              filePath:
+                                type: string
+                                example: "/etc/hostname"
+                                description: "配置文件地址"
+                              path:
+                                type: string
+                                example: "/etc/hostname"
+                                description: "配置文件地址"
+                        domainName:
+                          type: string
+                          example: "aops"
+                          description: "业务域名称"
+                        hostID:
+                          type: string
+                          example: "d175eb94-d108-490b-b8de-27883ae0722b"
+                          description: "主机ID"
+                  label:
+                    type: string
+                    example: "Succeed"
+                    description: "响应标签"
+                  message:
+                    type: string
+                    example: "Successfully query real confs"
+                    description: "响应信息"
+  /conftrace/confs/querySupportedConfs:
+    post:
+      description: '获取当前业务域支持添加的配置文件'
+      requestBody:
+        description: "获取当前业务域支持添加的配置文件请求体"
+        content:
+          application/json:
+            schema:
+              required:
+                - domainName
+              type: object
+              properties:
+                domainName:
+                  type: string
+                  example: "aops"
+                  description: "业务域名称"
+      responses:
+        '200':
+          description: "获取当前业务域支持添加的配置文件响应"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: string
+                    example: "200"
+                    description: "响应码"
+                  data:
+                    type: array
+                    items:
+                      type: string
+                      example: "/etc/sysctl.conf"
+                      description: "配置文件地址"
+                  label:
+                    type: string
+                    example: "Succeed"
+                    description: "响应标签"
+                  message:
+                    type: string
+                    example: "get supported conf succeed"
+                    description: "响应信息"
+  /conftrace/confs/syncConf:
+    post:
+      dangerous: True
+      description: '同步基线配置内容到主机'
+      requestBody:
+        description: "同步基线配置内容到主机请求体"
+        content:
+          application/json:
+            schema:
+              required:
+                - domainName
+                - syncList
+              type: object
+              properties:
+                domainName:
+                  type: string
+                  example: "aops"
+                  description: "业务域名称"
+                syncList:
+                  type: array
+                  items:
+                    required:
+                      - hostId
+                      - syncConfigs
+                    properties:
+                      hostId:
+                        type: string
+                        example: "d175eb94-d108-490b-b8de-27883ae0722b"
+                        description: "主机ID"
+                      syncConfigs:
+                        type: array
+                        items:
+                          type: string
+                          example: "/etc/hostname"
+      responses:
+        '200':
+          description: "同步基线配置内容到主机响应"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: string
+                    example: "200"
+                    description: "响应码"
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        host_id:
+                          type: string
+                          example: "d175eb94-d108-490b-b8de-27883ae0722b"
+                          description: "主机ID"
+                        syncResult:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              filePath:
+                                type: string
+                                example: "/etc/hostname"
+                                description: "配置文件地址"
+                              result:
+                                type: string
+                                example: "SUCCESS"
+                                description: "配置文件同步结果"
+                  label:
+                    type: string
+                    example: "Succeed"
+                    description: "响应标签"
+                  message:
+                    type: string
+                    example: "batch sync config succeed"
+                    description: "响应信息"
+  /conftrace/confs/batch/syncConf:
+    post:
+      description: '批量同步基线配置内容到主机'
+      requestBody:
+        description: "批量同步基线配置内容到主机请求体"
+        content:
+          application/json:
+            schema:
+              required:
+                - domainName
+                - hostIds
+              type: object
+              properties:
+                domainName:
+                  type: string
+                  example: "aops"
+                  description: "业务域名称"
+                hostIds:
+                  type: array
+                  items:
+                    type: string
+                    example: "d175eb94-d108-490b-b8de-27883ae0722b"
+      responses:
+        '200':
+          description: "批量同步基线配置内容到主机响应"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: string
+                    example: "200"
+                    description: "响应码"
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        host_id:
+                          type: string
+                          example: "d175eb94-d108-490b-b8de-27883ae0722b"
+                          description: "主机ID"
+                        syncResult:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              filePath:
+                                type: string
+                                example: "/etc/hostname"
+                                description: "配置文件地址"
+                              result:
+                                type: string
+                                example: "SUCCESS"
+                                description: "配置文件同步结果"
+                  label:
+                    type: string
+                    example: "Succeed"
+                    description: "响应标签"
+                  message:
+                    type: string
+                    example: "batch sync config succeed"
+                    description: "响应信息"
+  /conftrace/confs/domain/diff:
+    post:
+      description: '配置文件内容对比'
+      requestBody:
+        description: "配置文件内容对比请求体"
+        content:
+          application/json:
+            schema:
+              required:
+                - expectedConfsResp
+                - domainResult
+              type: object
+              properties:
+                expectedConfsResp:
+                  type: array
+                  items:
+                    required:
+                      - domainName
+                      - confBaseInfos
+                    properties:
+                      domainName:
+                        type: string
+                        example: "aops"
+                        description: "业务域名称"
+                      confBaseInfos:
+                        type: array
+                        items:
+                          required:
+                            - expectedContents
+                            - filePath
+                          properties:
+                            expectedContents:
+                              type: string
+                              example: "[\n    \"aops\"\n]\n"
+                              description: "配置文件预期内容"
+                            filePath:
+                              type: string
+                              example: "/etc/hostname"
+                              description: "配置文件地址"
+                domainResult:
+                  type: object
+                  additionalProperties:
+                    type: object
+                    additionalProperties:
+                      type: array
+                      items:
+                        type: object
+                        properties:
+                          filePath:
+                            type: string
+                            example: "/etc/hostname"
+                            description: "配置文件地址"
+                          contents:
+                            type: string
+                            example: "aops"
+                            description: "配置文件内容"
+      responses:
+        '200':
+          description: "配置文件内容对比响应"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: string
+                    example: "200"
+                    description: "响应码"
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        domain_name:
+                          type: string
+                          example: "aops"
+                          description: "业务域名称"
+                        host_id:
+                          type: string
+                          example: "d175eb94-d108-490b-b8de-27883ae0722b"
+                          description: "主机ID"
+                        sync_status:
+                          type: integer
+                          example: 1
+                          description: "配置文件内容同步状态"
+                  label:
+                    type: string
+                    example: "Succeed"
+                    description: "响应标签"
+                  message:
+                    type: string
+                    example: "successfully compare conf diff"
+                    description: "响应信息"
+  /conftrace/host/sync/status/get:
+    post:
+      description: '获取业务域所有主机同步状态'
+      requestBody:
+        description: "获取业务域所有主机同步状态请求体"
+        content:
+          application/json:
+            schema:
+              required:
+                - domainName
+              type: object
+              properties:
+                domainName:
+                  type: string
+                  example: "aops"
+                  description: "业务域名称"
+      responses:
+        '200':
+          description: "获取业务域所有主机同步状态响应"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: string
+                    example: "200"
+                    description: "响应码"
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        host_id:
+                          type: string
+                          example: "d175eb94-d108-490b-b8de-27883ae0722b"
+                          description: "主机ID"
+                        host_ip:
+                          type: string
+                          example: "192.168.234.150"
+                          description: "主机IP地址"
+                        sync_status:
+                          type: integer
+                          example: 0
+                          description: "主机配置同步状态,值为0表示未同步，值为1表示已同步"
+                  label:
+                    type: string
+                    example: "Succeed"
+                    description: "响应标签"
+                  message:
+                    type: string
+                    example: "Get host conf sync status in the domain successfully"
+                    description: "响应标签"
+components:
+  schemas:
+    GeneralRsp:
+      required:
+        - code
+        - label
+        - message
+      type: object
+      properties:
+        code:
+          maxLength: 36
+          minLength: 8
+          type: string
+          description: 业务状态码，200表示正常处理并返回，其它状态码参考message或label字段值
+          example: "200"
+        message:
+          maxLength: 512
+          minLength: 2
+          type: string
+          description: 报错描述信息，简短描述
+          example: operation succeed
+        label:
+          maxLength: 512
+          minLength: 2
+          type: string
+          description: 状态码对应的含义
+          example: Succeed
+      description: 通用返回信息
+    addManagementConfByContent:
+      type: object
+      properties:
+        domainName:
+          type: string
+          example: "aops"
+        confFiles:
+          type: array
+          items:
+            type: object
+            properties:
+              filePath:
+                type: string
+                example: "/etc/hostname"
+                description: "配置文件路径"
+              contents:
+                type: string
+                example: "aops1"
+                description: "配置文件路径"
+    addManagementConfByHost:
+      type: object
+      properties:
+        domainName:
+          type: string
+          example: "aops"
+        confFiles:
+          type: array
+          items:
+            type: object
+            properties:
+              filePath:
+                type: string
+                example: "/etc/hostname"
+                description: "配置文件路径"
+              hostId:
+                type: string
+                example: "d175eb94-d108-490b-b8de-27883ae0722b"
+                description: "主机ID"
+    DomainConfChangeInfoRep:
+      type: object
+      properties:
+        code:
+          type: string
+          example: "200"
+          description: "响应码"
+        label:
+          type: string
+          example: "Succeed"
+          description: "响应标签"
+        message:
+          type: string
+          example: "Succeed to query the changelog of the configure in the domain."
+          description: "响应信息"
+        data:
+          type: object
+          properties:
+            domainName:
+              type: string
+              example: "aops"
+              description: "业务域名称"
+            confBaseInfos:
+              type: array
+              items:
+                type: object
+                properties:
+                  filePath:
+                    type: string
+                    example: "/etc/hostname"
+                    description: "配置文件路径"
+                  expectedContents:
+                    type: string
+                    example: "[\n    \"aops1\"\n]\n"
+                    description: "预期配置文件内容"
+                  changeLog:
+                    type: array
+                    items:
+                      properties:
+                        date:
+                          type: string
+                          format: "date-time"
+                          example: "Tue Aug 6 16:30:13 2024 +0800"
+                          description: "时间"
+                        author:
+                          type: string
+                          example: "user_name <user_email>"
+                          description: "操作人(作者)"
+                        changeId:
+                          type: string
+                          example: "671417db0cc2426ccb8de68a3d3f9ce710c7218e"
+                          description: "变化ID"
+                        changeReason:
+                          type: string
+                          example: "    Add the conf in aops domian, the path including : /etc/hostname"
+                          description: "变化原因"
+                        preValue:
+                          type: string
+                          example: "[\n    \"111\"\n]\n"
+                          description: "过去内容"
+                        postValue:
+                          type: string
+                          example: "[\n    \"aops1\"\n]\n"
+                          description: "当前内容"
+              

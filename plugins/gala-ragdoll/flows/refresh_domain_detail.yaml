@@ -1,0 +1,15 @@
+name: 刷新业务域详情
+description: 刷新业务域详情，会查看当前业务域中各个主机的信息和同步状态，刷新后的业务域详情以表格形式展示
+steps:
+  - name: start
+    call_type: api
+    params:
+      endpoint: POST /conftrace/host/getHost
+    next: query_host_sync_status
+  - name: query_host_sync_status
+    call_type: api
+    params:
+      endpoint: POST /conftrace/host/sync/status/get
+    next: end
+  - name: end
+    call_type: none

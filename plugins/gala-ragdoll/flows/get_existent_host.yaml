@@ -1,0 +1,10 @@
+name: 获取业务域主机
+description: 获取指定业务域的主机,以表格形式展示
+steps:
+  - name: start
+    call_type: api
+    params:
+      endpoint: POST /conftrace/host/getHost
+    next: end
+  - name: end
+    call_type: none

@@ -1,0 +1,28 @@
+name: 创建业务域配置
+description: 创建业务域配置，用户选择当前支持的配置文件路径，配置来源，配置内容或从主机导入或从本地导入三种方式进行配置文件内容的添加,并将添加之后的业务域配置列表以表格形式展示
+steps:
+  - name: start
+    call_type: api
+    params:
+      endpoint: POST /conftrace/management/addManagementConf
+    next: get_management_conf
+  - name: get_management_conf
+    call_type: api
+    params:
+      endpoint: POST /conftrace/management/getManagementConf
+    next: generate_get_management_conf_response
+  - name: generate_get_management_conf_response
+    call_type: llm
+    params:
+      system_prompt: 你是一个擅长Linux系统性能优化，且能够根据具体情况撰写分析报告的智能助手。
+      user_prompt: |
+        用户指示：
+        {question}
+
+        参考信息：
+        {context}
+
+        如果没有添加成功，获取不到添加的配置文件，请检查配置内容是否写对
+    next: end
+  - name: end
+    call_type: none

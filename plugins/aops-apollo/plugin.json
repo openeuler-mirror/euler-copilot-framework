@@ -1,0 +1,15 @@
+{
+    "id": "Apollo",
+    "name": "CVE巡检",
+    "description": "这是一个对接受管理的主机进行CVE管理和CVE修复的工具。该工具可对受管理的主机操作系统中存在的CVE漏洞进行监控，并以冷补丁或热补丁的方式生成CVE修复任务并执行。同时，对于已经使用补丁修复的CVE，该工具也可对修复操作进行回滚。",
+    "automatic_flow": false,
+    "auth": {
+		"type": "oidc",
+		"args": {
+			"access-token": ""
+		},
+        "domain": "aops",
+		"access_token_url": "http://116.63.164.87/accounts/accesstoken",
+        "token_expire_time": 1440
+    }
+}

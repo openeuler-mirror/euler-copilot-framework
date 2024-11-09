@@ -1,0 +1,43 @@
+name: query_task_report
+description: 查询任务的执行报告或执行日志，必须指定需要查询的任务ID。
+steps:
+  - name: start
+    call_type: api
+    params:
+      endpoint: GET /vulnerabilities/task/info/get
+    next: flow_choice
+  - name: flow_choice
+    call_type: choice
+    params:
+      instruction: 返回值中task_type字段中包含哪种任务类型信息？
+      choices:
+        - step: query_cve_fix_task_report
+          description: 任务类型为 'cve fix'时，选择此项
+        - step: query_repo_set_task_report
+          description: 任务类型为 'repo set'时，选择此项
+        - step: query_hotpatch_remove_task_report
+          description: 任务类型为 'hotpatch remove'时，选择此项
+        - step: query_rollback_task_report
+          description: 任务类型为 'cve rollback'时，选择此项
+  - name: query_cve_fix_task_report
+    call_type: api
+    params:
+      endpoint: POST /vulnerabilities/task/cve-fix/result/get
+    next: end
+  - name: query_repo_set_task_report
+    call_type: api
+    params:
+      endpoint: POST /vulnerabilities/task/repo/result/get
+    next: end
+  - name: query_hotpatch_remove_task_report
+    call_type: api
+    params:
+      endpoint: POST /vulnerabilities/task/hotpatch-remove/result/get
+    next: end
+  - name: query_rollback_task_report
+    call_type: api
+    params:
+      endpoint: POST /vulnerabilities/task/cve-rollback/result/get
+    next: end
+  - name: end
+    call_type: none

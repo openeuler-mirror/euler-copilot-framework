@@ -1,0 +1,10 @@
+name: 同步主机单个配置文件
+description: 同步主机单个配置文件，可以将业务域基线配置文件的内容同步到主机当前单个配置文件中，使得单个配置文件的基线内容和实际内容达到同步状态，将同步结果以表格形式展示
+steps:
+  - name: start
+    call_type: api
+    params:
+      endpoint: POST /conftrace/confs/syncConf
+    next: end
+  - name: end
+    call_type: none

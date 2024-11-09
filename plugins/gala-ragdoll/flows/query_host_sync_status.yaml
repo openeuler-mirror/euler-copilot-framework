@@ -1,0 +1,10 @@
+name: 获取业务域主机同步状态
+description: 获取业务域主机同步状态，根据业务域可以查看当前业务域所有主机的同步状态，当前主机同步状态以表格形式展示
+steps:
+  - name: start
+    call_type: api
+    params:
+      endpoint: POST /conftrace/host/sync/status/get
+    next: end
+  - name: end
+    call_type: none

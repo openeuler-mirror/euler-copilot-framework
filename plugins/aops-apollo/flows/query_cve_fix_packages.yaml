@@ -1,0 +1,10 @@
+name: query_cve_fix_packages
+description: 查看已修复CVE ID的rpm包信息,用表格形式返回
+steps:
+  - name: start
+    call_type: api
+    params:
+      endpoint: POST /vulnerabilities/cve/fixed/packages/get
+    next: end
+  - name: end
+    call_type: none

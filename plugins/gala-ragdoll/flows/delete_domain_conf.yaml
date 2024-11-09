@@ -1,0 +1,28 @@
+name: 删除或批量删除业务域配置
+description: 删除或批量删除业务域配置，用户点击删除按钮或选择要删除的配置，点击批量删除，将会当前选择的配置删除，并将删除之后的业务域配置以表格形式展示
+steps:
+  - name: start
+    call_type: api
+    params:
+      endpoint: POST /conftrace/management/deleteManagementConf
+    next: get_management_conf
+  - name: get_management_conf
+    call_type: api
+    params:
+      endpoint: POST /conftrace/management/getManagementConf
+    next: generate_response
+  - name: generate_response
+    call_type: llm
+    params:
+      system_prompt: 你是一个擅长Linux系统性能优化，且能够根据具体情况撰写分析报告的智能助手。
+      user_prompt: |
+        用户指示：
+        {question}
+
+        参考信息：
+        {context}
+
+        根据上述信息，撰写系统性能分析报告。
+    next: end
+  - name: end
+    call_type: none

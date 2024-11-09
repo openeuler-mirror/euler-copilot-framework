@@ -1,0 +1,28 @@
+name: 删除业务域
+description: 删除业务域，删除主机/home/confTraceTest/目录同为接口参数domain_name的目录，并同时删除domain表中的业务域数据，并将删除之后的业务域列表以表格形式展示
+steps:
+  - name: start
+    call_type: api
+    params:
+      endpoint: DELETE /conftrace/domain/deleteDomain
+    next: query_domain
+  - name: query_domain
+    call_type: api
+    params:
+      endpoint: POST /conftrace/domain/queryDomain
+    next: generate_response
+  - name: generate_response
+    call_type: llm
+    params:
+      system_prompt: 你是一个擅长Linux系统性能优化，且能够根据具体情况撰写分析报告的智能助手。
+      user_prompt: |
+        用户指示：
+        {question}
+
+        参考信息：
+        {context}
+
+        根据上述信息，撰写系统性能分析报告。
+    next: end
+  - name: end
+    call_type: none

@@ -1,0 +1,11 @@
+name: 创建业务域
+description: 创建业务域，选择集群，填写业务域名称，业务域优先级可添加业务域，并将添加后的业务域列表以表格形式展示
+steps:
+  - name: start
+    call_type: api
+    params:
+      endpoint: POST /conftrace/domain/createDomain
+    next: end
+  - name: end
+    call_type: none
+  

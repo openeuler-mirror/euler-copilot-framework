@@ -1,0 +1,10 @@
+name: 查看主机状态详情
+description: 查看主机状态详情，可以查看主机当前所有基线配置文件的同步状态，将主机同步状态详情以表格形式展示
+steps:
+  - name: start
+    call_type: api
+    params:
+      endpoint: POST /conftrace/confs/getDomainStatus
+    next: end
+  - name: end
+    call_type: none

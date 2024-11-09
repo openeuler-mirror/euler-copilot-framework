@@ -1,0 +1,10 @@
+name: 查看主机当前真实配置
+description: 查看主机当前实配置，可以看到当前所有配置的真实内容，如果真实内容与业务域基线内容不一致，可以进行差异对比，当前的真实配置内容以表格形式展示
+steps:
+  - name: start
+    call_type: api
+    params:
+      endpoint: POST /conftrace/confs/queryRealConfs
+    next: end
+  - name: end
+    call_type: none
