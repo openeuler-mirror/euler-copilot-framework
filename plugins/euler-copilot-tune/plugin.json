@@ -1,0 +1,6 @@
+{
+    "id": "tune",
+    "name": "智能性能优化",
+    "description": "该插件具备以下功能：采集系统性能指标，分析系统性能，推荐系统性能优化建议",
+    "automatic_flow": false
+}

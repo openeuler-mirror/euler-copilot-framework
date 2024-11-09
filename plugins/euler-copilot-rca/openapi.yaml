@@ -1,0 +1,255 @@
+openapi: 3.0.2
+info:
+  title: 智能诊断
+  version: 1.0.0
+servers:
+  - url: http://192.168.10.31:20030
+paths:
+  /inspection:
+    post:
+      description: 对指定机器进行异常检测，返回异常事件
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InspectionRequestData'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /demarcation:
+    post:
+      description: 对指定容器进行异常定界
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DemarcationRequestData'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /detection:
+    post:
+      description: 根据定界结果指标进行定位
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DetectionRequestData'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /show_profiling:
+    post:
+      description: 根据任务ID，获取Profiling结果
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              description: 请求数据
+              required:
+                - task_id
+              properties:
+                task_id:
+                  type: string
+                  description: 任务ID，为UUID类型
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: 
+                $ref: "#/components/schemas/ShowProfilingResponse"
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+components:
+  schemas:
+    HTTPValidationError:
+      type: object
+      description: HTTP 校验错误
+      properties:
+        detail:
+          type: array
+          items:
+            $ref: '#/components/schemas/ValidationError'
+          title: Detail
+    InspectionRequestData:
+      type: object
+      description: 巡检接口入参
+      required:
+        - machine_id
+        - start_time
+        - end_time
+      properties:
+        machine_id:
+          description: 机器IP。如果给定的信息没有指定任何机器IP，则默认为“default_0.0.0.0”。
+          type: string
+          title: Machine_ID
+          default: default_0.0.0.0
+        start_time:
+          description: 根据给定的信息提取出开始时间，如果给定的信息不包含开始时间，开始时间可以设置为当前时间往前推2分钟，最终解析出的时间以'%Y-%m-%d %H:%M:%S'格式输出
+          type: string
+          title: Start_Time
+          default: ''
+        end_time:
+          description: 根据给定的信息提取出结束时间，如果给定的信息不包含结束时间，结束时间可以设置为当前时间，最终解析出的时间以'%Y-%m-%d %H:%M:%S'格式输出
+          type: string
+          title: End_Time
+          default: ''
+    DemarcationRequestData:
+      type: object
+      description: 定界接口入参
+      required:
+        - start_time
+        - end_time
+        - container_id
+      properties:
+        start_time:
+          description: 根据给定的信息提取出开始时间，如果给定的信息不包含开始时间，开始时间可以设置为当前时间往前推2分钟，最终解析出的时间以'%Y-%m-%d %H:%M:%S'格式输出
+          type: string
+          title: Start_Time
+          default: ''
+        end_time:
+          description: 根据给定的信息提取出结束时间，如果给定的信息不包含结束时间，结束时间可以设置为当前时间，最终解析出的时间以'%Y-%m-%d %H:%M:%S'格式输出
+          type: string
+          title: End_Time
+          default: ''
+        container_id:
+          description: 结合问题中指定的具体异常事件，根据给定信息提取容器ID
+          type: string
+          title: Container_ID
+          default: ''
+    DetectionRequestData:
+      type: object
+      description: 定位接口入参
+      required:
+        - container_id
+        - metric
+      properties:
+        container_id:
+          description: 结合问题中指定的具体指标或者指标号，根据给定信息提取容器ID
+          type: string
+          title: Container_ID
+          default: ''
+        metric:
+          description: 结合问题中的具体指标或者指标号，根据给定信息提取具体指标值作为metric
+          type: string
+          title: Metric
+          default: ''
+    ShowProfilingResponse:
+      type: object
+      description: show profiling 的返回结果
+      properties:
+        traceEvents:
+          type: array
+          items:
+            type: object
+            properties:
+              cat:
+                type: string
+                description: Event category (syscall, python_gc, sample, pthread_sync, oncpu)
+              name:
+                type: string
+                description: Event name
+              pid:
+                type: integer
+                format: int32
+                description: Process ID
+              tid:
+                type: integer
+                format: int32
+                description: Thread ID
+              ts:
+                type: integer
+                format: int64
+                description: Timestamp of the event start in microseconds
+              dur:
+                type: integer
+                format: int32
+                description: Duration of the event in microseconds
+              sf:
+                type: string
+                description: Call stack represented as a list of function names separated by semicolons
+              args:
+                type: object
+                additionalProperties: true
+                description: Additional event-specific information such as count, thread.name, and cpu
+        topStackSelf:
+          type: array
+          items:
+            type: object
+            properties:
+              stack:
+                type: string
+                description: Call stack represented as a list of function names separated by semicolons
+              self_time:
+                type: number
+                format: int
+                description: Exclusive time spent in the call stack in milliseconds
+        topStackTotal:
+          type: array
+          items:
+            type: object
+            properties:
+              stack:
+                type: string
+                description: Call stack represented as a list of function names separated by semicolons
+              total_time:
+                type: number
+                format: int
+                description: Total inclusive time spent in the call stack in milliseconds
+    ValidationError:
+      type: object
+      required:
+        - loc
+        - msg
+        - type
+      title: ValidationError
+      properties:
+        loc:
+          type: array
+          items:
+            anyOf:
+              - type: string
+              - type: integer
+          title: Location
+        msg:
+          type: string
+          title: Message
+        type:
+          type: string
+          title: Error Type
