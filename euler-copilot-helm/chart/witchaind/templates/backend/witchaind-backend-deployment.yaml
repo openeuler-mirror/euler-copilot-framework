@@ -1,0 +1,55 @@
+{{- if .Values.witchaind.backend.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: witchaind-backend-deploy-{{ .Release.Name }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: witchaind-backend-{{ .Release.Name }}
+spec:
+  replicas: {{ .Values.globals.replicaCount }}
+  selector:
+    matchLabels:
+      app: witchaind-backend-{{ .Release.Name }}
+  template:
+    metadata:
+      annotations:
+        checksum/secret: {{ include (print $.Template.BasePath "/backend/witchaind-backend-secret.yaml") . | sha256sum }}
+      labels:
+        app: witchaind-backend-{{ .Release.Name }}
+    spec:
+      automountServiceAccountToken: false
+      containers:
+        - name: witchaind-backend
+          image: "{{ if ne (.Values.witchaind.backend.image.registry | toString ) "" }}{{ .Values.witchaind.backend.image.registry }}{{ else }}{{ .Values.globals.imageRegistry }}{{ end }}/{{ .Values.witchaind.backend.image.name }}:{{ .Values.witchaind.backend.image.tag | toString }}"
+          imagePullPolicy: {{ if ne (.Values.witchaind.backend.image.imagePullPolicy | toString) "" }}{{ .Values.witchaind.backend.image.imagePullPolicy }}{{ else }}{{ .Values.globals.imagePullPolicy }}{{ end }}
+          ports:
+            - containerPort: 9988
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /health_check
+              port: 9988
+              scheme: HTTP
+            failureThreshold: 5
+            initialDelaySeconds: 60
+            periodSeconds: 90
+          env:
+            - name: TZ
+              value: "Asia/Shanghai"
+          volumeMounts:
+            - mountPath: /docker-entrypoint-initdb.d/init.sql
+              name: witchaind-config
+            - mountPath: /rag-service/data_chain/common
+              name: witchaind-common
+          resources:
+            {{- toYaml .Values.witchaind.backend.resources | nindent 12 }}
+      restartPolicy: Always
+      volumes:
+        - name: witchaind-config
+          secret:
+            secretName: witchaind-backend-secret-{{ .Release.Name }}
+        - name: witchaind-common
+          secret:
+            secretName: witchaind-backend-secret-{{ .Release.Name }}
+{{- end }}

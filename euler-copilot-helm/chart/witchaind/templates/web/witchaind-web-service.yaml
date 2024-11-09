@@ -1,0 +1,17 @@
+{{- if .Values.witchaind.web.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: witchaind-web-service-{{ .Release.Name }}
+  namespace: {{ .Release.Namespace }}
+spec:
+  type: {{ .Values.witchaind.web.service.type }}
+  selector:
+    app: witchaind-web-{{ .Release.Name }}
+  ports:
+    - port: 9888
+      targetPort: 9888
+      {{- if (and (eq .Values.witchaind.web.service.type "NodePort") .Values.witchaind.web.service.nodePort) }}
+      nodePort: {{ .Values.witchaind.web.service.nodePort }}
+      {{- end }}
+{{- end }}

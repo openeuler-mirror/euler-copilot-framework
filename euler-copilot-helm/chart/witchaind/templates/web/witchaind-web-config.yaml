@@ -1,0 +1,10 @@
+{{- if .Values.witchaind.web.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: witchaind-web-config-{{ .Release.Name }}
+  namespace: {{ .Release.Namespace }}
+data:
+  .env: |-
+{{ tpl (.Files.Get "configs/web/.env") . | indent 4 }}
+{{- end }}
