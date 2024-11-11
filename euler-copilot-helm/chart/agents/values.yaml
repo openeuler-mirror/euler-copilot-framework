@@ -84,7 +84,7 @@ agents:
       # 【必填】模型最大Token数
       max_tokens: 8096
     # 【必填】Embedding地址
-    embedding: ""
+    embedding: "http://$ip:8001/embedding" # 将IP修改为vectorize服务的内网IP
     # 待优化机器信息
     machine:
       # 【必填】IP地址
