@@ -1,3 +1,4 @@
 uwsgi:
   port: 11120
   processes: 1
+  daemonize: /var/log/oauth2/uwsgi/oauthhub.log

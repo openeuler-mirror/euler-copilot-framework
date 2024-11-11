@@ -1,0 +1,59 @@
+{{- if .Values.witchaind.web.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: witchaind-web-deploy-{{ .Release.Name }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: witchaind-web-{{ .Release.Name }}
+spec:
+  replicas: {{ .Values.globals.replicaCount }}
+  selector:
+    matchLabels:
+      app: witchaind-web-{{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app: witchaind-web-{{ .Release.Name }}
+    spec:
+      automountServiceAccountToken: false
+      containers:
+        - name: witchaind-web
+          image: "{{if ne ( .Values.witchaind.web.image.registry | toString ) ""}}{{ .Values.witchaind.web.image.registry }}{{ else }}{{ .Values.globals.imageRegistry }}{{ end }}/{{ .Values.witchaind.web.image.name }}:{{ .Values.witchaind.web.image.tag | toString }}"
+          imagePullPolicy: {{ if ne ( .Values.witchaind.web.image.imagePullPolicy | toString ) "" }}{{ .Values.witchaind.web.image.imagePullPolicy }}{{ else }}{{ .Values.globals.imagePullPolicy }}{{ end }}
+          ports:
+            - containerPort: 9888
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 9888
+              scheme: HTTP
+            failureThreshold: 5
+            initialDelaySeconds: 60
+            periodSeconds: 90
+          env:
+            - name: TZ
+              value: "Asia/Shanghai"
+          volumeMounts:
+            - mountPath: /config
+              name: witchaind-web-config-volume
+            - mountPath: /var/lib/nginx/tmp
+              name: witchaind-web-tmp
+            - mountPath: /home/eulercopilot/.env
+              name: witchaind-web-env-volume
+              subPath: .env
+          resources:
+            {{- toYaml .Values.witchaind.web.resources | nindent 12 }}
+      restartPolicy: Always
+      volumes:
+        - name: witchaind-web-config-volume
+          emptyDir:
+            medium: Memory
+        - name: witchaind-web-env-volume
+          configMap:
+            name: witchaind-web-config-{{ .Release.Name }}
+        - name: witchaind-web-tmp
+          emptyDir:
+            medium: Memory
+{{- end }}
