@@ -1,0 +1,51 @@
+{{- if .Values.agents.rca.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: rca-agent-{{ .Release.Name }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: rca-agent-{{ .Release.Name }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: rca-agent-{{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app: rca-agent-{{ .Release.Name }}
+    spec:
+      automountServiceAccountToken: false
+      containers:
+        - name: rca-agent
+          image: "{{if ne ( .Values.agents.rca.image.registry | toString ) ""}}{{ .Values.agents.rca.image.registry }}{{ else }}{{ .Values.globals.imageRegistry }}{{ end }}/{{ .Values.agents.rca.image.name }}:{{ .Values.agents.rca.image.tag | toString }}"
+          imagePullPolicy: {{ if ne ( .Values.agents.rca.image.imagePullPolicy | toString ) "" }}{{ .Values.agents.rca.image.imagePullPolicy }}{{ else }}{{ .Values.globals.imagePullPolicy }}{{ end }}
+          ports:
+            - containerPort: 20030
+              protocol: TCP
+          env:
+            - name: TZ
+              value: Asia/Shanghai
+          volumeMounts:
+            - mountPath: /var/log/gala-gopher
+              name: gopher-profile
+            - mountPath: /home/euler-copilot-rca/config/request_config.json
+              name: rca-config-volume
+              subPath: request_config.json
+            - mountPath: /home/euler-copilot-rca/config/config.json
+              name: rca-config-volume
+              subPath: config.json
+          securityContext:
+            readOnlyRootFilesystem: {{ .Values.agents.rca.readOnly }}
+          resources:
+            {{- toYaml .Values.agents.rca.resources | nindent 12 }}
+      volumes:
+        - name: rca-config-volume
+          configMap:
+            name: rca-agent-config-{{ .Release.Name }}
+        - name: gopher-profile
+          hostPath:
+            path: /var/log/gala-gopher
+            type: DirectoryOrCreate
+{{- end }}

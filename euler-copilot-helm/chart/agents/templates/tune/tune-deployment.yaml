@@ -1,0 +1,52 @@
+{{- if .Values.agents.tune.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tune-deploy-{{ .Release.Name }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: tune-{{ .Release.Name }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: tune-{{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app: tune-{{ .Release.Name }}
+    spec:
+      automountServiceAccountToken: false
+      containers:
+        - name: tune
+          image: "{{if ne ( .Values.agents.tune.image.registry | toString ) ""}}{{ .Values.agents.tune.image.registry }}{{ else }}{{ .Values.globals.imageRegistry }}{{ end }}/{{ .Values.agents.tune.image.name }}:{{ .Values.agents.tune.image.tag | toString }}"
+          imagePullPolicy: {{ if ne ( .Values.agents.tune.image.imagePullPolicy | toString ) "" }}{{ .Values.agents.tune.image.imagePullPolicy }}{{ else }}{{ .Values.globals.imagePullPolicy }}{{ end }}
+          ports:
+            - containerPort: 8100
+              protocol: TCP
+          env:
+            - name: TZ
+              value: Asia/Shanghai
+            - name: PYTHONPATH 
+              value: /app
+          volumeMounts:
+            - mountPath: /app/config
+              name: tune-secret-volume
+          securityContext:
+            readOnlyRootFilesystem: {{ .Values.agents.tune.readOnly }}
+          resources:
+            {{- toYaml .Values.agents.tune.resources | nindent 12 }}
+      volumes:
+        - name: tune-secret-volume
+          secret:
+            secretName: tune-secret-{{ .Release.Name }}
+            items:
+              - key: .env.yaml
+                path: .env.yaml
+              - key: app_config.yaml
+                path: app_config.yaml
+              - key: knob_rag_config.json
+                path: knob_rag_config.json
+              - key: optimize_config.yaml
+                path: optimize_config.yaml
+{{- end }}

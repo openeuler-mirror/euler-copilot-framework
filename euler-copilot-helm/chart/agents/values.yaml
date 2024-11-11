@@ -1,0 +1,100 @@
+# 全局设置
+globals:
+  # 【必填】镜像仓库
+  imageRegistry: "hub.oepkgs.net/neocopilot"
+  # 【必填】镜像拉取策略
+  imagePullPolicy: IfNotPresent
+
+# OpenEuler产品Agents
+agents:
+  ai_infra:
+    # 【必填】是否启用AI容器镜像Agent
+    enabled: true
+    # 镜像设置
+    image:
+      # 镜像仓库。留空则使用全局设置。
+      registry: ""
+      # 【必填】镜像名
+      name: compatibility-ai-infra
+      # 【必填】镜像Tag
+      tag: "0.9.1"
+      # 拉取策略。留空则使用全局设置
+      imagePullPolicy: ""
+    # 【必填】容器根目录只读
+    readOnly: true
+    # 性能限制设置
+    resources: {}
+    # Service设置
+    service:
+      # 【必填】Service类型，ClusterIP或NodePort
+      type: ClusterIP
+      nodePort: 
+  rca:
+    # 【必填】是否启用智能诊断Agent。必须配合智能诊断服务端使用。
+    enabled: true
+    # 镜像设置
+    image:
+      # 镜像仓库。留空则使用全局设置。
+      registry: "hub.oepkgs.net/a-ops"
+      # 【必填】镜像名称
+      name: euler-copilot-rca
+      # 【必填】镜像标签
+      tag: "0.9.1"
+      # 拉取策略。留空则使用全局设置。
+      imagePullPolicy: ""
+    # 【必填】容器根目录只读
+    readOnly: true
+    # 性能限制设置
+    resources: {}
+    # Service设置
+    service:
+      # 【必填】Service类型，ClusterIP或NodePort
+      type: ClusterIP
+      nodePort: 
+  tune:
+    # 【必填】是否启用智能调优Agent。
+    enabled: true
+    # 镜像设置
+    image:
+      # 镜像仓库。留空则使用全局设置。
+      registry: ""
+      # 【必填】镜像名称
+      name: euler-copilot-tune
+      # 【必填】镜像标签
+      tag: "0.9.1"
+      # 拉取策略。留空则使用全局设置。
+      imagePullPolicy: ""
+    # 【必填】容器根目录只读
+    readOnly: true
+    # 性能限制设置
+    resources: {}
+    # Service设置
+    service:
+      # 【必填】Service类型，ClusterIP或NodePort
+      type: ClusterIP
+      nodePort: 
+    # 大模型设置
+    llm:
+      # 【必填】模型地址（需要包含v1后缀）
+      url: 
+      # 【必填】模型名称
+      name: ""
+      # 【必填】模型API Key
+      key: ""
+      # 【必填】模型最大Token数
+      max_tokens: 8096
+    # 【必填】Embedding地址
+    embedding: "http://$ip:8001/embedding" # 将IP修改为vectorize服务的内网IP
+    # 待优化机器信息
+    machine:
+      # 【必填】IP地址
+      ip: ""
+      # 【必填】Root用户密码
+      # 注意：必需启用Root用户以密码形式SSH登录
+      password: ""
+    # 待优化应用设置
+    mysql:
+      # 【必填】数据库用户名
+      user: "root"
+      # 【必填】数据库密码
+      password: ""
