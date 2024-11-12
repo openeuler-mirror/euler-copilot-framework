@@ -54,4 +54,4 @@
 3. **运行程序：**
 
    ```bash
-   python main.py --qury "请问NLP是什么？"
+   python main.py --query "请问NLP是什么？"
