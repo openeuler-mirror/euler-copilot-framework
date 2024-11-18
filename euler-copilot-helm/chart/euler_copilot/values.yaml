@@ -5,7 +5,7 @@ globals:
   # [必填] 镜像拉取策略
   imagePullPolicy: IfNotPresent
   # [必填] 部署域名：需要修改为EulerCopilot域名。单节点部署时，服务基于Host进行区分，无法使用IP地
-  domain: 
+  domain: ""
   # 用于问答和推理的大模型
   llm:
     # [必填] 模型类型
@@ -31,17 +31,17 @@ globals:
   # 数据库设置
   databases:
     # [必填] database helm安装时的app name
-    app_name: 
+    app_name: "databases"
     # [必填] database helm安装时的namespace
-    app_namespace:
+    app_namespace: "euler-copilot"
     # 数据库密码
     passwords:
       # [必填] MySQL数据库的密码
-      mysql: 
+      mysql: "8URM%HtCHQPxKe$u"
       # [必填] Redis数据库的密码
-      redis: 
+      redis: "8FDk2rnhxVPvkSdb"
       # [必填] PostgreSQL数据库密码
-      postgres:
+      postgres: "123456"
 
 euler_copilot:
   # 配置文件安全复制工具
@@ -149,8 +149,8 @@ euler_copilot:
       nodePort:
     # Volume设置
     volume:
-      # [必填] 插件包路径
-      plugin_dir:    # 修改为实际的插件文件夹地址
+      # [必填] 插件包路径，需要手动创建目录
+      plugin_dir: "/home/EulerCopilot/plugin"
     # [必填] JWT Key
     jwtKey: 13e46d8963c997814f996c3294ccc92d
     # 加密密钥设置
@@ -162,7 +162,7 @@ euler_copilot:
       # [必填] 加密密钥3
       key3: D4eFgHjKlMnOpQrS3
     # [必填] Web前端地址，需要添加https前缀
-    web_url: 
+    web_url: ""
     # 登录设置
     login:
       # [必填] 是否启用登录
@@ -172,19 +172,19 @@ euler_copilot:
       # OIDC 设置
       oidc:
         # [enabled为true时必填] OIDC 客户端ID
-        client_id:
+        client_id: ""
         # [enabled为true时必填] OIDC 客户端密钥
-        client_secret:
+        client_secret: ""
         # [enabled为true时必填] OIDC Token获取地址
-        token_url: http://authhub-backend-service-authhub.euler-copilot.svc.cluster.local:11120/oauth2/token
+        token_url: "http://authhub-backend-service-authhub.euler-copilot.svc.cluster.local:11120/oauth2/token"
         # [enabled为true时必填] OIDC 用户信息地址
-        user_url: http://authhub-backend-service-authhub.euler-copilot.svc.cluster.local:11120/oauth2/introspect
+        user_url: "http://authhub-backend-service-authhub.euler-copilot.svc.cluster.local:11120/oauth2/introspect"
         # [enabled为true时必填] OIDC 刷新Token地址
-        refresh_token_url: http://authhub-backend-service-authhub.euler-copilot.svc.cluster.local:11120/oauth2/refresh-token
+        refresh_token_url: "http://authhub-backend-service-authhub.euler-copilot.svc.cluster.local:11120/oauth2/refresh-token"
         # [enabled为true时必填] EulerCopilot主页地址：请将<domain>替换为 EulerCopilot 实际的域名
-        euler_copilot_front: https://<domain>/api/auth/login
+        euler_copilot_front: "https://<domain>/api/auth/login"
         # [enabled为true时必填] OIDC登录跳转地址：请将<authhub>修改为authhub实际域名，<client_id> 替换为实际的Client ID，将<domain>替换为EulerCopilot域名
-        redirect: https://<authhub>/oauth2/authorize?client_id=<client_id>&redirect_uri=https://<domain>/api/auth/login&scope=openid offline_access&access_type=offline&response_type=code&prompt=consent&state=235345&nonce=loser
+        redirect: "https://<authhub>/oauth2/authorize?client_id=<client_id>&redirect_uri=https://<domain>/api/auth/login&scope=openid offline_access&access_type=offline&response_type=code&prompt=consent&state=235345&nonce=loser"
   web:
     # [必填] 是否部署Web前端用户界面
     enabled: true
