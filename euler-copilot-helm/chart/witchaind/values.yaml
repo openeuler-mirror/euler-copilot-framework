@@ -8,6 +8,16 @@ globals:
   imagePullPolicy: IfNotPresent
   # [必填] 域名
   domain: "eulercopilot.test.com"
+  # [必填] Postgresql设置
+  pgsql:
+    # [必填] 主机
+    host: "pgsql-service.euler-copilot.svc.cluster.local"
+    # [必填] 端口
+    port: 5432
+    # [必填] 用户
+    user: "postgres"
+    # [必填] 密码
+    password: "123456"
   # [必填] LLM设置
   llm:
     # [必填] 模型名称
@@ -44,33 +54,6 @@ witchaind:
       type: ClusterIP
       # 当类型为nodePort时，填写主机的端口号
       nodePort:
-  pgsql:
-    # [必填] 是否部署PostgreSQL实例
-    enabled: true
-    # 镜像设置
-    image:
-      # 镜像仓库。留空则使用全局设置。
-      registry: ""
-      # [必填] 镜像名
-      name: pgsql-empty
-      # [必填] 镜像标签，为pg16或pg16-arm
-      tag: pg16
-      # 拉取策略。留空则使用全局设置。
-      imagePullPolicy: ""
-    # 性能限制设置
-    resources: {}
-    # [必填] 容器根目录只读
-    readOnly: false
-    # [必填] Volume大小设置
-    persistentVolumeSize: 10Gi
-    # Service设置
-    service:
-      # [必填] Service类型，ClusterIP或NodePort
-      type: ClusterIP
-      # 当类型为nodePort时，填写主机的端口号
-      nodePort: 
-    # [必填] 密码设置
-    password: "123456"
   redis:
     # [必填] 是否部署Redis实例
     enabled: true
@@ -107,7 +90,7 @@ witchaind:
       # [必填] 镜像名
       name: "data_chain_web" 
       # [必填] 镜像标签
-      tag: "1230"
+      tag: "0.9.2"
       # 拉取策略。留空则使用全局设置。
       imagePullPolicy: ""
     # 性能限制设置
