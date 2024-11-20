@@ -11,7 +11,7 @@ globals:
   # [必填] Postgresql设置
   pgsql:
     # [必填] 主机
-    host: "pgsql-service.euler-copilot.svc.cluster.local"
+    host: "pgsql-db-databases.euler-copilot.svc.cluster.local"
     # [必填] 端口
     port: 5432
     # [必填] 用户
@@ -134,7 +134,7 @@ witchaind:
       # 当类型为nodePort时，填写主机的端口号
       nodePort: 
     # [必填] Embedding模型URL
-    embedding: "https://60.204.250.91:8001/embedding"
+    embedding: "http://witchaind-backend-service-witchaind.euler-copilot.svc.cluster.local:8001/embedding"
     # [必填] 密钥设置
     security:
       # [必填] CSRF密钥
