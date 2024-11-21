@@ -134,7 +134,7 @@ witchaind:
       # 当类型为nodePort时，填写主机的端口号
       nodePort: 
     # [必填] Embedding模型URL
-    embedding: "http://witchaind-backend-service-witchaind.euler-copilot.svc.cluster.local:8001/embedding"
+    embedding: "http://vectorize-agent-service-service.euler-copilot.svc.cluster.local:8001/embedding"
     # [必填] 密钥设置
     security:
       # [必填] CSRF密钥
