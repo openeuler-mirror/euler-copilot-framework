@@ -1,9 +1,6 @@
 from transformers import AutoModelForCausalLM, AutoTokenizer
 import torch
 from transformers import BertTokenizer, BertModel
-# import bitsandbytes as bnb
-# import os
-# os.environ["CUDA_VISIBLE_DEVICES"] = "2,3"
 
 # 加载模型和tokenizer
 def getModel(model_path = "/home/nfs02/model/Qwen1.5-14B-Chat"):
@@ -17,8 +14,3 @@ def getModel(model_path = "/home/nfs02/model/Qwen1.5-14B-Chat"):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model.to(device)
     return model, tokenizer, device
-
-bertFlag = False
-if bertFlag:
-    bertTokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
-    bertModel = BertModel.from_pretrained('bert-base-uncased')
