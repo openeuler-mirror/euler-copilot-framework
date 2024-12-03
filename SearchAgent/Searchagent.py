@@ -91,13 +91,16 @@ def baidu_search(query, max_results=5, top_n=1,timeout=TIMEOUT):
 def decodeQList(output_text):
     # 使用正则表达式匹配列表中的每个子问题
     # 假设子问题列表格式为 ["子问题1", "子问题2", ...]
-    pattern = r'"\s*(.*?)\s*"'
-    matches = re.findall(pattern, output_text)
-    
-    # 提取出每个子问题并返回一个列表
-    sub_questions = [match for match in matches]
-    
-    return sub_questions
+    try:
+        pattern = r'"\s*(.*?)\s*"'
+        matches = re.findall(pattern, output_text)
+        # 提取出每个子问题并返回一个列表
+        sub_questions = [match for match in matches]
+        return sub_questions
+    except Exception as e:
+        # 捕获所有异常并打印错误信息
+        print(f"发生错误: {e}")
+        return []
 
 
 def splitQ(query):

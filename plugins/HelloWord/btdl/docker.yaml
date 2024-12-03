@@ -1,0 +1,765 @@
+version: "1.0.0"
+
+cmd:
+  - name: docker
+    description: Docker Container CLI
+
+docker:
+  global_options:
+    - name: "--version"
+      description: "打印版本信息并退出。默认为false。"
+      type: "boolean"
+      default: false
+    - name: "--log-level"
+      description: "设置日志记录级别。默认为info。"
+      type: "string"
+      default: "info"
+      enum:
+        - debug
+        - info
+        - warn
+        - error
+        - fatal
+
+  commands:
+    - name: "ps"
+      description: "查看容器列表。"
+      usage: "docker ps ${OPTS}"
+      options:
+        - name: "--all"
+          description: "显示所有容器（默认仅显示正在运行的容器）"
+          type: boolean
+          default: false
+        - name: "--last"
+          description: "显示最近创建的n个容器（包括所有状态）"
+          type: integer
+          default: -1
+        - name: "--latest"
+          description: "S显示最新创建的容器（包括所有状态）"
+          type: boolean
+          default: false
+        - name: "--size"
+          description: "显示容器中文件总大小"
+          type: boolean
+          default: false
+        - name: "--quiet"
+          description: "仅显示容器ID"
+          type: boolean
+          default: false
+      examples:
+        - command: "docker ps -all"
+          description: "显示这台机器上的所有容器。"
+        - command: "docker ps --size"
+          description: "显示所有正在运行的容器及其大小。"
+    - name: "pull"
+      description: "Download an image from a registry."
+      usage: "docker pull ${OPTS} ${image}"
+      options:
+        - name: "--all-tags"
+          description: "下载仓库中所有有Tag的镜像"
+          default: false
+          type: boolean
+        - name: "--disable-content-trust"
+          description: "跳过镜像签名校验"
+          default: false
+          type: boolean
+        - name: "--quiet"
+          description: "减少输出信息"
+          type: boolean
+          default: false
+      arguments:
+        - name: "image"
+          description: "Docker镜像名称"
+          type: string
+          example: "nginx:latest"
+          pattern: "[a-z0-9._/-]{0,61}"
+      examples:
+        - command: "docker pull nginx:latest"
+          description: "Download image named 'nginx' and tagged 'latest' from default registry."
+        - command: "docker pull --disable-content-trust docker.io/library/caddy:2-alpine"
+          description: "Download image named 'library/caddy' and tagged '2-alpine' from registry 'docker.io', and image verification is turned off."
+    - name: "run"
+      description: "从镜像创建并运行一个新的容器"
+      usage: "docker run ${OPTS} ${image} ${command}"
+      arguments:
+        - name: "image"
+          description: "用于创建容器的镜像名称"
+          type: "string"
+          example: "nginx:latest"
+          required: true
+        - name: "command"
+          description: "在容器内运行的命令。默认为 null。"
+          type: "string"
+          required: false
+          default: null
+      options:
+        - name: "--gpus"
+          description: "给容器添加或限制显卡（GPU）（'all'表示使用所有GPU，'2'表示使用任意两个GPU）"
+          type: "string"
+          default: ""
+        - name: "--add-host"
+          description: "在 /etc/hosts 中添加一行记录。格式：hostname=ip 或 hostname:ip。"
+          type: "array"
+          items:
+            type: string
+            description: "主机至IP的映射 (格式：hostname=ip 或 hostname:ip)"
+        - name: "annotation"
+          description: "为容器添加注释（传递给OCI运行时）。"
+          type: "array"
+          items:
+            type: string
+            description: "容器注释"
+        - name: "--attach"
+          description: "连接到标准输入(stdin)、标准输出(stdout)或标准错误(stderr)"
+          type: "array"
+          items:
+            type: string
+        - name: "--blkio-weight"
+          description: "块设备I/O（相对权重），介于 10 和 1000 之间，或设置为 0 以禁用。"
+          type: "integer"
+          default: 0
+          minimum: 0
+          maximum: 1000
+        - name: "--blkio-weight-device"
+          description: "块设备I/O（每设备的权重）"
+          type: "array"
+          default: []
+          items:
+            type: string
+            description: "relative device weight, format: DEVICE_NAME:WEIGHT"
+            pattern: "[0-9a-z_-]:[0-9]{0,4}"
+        - name: "--cap-add"
+          description: "添加 Linux capabilities"
+          type: "array"
+          default: []
+          items:
+            type: string
+            description: "Linux capabilities"
+        - name: "--cap-drop"
+          description: "删除 Linux capabilities"
+          type: "array"
+          default: []
+          items:
+            type: string
+            description: "linux capabilities"
+        - name: "--cgroup-parent"
+          description: "容器的可选父cgroup"
+          type: "string"
+        - name: "--cidfile"
+          description: "将容器ID写入文件"
+          type: "string"
+        - name: "--cpu-period"
+          description: "限制CPU CFS（完全公平调度器）时长"
+          type: "integer"
+        - name: "--cpu-quota"
+          description: "限制CPU CFS（完全公平调度器）配额"
+          type: "integer"
+        - name: "--cpu-rt-period"
+          description: "限制 CPU 实时周期（单位：微秒）"
+          type: "integer"
+        - name: "--cpu-rt-runtime"
+          description: "限制 CPU 实时运行时间（单位：微秒）"
+          type: "integer"
+        - name: "--cpu-shares"
+          description: "CPU 份额（相对权重）"
+          type: "integer"
+        - name: "--cpus"
+          description: "运行时使用的CPU数量"
+          type: "number"
+        - name: "--cpuset-cpus"
+          description: "允许运行使用的 CPU（0-3, 0,1）"
+          type: "string"
+        - name: "--cpuset-mems"
+          description: "MEMs in which to allow execution (0-3, 0,1)"
+          type: "string"
+        - name: "--detach"
+          description: "在后台运行容器并打印容器 ID"
+          type: boolean
+          default: false
+        - name: "--detach-keys"
+          description: "override the key sequence for detaching a container"
+          type: "string"
+        - name: "--device"
+          description: "向容器添加一个主机设备"
+          type: "array"
+          items:
+            type: string
+            description: "onhost:incontainer[:mode]\n\nAdd a host device onhost to the container under the incontainer name. Optional mode parameter can be used to specify device permissions, it is a combination of r (for read), w (for write), and m (for mknod(2))."
+        - name: "--device-cgroup-rule"
+          description: "Add a rule to the cgroup allowed devices list"
+          type: "array"
+          items:
+            type: string
+            description: 
+        - name: "--device-read-bps"
+          description: "限制设备的读取速率（每秒字节数）"
+          type: "array"
+          default: []
+          items:
+            type: string
+        - name: "--device-read-iops"
+          description: "限制设备的读取速率（每秒I/O次数）"
+          type: "array"
+          default: []
+          items:
+            type: string
+        - name: "--device-write-bps"
+          description: "限制设备的写入速率（每秒字节数）"
+          type: "array"
+          default: []
+          items:
+            type: string
+        - name: "--device-write-iops"
+          description: "限制设备的写入速率（每秒I/O次数）"
+          type: "array"
+          default: []
+          items:
+            type: string
+        - name: "--disable-content-trust"
+          description: "跳过镜像验证"
+          type: "boolean"
+          default: true
+        - name: "--dns"
+          description: "使用自定义DNS服务器"
+          type: "array"
+          default: []
+          items:
+            type: string
+        - name: "--dns-option"
+          description: "设置DNS选项"
+          type: "array"
+          items:
+            type: string
+        - name: "--dns-search"
+          description: "设置自定义的DNS搜索域"
+          type: "array"
+          items:
+            type: string
+        - name: "--entrypoint"
+          description: "Overwrite the default ENTRYPOINT of the image"
+          type: "string"
+        - name: "--env"
+          description: "设置环境变量"
+          type: "array"
+          items:
+            type: string
+        - name: "--env-file"
+          description: "读取环境变量的文件"
+          type: "array"
+          default: []
+          items:
+            type: string
+        - name: "--expose"
+          description: "公开一个端口或一个端口范围"
+          type: "array"
+          items:
+            type: string
+        - name: "--files-limit"
+          description: "调整容器文件数量限制（设置为 -1 则表示无限）"
+          type: "integer"
+        - name: "--group-add"
+          description: "Add additional groups to join"
+          type: "array"
+          items:
+            type: string
+        - name: "--health-cmd"
+          description: "运行以检查健康状况的命令"
+          type: "string"
+        - name: "--health-exit-on-unhealthy"
+          description: "当容器健康状况异常时，停止运行容器"
+          type: "boolean"
+        - name: "--health-interval"
+          description: "Time between running the check (ms|s|m|h) (default 0s)"
+          type: "integer"
+          default: 0
+        - name: "--health-retries"
+          description: "达到一定失败次数后，开始报告健康状况异常"
+          type: "integer"
+        - name: "--health-start-period"
+          description: "Start period for the container to initialize before starting health-retries countdown (ms|s|m|h) (default 0s)"
+          type: "integer"
+          default: 0
+        - name: "--health-timeout"
+          description: "Maximum time to allow one check to run (ms|s|m|h) (default 0s)"
+          type: "integer"
+          default: 0
+        - name: "--hook-spec"
+          description: "file containing hook definition(pre-start, post-start, post-stop"
+          type: "string"
+        - name: "--hostname"
+          description: "容器主机名"
+          type: "string"
+        - name: "--hugetlb-limit"
+          description: "Huge page limit (format: [size:]<limit>, e.g --hugetlb-limit 2MB:32MB)"
+          type: "string"
+          default: []
+        - name: "--init"
+          description: "在容器内运行一个转发信号并回收进程的 init 进程"
+          type: "boolean"
+        - name: "--interactive"
+          description: "在后台运行时也将输出同步至标准输出（stdout）"
+          type: "boolean"
+        - name: "--ip"
+          description: "IPv4地址"
+          type: "string"
+        - name: "--ip6"
+          description: "IPv6地址"
+          type: "string"
+        - name: "--ipc"
+          description: "IPC mode to use"
+          type: "string"
+        - name: "--isolation"
+          description: "Container isolation technology"
+          type: "string"
+        - name: "--kernel-memory"
+          description: "容器内核内存容量。该内存不会被交换至磁盘。"
+          type: "integer"
+        - name: "--label"
+          description: "在容器上设置元数据"
+          type: "array"
+          items:
+            type: string
+        - name: "--label-file"
+          description: "Read in a line delimited file of labels"
+          type: "array"
+          items:
+            type: string
+        - name: "--link"
+          description: "与另一个容器相互通信"
+          type: "array"
+          items:
+            type: string
+        - name: "--link-local-ip"
+          description: "Container IPv4/IPv6 link-local addresses"
+          type: "array"
+          items:
+            type: string
+        - name: "--log-driver"
+          description: "Logging driver for the container"
+          type: "string"
+        - name: "--log-opt"
+          description: "log driver options"
+          type: "array"
+          items:
+            type: string
+        - name: "--mac-address"
+          description: "容器网卡的MAC地址"
+          type: "string"
+        - name: "--memory"
+          description: "容器可以使用的最大内存。单位：k, m, g"
+          type: "string"
+          example: "128m"
+        - name: "--memory-reservation"
+          description: "为容器保留的最小内存。单位：k, m, g"
+          type: "integer"
+        - name: "--memory-swap"
+          description: "此容器允许交换到磁盘的内存量。"
+          type: "integer"
+        - name: "--memory-swappiness"
+          description: "默认情况下，主机内核可以交换出容器使用的一定比例的Memory Page。您可以将 --memory-swappiness 设置为 0 到 100 之间的值，以调整此百分比。"
+          type: "integer"
+          default: -1
+        - name: "--mount"
+          description: "attach a filesystem mount to the container"
+          type: "string"
+        - name: "--name"
+          description: "给容器设置容器名"
+          type: "string"
+        - name: "--network"
+          description: "设定容器使用的网络（接口）"
+          type: "string"
+          default: "default"
+        - name: "--network-alias"
+          description: "为容器添加网络范围别名"
+          type: "array"
+          items:
+            type: string
+        - name: "--no-healthcheck"
+          description: "Disable any container-specified HEALTHCHECK"
+          type: "boolean"
+        - name: "--oom-kill-disable"
+          description: "Disable OOM Killer"
+          type: "boolean"
+        - name: "--oom-score-adj"
+          description: "Tune host's OOM preferences (-1000 to 1000)"
+          type: "integer"
+        - name: "--pid"
+          description: "容器使用的PID命名空间"
+          type: "string"
+        - name: "--pids-limit"
+          description: "Tune container pids limit (set -1 for unlimited)"
+          type: "integer"
+        - name: "--privileged"
+          description: "使容器以特权模式运行"
+          type: "boolean"
+        - name: "--publish"
+          description: "将容器的端口发布到主机。格式：<主机端口>:<容器端口>"
+          type: "string"
+          example: "20001:3000"
+        - name: "--publish-all"
+          description: "将所有暴露的端口发布到随机端口"
+          type: "boolean"
+        - name: "--read-only"
+          description: "将容器的根文件系统设置为只读"
+          type: "boolean"
+        - name: "--restart"
+          description: "Restart policy to apply when a container exits"
+          type: "string"
+          default: "no"
+        - name: "--rm"
+          description: "容器退出时，自动删除该容器"
+          type: "boolean"
+        - name: "--runtime"
+          description: "Runtime to use for this container"
+          type: "string"
+        - name: "--security-opt"
+          description: "安全选项"
+          type: "array"
+          items:
+            type: string
+        - name: "--shm-size"
+          description: "Size of /dev/shm"
+          type: "integer"
+        - name: "--sig-proxy"
+          description: "Proxy received signals to the process"
+          type: "boolean"
+          default: true
+        - name: "--stop-signal"
+          description: "用于停止容器的信号"
+          type: "string"
+          default: "SIGTERM"
+        - name: "--stop-timeout"
+          description: "停止容器时的超时时间（单位：秒）"
+          type: "integer"
+        - name: "--storage-opt"
+          description: "Storage driver options for the container"
+          type: "array"
+          items:
+            type: string
+        - name: "--sysctl"
+          description: "sysctl选项"
+          type: "array"
+          default: []
+          items:
+            type: string
+        - name: "--tmpfs"
+          description: "挂载一个tmpfs目录"
+          type: "array"
+          items:
+            type: string
+        - name: "--tty"
+          description: "分配一个模拟的TTY终端"
+          type: "boolean"
+        - name: "--ulimit"
+          description: "Ulimit options"
+          type: "string"
+        - name: "--user"
+          description: "Username or UID (format: <name|uid>[:<group|gid>])"
+          type: "string"
+        - name: "--userns"
+          description: "容器使用的用户命名空间"
+          type: "string"
+        - name: "--uts"
+          description: "容器使用的UTS命名空间"
+          type: "string"
+        - name: "--volume"
+          description: "挂载一个主机路径。格式：<主机路径>:<容器内路径>"
+          type: "string"
+          example: "/home/data:/data"
+        - name: "--volume-driver"
+          description: "Optional volume driver for the container"
+          type: "string"
+        - name: "--volume-from"
+          description: "从另一个容器中挂载指定目录"
+          type: "array"
+          items:
+            type: string
+        - name: "--workdir"
+          description: "Working directory inside the container"
+          type: "string"
+    - name: "image build"
+      description: "Build an image from a Dockerfile. Must provide a path for Dockerfile."
+      usage: "docker image build ${OPTS} ${path}"
+      arguments:
+        - name: "path"
+          description: "Path to the dockerfile and build context"
+          type: "string"
+          required: true
+      options:
+        - name: "--add-host"
+          description: "Add a custom host-to-IP mapping (host:ip)"
+          type: "array"
+          items:
+            type: string
+        - name: "--build-arg"
+          description: "Set build-time variables"
+          type: "array"
+          items:
+            type: string
+        - name: "--cache-from"
+          description: "Images to consider as cache sources"
+          type: "string"
+        - name: "--cgroup-parent"
+          description: "Optional parent cgroup for the container"
+          type: "string"
+        - name: "--compress"
+          description: "Compress the build context using gzip"
+          type: "boolean"
+        - name: "--cpu-period"
+          description: "Limit the CPU CFS (Completely Fair Scheduler) period"
+          type: "integer"
+        - name: "--cpu-quota"
+          description: "Limit the CPU CFS (completely Fair Scheduler) quota"
+          type: "integer"
+        - name: "--cpu-shares"
+          description: "CPU shares (relative weight)"
+          type: "integer"
+        - name: "--cpuset-cpus"
+          description: "CPUs in which to allow execution (0-3, 0,1)"
+          type: "string"
+        - name: "--cpuset-mems"
+          description: "MEMs in which to allow execution (0-3, 0,1)"
+          type: "string"
+        - name: "--disable-content-trust"
+          description: "Skip image verification"
+          type: "boolean"
+          default: true
+        - name: "--file"
+          description: "Name of the Dockerfile (Default is 'PATH/Dockerfile')"
+          type: "string"
+        - name: "--force-rm"
+          description: "Always remove intermediate containers"
+          type: "boolean"
+        - name: "--iidfile"
+          description: "Write the image ID to the file"
+          type: "string"
+        - name: "--isolation"
+          description: "Container isolation technology"
+          type: "string"
+        - name: "--label"
+          description: "Set metadata for an image"
+          type: "array"
+          items:
+            type: string
+        - name: "--memory"
+          description: "Memory limit. Supported unit: k, m, g."
+          type: "string"
+        - name: "--memory-swap"
+          description: "Swap limit equal to memory plus swap: '-1' to enable unlimited swap"
+          type: "integer"
+        - name: "--network"
+          description: "Set the networking mode for the RUN instructions during build"
+          type: "string"
+          default: "default"
+        - name: "--no-cache"
+          description: "Do not use cache when building the image"
+          type: "boolean"
+        - name: "--pull"
+          description: "Always attempt to pull a newer version of the image"
+          type: "boolean"
+        - name: "--quiet"
+          description: "Suppress the build output and print image ID on success"
+          type: "boolean"
+        - name: "--rm"
+          description: "Remove intermediate containers after a successful build"
+          type: "boolean"
+          default: true
+        - name: "--security-opt"
+          description: "Security options"
+          type: "string"
+        - name: "--shm-size"
+          description: "Size of /dev/shm"
+          type: "integer"
+        - name: "--tag"
+          description: "Name and optionally a tag in the 'name:tag' format"
+          type: "array"
+          items:
+            type: string
+        - name: "--target"
+          description: "Set the target build stage to build."
+          type: "string"
+        - name: "--ulimit"
+          description: "Ulimit options (default [])"
+          type: "string"
+    - name: "image history"
+      description: "Show the history of an image"
+      usage: "docker image history ${OPTS} ${image}"
+      arguments:
+        - name: "image"
+          description: "The name of the docker image"
+          type: "string"
+          example: "nginx:latest"
+          required: true
+      options:
+        - name: "--format"
+          description: "Pretty-print images using a Go template"
+          type: "string"
+        - name: "--human"
+          description: "Print sizes and dates in human readable format"
+          type: "boolean"
+          default: true
+        - name: "--no-trunc"
+          description: "Don't truncate output"
+          type: "boolean"
+        - name: "--quiet"
+          description: "Only show numeric IDs"
+          type: "boolean"
+    - name: "image import"
+      description: "Import the contents from a tarball to create a filesystem image"
+      usage: "docker image import ${OPTS} ${file}"
+      arguments:
+        - name: "file"
+          description: "the name of image file"
+          type: "string"
+          required: true
+      options:
+        - name: "--change"
+          description: "Apply Dockerfile instruction to the created image"
+          type: "array"
+          items:
+            type: string
+        - name: "--message"
+          description: "Set commit message for imported image"
+          type: "string"
+    - name: "image inspect"
+      description: "Display detailed information on one or more images"
+      usage: "docker image inspect ${OPTS} ${image}"
+      arguments:
+        - name: "image"
+          description: "The name of the docker image"
+          type: "string"
+          required: true
+          example: "nginx:latest"
+          multiple: true
+      options:
+        - name: "--format"
+          description: "Format the output using the given Go template"
+          type: "string"
+    - name: "image load"
+      description: "Load an image from a tar archive or STDIN"
+      usage: "docker image load ${OPTS}"
+      options:
+        - name: "--input"
+          description: "Read from tar archive file, instead of stdin"
+          type: "string"
+        - name: "--quiet"
+          description: "Suppress the load output"
+          type: "boolean"
+    - name: "image ls"
+      description: "List images"
+      usage: "docker image ls ${OPTS} ${repo}"
+      arguments:
+        - name: "repo"
+          description: "The name of the docker image"
+          type: "string"
+          example: "docker.io"
+      options:
+        - name: "--all"
+          description: "Show all images (default hides intermediate images"
+          type: "boolean"
+        - name: "--digests"
+          description: "Show digests"
+          type: "boolean"
+        - name: "--filter"
+          description: "Filter output based on conditions provided"
+          type: "string"
+        - name: "--format"
+          description: "Pretty-print images using a Go template"
+          type: "string"
+        - name: "--no-trunc"
+          description: "Don't truncate output"
+          type: "boolean"
+        - name: "--quiet"
+          description: "Only show numeric IDs"
+          type: "boolean"
+    - name: "image prune"
+      description: "删除未使用的镜像"
+      usage: "docker image prune ${OPTS}"
+      options:
+        - name: "--all"
+          description: "删除所有未使用的镜像，而不仅仅是没有Tag的的镜像"
+          type: "boolean"
+        - name: "--filter"
+          description: "提供过滤条件（例如 'until=<时间戳>'）"
+          type: "string"
+        - name: "--force"
+          description: "强制执行操作"
+          type: "boolean"
+    - name: "image pull"
+      description: "从镜像仓库中拉取一个镜像或者Repo"
+      usage: "docker image pull ${OPTS} ${image}"
+      arguments:
+        - name: "image"
+          description: "Docker镜像名称"
+          type: string
+          example: "nginx:latest"
+          required: true
+      options:
+        - name: "--all-tags"
+          description: "下载Repo中所有带标签的Docker镜像"
+          type: "boolean"
+        - name: "--disable-content-trust"
+          description: "跳过镜像验证"
+          type: "boolean"
+          default: true
+    - name: "image push"
+      description: "将某一镜像或Repo推送至镜像仓库"
+      usage: "docker image push ${OPTS} ${image}"
+      arguments:
+        - name: "image"
+          description: "Docker镜像名称"
+          type: string
+          example: "nginx:latest"
+          required: true
+      options:
+        - name: "--disable-content-trust"
+          description: "跳过镜像签名步骤"
+          type: "boolean"
+          default: true
+    - name: "image rm"
+      description: "删除一个或多个镜像"
+      usage: "docker image rm ${OPTS} ${image}"
+      arguments:
+        - name: "image"
+          description: "Docker镜像名称"
+          type: "string"
+          required: true
+          multiple: true
+          example: "nginx:latest"
+      options:
+        - name: "--force"
+          description: "强制执行操作"
+          type: "boolean"
+        - name: "--no-prune"
+          description: "Do not delete untagged parents"
+          type: "boolean"
+    - name: "image save"
+      description: "Save one or more images to a tar archive (streamed to STDOUT by default)"
+      usage: "docker image save ${OPTS} ${image}"
+      arguments:
+        - name: "image"
+          description: "The name of the docker image."
+          type: string
+          example: "nginx:latest"
+          required: true
+      options:
+        - name: "--compress"
+          description: "Compress layers when saving images"
+          type: "boolean"
+        - name: "--output"
+          description: "Write to a file, instead of STDOUT"
+          type: "string"
+    - name: "image tag"
+      description: "Create a tag TARGET_IMAGE that refers to SOURCE_IMAGE"
+      usage: "docker image tag ${source_image} ${target_image}"
+      arguments:
+        - name: "source_image"
+          description: "The name of the source docker image."
+          type: "string"
+          required: true
+          example: "nginx:latest"
+        - name: "target_image"
+          description: "The name of the target docker image."
+          type: "string"
+          required: true
+          example: "nginx:1.9.1"
