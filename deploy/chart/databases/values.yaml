@@ -28,7 +28,7 @@ databases:
     # [必填] PersistentVolume大小设置
     persistentVolumeSize: 10Gi
     # [必填] 密码设置
-    password: "8URM%HtCHQPxKe$u"
+    password: ""
     # Service设置
     service:
       # [必填] Service类型，ClusterIP或NodePort
@@ -53,7 +53,7 @@ databases:
     # [必填] 容器根目录只读
     readOnly: false
     # 密码设置
-    password: "8FDk2rnhxVPvkSdb"
+    password: ""
     # Service设置
     service:
       # [必填] Service类型，ClusterIP或NodePort
@@ -86,4 +86,4 @@ databases:
       # 当类型为nodePort时，填写主机的端口号
       nodePort: 
     # [必填] 密码设置
-    password: "123456"
+    password: ""
