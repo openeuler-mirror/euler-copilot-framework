@@ -76,15 +76,15 @@ agents:
     # 大模型设置
     llm:
       # 【必填】模型地址（需要包含v1后缀）
-      url: "http:/$IP:8001/v1"
+      url: 
       # 【必填】模型名称
-      name: "Qwen2.5-32B"
+      name: ""
       # 【必填】模型API Key
-      key: "sk-12345"
+      key: ""
       # 【必填】模型最大Token数
-      max_tokens: 8192
+      max_tokens: 8096
     # 【必填】Embedding地址
-    embedding: "http://vectorize-agent-service-service.euler-copilot.svc.cluster.local:8001/embedding"
+    embedding: ""
     # 待优化机器信息
     machine:
       # 【必填】IP地址
