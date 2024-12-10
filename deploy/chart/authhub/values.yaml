@@ -6,19 +6,19 @@ globals:
   imagePullPolicy: IfNotPresent
   # [必填] AuthHub部署域名
   # 需要修改为AuthHub域名。单机部署时，服务基于Host进行区分，无法使用IP地址
-  domain: ""
+  domain: 
   # 数据库设置
   databases:
     # [必填] database helm安装时的app name
-    app_name: "databases"
+    app_name: 
     # [必填] database helm安装时的namespace
-    app_namespace: "euler-copilot"
+    app_namespace:
     # 数据库密码
     passwords:
       # [必填] MySQL数据库的密码
-      mysql: "8URM%HtCHQPxKe$u"
+      mysql: 
       # [必填] Redis数据库的密码
-      redis: "8FDk2rnhxVPvkSdb"
+      redis: 
 
 # 部署AuthHub本地鉴权服务
 authhub:

@@ -44,16 +44,10 @@ spec:
           volumeMounts:
             - mountPath: /var/lib/postgresql/data
               name: pgsql-data
-            - mountPath: /docker-entrypoint-initdb.d/init.sql
-              name: pgsql-init
-              subPath: init.sql
           resources:
             {{- toYaml .Values.databases.pgsql.resources | nindent 12 }}
       volumes:
         - name: pgsql-data
           persistentVolumeClaim:
             claimName: pgsql-pvc-{{ .Release.Name }}
-        - name: pgsql-init
-          secret:
-            secretName: pgsql-secret-{{ .Release.Name }}
 {{- end }}
