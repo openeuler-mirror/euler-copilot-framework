@@ -1,0 +1,20 @@
+{
+  "tooltip": {},
+  "legend": {},
+  "dataset": {
+    "source": []
+  },
+  "xAxis": {
+    "type": "category",
+    "axisTick": {
+      "alignWithLabel": false
+    }
+  },
+  "yAxis": {
+    "type": "value",
+    "axisTick": {
+      "alignWithLabel": false
+    }
+  },
+  "series": []
+}

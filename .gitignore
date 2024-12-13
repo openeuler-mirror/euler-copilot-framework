@@ -1,0 +1,19 @@
+*venv/
+**/__pycache__/
+**/*.pyc
+.env
+# ide
+.idea
+.vscode
+.chroma
+*.key
+*.crt
+apps/utils/init
+start.sh
+*.bak
+encrypted_config.json
+apps/embedding
+apps/scheduler/plugin
+logs
+data/
+plugins/
