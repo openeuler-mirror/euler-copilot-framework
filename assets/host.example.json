@@ -1,0 +1,12 @@
+{
+  "hosts": [
+    {
+      "name": "host name",
+      "desc": "description of host",
+      "ip": "host_ip",
+      "port": 22,
+      "username": "username",
+      "pkey_path": "/xx/xx/xx/host/pkey.pem"
+    }
+  ]
+}

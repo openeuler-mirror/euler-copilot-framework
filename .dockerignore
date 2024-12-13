@@ -1,0 +1,9 @@
+*venv/
+**/__pycache__/
+Dockerfile
+.dockerignore
+.idea
+.vscode
+*.bak
+.gitignore
+.git/
