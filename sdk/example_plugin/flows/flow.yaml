@@ -1,0 +1,53 @@
+name: test
+description: 测试工作流
+on_error:
+  call_type: llm
+  params:
+    user_prompt: |
+      背景信息：
+      {context}
+      
+      错误信息：
+      {output}
+
+      使用自然语言解释这一信息，并给出可能的解决方法。
+steps:
+  - name: start
+    call_type: api
+    dangerous: true
+    params:
+      endpoint: GET /api/test
+    next: flow_choice
+  - name: flow_choice
+    call_type: choice
+    params:
+      instruction: 工具的返回值是否为Markdown报告？
+      choices:
+        - step: end
+          description: 返回值为Markdown格式时，选择此项
+        - step: report_gen
+          description: 返回值不是Markdown格式时，选择此项
+  - name: report_gen
+    call_type: llm
+    params:
+      system_prompt: 你是一个擅长Linux系统性能优化，且能够根据具体情况撰写分析报告的智能助手。
+      user_prompt: |
+        用户问题：
+        {question}
+
+        工具的输出信息：
+        {message}
+
+        背景信息：
+        {context}
+
+        根据上述信息，撰写系统性能分析报告。
+    next: end
+  - name: end
+    call_type: extract
+    params:
+      keys:
+        - content
+next_flow:
+  - test2
+  - test3
