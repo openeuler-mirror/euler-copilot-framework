@@ -15,14 +15,14 @@ openEuler Copilot System 命令行助手使用 API Key 来验证用户身份，�
 
 ## 获取方法
 
-1. 登录 [openEuler Copilot System (Gitee AI) 官网](https://eulercopilot.gitee.com)。
+1. 登录 openEuler Copilot System 网页端。
 2. 点击右上角头像，选择“API KEY”。
 3. 点击“新建”按钮。
 4. **请立即保存 API Key，它仅在创建时显示一次，请勿泄露给他人。**
 
 ## 管理 API Key
 
-1. 登录 [openEuler Copilot System (Gitee AI) 官网](https://eulercopilot.gitee.com)。
+1. 登录 openEuler Copilot System 网页端。
 2. 点击右上角头像，选择“API KEY”。
 3. 点击“刷新”按钮，刷新 API Key；点击“撤销”按钮，撤销 API Key。
    - 刷新 API Key 后，旧密钥失效，请立即保存新生成的 API Key。
