@@ -76,7 +76,7 @@ docker pull hub.oepkgs.net/neocopilot/oe_openai_server@sha256:7d7d35e6e7a7eb43c3
 
 轻量化部署视图如下，接入Copilot需要切换至CPU大模型，具体如下:
 
-<img src="./pictures/CPU推理部署/轻量化部署视图.png" alt="轻量化部署视图" style="zoom: 200%;" />
+![轻量化部署视图](./pictures/CPU推理部署/轻量化部署视图.png)
 
 ### 部署openai服务接口
 
@@ -86,7 +86,7 @@ docker pull hub.oepkgs.net/neocopilot/oe_openai_server@sha256:7d7d35e6e7a7eb43c3
 # 查看鲲鹏系列服务器逻辑核分布情况，下面以某鲲鹏服务器为例
 lscpu
 ```
-<img src="./pictures/CPU推理部署/CPU逻辑核心.png" alt="CPU逻辑核心分布图" style="zoom: 200%;" />
+![CPU逻辑核心分布图](./pictures/CPU推理部署/CPU逻辑核心.png)
 
 ```shell
 # 以鲲鹏服务器为例进行绑核，逻辑核总数设置numa节点的倍数，绑核按numa节点平均分配
@@ -127,13 +127,13 @@ for chunk in completion:
 
 接口测试成功返回如下图所示：
 
-<img src="./pictures/CPU推理部署/测试接口成功.png" alt="测试接口成功图" style="zoom: 200%;" />
+![测试接口成功图](./pictures/CPU推理部署/测试接口成功.png)
 
 ### EulerCopilot部署更改
 
 更改`deploy/chart/euler_copilot/values.yaml`下的`llm`选项，具体如下：
 
-<img src="./pictures/CPU推理部署/Copilot大模型部署差异.png" alt="Copilot大模型部署差异" style="zoom: 200%;" />
+![Copilot大模型部署差异](./pictures/CPU推理部署/Copilot大模型部署差异.png)
 
 其他部分EulerCopilot正常部署。
 
@@ -143,13 +143,13 @@ for chunk in completion:
 
 接入效果图1：
 
-<img src="./pictures/CPU推理部署/接入copilot效果图1.png" alt="接入copilot效果图1" style="zoom: 200%;" />
+![接入copilot效果图1](./pictures/CPU推理部署/接入copilot效果图1.png)
 
 接入效果图2：
 
-<img src="./pictures/CPU推理部署/接入copilot效果图2.png" alt="接入copilot效果图2" style="zoom: 200%;" />
+![接入copilot效果图2](./pictures/CPU推理部署/接入copilot效果图2.png)
 
 接入效果图3：
 
-<img src="./pictures/CPU推理部署/接入copilot效果图3.png" alt="接入copilot效果图3" style="zoom: 200%;" />
+![接入copilot效果图3](./pictures/CPU推理部署/接入copilot效果图3.png)
 
