@@ -67,7 +67,7 @@ wget https://hf-mirror.com/shenzhi-wang/Llama3-8B-Chinese-Chat-GGUF-4bit/resolve
 
 ```shell
 # 拉取oe_openai_server:0.0.1镜像
-docker pull hub.oepkgs.net/neocopilot/oe_openai_server@sha256:7d7d35e6e7a7eb43c31cebe093ae47b4f8fdcad67d36722b6e5a88522158f318
+docker pull hub.oepkgs.net/neocopilot/syshax@sha256:7d7d35e6e7a7eb43c31cebe093ae47b4f8fdcad67d36722b6e5a88522158f318
 ```
 
 ## EulerCopilot轻量化部署
@@ -95,7 +95,7 @@ docker run -it \
     -p 7860:7860 \
     -e OMP_NUM_THREADS=88 \
     -e GOMP_CPU_AFFINITY=0-21,24-45,48-69,72-93 \
-    hub.oepkgs.net/neocopilot/oe_openai_server:0.0.1 \
+    hub.oepkgs.net/neocopilot/syshax:0.0.1 \
     ./server /app/Baichuan2-13B-Chat-Q4_0.gguf -t 0.0 -n 4096
 ```
 
