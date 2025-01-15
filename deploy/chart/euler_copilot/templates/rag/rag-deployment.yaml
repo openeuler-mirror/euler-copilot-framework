@@ -7,6 +7,7 @@ metadata:
   labels:
     app: rag-{{ .Release.Name }}
 spec:
+  replicas: {{ .Values.globals.replicaCount }}
   selector:
     matchLabels:
       app: rag-{{ .Release.Name }}
@@ -18,21 +19,17 @@ spec:
         app: rag-{{ .Release.Name }}
     spec:
       automountServiceAccountToken: false
-      securityContext:
-        fsGroup: 1001
       containers:
         - name: rag
-          image: "{{if ne ( .Values.euler_copilot.rag.image.registry | toString ) ""}}{{ .Values.euler_copilot.rag.image.registry }}{{ else }}{{ .Values.globals.imageRegistry }}{{ end }}/{{ .Values.euler_copilot.rag.image.name }}:{{ .Values.euler_copilot.rag.image.tag | toString }}"
-          imagePullPolicy: {{ if ne ( .Values.euler_copilot.rag.image.imagePullPolicy | toString ) "" }}{{ .Values.euler_copilot.rag.image.imagePullPolicy }}{{ else }}{{ .Values.globals.imagePullPolicy }}{{ end }}
+          image: "{{ if ne (.Values.euler_copilot.rag.image.registry | toString ) "" }}{{ .Values.euler_copilot.rag.image.registry }}{{ else }}{{ .Values.globals.imageRegistry }}{{ end }}/{{ .Values.euler_copilot.rag.image.name }}:{{ .Values.euler_copilot.rag.image.tag | toString }}"
+          imagePullPolicy: {{ if ne (.Values.euler_copilot.rag.image.imagePullPolicy | toString) "" }}{{ .Values.euler_copilot.rag.image.imagePullPolicy }}{{ else }}{{ .Values.globals.imagePullPolicy }}{{ end }}
           ports:
-            - containerPort: 8005
-              protocol: TCP
-            - containerPort: 3000
+            - containerPort: 9988
               protocol: TCP
           livenessProbe:
             httpGet:
-              path: /health_check/ping
-              port: 8005
+              path: /health_check
+              port: 9988
               scheme: HTTP
             failureThreshold: 5
             initialDelaySeconds: 60
@@ -40,60 +37,20 @@ spec:
           env:
             - name: TZ
               value: "Asia/Shanghai"
-            - name: DAGSTER_DB_CONNECTION
-              value: postgresql+psycopg2://postgres:{{ .Values.globals.databases.passwords.postgres }}@pgsql-db-{{ .Values.globals.databases.app_name }}.{{ .Values.globals.databases.app_namespace }}.svc.cluster.local:5432/postgres
           volumeMounts:
-            - mountPath: /rag-service/config
-              name: rag-shared-secret-volume
-            - mountPath: /rag-service/scripts/docs
-              name: rag-docs
-            - mountPath: /tmp
-              name: rag-tmp
-          securityContext:
-            readOnlyRootFilesystem: {{ .Values.euler_copilot.rag.readOnly }}
-            capabilities:
-              drop:
-                - ALL
-            runAsUser: 1001
-            runAsGroup: 1001
-            runAsNonRoot: true
-            allowPrivilegeEscalation: false
+            - mountPath: /docker-entrypoint-initdb.d/init.sql
+              name: rag-config
+            - mountPath: /rag-service/data_chain/common
+              name: rag-common
           resources:
             {{- toYaml .Values.euler_copilot.rag.resources | nindent 12 }}
-      initContainers:
-        - name: rag-copy-secret
-          image: "{{if ne ( .Values.euler_copilot.init.image.registry | toString ) ""}}{{ .Values.euler_copilot.init.image.registry }}{{ else }}{{ .Values.globals.imageRegistry }}{{ end }}/{{ .Values.euler_copilot.init.image.name }}:{{ .Values.euler_copilot.init.image.tag | toString }}"
-          restartPolicy: Always
-          imagePullPolicy: {{ if ne ( .Values.euler_copilot.init.image.imagePullPolicy | toString ) "" }}{{ .Values.euler_copilot.init.image.imagePullPolicy }}{{ else }}{{ .Values.globals.imagePullPolicy }}{{ end }}
-          env:
-            - name: CHECK_URL
-              value: http://rag-service-{{ .Release.Name }}.{{ .Release.Namespace }}.svc.cluster.local:8005/health_check/ping
-            - name: INTERVAL
-              value: "60"
-            - name: CONFIG_FILES
-              value: ".env;prompt_template.yaml"
-          volumeMounts:
-            - mountPath: /config
-              name: rag-secret-volume
-            - mountPath: /config-rw
-              name: rag-shared-secret-volume
+      restartPolicy: Always
       volumes:
-        - name: rag-secret-volume
+        - name: rag-config
           secret:
             secretName: rag-secret-{{ .Release.Name }}
-            items:
-              - key: .env
-                path: .env
-              - key: prompt_template.yaml
-                path: prompt_template.yaml
-        - name: rag-shared-secret-volume
-          emptyDir:
-            medium: Memory
-        - name: rag-tmp
-          emptyDir:
-            medium: Memory
-        - name: rag-docs
-          hostPath:
-            path: {{ .Values.euler_copilot.rag.docs_dir }}
-            type: Directory
+        - name: rag-common
+          secret:
+            secretName: rag-secret-{{ .Release.Name }}
 {{- end }}
+

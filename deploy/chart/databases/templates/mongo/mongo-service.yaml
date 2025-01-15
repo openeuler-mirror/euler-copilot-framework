@@ -1,0 +1,17 @@
+{{- if .Values.databases.mongo.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: mongo-db-{{ .Release.Name }}
+  namespace: {{ .Release.Namespace }}
+spec:
+  type: {{ .Values.databases.mongo.service.type }}
+  selector:
+    app: mongo-{{ .Release.Name }}
+  ports:
+    - port: 27017
+      targetPort: 27017
+      {{- if (and (eq .Values.databases.mongo.service.type "NodePort") .Values.databases.mongo.service.nodePort) }}
+      nodePort: {{ .Values.databases.mongo.service.nodePort }}
+      {{- end }}
+{{- end }}

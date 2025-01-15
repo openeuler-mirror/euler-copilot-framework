@@ -1,0 +1,49 @@
+{{- if .Values.rca.anteater.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: anteater-deploy-{{ .Release.Name }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: anteater-{{ .Release.Name }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: anteater-{{ .Release.Name }}
+  template:
+    metadata:
+      annotations:
+        checksum/secret: {{ include (print $.Template.BasePath "/rca/rca-anteater/anteater-secret.yaml") . | sha256sum }}
+      labels:
+        app: anteater-{{ .Release.Name }}
+    spec:
+      containers:
+        - name: anteater
+          image: "{{if ne ( .Values.rca.anteater.image.registry | toString ) ""}}{{ .Values.rca.anteater.image.registry }}{{ else }}{{ .Values.globals.imageRegistry }}{{ end }}/{{ .Values.rca.anteater.image.name }}:{{ .Values.rca.anteater.image.tag | toString }}"
+          imagePullPolicy: {{ if ne ( .Values.rca.anteater.image.imagePullPolicy | toString ) "" }}{{ .Values.rca.anteater.image.imagePullPolicy }}{{ else }}{{ .Values.globals.imagePullPolicy }}{{ end }}
+          ports:
+            - containerPort: 5210
+              protocol: TCP
+          env:
+            - name: TZ
+              value: Asia/Shanghai
+          volumeMounts:
+            - mountPath: /etc/gala-anteater/config/log.settings.ini
+              name: anteater-config-volume
+              subPath: log.settings.ini
+            - mountPath: /etc/gala-anteater/config/gala-anteater.yaml
+              name: anteater-config-volume
+              subPath: gala-anteater.yaml
+            - mountPath: /home/llm_ops/config/config.json
+              name: anteater-config-volume
+              subPath: config.json
+            - mountPath: /home/gala-anteater/config/module/usad_model.job.json
+              name: anteater-config-volume
+              subPath: usad_model.job.json
+      restartPolicy: Always
+      volumes:
+        - name: anteater-config-volume
+          configMap:
+            name: anteater-config
+{{- end }}
