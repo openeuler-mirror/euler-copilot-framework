@@ -1,0 +1,19 @@
+{{- if .Values.euler_copilot.rag_web.ingress.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: rag-web-ingress-{{ .Release.Name }}
+  namespace: {{ .Release.Namespace }}
+spec:
+  rules:
+  - host: {{ .Values.euler_copilot.rag_web.ingress.domain }}
+    http:
+      paths:
+      - path: {{ .Values.euler_copilot.rag_web.ingress.prefix }}
+        pathType: Prefix
+        backend:
+          service:
+            name: rag-web-service-{{ .Release.Name }}
+            port:
+              number: 9888
+{{- end }}

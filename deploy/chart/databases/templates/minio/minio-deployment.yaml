@@ -1,0 +1,66 @@
+{{- if .Values.databases.minio.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: minio-deploy-{{ .Release.Name }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: minio-{{ .Release.Name }}
+spec:
+  replicas: {{ .Values.globals.replicaCount }}
+  selector:
+    matchLabels:
+      app: minio-{{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app: minio-{{ .Release.Name }}
+    spec:
+      automountServiceAccountToken: false
+      containers:
+        - name: minio
+          image: "{{if ne ( .Values.databases.minio.image.registry | toString ) ""}}{{ .Values.databases.minio.image.registry }}{{ else }}{{ .Values.globals.imageRegistry }}{{ end }}/{{ .Values.databases.minio.image.name }}:{{ .Values.databases.minio.image.tag | toString }}"
+          imagePullPolicy: {{ if ne ( .Values.databases.minio.image.imagePullPolicy | toString ) "" }}{{ .Values.databases.minio.image.imagePullPolicy }}{{ else }}{{ .Values.globals.imagePullPolicy }}{{ end }}
+          args:
+            - "server"
+            - "/data"
+            - "--console-address"
+            - ":9001"
+          ports:
+            - name: minio-data
+              containerPort: 9000
+              protocol: TCP
+            - name: minio-console
+              containerPort: 9001
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /minio/health/live
+              port: 9000
+              scheme: HTTP
+            failureThreshold: 5
+            initialDelaySeconds: 60
+            periodSeconds: 90
+          env:
+            - name: TZ
+              value: "Asia/Shanghai"
+            - name: MINIO_ROOT_USER
+              value: minioadmin
+            - name: MINIO_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: minio-secret-{{ .Release.Name }}
+                  key: minio-password
+          volumeMounts:
+            - mountPath: "/data"
+              name: minio-data
+          resources:
+            {{- toYaml .Values.databases.minio.resources | nindent 12 }}
+      volumes:
+        - name: minio-data
+          persistentVolumeClaim:
+            claimName: minio-pvc-{{ .Release.Name }}
+        - name: minio-init
+          secret:
+            secretName: minio-secret-{{ .Release.Name }}
+{{- end }}

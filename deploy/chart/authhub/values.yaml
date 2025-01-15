@@ -7,18 +7,16 @@ globals:
   # [必填] AuthHub部署域名
   # 需要修改为AuthHub域名。单机部署时，服务基于Host进行区分，无法使用IP地址
   domain: 
-  # 数据库设置
+  # [必填] 副本数
+  replicaCount: 1
+  # [必填] databases chart的信息
   databases:
-    # [必填] database helm安装时的app name
+    # [必填] helm安装时的release name
     app_name: 
-    # [必填] database helm安装时的namespace
-    app_namespace:
-    # 数据库密码
-    passwords:
-      # [必填] MySQL数据库的密码
-      mysql: 
-      # [必填] Redis数据库的密码
-      redis: 
+    # [必填] helm安装时的namespace
+    app_namespace: 
+    # [必填] redis密码
+    redis: 
 
 # 部署AuthHub本地鉴权服务
 authhub:
@@ -44,7 +42,7 @@ authhub:
       # [必填] Service类型，ClusterIP或NodePort
       type: ClusterIP
       # 当类型为nodePort时，填写主机的端口号
-      nodePort: 
+      nodePort: ""
     # Ingress设置
     ingress:
       # [必填] 是否启用Ingress
@@ -73,4 +71,31 @@ authhub:
       # [必填] Service类型，ClusterIP或NodePort
       type: ClusterIP
       # 当类型为nodePort时，填写主机的端口号
-      nodePort: 
+      nodePort: ""
+  mysql:
+    # [必填] 是否启用MySQL
+    enabled: true
+    # 镜像设置
+    image:
+      # 镜像仓库。留空则使用全局设置。
+      registry: ""
+      # [必填] 镜像名
+      name: mysql
+      # [必填] 镜像Tag
+      tag: "8"
+      # 拉取策略。留空则使用全局设置。
+      imagePullPolicy: ""
+    # [必填] 容器根目录只读
+    readOnly: false
+    # 性能限制设置
+    resources: {}
+    # Service设置
+    service:
+      # [必填] Service类型，ClusterIP或NodePort
+      type: ClusterIP
+      # 当类型为nodePort时，填写主机的端口号
+      nodePort: ""
+    # [必填] 密码
+    password: 
+    # [必填] 持久化存储大小
+    persistentVolumeSize: 10Gi
