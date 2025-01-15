@@ -8,10 +8,8 @@ from typing import Optional
 
 import asyncer
 import magic
-import minio
 from fastapi import UploadFile
 
-from apps.common.config import config
 from apps.constants import LOGGER
 from apps.entities.collection import (
     Conversation,
@@ -20,6 +18,7 @@ from apps.entities.collection import (
     RecordGroupDocument,
 )
 from apps.entities.record import RecordDocument
+from apps.models.minio import MinioClient
 from apps.models.mongo import MongoDB
 from apps.service import KnowledgeBaseService
 
@@ -27,18 +26,10 @@ from apps.service import KnowledgeBaseService
 class DocumentManager:
     """文件相关操作"""
 
-    client = minio.Minio(
-        endpoint=config["MINIO_ENDPOINT"],
-        access_key=config["MINIO_ACCESS_KEY"],
-        secret_key=config["MINIO_SECRET_KEY"],
-        secure=config["MINIO_SECURE"],
-    )
-
     @classmethod
     def _storage_single_doc_minio(cls, file_id: str, document: UploadFile) -> str:
         """存储单个文件到MinIO"""
-        if not cls.client.bucket_exists("document"):
-            cls.client.make_bucket("document")
+        MinioClient.check_bucket("document")
 
         # 获取文件MIME
         file = document.file
@@ -46,7 +37,7 @@ class DocumentManager:
         file.seek(0)
 
         # 上传到MinIO
-        cls.client.put_object(
+        MinioClient.upload_file(
             bucket_name="document",
             object_name=file_id,
             data=file,
@@ -166,7 +157,7 @@ class DocumentManager:
     @classmethod
     def _remove_doc_from_minio(cls, doc_id: str) -> None:
         """从MinIO中删除文件"""
-        cls.client.remove_object("document", doc_id)
+        MinioClient.delete_file("document", doc_id)
 
     @classmethod
     async def delete_document(cls, user_sub: str, document_list: list[str]) -> bool:

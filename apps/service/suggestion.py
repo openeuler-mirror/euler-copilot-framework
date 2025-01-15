@@ -9,7 +9,7 @@ from apps.common.queue import MessageQueue
 from apps.common.security import Security
 from apps.constants import LOGGER
 from apps.entities.collection import RecordContent
-from apps.entities.enum import EventType
+from apps.entities.enum_var import EventType
 from apps.entities.message import SuggestContent
 from apps.entities.task import RequestDataPlugin
 from apps.llm.patterns.recommend import Recommend

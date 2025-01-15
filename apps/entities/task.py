@@ -8,7 +8,7 @@ from typing import Any, Optional
 
 from pydantic import BaseModel, Field
 
-from apps.entities.enum import StepStatus
+from apps.entities.enum_var import StepStatus
 from apps.entities.record import RecordData
 
 

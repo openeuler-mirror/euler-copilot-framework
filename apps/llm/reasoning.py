@@ -5,10 +5,8 @@ Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 from collections.abc import AsyncGenerator
 
 import tiktoken
-from langchain_core.messages import ChatMessage as LangchainChatMessage
+from langchain_core.messages import ChatMessage
 from langchain_openai import ChatOpenAI
-from sparkai.llm.llm import ChatSparkLLM
-from sparkai.messages import ChatMessage as SparkChatMessage
 
 from apps.common.config import config
 from apps.common.singleton import Singleton
@@ -22,48 +20,13 @@ class ReasoningLLM(metaclass=Singleton):
 
     def __init__(self) -> None:
         """判断配置文件里用了哪种大模型；初始化大模型客户端"""
-        if config["MODEL"] == "openai":
-            self._client =  ChatOpenAI(
-                api_key=config["LLM_KEY"],
-                base_url=config["LLM_URL"],
-                model=config["LLM_MODEL"],
-                tiktoken_model_name="cl100k_base",
-                streaming=True,
-            )
-        elif config["MODEL"] == "spark":
-            self._client = ChatSparkLLM(
-                spark_app_id=config["SPARK_APP_ID"],
-                spark_api_key=config["SPARK_API_KEY"],
-                spark_api_secret=config["SPARK_API_SECRET"],
-                spark_api_url=config["SPARK_API_URL"],
-                spark_llm_domain=config["SPARK_LLM_DOMAIN"],
-                request_timeout=600,
-                streaming=True,
-            )
-        else:
-            err = "暂不支持此种大模型API"
-            raise NotImplementedError(err)
-
-
-    @staticmethod
-    def _construct_openai_message(messages: list[dict[str, str]]) -> list[LangchainChatMessage]:
-        """模型类型为OpenAI API时：构造消息列表
-
-        :param messages: 原始的消息，形如`{"role": "xxx", "content": "xxx"}`
-        :returns: 构造后的消息内容
-        """
-        return [LangchainChatMessage(content=msg["content"], role=msg["role"]) for msg in messages]
-
-
-    @staticmethod
-    def _construct_spark_message(messages: list[dict[str, str]]) -> list[SparkChatMessage]:
-        """当模型类型为星火（星火SDK时），构造消息
-
-        :param messages: 原始的消息，形如`{"role": "xxx", "content": "xxx"}`
-        :return: 构造后的消息内容
-        """
-        return [SparkChatMessage(content=msg["content"], role=msg["role"]) for msg in messages]
-
+        self._client =  ChatOpenAI(
+            api_key=config["LLM_KEY"],
+            base_url=config["LLM_URL"],
+            model=config["LLM_MODEL"],
+            tiktoken_model_name="cl100k_base",
+            streaming=True,
+        )
 
     def _calculate_token_length(self, messages: list[dict[str, str]], *, pure_text: bool = False) -> int:
         """使用ChatGPT的cl100k tokenizer，估算Token消耗量"""
@@ -76,7 +39,6 @@ class ReasoningLLM(metaclass=Singleton):
 
         return result
 
-
     async def call(self, task_id: str, messages: list[dict[str, str]],
                    max_tokens: int = 8192, temperature: float = 0.07, *, streaming: bool = True) -> AsyncGenerator[str, None]:
         """调用大模型，分为流式和非流式两种
@@ -88,14 +50,7 @@ class ReasoningLLM(metaclass=Singleton):
         :param temperature: 模型温度（随机化程度）
         """
         input_tokens = self._calculate_token_length(messages)
-
-        if config["MODEL"] == "openai":
-            msg_list = self._construct_openai_message(messages)
-        elif config["MODEL"] == "spark":
-            msg_list = self._construct_spark_message(messages)
-        else:
-            err = "暂不支持此种大模型API"
-            raise NotImplementedError(err)
+        msg_list = [ChatMessage(content=msg["content"], role=msg["role"]) for msg in messages]
 
         if streaming:
             result = ""

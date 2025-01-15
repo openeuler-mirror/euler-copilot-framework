@@ -85,8 +85,7 @@ class AddCommentData(BaseModel):
     is_like: bool = Field(...)
     dislike_reason: list[str] = Field(default=[], max_length=10)
     reason_link: str = Field(default=None, max_length=200)
-    reason_description: str = Field(
-        default=None, max_length=500)
+    reason_description: str = Field(default=None, max_length=500)
 
 
 class PostDomainData(BaseModel):

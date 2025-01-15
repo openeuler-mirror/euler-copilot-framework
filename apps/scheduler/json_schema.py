@@ -43,18 +43,21 @@ format_to_regex = {
 }
 
 
-def build_regex_from_schema(schema: str, whitespace_pattern: Optional[str] = None):
+def build_regex_from_schema(schema: str, whitespace_pattern: Optional[str] = None) -> str:
     """将JSON Schema转换为正则表达式"""
-    schema: dict[str, Any] = json.loads(schema)
-    Validator.check_schema(schema)
+    schema_dict: dict[str, Any] = json.loads(schema)
+    Validator.check_schema(schema_dict)
 
     # Build reference resolver
-    schema = Resource(contents=schema, specification=DRAFT202012)
-    uri = schema.id() if schema.id() is not None else ""
-    registry = Registry().with_resource(uri=uri, resource=schema)
+    schema_resource = Resource(contents=schema_dict, specification=DRAFT202012)
+    uri = schema_resource.id() if schema_resource.id() is not None else ""
+    if not uri:
+        err = "schema_resource.id() is None"
+        raise ValueError(err)
+    registry = Registry().with_resource(uri=uri, resource=schema_resource)  # type: ignore[arg-type]
     resolver = registry.resolver()
 
-    content = schema.contents
+    content = schema_resource.contents
     return to_regex(resolver, content, whitespace_pattern)
 
 
@@ -94,9 +97,9 @@ def validate_quantifiers(
     return min_bound, max_bound
 
 
-def to_regex(
+def to_regex(  # noqa: C901, PLR0911, PLR0912, PLR0915
     resolver: Resolver, instance: dict, whitespace_pattern: Optional[str] = None,
-):
+) -> str:
     """将 JSON Schema 实例转换为对应的正则表达式"""
     # set whitespace pattern
     if whitespace_pattern is None:
@@ -241,7 +244,7 @@ def to_regex(
                 try:
                     if int(max_items) < int(min_items):
                         err = "maxLength must be greater than or equal to minLength"
-                        raise ValueError(err)  # FIXME this raises an error but is caught right away by the except (meant for int("") I assume)
+                        raise ValueError(err)  # noqa: TRY301
                 except ValueError:
                     pass
                 return f'"{STRING_INNER}{{{min_items},{max_items}}}"'

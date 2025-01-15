@@ -4,7 +4,7 @@
 Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 """
 import json
-from typing import Any, ClassVar
+from typing import Any
 
 import aiohttp
 from fastapi import status
@@ -21,20 +21,14 @@ class SQL(CoreCall):
 
     name: str = "sql"
     description: str = "SQL工具，用于查询数据库中的结构化数据"
-    params_schema: ClassVar[dict[str, Any]] = {}
 
 
-    def __init__(self, syscall_vars: SysCallVars, **_kwargs) -> None:  # noqa: ANN003
-        """初始化SQL工具。
-
-        解析SQL工具参数，拼接PostgreSQL连接字符串，创建SQLAlchemy Engine。
-        :param params: SQL工具需要的参数。
-        """
+    async def init(self, syscall_vars: SysCallVars, **kwargs) -> None:  # noqa: ANN003
+        """初始化SQL工具。"""
+        await super().init(syscall_vars, **kwargs)
+        # 初始化aiohttp的ClientSession
         self._session = aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(300))
-        self._core_params = syscall_vars
-        # 初始化Slot Schema
-        self.slot_schema = {}
-
+        # 初始化SQLAlchemy Engine
         try:
             db_url = f'postgresql+psycopg2://{config["POSTGRES_USER"]}:{config["POSTGRES_PWD"]}@{config["POSTGRES_HOST"]}/{config["POSTGRES_DATABASE"]}'
             self._engine = create_engine(db_url, pool_size=20, max_overflow=80, pool_recycle=300, pool_pre_ping=True)
@@ -50,7 +44,7 @@ class SQL(CoreCall):
         :return: 从数据库中查询得到的数据，或报错信息
         """
         post_data = {
-            "question": self._core_params.question,
+            "question": self._syscall_vars.question,
             "topk_sql": 5,
             "use_llm_enhancements": True,
         }

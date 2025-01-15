@@ -6,11 +6,17 @@ from __future__ import annotations
 
 import logging
 
-CURRENT_REVISION_VERSION = "0.0.0"
+# 新对话默认标题
 NEW_CHAT = "New Chat"
+# 滑动窗口限流 默认窗口期
 SLIDE_WINDOW_TIME = 60
+# 滑动窗口限流 最大请求数
 SLIDE_WINDOW_QUESTION_COUNT = 10
+# API Call 最大返回值长度（字符）
 MAX_API_RESPONSE_LENGTH = 4096
+# Scheduler最大历史轮次
 MAX_SCHEDULER_HISTORY_SIZE = 3
+# 语义接口目录中工具子目录
+CALL_DIR = "call"
 
-LOGGER = logging.getLogger("gunicorn.error")
+LOGGER = logging.getLogger("ray")

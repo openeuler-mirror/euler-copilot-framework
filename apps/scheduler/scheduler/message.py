@@ -9,7 +9,7 @@ from typing import Union
 from apps.common.queue import MessageQueue
 from apps.constants import LOGGER
 from apps.entities.collection import Document
-from apps.entities.enum import EventType
+from apps.entities.enum_var import EventType
 from apps.entities.message import (
     DocumentAddContent,
     InitContent,

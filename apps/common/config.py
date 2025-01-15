@@ -4,6 +4,7 @@ Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 """
 import os
 import secrets
+from pathlib import Path
 from typing import Optional
 
 from dotenv import dotenv_values
@@ -49,6 +50,11 @@ class ConfigModel(BaseModel):
     DETECT_TYPE: Optional[str] = Field(description="敏感词检测系统类型", default=None)
     WORDS_CHECK: Optional[str] = Field(description="AutoGPT敏感词检测系统API URL", default=None)
     WORDS_LIST: Optional[str] = Field(description="敏感词列表文件路径", default=None)
+    SCAS_APP_ID: Optional[str] = Field(description="SCAS敏感词检测系统 APP ID", default=None)
+    SCAS_SIGN_KEY: Optional[str] = Field(description="SCAS敏感词检测系统 请求签名密钥", default=None)
+    SCAS_BUSINESS_ID: Optional[str] = Field(description="SCAS敏感词检测系统 业务ID", default=None)
+    SCAS_SCENE_ID: Optional[str] = Field(description="SCAS敏感词检测系统 场景ID", default=None)
+    SCAS_URL: Optional[str] = Field(description="SCAS实例域名", default=None)
     # CSRF
     ENABLE_CSRF: bool = Field(description="是否启用CSRF Token功能", default=True)
     # MongoDB
@@ -71,18 +77,10 @@ class ConfigModel(BaseModel):
     HALF_KEY1: str = Field(description="Half key 1")
     HALF_KEY2: str = Field(description="Half key 2")
     HALF_KEY3: str = Field(description="Half key 3")
-    # 模型类型
-    MODEL: str = Field(description="选择的模型类型", default="openai")
-    # OpenAI API
+    # OpenAI大模型
     LLM_KEY: Optional[str] = Field(description="OpenAI API 密钥", default=None)
     LLM_URL: Optional[str] = Field(description="OpenAI API URL地址", default=None)
     LLM_MODEL: Optional[str] = Field(description="OpenAI API 模型名", default=None)
-    # 星火大模型
-    SPARK_APP_ID: Optional[str] = Field(description="星火大模型API 应用名", default=None)
-    SPARK_API_KEY: Optional[str] = Field(description="星火大模型API 密钥名", default=None)
-    SPARK_API_SECRET: Optional[str] = Field(description="星火大模型API 密钥值", default=None)
-    SPARK_API_URL: Optional[str] = Field(description="星火大模型API URL地址", default=None)
-    SPARK_LLM_DOMAIN: Optional[str] = Field(description="星火大模型API 领域名", default=None)
     # 参数猜解
     SCHEDULER_BACKEND: Optional[str] = Field(description="参数猜解后端", default=None)
     SCHEDULER_MODEL: Optional[str] = Field(description="参数猜解模型名", default=None)
@@ -94,6 +92,8 @@ class ConfigModel(BaseModel):
     PLUGIN_DIR: Optional[str] = Field(description="插件路径", default=None)
     # SQL接口路径
     SQL_URL: str = Field(description="Chat2DB接口路径")
+    # Gitee白名单路径
+    GITEE_WHITELIST: Optional[str] = Field(description="Gitee白名单路径")
 
 
 class Config:
@@ -109,7 +109,7 @@ class Config:
         self._config = ConfigModel.model_validate(dotenv_values(config_file))
 
         if os.getenv("PROD"):
-            os.remove(config_file)
+            Path(config_file).unlink()
 
     def __getitem__(self, key: str):  # noqa: ANN204
         """获得配置文件中特定条目的值

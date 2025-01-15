@@ -10,7 +10,7 @@ from jionlp import parse_time
 from jsonschema import TypeChecker
 
 from apps.constants import LOGGER
-from apps.entities.enum import SlotType
+from apps.entities.enum_var import SlotType
 from apps.scheduler.slot.parser.core import SlotParser
 
 

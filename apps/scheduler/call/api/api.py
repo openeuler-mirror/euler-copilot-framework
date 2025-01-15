@@ -3,7 +3,7 @@
 Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 """
 import json
-from typing import Any, ClassVar, Optional
+from typing import Any, Optional
 
 import aiohttp
 from fastapi import status
@@ -20,6 +20,7 @@ from apps.scheduler.pool.pool import Pool
 class _APIParams(BaseModel):
     endpoint: str = Field(description="API接口HTTP Method 与 URI")
     timeout: int = Field(description="工具超时时间", default=300)
+    fixed_data: dict[str, Any] = Field(description="固定数据", default={})
 
 
 class API(CoreCall):
@@ -27,24 +28,20 @@ class API(CoreCall):
 
     name: str = "api"
     description: str = "根据给定的用户输入和历史记录信息，向某一个API接口发送请求、获取数据。"
-    params_schema: ClassVar[dict[str, Any]] = _APIParams.model_json_schema()
+    params: type[_APIParams] = _APIParams
 
 
-    def __init__(self, syscall_vars: SysCallVars, **kwargs) -> None:  # noqa: ANN003
+    async def init(self, syscall_vars: SysCallVars, **kwargs) -> None:  # noqa: ANN003
         """初始化API调用工具"""
-        # 固定参数
-        self._core_params = syscall_vars
-        self._params = _APIParams.model_validate(kwargs)
-        # 初始化Slot Schema
-        self.slot_schema = {}
+        await super().init(syscall_vars, **kwargs)
 
         # 额外参数
-        if "plugin_id" not in self._core_params.extra:
+        if "plugin_id" not in self._syscall_vars.extra:
             err = "[API] plugin_id not in extra_data"
             raise ValueError(err)
-        plugin_name: str = self._core_params.extra["plugin_id"]
+        plugin_name: str = self._syscall_vars.extra["plugin_id"]
 
-        method, _ = self._params.endpoint.split(" ")
+        method, _ = self.params.endpoint.split(" ")
         plugin_data = Pool().get_plugin(plugin_name)
         if plugin_data is None:
             err = f"[API] 插件{plugin_name}不存在！"
@@ -59,7 +56,7 @@ class API(CoreCall):
         # 从spec中找出该接口对应的spec
         for item in full_spec.endpoints:
             name, _, _ = item
-            if name == self._params.endpoint:
+            if name == self.params.endpoint:
                 self._spec = item
         if not hasattr(self, "_spec"):
             err = "[API] Endpoint not found."
@@ -79,7 +76,7 @@ class API(CoreCall):
 
     async def call(self, slot_data: dict[str, Any]) -> CallResult:
         """调用API，然后返回LLM解析后的数据"""
-        method, url = self._params.endpoint.split(" ")
+        method, url = self.params.endpoint.split(" ")
         self._session = aiohttp.ClientSession()
         try:
             result = await self._call_api(method, url, slot_data)
@@ -114,7 +111,7 @@ class API(CoreCall):
             elif self._auth["type"] == "oidc":
                 token = await TokenManager.get_plugin_token(
                     self._auth["domain"],
-                    self._core_params.session_id,
+                    self._syscall_vars.session_id,
                     self._auth["access_token_url"],
                     int(self._auth["token_expire_time"]),
                 )
@@ -123,16 +120,16 @@ class API(CoreCall):
         if method == "GET":
             params.update(data)
             return self._session.get(self._server + url, params=params, headers=header, cookies=cookie,
-                                    timeout=self._params.timeout)
+                                    timeout=self.params.timeout)
         if method == "POST":
             if self._data_type == "form":
                 form_data = files
                 for key, val in data.items():
                     form_data.add_field(key, val)
                 return self._session.post(self._server + url, data=form_data, headers=header, cookies=cookie,
-                                         timeout=self._params.timeout)
+                                         timeout=self.params.timeout)
             return self._session.post(self._server + url, json=data, headers=header, cookies=cookie,
-                                     timeout=self._params.timeout)
+                                     timeout=self.params.timeout)
 
         err = "Method not implemented."
         raise NotImplementedError(err)
@@ -148,6 +145,27 @@ class API(CoreCall):
 
         err = "Data type not implemented."
         raise NotImplementedError(err)
+
+    # def _file_to_lists(self, spec: dict[str, Any]) -> aiohttp.FormData:
+    #     file_form = aiohttp.FormData()
+
+    #     if self._params.files is None:
+    #         return file_form
+
+    #     file_names = []
+    #     for file in self._params.files:
+    #         file_names.append(Files.get_by_id(file)["name"])
+
+    #     file_spec = check_upload_file(spec, file_names)
+    #     selected_file = choose_file(file_names, file_spec, self.params_obj.question, self.params_obj.background, self.usage)
+
+    #     for key, val in json.loads(selected_file).items():
+    #         if isinstance(val, str):
+    #             file_form.add_field(key, open(Files.get_by_name(val)["path"], "rb"), filename=val)
+    #         else:
+    #             for item in val:
+    #                 file_form.add_field(key, open(Files.get_by_name(item)["path"], "rb"), filename=item)
+    #     return file_form
 
     async def _call_api(self, method: str, url: str, slot_data: Optional[dict[str, Any]] = None) -> CallResult:
         LOGGER.info(f"调用接口{url}，请求数据为{slot_data}")

@@ -16,7 +16,12 @@ from jsonschema.validators import extend
 from apps.constants import LOGGER
 from apps.entities.plugin import CallResult
 from apps.llm.patterns.json import Json
-from apps.scheduler.slot.parser import SlotDateParser, SlotTimestampParser
+from apps.scheduler.slot.parser import (
+    SlotConstParser,
+    SlotDateParser,
+    SlotDefaultParser,
+    SlotTimestampParser,
+)
 from apps.scheduler.slot.util import escape_path, patch_json
 
 # 各类检查器
@@ -25,12 +30,20 @@ _TYPE_CHECKER = [
     SlotTimestampParser,
 ]
 _FORMAT_CHECKER = []
-_KEYWORD_CHECKER = {}
-# 类型转换器
-_CONVERTER = [
+_KEYWORD_CHECKER = {
+    "const": SlotConstParser,
+    "default": SlotDefaultParser,
+}
+
+# 各类转换器
+_TYPE_CONVERTER = [
     SlotDateParser,
     SlotTimestampParser,
 ]
+_KEYWORD_CONVERTER = {
+    "const": SlotConstParser,
+    "default": SlotDefaultParser,
+}
 
 class Slot:
     """参数槽
@@ -112,7 +125,7 @@ class Slot:
                     processed_dict[key] = Slot._process_json_value(val, spec_data["properties"][key])
                 return processed_dict
 
-            for converter in _CONVERTER:
+            for converter in _TYPE_CONVERTER:
                 # 如果是自定义类型
                 if converter.name == spec_data["type"]:
                     # 如果类型有附加字段

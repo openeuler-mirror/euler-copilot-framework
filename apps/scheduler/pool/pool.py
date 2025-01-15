@@ -18,7 +18,8 @@ from sqlalchemy.orm import sessionmaker
 from apps.common.config import config
 from apps.common.singleton import Singleton
 from apps.constants import LOGGER
-from apps.entities.plugin import Flow, PluginData
+from apps.entities.flow import Flow
+from apps.entities.plugin import PluginData
 from apps.scheduler.pool.entities import Base, CallItem, FlowItem, PluginItem
 from apps.scheduler.vector import DocumentWrapper, VectorDB
 

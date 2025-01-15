@@ -14,7 +14,7 @@ from apps.entities.collection import (
     Document,
     Record,
 )
-from apps.entities.enum import EventType, StepStatus
+from apps.entities.enum_var import EventType, StepStatus
 from apps.entities.plugin import ExecutorBackground, SysExecVars
 from apps.entities.rag_data import RAGQueryReq
 from apps.entities.record import RecordDocument

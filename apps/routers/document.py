@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, File, Query, UploadFile, status
 from fastapi.responses import JSONResponse
 
 from apps.dependency import get_user, verify_csrf_token, verify_user
-from apps.entities.enum import DocumentStatus
+from apps.entities.enum_var import DocumentStatus
 from apps.entities.response_data import (
     ConversationDocumentItem,
     ConversationDocumentMsg,

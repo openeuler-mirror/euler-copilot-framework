@@ -11,7 +11,7 @@ from apps.entities.collection import (
     RecordContent,
     RecordMetadata,
 )
-from apps.entities.enum import StepStatus
+from apps.entities.enum_var import StepStatus
 
 
 class RecordDocument(Document):

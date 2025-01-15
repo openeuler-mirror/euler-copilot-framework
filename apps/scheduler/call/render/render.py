@@ -4,7 +4,7 @@ Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 """
 import json
 from pathlib import Path
-from typing import Any, ClassVar
+from typing import Any
 
 from apps.entities.plugin import CallError, CallResult, SysCallVars
 from apps.scheduler.call.core import CoreCall
@@ -16,17 +16,14 @@ class Render(CoreCall):
 
     name: str = "render"
     description: str = "渲染图表工具，可将给定的数据绘制为图表。"
-    params_schema: ClassVar[dict[str, Any]] = {}
 
 
-    def __init__(self, syscall_vars: SysCallVars, **_kwargs) -> None:  # noqa: ANN003
+    async def init(self, syscall_vars: SysCallVars, **_kwargs) -> None:  # noqa: ANN003
         """初始化Render Call，校验参数，读取option模板
 
         :param syscall_vars: Render Call参数
         """
-        self._core_params = syscall_vars
-        # 初始化Slot Schema
-        self.slot_schema = {}
+        await super().init(syscall_vars, **_kwargs)
 
         try:
             option_location = Path(__file__).parent / "option.json"
@@ -39,7 +36,7 @@ class Render(CoreCall):
     async def call(self, _slot_data: dict[str, Any]) -> CallResult:
         """运行Render Call"""
         # 检测前一个工具是否为SQL
-        data = CallResult(**self._core_params.history[-1].output_data).output
+        data = CallResult(**self._syscall_vars.history[-1].output_data).output
         if data["type"] != "sql" or "dataset" not in data:
             raise CallError(
                 message="图表生成失败！Render必须在SQL后调用！",
@@ -70,7 +67,7 @@ class Render(CoreCall):
         self._option_template["dataset"]["source"] = data
 
         try:
-            llm_output = await RenderStyle().generate(self._core_params.task_id, question=self._core_params.question)
+            llm_output = await RenderStyle().generate(self._syscall_vars.task_id, question=self._syscall_vars.question)
             add_style = llm_output.get("additional_style", "")
             self._parse_options(column_num, llm_output["chart_type"], add_style, llm_output["scale_type"])
         except Exception as e:

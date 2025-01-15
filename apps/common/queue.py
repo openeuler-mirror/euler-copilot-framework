@@ -8,7 +8,7 @@ from typing import Any
 from redis.exceptions import ResponseError
 
 from apps.constants import LOGGER
-from apps.entities.enum import EventType, StepStatus
+from apps.entities.enum_var import EventType, StepStatus
 from apps.entities.message import (
     HeartbeatData,
     MessageBase,
