@@ -1,6 +1,0 @@
-apiVersion: v2
-name: euler-copilot-databases
-description: Euler Copilot 数据库 Helm部署包
-type: application
-version: 0.9.1
-appVersion: "1.16.0"
