@@ -1,3 +1,0 @@
-感谢您使用Euler Copilot！
-当前为Euler Copilot 0.9.1版本。
-当前Chart的功能为：witChainD语料管理平台部署

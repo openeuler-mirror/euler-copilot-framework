@@ -1,3 +1,0 @@
-MySQL:
-  user: {{ .Values.agents.tune.mysql.user }}
-  password: {{ .Values.agents.tune.mysql.password }}
