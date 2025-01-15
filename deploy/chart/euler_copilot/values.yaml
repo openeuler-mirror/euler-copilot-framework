@@ -121,7 +121,7 @@ euler_copilot:
     # Volume设置
     volume:
       # [必填] 插件包路径
-      plugin_dir:     # 修改为实际的插件文件夹地址
+      service_dir:     # 修改为实际的插件文件夹地址
     # [必填] Vectorize服务地址
     vectorize:
       # [必填] 是否使用内部Vectorize服务
