@@ -7,7 +7,7 @@ from typing import Any, Optional
 from pydantic import BaseModel, Field
 
 from apps.entities.collection import Blacklist, Document
-from apps.entities.enum import DocumentStatus
+from apps.entities.enum_var import DocumentStatus
 from apps.entities.plugin import PluginData
 from apps.entities.record import RecordData
 

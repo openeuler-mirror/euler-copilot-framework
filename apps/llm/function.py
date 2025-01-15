@@ -39,6 +39,9 @@ class FunctionLLM:
         if config["SCHEDULER_BACKEND"] == "ollama":
             self._client = ollama.AsyncClient(
                 host=config["SCHEDULER_URL"],
+                headers={
+                    # "Authorization": f"Bearer {config['SCHEDULER_API_KEY']}",
+                },
             )
 
     @staticmethod

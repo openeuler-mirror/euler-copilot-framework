@@ -19,7 +19,7 @@ import apps.scheduler.call as system_call
 from apps.common.config import config
 from apps.common.singleton import Singleton
 from apps.constants import LOGGER
-from apps.entities.plugin import Flow, NextFlow, Step
+from apps.entities.flow import Flow, NextFlow, Step
 from apps.scheduler.pool.pool import Pool
 
 OPENAPI_FILENAME = "openapi.yaml"

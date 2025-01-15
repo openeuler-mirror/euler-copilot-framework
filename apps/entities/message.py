@@ -7,7 +7,7 @@ from typing import Any, Optional
 from pydantic import BaseModel, Field
 
 from apps.entities.collection import RecordMetadata
-from apps.entities.enum import EventType, FlowOutputType, StepStatus
+from apps.entities.enum_var import EventType, FlowOutputType, StepStatus
 
 
 class HeartbeatData(BaseModel):

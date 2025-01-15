@@ -34,6 +34,14 @@ class MongoDB:
             raise RuntimeError(str(e)) from e
 
     @classmethod
+    async def clear_collection(cls, collection_name: str) -> None:
+        """清空MongoDB集合（表）"""
+        try:
+            await cls._client[config["MONGODB_DATABASE"]][collection_name].delete_many({})
+        except Exception as e:
+            LOGGER.error(f"Clear collection {collection_name} failed: {e}")
+
+    @classmethod
     def get_session(cls) -> AsyncClientSession:
         """获取MongoDB会话"""
         return cls._client.start_session()

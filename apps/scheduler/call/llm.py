@@ -4,14 +4,14 @@ Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 """
 from datetime import datetime
 from textwrap import dedent
-from typing import Any, ClassVar
+from typing import Any
 
 import pytz
 from jinja2 import BaseLoader, select_autoescape
 from jinja2.sandbox import SandboxedEnvironment
 from pydantic import BaseModel, Field
 
-from apps.entities.plugin import CallError, CallResult, SysCallVars
+from apps.entities.plugin import CallError, CallResult
 from apps.llm.reasoning import ReasoningLLM
 from apps.scheduler.call.core import CoreCall
 
@@ -44,17 +44,9 @@ class _LLMParams(BaseModel):
 class LLM(CoreCall):
     """大模型调用工具"""
 
-    def __init__(self, syscall_vars: SysCallVars, **kwargs) -> None:  # noqa: ANN003
-        """初始化LLM Call"""
-        self._core_params = syscall_vars
-        self._params = _LLMParams.model_validate(kwargs)
-        # 初始化Slot Schema
-        self.slot_schema = {}
-
-
     name: str = "llm"
     description: str = "大模型调用工具，用于以指定的提示词和上下文信息调用大模型，并获得输出。"
-    params_schema: ClassVar[dict[str, Any]] = _LLMParams.model_json_schema()
+    params: type[_LLMParams] = _LLMParams
 
 
     async def call(self, _slot_data: dict[str, Any]) -> CallResult:
@@ -63,9 +55,9 @@ class LLM(CoreCall):
         time = datetime.now(tz=pytz.timezone("Asia/Shanghai")).strftime("%Y-%m-%d %H:%M:%S")
         formatter = {
             "time": time,
-            "context": self._core_params.background,
-            "question": self._core_params.question,
-            "history": self._core_params.history,
+            "context": self._syscall_vars.background,
+            "question": self._syscall_vars.question,
+            "history": self._syscall_vars.history,
         }
 
         try:
@@ -75,14 +67,14 @@ class LLM(CoreCall):
                 autoescape=select_autoescape(),
                 trim_blocks=True,
                 lstrip_blocks=True,
-            ).from_string(self._params.system_prompt)
+            ).from_string(self.params.system_prompt)
             system_input = system_tmpl.render(**formatter)
             user_tmpl = SandboxedEnvironment(
                 loader=BaseLoader(),
                 autoescape=select_autoescape(),
                 trim_blocks=True,
                 lstrip_blocks=True,
-            ).from_string(self._params.user_prompt)
+            ).from_string(self.params.user_prompt)
             user_input = user_tmpl.render(**formatter)
         except Exception as e:
             raise CallError(message=f"用户提示词渲染失败：{e!s}", data={}) from e
@@ -94,7 +86,7 @@ class LLM(CoreCall):
 
         try:
             result = ""
-            async for chunk in ReasoningLLM().call(task_id=self._core_params.task_id, messages=message):
+            async for chunk in ReasoningLLM().call(task_id=self._syscall_vars.task_id, messages=message):
                 result += chunk
         except Exception as e:
             raise CallError(message=f"大模型调用失败：{e!s}", data={}) from e

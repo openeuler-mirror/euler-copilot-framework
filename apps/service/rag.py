@@ -29,7 +29,9 @@ class RAG:
 
 
         # asyncio HTTP请求
-        async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=300)) as session, session.post(url, headers=headers, data=payload, ssl=False) as response:
+        async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=300)) as session, session.post(
+            url, headers=headers, data=payload, ssl=False,
+        ) as response:
             if response.status != status.HTTP_200_OK:
                 LOGGER.error(f"RAG服务返回错误码: {response.status}\n{await response.text()}")
                 return

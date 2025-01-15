@@ -48,7 +48,7 @@ class Activity:
 
     @staticmethod
     async def remove_active(user_sub: str) -> None:
-        """清除用户的活动标识，释放GPU资源
+        """清除用户的活跃标识，释放GPU资源
 
         :param user_sub: 用户实体ID
         """

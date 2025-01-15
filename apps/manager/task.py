@@ -12,7 +12,7 @@ from apps.constants import LOGGER
 from apps.entities.collection import (
     RecordGroup,
 )
-from apps.entities.enum import StepStatus
+from apps.entities.enum_var import StepStatus
 from apps.entities.record import (
     RecordContent,
     RecordData,

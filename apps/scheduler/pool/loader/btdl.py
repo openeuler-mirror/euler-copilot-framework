@@ -1,10 +1,11 @@
+"""BTDL文档加载器
+
+Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
+"""
 import hashlib
-from typing import Any, Union
+from typing import Any
 
 import yaml
-from chromadb import Collection
-
-from apps.scheduler.vector import DocumentWrapper, VectorDB
 
 btdl_spec = []
 
@@ -16,13 +17,6 @@ btdl_spec = []
 """
 class BTDLLoader:
     """二进制描述文件 加载器"""
-
-    vec_collection: Collection
-
-    def __init__(self, collection_name: str) -> None:
-        """初始化BTDL加载器"""
-        # Create or use existing vec_db
-        self.vec_collection = VectorDB.get_collection(collection_name)
 
     @staticmethod
     # 循环检查每一个参数，确定为合法JSON Schema

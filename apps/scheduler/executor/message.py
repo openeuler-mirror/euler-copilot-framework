@@ -3,7 +3,8 @@
 Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 """
 from apps.common.queue import MessageQueue
-from apps.entities.enum import EventType, FlowOutputType, StepStatus
+from apps.entities.enum_var import EventType, FlowOutputType, StepStatus
+from apps.entities.flow import Flow
 from apps.entities.message import (
     FlowStartContent,
     FlowStopContent,
@@ -13,7 +14,6 @@ from apps.entities.message import (
 )
 from apps.entities.plugin import (
     CallResult,
-    Flow,
 )
 from apps.entities.task import ExecutorState, FlowHistory
 from apps.llm.patterns.executor import ExecutorResult

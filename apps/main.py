@@ -4,11 +4,15 @@ Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 """
 from __future__ import annotations
 
+import ray
 from apscheduler.schedulers.background import BackgroundScheduler
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from ray import serve
+from ray.serve.config import HTTPOptions
 
 from apps.common.config import config
+from apps.common.wordscheck import WordsCheck
 from apps.cron.delete_user import DeleteUserCron
 from apps.dependency.session import VerifySessionMiddleware
 from apps.routers import (
@@ -25,6 +29,7 @@ from apps.routers import (
     plugin,
     record,
 )
+from apps.scheduler.pool.loader import Loader
 
 # 定义FastAPI app
 app = FastAPI(docs_url=None, redoc_url=None)
@@ -54,3 +59,20 @@ app.include_router(knowledge.router)
 scheduler = BackgroundScheduler()
 scheduler.start()
 scheduler.add_job(DeleteUserCron.delete_user, "cron", hour=3)
+
+# 包装Ray
+@serve.deployment(ray_actor_options={"num_gpus": 0})
+@serve.ingress(app)
+class FastAPIWrapper:
+    """FastAPI Ray包装器"""
+
+
+# 运行
+if __name__ == "__main__":
+    # 初始化
+    WordsCheck.init()
+    Loader.init()
+    # 启动Ray
+    ray.init(dashboard_host="0.0.0.0", num_cpus=4)  # noqa: S104
+    serve.start(http_options=HTTPOptions(host="0.0.0.0", port=8002))  # noqa: S104
+    serve.run(FastAPIWrapper.bind(), blocking=True)

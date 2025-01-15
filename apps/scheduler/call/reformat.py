@@ -5,7 +5,7 @@ Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 import json
 from datetime import datetime
 from textwrap import dedent
-from typing import Any, ClassVar, Optional
+from typing import Any, Optional
 
 import _jsonnet
 import pytz
@@ -29,17 +29,12 @@ class Extract(CoreCall):
 
     name: str = "reformat"
     description: str = "从上一步的工具的原始JSON返回结果中，提取特定字段的信息。"
-    params_schema: ClassVar[dict[str, Any]] = _ReformatParam.model_json_schema()
+    params: type[_ReformatParam] = _ReformatParam
 
-
-    def __init__(self, syscall_vars: SysCallVars, **kwargs) -> None:  # noqa: ANN003
+    async def init(self, syscall_vars: SysCallVars, **kwargs) -> None:  # noqa: ANN003
         """初始化Reformat工具"""
-        self._core_params = syscall_vars
-        self._params = _ReformatParam.model_validate(kwargs)
-        self._last_output = CallResult(**self._core_params.history[-1].output_data)
-        # 初始化Slot Schema
-        self.slot_schema = {}
-
+        await super().init(syscall_vars, **kwargs)
+        self._last_output = CallResult(**self._syscall_vars.history[-1].output_data)
 
     async def call(self, _slot_data: dict[str, Any]) -> CallResult:
         """调用Reformat工具
@@ -49,7 +44,7 @@ class Extract(CoreCall):
         """
         # 判断用户是否给了值
         time = datetime.now(tz=pytz.timezone("Asia/Shanghai")).strftime("%Y-%m-%d %H:%M:%S")
-        if self._params.text is None:
+        if self.params.text is None:
             result_message = self._last_output.message
         else:
             text_template = SandboxedEnvironment(
@@ -57,23 +52,23 @@ class Extract(CoreCall):
                 autoescape=select_autoescape(),
                 trim_blocks=True,
                 lstrip_blocks=True,
-            ).from_string(self._params.text)
-            result_message = text_template.render(time=time, history=self._core_params.history, question=self._core_params.question)
+            ).from_string(self.params.text)
+            result_message = text_template.render(time=time, history=self._syscall_vars.history, question=self._syscall_vars.question)
 
-        if self._params.data is None:
+        if self.params.data is None:
             result_data = self._last_output.output
         else:
             extra_str = json.dumps({
                 "time": time,
-                "question": self._core_params.question,
+                "question": self._syscall_vars.question,
             }, ensure_ascii=False)
-            history_str = json.dumps([CallResult(**item.output_data).output for item in self._core_params.history], ensure_ascii=False)
+            history_str = json.dumps([CallResult(**item.output_data).output for item in self._syscall_vars.history], ensure_ascii=False)
             data_template = dedent(f"""
                 local extra =  {extra_str};
                 local history = {history_str};
-                {self._params.data}
+                {self.params.data}
             """)
-            result_data = json.loads(_jsonnet.evaluate_snippet(data_template, self._params.data), ensure_ascii=False)
+            result_data = json.loads(_jsonnet.evaluate_snippet(data_template, self.params.data), ensure_ascii=False)
 
         return CallResult(
             message=result_message,

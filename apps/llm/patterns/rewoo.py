@@ -98,3 +98,26 @@ class InitPlan(CorePattern):
             result += chunk
 
         return result
+
+
+# class PlanEvaluator:
+#     system_prompt = """You are a plan evaluator. Your task is: for the given user objective and your original plan, \
+#
+#
+#     """
+#     user_prompt = """"""
+#
+#     def __init__(self, system_prompt: Union[str, None] = None, user_prompt: Union[str, None] = None):
+#         if system_prompt is not None:
+#             self.system_prompt = system_prompt
+#         if user_prompt is not None:
+#             self.user_prompt = user_prompt
+#
+#     @staticmethod
+#     @sglang.function
+#     def _plan(s):
+#         pass
+#
+#     def generate(self, **kwargs) -> str:
+#         pass
+

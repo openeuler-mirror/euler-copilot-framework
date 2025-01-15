@@ -2,11 +2,11 @@
 
 Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 """
-from typing import Any, ClassVar, Optional
+from typing import Any, Optional
 
 from pydantic import BaseModel, Field
 
-from apps.entities.plugin import CallResult, SysCallVars
+from apps.entities.plugin import CallResult
 from apps.scheduler.call.core import CoreCall
 
 
@@ -23,14 +23,7 @@ class Cmd(CoreCall):
 
     name: str = "cmd"
     description: str = "根据BTDL描述文件，生成命令。"
-    params_schema: ClassVar[dict[str, Any]] = {}
-
-
-    def __init__(self, syscall_vars: SysCallVars, **kwargs) -> None:  # noqa: ANN003, ARG002
-        """初始化Cmd工具"""
-        self._syscall_vars = syscall_vars
-        # 初始化Slot Schema
-        self.slot_schema = {}
+    params: type[_CmdParams] = _CmdParams
 
     async def call(self, _slot_data: dict[str, Any]) -> CallResult:
         """调用Cmd工具"""

@@ -6,10 +6,10 @@ import traceback
 from typing import Optional
 
 from apps.constants import LOGGER, MAX_SCHEDULER_HISTORY_SIZE
-from apps.entities.enum import StepStatus
+from apps.entities.enum_var import StepStatus
+from apps.entities.flow import Step
 from apps.entities.plugin import (
     CallResult,
-    Step,
     SysCallVars,
     SysExecVars,
 )
@@ -61,7 +61,7 @@ class Executor:
         # 保存Flow数据（只读）
         self._flow_data = flow_data
 
-        #尝试恢复State
+        # 尝试恢复State
         if task.flow_state:
             self.flow_state = task.flow_state
             # 如果flow_context为空，则从flow_history中恢复

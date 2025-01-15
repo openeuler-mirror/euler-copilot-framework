@@ -1,0 +1,18 @@
+# 元数据种类
+type: service
+
+# 服务的ID
+id: test_service
+# 服务的名称（展示用）
+name: 测试服务
+# 服务的描述（展示用）
+description: |
+  这是一个测试服务！可以在该文件夹中放置连接服务必需的配置，例如OpenAPI文档等。
+# Service包版本（展示用）
+version: "1.0.0"
+# 关联的用户账号
+user: zjq
+
+# API相关设置项
+openapi:
+  

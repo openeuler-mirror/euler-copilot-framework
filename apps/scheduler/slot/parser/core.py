@@ -7,7 +7,7 @@ from typing import Any
 from jsonschema import TypeChecker
 from jsonschema.protocols import Validator
 
-from apps.entities.enum import SlotType
+from apps.entities.enum_var import SlotType
 
 
 class SlotParser:

@@ -10,36 +10,6 @@ from apps.common.queue import MessageQueue
 from apps.entities.task import FlowHistory, RequestDataPlugin
 
 
-class Step(BaseModel):
-    """Flow中Step的数据"""
-
-    name: str
-    confirm: bool = False
-    call_type: str
-    params: dict[str, Any] = {}
-    next: Optional[str] = None
-
-class NextFlow(BaseModel):
-    """Flow中“下一步”的数据格式"""
-
-    id: str
-    plugin: Optional[str] = None
-    question: Optional[str] = None
-
-class Flow(BaseModel):
-    """Flow（工作流）的数据格式"""
-
-    on_error: Optional[Step] = Step(
-        name="error",
-        call_type="llm",
-        params={
-            "user_prompt": "当前工具执行发生错误，原始错误信息为：{data}. 请向用户展示错误信息，并给出可能的解决方案。\n\n背景信息：{context}",
-        },
-    )
-    steps: dict[str, Step]
-    next_flow: Optional[list[NextFlow]] = None
-
-
 class PluginData(BaseModel):
     """插件数据格式"""
 

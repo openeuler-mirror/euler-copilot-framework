@@ -55,3 +55,17 @@ class EventType(str, Enum):
     STEP_OUTPUT = "step.output"
     FLOW_STOP = "flow.stop"
     DONE = "done"
+
+
+class CallType(str, Enum):
+    """Call类型"""
+
+    SYSTEM = "system"
+    PYTHON = "python"
+
+
+class MetadataType(str, Enum):
+    """元数据类型"""
+
+    SERVICE = "service"
+    APP = "app"

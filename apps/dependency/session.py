@@ -24,6 +24,7 @@ class VerifySessionMiddleware(BaseHTTPMiddleware):
         if request.url.path in BYPASS_LIST:
             return await call_next(request)
 
+        # TODO: 加入apikey校验
         cookie = request.cookies.get("ECSESSION", "")
         if request.client is None or request.client.host is None:
             err = "无法检测请求来源IP！"

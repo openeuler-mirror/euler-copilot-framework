@@ -21,7 +21,7 @@ def get_api_doc() -> None:
         raise ValueError(err)
 
     path = Path(config_path) / "openapi.json"
-    with open(path, "w", encoding="utf-8") as f:
+    with path.open("w", encoding="utf-8") as f:
         json.dump(get_openapi(
             title=app.title,
             version=app.version,
