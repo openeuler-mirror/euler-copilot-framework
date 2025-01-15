@@ -50,11 +50,6 @@ class ConfigModel(BaseModel):
     DETECT_TYPE: Optional[str] = Field(description="敏感词检测系统类型", default=None)
     WORDS_CHECK: Optional[str] = Field(description="AutoGPT敏感词检测系统API URL", default=None)
     WORDS_LIST: Optional[str] = Field(description="敏感词列表文件路径", default=None)
-    SCAS_APP_ID: Optional[str] = Field(description="SCAS敏感词检测系统 APP ID", default=None)
-    SCAS_SIGN_KEY: Optional[str] = Field(description="SCAS敏感词检测系统 请求签名密钥", default=None)
-    SCAS_BUSINESS_ID: Optional[str] = Field(description="SCAS敏感词检测系统 业务ID", default=None)
-    SCAS_SCENE_ID: Optional[str] = Field(description="SCAS敏感词检测系统 场景ID", default=None)
-    SCAS_URL: Optional[str] = Field(description="SCAS实例域名", default=None)
     # CSRF
     ENABLE_CSRF: bool = Field(description="是否启用CSRF Token功能", default=True)
     # MongoDB
@@ -89,11 +84,9 @@ class ConfigModel(BaseModel):
     SCHEDULER_MAX_TOKENS: int = Field(description="参数猜解最大Token数", default=8192)
     SCHEDULER_TEMPERATURE: float = Field(description="参数猜解温度", default=0.07)
     # 插件位置
-    PLUGIN_DIR: Optional[str] = Field(description="插件路径", default=None)
+    SERVICE_DIR: Optional[str] = Field(description="插件路径", default=None)
     # SQL接口路径
     SQL_URL: str = Field(description="Chat2DB接口路径")
-    # Gitee白名单路径
-    GITEE_WHITELIST: Optional[str] = Field(description="Gitee白名单路径")
 
 
 class Config:

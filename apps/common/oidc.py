@@ -5,11 +5,10 @@ Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 from typing import Any
 
 import aiohttp
-from fastapi import HTTPException, status
+from fastapi import status
 
 from apps.common.config import config
 from apps.constants import LOGGER
-from apps.manager.gitee_white_list import GiteeIDManager
 from apps.models.redis import RedisConnectionPool
 
 
@@ -52,8 +51,6 @@ async def get_oidc_user(access_token: str, refresh_token: str) -> dict:
     """获取OIDC用户"""
     if config["DEPLOY_MODE"] == "local":
         return await get_local_oidc_user(access_token, refresh_token)
-    if config["DEPLOY_MODE"] == "gitee":
-        return await get_gitee_oidc_user(access_token, refresh_token)
 
     if not access_token:
         err = "Access token is empty."
@@ -134,32 +131,3 @@ async def get_local_oidc_user(access_token: str, refresh_token: str) -> dict:
     return {
         "user_sub": user_sub,
     }
-
-
-async def get_gitee_oidc_user(access_token: str, refresh_token: str) -> dict:
-    """获取Gitee用户信息"""
-    if not access_token:
-        err = "Access token is empty."
-        raise ValueError(err)
-
-    url = f"{config['OIDC_USER_URL']}?access_token={access_token}"
-    result = None
-    async with aiohttp.ClientSession() as session, session.get(url, timeout=10) as resp:
-        if resp.status != status.HTTP_200_OK:
-            err = f"Get OIDC user error: {resp.status}, full response is: {await resp.text()}"
-            raise RuntimeError(err)
-        LOGGER.info(f"full response is {await resp.text()}")
-        result = await resp.json()
-
-    user_sub = result["login"]
-    if not GiteeIDManager().check_user_exist_or_not(user_sub):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="auth error",
-        )
-    await set_redis_token(user_sub, access_token, refresh_token)
-
-    return {
-        "user_sub": user_sub,
-    }
-
