@@ -1,4 +1,4 @@
-openapi: 3.0.0
+openapi: 3.1.0
 info:
   version: 1.0.0
   title: "文档标题"
@@ -34,4 +34,4 @@ paths:
                     type: string
                     example: "字段的样例值"
                     description: "字段的描述信息"
-                    pattern: "[\d].[\d]"
+                    pattern: "[\\d].\\d"

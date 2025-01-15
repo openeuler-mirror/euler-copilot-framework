@@ -1,43 +1,30 @@
-# Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
+"""Redis连接池模块
 
-import redis
-import logging
+Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
+"""
+from __future__ import annotations
+
+from redis import asyncio as aioredis
 
 from apps.common.config import config
+from apps.constants import LOGGER
 
 
 class RedisConnectionPool:
-    _redis_pool = None
-    logger = logging.getLogger('gunicorn.error')
+    """Redis连接池"""
+
+    _redis_pool = aioredis.ConnectionPool(
+        host=config["REDIS_HOST"],
+        port=config["REDIS_PORT"],
+        password=config["REDIS_PWD"],
+    )
 
     @classmethod
-    def get_redis_pool(cls):
-        if not cls._redis_pool:
-            cls._redis_pool = redis.ConnectionPool(
-                host=config['REDIS_HOST'],
-                port=config['REDIS_PORT'],
-                password=config['REDIS_PWD']
-            )
-        return cls._redis_pool
-
-    @classmethod
-    def get_redis_connection(cls):
+    def get_redis_connection(cls) -> aioredis.Redis:
+        """从连接池中获取Redis连接"""
         try:
-            pool = redis.Redis(connection_pool=cls.get_redis_pool())
+            return aioredis.Redis.from_pool(cls._redis_pool)
         except Exception as e:
-            cls.logger.error(f"Init redis connection failed: {e}")
-            return None
-        return cls._ConnectionManager(pool)
-
-    class _ConnectionManager:
-        def __init__(self, connection):
-            self.connection = connection
-
-        def __enter__(self):
-            return self.connection
-
-        def __exit__(self, exc_type, exc_val, exc_tb):
-            try:
-                self.connection.close()
-            except Exception as e:
-                RedisConnectionPool.logger.error(f"Redis connection close failed: {e}")
+            LOGGER.error(f"Init redis connection failed: {e}")
+            msg = f"Init redis connection failed: {e}"
+            raise RuntimeError(msg) from e

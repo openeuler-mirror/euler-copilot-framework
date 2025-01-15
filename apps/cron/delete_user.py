@@ -1,37 +1,57 @@
-# Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
+"""删除30天未登录用户
+
+Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
+"""
 from datetime import datetime, timedelta, timezone
 
-import pytz
-import logging
+import asyncer
 
-from apps.manager.audit_log import AuditLogData, AuditLogManager
-from apps.manager.comment import CommentManager
-from apps.manager.record import RecordManager
-from apps.manager.user import UserManager
-from apps.manager.conversation import ConversationManager
+from apps.constants import LOGGER
+from apps.entities.collection import Audit
+from apps.manager import (
+    AuditLogManager,
+    UserManager,
+)
+from apps.models.mongo import MongoDB
+from apps.service.knowledge_base import KnowledgeBaseService
 
 
 class DeleteUserCron:
-    logger = logging.getLogger('gunicorn.error')
+    """删除30天未登录用户"""
 
     @staticmethod
-    def delete_user():
+    async def _delete_user(timestamp: float) -> None:
+        """异步删除用户"""
+        user_ids = await UserManager.query_userinfo_by_login_time(timestamp)
+        for user_id in user_ids:
+            await UserManager.delete_userinfo_by_user_sub(user_id)
+
+            # 查找用户关联的文件
+            doc_collection = MongoDB.get_collection("document")
+            docs = [doc["_id"] async for doc in doc_collection.find({"user_sub": user_id})]
+            # 删除文件
+            try:
+                await doc_collection.delete_many({"_id": {"$in": docs}})
+                await KnowledgeBaseService.delete_doc_from_rag(docs)
+            except Exception as e:
+                LOGGER.info(f"Automatic delete user {user_id} document failed: {e!s}")
+
+            audit_log = Audit(
+                user_sub=user_id,
+                http_method="DELETE",
+                module="user",
+                message=f"Automatic deleted user: {user_id}, for inactive more than 30 days",
+            )
+            await AuditLogManager.add_audit_log(audit_log)
+
+
+    @staticmethod
+    def delete_user() -> None:
+        """删除用户"""
         try:
-            now = datetime.now(timezone.utc).astimezone(pytz.timezone('Asia/Shanghai'))
-            thirty_days_ago = now - timedelta(days=30)
-            userinfos = UserManager.query_userinfo_by_login_time(
-                thirty_days_ago)
-            for user in userinfos:
-                conversations = ConversationManager.get_conversation_by_user_sub(
-                    user.user_sub)
-                for conv in conversations:
-                    RecordManager.delete_encrypted_qa_pair_by_conversation_id(
-                        conv.conversation_id)
-                CommentManager.delete_comment_by_user_sub(user.user_sub)
-                UserManager.delete_userinfo_by_user_sub(user.user_sub)
-                data = AuditLogData(method_type='internal_scheduler_job', source_name='delete_user', ip='internal',
-                                    result=f'Deleted user: {user.user_sub}', reason='30天未登录')
-                AuditLogManager.add_audit_log(user.user_sub, data)
+            timepoint = datetime.now(timezone.utc) - timedelta(days=30)
+            timestamp = timepoint.timestamp()
+
+            asyncer.syncify(DeleteUserCron._delete_user)(timestamp)
         except Exception as e:
-            DeleteUserCron.logger.info(
-                f"Scheduler delete user failed: {e}")
+            LOGGER.info(f"Scheduler delete user failed: {e}")

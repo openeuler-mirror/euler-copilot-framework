@@ -1,82 +1,101 @@
-# Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
+"""画像领域管理
 
+Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
+"""
 from datetime import datetime, timezone
+from typing import Optional
 
-import pytz
-import logging
-
-from apps.models.mysql import MysqlDB, Domain
-from apps.entities.request_data import AddDomainData
-
-logger = logging.getLogger('gunicorn.error')
+from apps.constants import LOGGER
+from apps.entities.collection import Domain
+from apps.entities.request_data import PostDomainData
+from apps.models.mongo import MongoDB
 
 
 class DomainManager:
-    def __init__(self):
-        raise NotImplementedError()
+    """用户画像相关操作"""
 
     @staticmethod
-    def get_domain():
-        results = []
+    async def get_domain() -> list[Domain]:
+        """获取所有领域信息
+
+        :return: 领域信息列表
+        """
         try:
-            with MysqlDB().get_session() as session:
-                results = session.query(Domain).all()
+            domain_collection = MongoDB.get_collection("domain")
+            return [Domain(**domain) async for domain in domain_collection.find()]
         except Exception as e:
-            logger.info(f"Get domain by domain_name failed: {e}")
-        return results
+            LOGGER.info(f"Get domain by domain_name failed: {e}")
+            return []
 
     @staticmethod
-    def get_domain_by_domain_name(domain_name):
-        results = []
+    async def get_domain_by_domain_name(domain_name: str) -> Optional[Domain]:
+        """根据领域名称获取领域信息
+
+        :param domain_name: 领域名称
+        :return: 领域信息
+        """
         try:
-            with MysqlDB().get_session() as session:
-                results = session.query(Domain).filter(
-                    Domain.domain_name == domain_name).all()
+            domain_collection = MongoDB.get_collection("domain")
+            domain_data = await domain_collection.find_one({"domain_name": domain_name})
+            if domain_data:
+                return Domain(**domain_data)
+            return None
         except Exception as e:
-            logger.info(f"Get domain by domain_name failed: {e}")
-        return results
+            LOGGER.info(f"Get domain by domain_name failed: {e}")
+            return None
 
     @staticmethod
-    def add_domain(add_domain_data: AddDomainData) -> bool:
+    async def add_domain(domain_data: PostDomainData) -> bool:
+        """添加领域
+
+        :param domain_data: 领域信息
+        :return: 是否添加成功
+        """
         try:
             domain = Domain(
-                domain_name=add_domain_data.domain_name,
-                domain_description=add_domain_data.domain_description,
-                created_time=datetime.now(timezone.utc).astimezone(pytz.timezone('Asia/Shanghai')),
-                updated_time=datetime.now(timezone.utc).astimezone(pytz.timezone('Asia/Shanghai')))
-            with MysqlDB().get_session() as session:
-                session.add(domain)
-                session.commit()
+                name=domain_data.domain_name,
+                definition=domain_data.domain_description,
+            )
+            domain_collection = MongoDB.get_collection("domain")
+            await domain_collection.insert_one(domain.model_dump(by_alias=True))
             return True
         except Exception as e:
-            logger.info(f"Add domain failed due to error: {e}")
+            LOGGER.info(f"Add domain failed due to error: {e}")
             return False
 
     @staticmethod
-    def update_domain_by_domain_name(update_domain_data: AddDomainData):
-        result = None
+    async def update_domain_by_domain_name(domain_data: PostDomainData) -> Optional[Domain]:
+        """更新领域
+
+        :param domain_data: 领域信息
+        :return: 更新后的领域信息
+        """
         try:
             update_dict = {
-                "domain_description": update_domain_data.domain_description,
-                "updated_time": datetime.now(timezone.utc).astimezone(pytz.timezone('Asia/Shanghai'))
+                "definition": domain_data.domain_description,
+                "updated_at": round(datetime.now(tz=timezone.utc).timestamp(), 3),
             }
-
-            with MysqlDB().get_session() as session:
-                session.query(Domain).filter(Domain.domain_name == update_domain_data.domain_name).update(update_dict)
-                session.commit()
-            result = DomainManager.get_domain_by_domain_name(update_domain_data.domain_name)
+            domain_collection = MongoDB.get_collection("domain")
+            await domain_collection.update_one(
+                {"name": domain_data.domain_name},
+                {"$set": update_dict},
+            )
+            return Domain(name=domain_data.domain_name, **update_dict)
         except Exception as e:
-            logger.info(f"Update domain by domain_name failed due to error: {e}")
-        finally:
-            return result
+            LOGGER.info(f"Update domain by domain_name failed due to error: {e}")
+            return None
 
     @staticmethod
-    def delete_domain_by_domain_name(delete_domain_data: AddDomainData):
+    async def delete_domain_by_domain_name(domain_data: PostDomainData) -> bool:
+        """删除领域
+
+        :param domain_data: 领域信息
+        :return: 删除成功返回True，否则返回False
+        """
         try:
-            with MysqlDB().get_session() as session:
-                session.query(Domain).filter(Domain.domain_name == delete_domain_data.domain_name).delete()
-                session.commit()
+            domain_collection = MongoDB.get_collection("domain")
+            await domain_collection.delete_one({"name": domain_data.domain_name})
             return True
         except Exception as e:
-            logger.info(f"Delete domain by domain_name failed due to error: {e}")
+            LOGGER.info(f"Delete domain by domain_name failed due to error: {e}")
             return False

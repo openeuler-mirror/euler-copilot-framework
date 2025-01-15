@@ -1,108 +1,122 @@
-# Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
+"""用户 Manager
 
-import logging
+Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
+"""
 from datetime import datetime, timezone
+from typing import Optional
 
-import pytz
-
-from apps.entities.user import User as UserInfo
-from apps.models.mysql import MysqlDB, User
+from apps.constants import LOGGER
+from apps.entities.collection import User
+from apps.manager.conversation import ConversationManager
+from apps.models.mongo import MongoDB
 
 
 class UserManager:
-    logger = logging.getLogger('gunicorn.error')
+    """用户相关操作"""
 
     @staticmethod
-    def add_userinfo(userinfo: User):
-        user_slice = User(
-            user_sub=userinfo.user_sub,
-            revision_number=userinfo.revision_number,
-            login_time=datetime.now(timezone.utc).astimezone(pytz.timezone('Asia/Shanghai'))
-        )
+    async def add_userinfo(user_sub: str) -> bool:
+        """向数据库中添加用户信息
+
+        :param user_sub: 用户sub
+        :return: 是否添加成功
+        """
         try:
-            with MysqlDB().get_session() as session:
-                session.add(user_slice)
-                session.commit()
-                session.refresh(user_slice)
+            user_collection = MongoDB.get_collection("user")
+            await user_collection.insert_one(User(
+                _id=user_sub,
+            ).model_dump(by_alias=True))
+            return True
         except Exception as e:
-            UserManager.logger.info(f"Add userinfo failed due to error: {e}")
+            LOGGER.info(f"Add userinfo failed due to error: {e}")
+            return False
 
     @staticmethod
-    def get_all_user_sub():
-        result = None
-        try:
-            with MysqlDB().get_session() as session:
-                result = session.query(User.user_sub).all()
-        except Exception as e:
-            UserManager.logger.info(
-                f"Get all user_sub failed due to error: {e}")
-        return result
+    async def get_all_user_sub() -> list[str]:
+        """获取所有用户的sub
 
-    @staticmethod
-    def get_userinfo_by_user_sub(user_sub):
-        result = None
-        try:
-            with MysqlDB().get_session() as session:
-                result = session.query(User).filter(
-                    User.user_sub == user_sub).first()
-        except Exception as e:
-            UserManager.logger.info(
-                f"Get userinfo by user_sub failed due to error: {e}")
-        return result
-
-    @staticmethod
-    def get_revision_number_by_user_sub(user_sub):
-        userinfo = UserManager.get_userinfo_by_user_sub(user_sub)
-        revision_number = None
-        if userinfo is not None:
-            revision_number = userinfo.revision_number
-        return revision_number
-
-    @staticmethod
-    def update_userinfo_by_user_sub(userinfo: UserInfo, refresh_revision=False):
-        user_slice = UserManager.get_userinfo_by_user_sub(
-            userinfo.user_sub)
-        if not user_slice:
-            UserManager.add_userinfo(userinfo)
-            return UserManager.get_userinfo_by_user_sub(userinfo.user_sub)
-        user_dict = {
-            "user_sub": userinfo.user_sub,
-            "login_time": datetime.now(timezone.utc).astimezone(pytz.timezone('Asia/Shanghai'))
-        }
-        if refresh_revision:
-            user_dict.update({"revision_number": userinfo.revision_number})
-        try:
-            with MysqlDB().get_session() as session:
-                session.query(User).filter(User.user_sub == userinfo.user_sub).update(user_dict)
-                session.commit()
-        except Exception as e:
-            UserManager.logger.info(
-                f"Update userinfo by user_sub failed due to error: {e}")
-        ret = UserManager.get_userinfo_by_user_sub(userinfo.user_sub)
-        ret_dict = ret.__dict__
-        if '_sa_instance_state' in ret_dict:
-            del ret_dict['_sa_instance_state']
-        return User(**ret_dict)
-
-    @staticmethod
-    def query_userinfo_by_login_time(login_time):
+        :return: 所有用户的sub列表
+        """
         result = []
         try:
-            with MysqlDB().get_session() as session:
-                result = session.query(User).filter(
-                    User.login_time <= login_time).all()
+            user_collection = MongoDB.get_collection("user")
+            result = [user["_id"] async for user in user_collection.find({}, {"_id": 1})]
         except Exception as e:
-            UserManager.logger.info(
-                f"Get userinfo by login_time failed due to error: {e}")
+            LOGGER.info(f"Get all user_sub failed due to error: {e}")
         return result
 
     @staticmethod
-    def delete_userinfo_by_user_sub(user_sub):
+    async def get_userinfo_by_user_sub(user_sub: str) -> Optional[User]:
+        """根据用户sub获取用户信息
+
+        :param user_sub: 用户sub
+        :return: 用户信息
+        """
         try:
-            with MysqlDB().get_session() as session:
-                session.query(User).filter(
-                    User.user_sub == user_sub).delete()
-                session.commit()
+            user_collection = MongoDB.get_collection("user")
+            user_data = await user_collection.find_one({"_id": user_sub})
+            return User(**user_data) if user_data else None
         except Exception as e:
-            UserManager.logger.info(
-                f"Delete userinfo by user_sub failed due to error: {e}")
+            LOGGER.info(f"Get userinfo by user_sub failed due to error: {e}")
+            return None
+
+    @staticmethod
+    async def update_userinfo_by_user_sub(user_sub: str, *, refresh_revision: bool = False) -> bool:
+        """根据用户sub更新用户信息
+
+        :param user_sub: 用户sub
+        :param refresh_revision: 是否刷新revision
+        :return: 更新后的用户信息
+        """
+        user_data = await UserManager.get_userinfo_by_user_sub(user_sub)
+        if not user_data:
+            return await UserManager.add_userinfo(user_sub)
+
+        update_dict = {
+            "$set": {"login_time": round(datetime.now(timezone.utc).timestamp(), 3)},
+        }
+
+        if refresh_revision:
+            update_dict["$set"]["status"] = "init"  # type: ignore[assignment]
+        try:
+            user_collection = MongoDB.get_collection("user")
+            result = await user_collection.update_one({"_id": user_sub}, update_dict)
+            return result.modified_count > 0
+        except Exception as e:
+            LOGGER.info(f"Update userinfo by user_sub failed due to error: {e}")
+            return False
+
+    @staticmethod
+    async def query_userinfo_by_login_time(login_time: float) -> list[str]:
+        """根据登录时间获取用户sub
+
+        :param login_time: 登录时间
+        :return: 用户sub列表
+        """
+        try:
+            user_collection = MongoDB.get_collection("user")
+            return [user["_id"] async for user in user_collection.find({"login_time": {"$lt": login_time}}, {"_id": 1})]
+        except Exception as e:
+            LOGGER.info(f"Get userinfo by login_time failed due to error: {e}")
+            return []
+
+    @staticmethod
+    async def delete_userinfo_by_user_sub(user_sub: str) -> bool:
+        """根据用户sub删除用户信息
+
+        :param user_sub: 用户sub
+        :return: 是否删除成功
+        """
+        try:
+            user_collection = MongoDB.get_collection("user")
+            result = await user_collection.find_one_and_delete({"_id": user_sub})
+            if not result:
+                return False
+            result = User.model_validate(result)
+
+            for conv_id in result.conversations:
+                await ConversationManager.delete_conversation_by_conversation_id(user_sub, conv_id)
+            return True
+        except Exception as e:
+            LOGGER.info(f"Delete userinfo by user_sub failed due to error: {e}")
+            return False

@@ -1,102 +1,100 @@
-# Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
+"""API Key Manager
 
-from __future__ import annotations
-
+Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
+"""
 import hashlib
-import logging
 import uuid
+from typing import Optional
 
-from apps.entities.user import User as UserInfo
-from apps.manager.user import UserManager
-from apps.models.mysql import ApiKey, MysqlDB
-
-logger = logging.getLogger('gunicorn.error')
+from apps.constants import LOGGER
+from apps.models.mongo import MongoDB
 
 
 class ApiKeyManager:
-    def __init__(self):
-        raise NotImplementedError("ApiKeyManager无法被实例化")
+    """API Key管理"""
 
     @staticmethod
-    def generate_api_key(userinfo: UserInfo) -> str | None:
-        user_sub = userinfo.user_sub
+    async def generate_api_key(user_sub: str) -> Optional[str]:
+        """生成新API Key"""
+        api_key = str(uuid.uuid4().hex)
+        api_key_hash = hashlib.sha256(api_key.encode()).hexdigest()[:16]
+
+        try:
+            user_collection = MongoDB.get_collection("user")
+            await user_collection.update_one(
+                {"_id": user_sub},
+                {"$set": {"api_key": api_key_hash}},
+            )
+            return api_key
+        except Exception as e:
+            LOGGER.info(f"Generate API key failed due to error: {e!s}")
+            return None
+
+    @staticmethod
+    async def delete_api_key(user_sub: str) -> bool:
+        """删除API Key"""
+        if not await ApiKeyManager.api_key_exists(user_sub):
+            return False
+        try:
+            user_collection = MongoDB.get_collection("user")
+            await user_collection.update_one(
+                {"_id": user_sub},
+                {"$unset": {"api_key": ""}},
+            )
+        except Exception as e:
+            LOGGER.info(f"Delete API key failed due to error: {e}")
+            return False
+        return True
+
+    @staticmethod
+    async def api_key_exists(user_sub: str) -> bool:
+        """检查API Key是否存在"""
+        try:
+            user_collection = MongoDB.get_collection("user")
+            user_data = await user_collection.find_one({"_id": user_sub}, {"_id": 0, "api_key": 1})
+            return user_data is not None and ("api_key" in user_data and user_data["api_key"])
+        except Exception as e:
+            LOGGER.info(f"Check API key existence failed due to error: {e}")
+            return False
+
+    @staticmethod
+    async def get_user_by_api_key(api_key: str) -> Optional[str]:
+        """根据API Key获取用户信息"""
+        api_key_hash = hashlib.sha256(api_key.encode()).hexdigest()[:16]
+        try:
+            user_collection = MongoDB.get_collection("user")
+            user_data = await user_collection.find_one({"api_key": api_key_hash}, {"_id": 1})
+            return user_data["_id"] if user_data else None
+        except Exception as e:
+            LOGGER.info(f"Get user info by API key failed due to error: {e}")
+            return None
+
+    @staticmethod
+    async def verify_api_key(api_key: str) -> bool:
+        """验证API Key，用于FastAPI dependency"""
+        api_key_hash = hashlib.sha256(api_key.encode()).hexdigest()[:16]
+        try:
+            user_collection = MongoDB.get_collection("user")
+            key_data = await user_collection.find_one({"api_key": api_key_hash}, {"_id": 1})
+            return key_data is not None
+        except Exception as e:
+            LOGGER.info(f"Verify API key failed due to error: {e}")
+            return False
+
+    @staticmethod
+    async def update_api_key(user_sub: str) -> Optional[str]:
+        """更新API Key"""
+        if not await ApiKeyManager.api_key_exists(user_sub):
+            return None
         api_key = str(uuid.uuid4().hex)
         api_key_hash = hashlib.sha256(api_key.encode()).hexdigest()[:16]
         try:
-            with MysqlDB().get_session() as session:
-                session.add(ApiKey(user_sub=user_sub, api_key_hash=api_key_hash))
-                session.commit()
+            user_collection = MongoDB.get_collection("user")
+            await user_collection.update_one(
+                {"_id": user_sub},
+                {"$set": {"api_key": api_key_hash}},
+            )
         except Exception as e:
-            logger.info(f"Add API key failed due to error: {e}")
-            return None
-        return api_key
-
-    @staticmethod
-    def delete_api_key(userinfo: UserInfo) -> bool:
-        user_sub = userinfo.user_sub
-        if not ApiKeyManager.api_key_exists(userinfo):
-            return False
-        try:
-            with MysqlDB().get_session() as session:
-                session.query(ApiKey).filter(ApiKey.user_sub == user_sub).delete()
-                session.commit()
-        except Exception as e:
-            logger.info(f"Delete API key failed due to error: {e}")
-            return False
-        else:
-            return True
-
-    @staticmethod
-    def api_key_exists(userinfo: UserInfo) -> bool:
-        user_sub = userinfo.user_sub
-        try:
-            with MysqlDB().get_session() as session:
-                result = session.query(ApiKey).filter(ApiKey.user_sub == user_sub).first()
-        except Exception as e:
-            logger.info(f"Check API key existence failed due to error: {e}")
-            return False
-        else:
-            return result is not None
-
-    @staticmethod
-    def get_user_by_api_key(api_key: str) -> UserInfo | None:
-        api_key_hash = hashlib.sha256(api_key.encode()).hexdigest()[:16]
-        try:
-            with MysqlDB().get_session() as session:
-                user_sub = session.query(ApiKey).filter(ApiKey.api_key_hash == api_key_hash).first().user_sub
-            if user_sub is None:
-                return None
-            userdata = UserManager.get_userinfo_by_user_sub(user_sub)
-            if userdata is None:
-                return None
-        except Exception as e:
-            logger.info(f"Get user info by API key failed due to error: {e}")
-        else:
-            return UserInfo(user_sub=userdata.user_sub, revision_number=userdata.revision_number)
-
-    @staticmethod
-    def verify_api_key(api_key: str) -> bool:
-        api_key_hash = hashlib.sha256(api_key.encode()).hexdigest()[:16]
-        try:
-            with MysqlDB().get_session() as session:
-                user_sub = session.query(ApiKey).filter(ApiKey.api_key_hash == api_key_hash).first().user_sub
-        except Exception as e:
-            logger.info(f"Verify API key failed due to error: {e}")
-            return False
-        return user_sub is not None
-
-    @staticmethod
-    def update_api_key(userinfo: UserInfo) -> str | None:
-        if not ApiKeyManager.api_key_exists(userinfo):
-            return None
-        user_sub = userinfo.user_sub
-        api_key = str(uuid.uuid4().hex)
-        api_key_hash = hashlib.sha256(api_key.encode()).hexdigest()[:16]
-        try:
-            with MysqlDB().get_session() as session:
-                session.query(ApiKey).filter(ApiKey.user_sub == user_sub).update({"api_key_hash": api_key_hash})
-                session.commit()
-        except Exception as e:
-            logger.info(f"Update API key failed due to error: {e}")
+            LOGGER.info(f"Update API key failed due to error: {e}")
             return None
         return api_key

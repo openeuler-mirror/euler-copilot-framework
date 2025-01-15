@@ -1,127 +1,137 @@
-# Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
-from __future__ import annotations
+"""浏览器Session Manager
 
+Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
+"""
 import base64
 import hashlib
 import hmac
-import logging
 import secrets
-from typing import Any, Dict
+from typing import Any, Optional
 
 from apps.common.config import config
-from apps.entities.user import User
+from apps.constants import LOGGER
 from apps.manager.blacklist import UserBlacklistManager
-from apps.manager.user import UserManager
 from apps.models.redis import RedisConnectionPool
-
-logger = logging.getLogger("gunicorn.error")
 
 
 class SessionManager:
-    def __init__(self):
-        raise NotImplementedError("SessionManager不可以被实例化")
+    """浏览器Session管理"""
 
     @staticmethod
-    def create_session(ip: str , extra_keys: Dict[str, Any] | None = None) -> str:
+    async def create_session(ip: Optional[str] = None, extra_keys: Optional[dict[str, Any]] = None) -> str:
+        """创建浏览器Session"""
+        if not ip:
+            err = "用户IP错误！"
+            raise ValueError(err)
+
         session_id = secrets.token_hex(16)
         data = {
-            "ip": ip
+            "ip": ip,
         }
         if config["DISABLE_LOGIN"]:
             data.update({
-                "user_sub": config["DEFAULT_USER"]
+                "user_sub": config["DEFAULT_USER"],
             })
 
         if extra_keys is not None:
             data.update(extra_keys)
-        with RedisConnectionPool.get_redis_connection() as r:
+        async with RedisConnectionPool.get_redis_connection().pipeline(transaction=True) as pipe:
             try:
-                r.hmset(session_id, data)
-                r.expire(session_id, config["SESSION_TTL"] * 60)
+                pipe.hmset(session_id, data)
+                pipe.expire(session_id, config["SESSION_TTL"] * 60)
+                await pipe.execute()
             except Exception as e:
-                logger.error(f"Session error: {e}")
+                LOGGER.error(f"Session error: {e}")
         return session_id
 
     @staticmethod
-    def delete_session(session_id: str) -> bool:
+    async def delete_session(session_id: str) -> bool:
+        """删除浏览器Session"""
         if not session_id:
             return True
-        with RedisConnectionPool.get_redis_connection() as r:
+        async with RedisConnectionPool.get_redis_connection().pipeline(transaction=True) as pipe:
             try:
-                if not r.exists(session_id):
+                pipe.exists(session_id)
+                result = await pipe.execute()
+                if not result[0]:
                     return True
-                num = r.delete(session_id)
-                if num != 1:
-                    return True
-                return False
+                pipe.delete(session_id)
+                result = await pipe.execute()
+                return result[0] != 1
             except Exception as e:
-                logger.error(f"Delete session error: {e}")
+                LOGGER.error(f"Delete session error: {e}")
                 return False
 
     @staticmethod
-    def get_session(session_id: str, session_ip: str) -> str:
+    async def get_session(session_id: str, session_ip: str) -> str:
+        """获取浏览器Session"""
         if not session_id:
-            session_id = SessionManager.create_session(session_ip)
-            return session_id
+            return await SessionManager.create_session(session_ip)
 
-        ip = None
-        with RedisConnectionPool.get_redis_connection() as r:
+        async with RedisConnectionPool.get_redis_connection().pipeline(transaction=True) as pipe:
             try:
-                ip = r.hget(session_id, "ip").decode()
-                r.expire(session_id, config["SESSION_TTL"] * 60)
+                pipe.hget(session_id, "ip")
+                pipe.expire(session_id, config["SESSION_TTL"] * 60)
+                await pipe.execute()
             except Exception as e:
-                logger.error(f"Read session error: {e}")
+                LOGGER.error(f"Read session error: {e}")
 
-            return session_id
+        return session_id
 
     @staticmethod
-    def verify_user(session_id: str) -> bool:
-        with RedisConnectionPool.get_redis_connection() as r:
+    async def verify_user(session_id: str) -> bool:
+        """验证用户是否在Session中"""
+        async with RedisConnectionPool.get_redis_connection().pipeline(transaction=True) as pipe:
             try:
-                user_exist = r.hexists(session_id, "user_sub")
-                r.expire(session_id, config["SESSION_TTL"] * 60)
-                return user_exist
+                pipe.hexists(session_id, "user_sub")
+                pipe.expire(session_id, config["SESSION_TTL"] * 60)
+                result = await pipe.execute()
+                return result[0]
             except Exception as e:
-                logger.error(f"User not in session: {e}")
+                LOGGER.error(f"User not in session: {e}")
                 return False
 
     @staticmethod
-    def get_user(session_id: str) -> User | None:
-        # 从session_id查询user_sub
-        with RedisConnectionPool.get_redis_connection() as r:
+    async def get_user(session_id: str) -> Optional[str]:
+        """从Session中获取用户"""
+        async with RedisConnectionPool.get_redis_connection().pipeline(transaction=True) as pipe:
             try:
-                user_sub = r.hget(session_id, "user_sub")
-                r.expire(session_id, config["SESSION_TTL"] * 60)
+                pipe.hget(session_id, "user_sub")
+                pipe.expire(session_id, config["SESSION_TTL"] * 60)
+                result = await pipe.execute()
+                user_sub = result[0].decode()
             except Exception as e:
-                logger.error(f"Get user from session error: {e}")
+                LOGGER.error(f"Get user from session error: {e}")
                 return None
 
         # 查询黑名单
-        if UserBlacklistManager.check_blacklisted_users(user_sub):
-            logger.error("User in session blacklisted.")
-            with RedisConnectionPool.get_redis_connection() as r:
+        if await UserBlacklistManager.check_blacklisted_users(user_sub):
+            LOGGER.error("User in session blacklisted.")
+            async with RedisConnectionPool.get_redis_connection().pipeline(transaction=True) as pipe:
                 try:
-                    r.hdel(session_id, "user_sub")
-                    r.expire(session_id, config["SESSION_TTL"] * 60)
+                    pipe.hdel(session_id, "user_sub")
+                    pipe.expire(session_id, config["SESSION_TTL"] * 60)
+                    await pipe.execute()
                     return None
                 except Exception as e:
-                    logger.error(f"Delete user from session error: {e}")
+                    LOGGER.error(f"Delete user from session error: {e}")
                     return None
 
-        user = UserManager.get_userinfo_by_user_sub(user_sub)
-        return User(user_sub=user.user_sub, revision_number=user.revision_number)
+        return user_sub
 
     @staticmethod
-    def create_csrf_token(session_id: str) -> str | None:
+    async def create_csrf_token(session_id: str) -> str:
+        """创建CSRF Token"""
         rand = secrets.token_hex(8)
 
-        with RedisConnectionPool.get_redis_connection() as r:
+        async with RedisConnectionPool.get_redis_connection().pipeline(transaction=True) as pipe:
             try:
-                r.hset(session_id, "nonce", rand)
-                r.expire(session_id, config["SESSION_TTL"] * 60)
+                pipe.hset(session_id, "nonce", rand)
+                pipe.expire(session_id, config["SESSION_TTL"] * 60)
+                await pipe.execute()
             except Exception as e:
-                logger.error(f"Create csrf token from session error: {e}")
-                return None
+                err = f"Create csrf token from session error: {e}"
+                raise RuntimeError(err) from e
 
         csrf_value = f"{session_id}{rand}"
         csrf_b64 = base64.b64encode(bytes.fromhex(csrf_value))
@@ -134,29 +144,32 @@ class SessionManager:
         return f"{csrf_b64}.{signature}"
 
     @staticmethod
-    def verify_csrf_token(session_id: str, token: str) -> bool:
+    async def verify_csrf_token(session_id: str, token: str) -> bool:
+        """验证CSRF Token"""
         if not token:
             return False
 
         token_msg = token.split(".")
-        if len(token_msg) != 2:
+        if len(token_msg) != 2:  # noqa: PLR2004
             return False
 
         first_part = base64.b64decode(token_msg[0]).hex()
         current_session_id = first_part[:32]
-        logger.error(f"current_session_id: {current_session_id}, session_id: {session_id}")
+        LOGGER.error(f"current_session_id: {current_session_id}, session_id: {session_id}")
         if current_session_id != session_id:
             return False
 
         current_nonce = first_part[32:]
-        with RedisConnectionPool.get_redis_connection() as r:
+        async with RedisConnectionPool.get_redis_connection().pipeline(transaction=True) as pipe:
             try:
-                nonce = r.hget(current_session_id, "nonce")
+                pipe.hget(current_session_id, "nonce")
+                pipe.expire(current_session_id, config["SESSION_TTL"] * 60)
+                result = await pipe.execute()
+                nonce = result[0].decode()
                 if nonce != current_nonce:
                     return False
-                r.expire(current_session_id, config["SESSION_TTL"] * 60)
             except Exception as e:
-                logger.error(f"Get csrf token from session error: {e}")
+                LOGGER.error(f"Get csrf token from session error: {e}")
 
         hmac_obj = hmac.new(key=bytes.fromhex(config["JWT_KEY"]),
                             msg=token_msg[0].encode("utf-8"), digestmod=hashlib.sha256)

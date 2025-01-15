@@ -1,46 +1,46 @@
-# Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
+"""对接Euler Copilot RAG
 
+Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
+"""
 import json
+from collections.abc import AsyncGenerator
+
 import aiohttp
+from fastapi import status
 
 from apps.common.config import config
+from apps.constants import LOGGER
+from apps.entities.rag_data import RAGQueryReq
 from apps.service import Activity
 
 
 class RAG:
-    """
-    调用RAG服务，获取知识库答案
-    """
-
-    def __init__(self):
-        raise NotImplementedError("RAG类无法被实例化！")
+    """调用RAG服务，获取知识库答案"""
 
     @staticmethod
-    async def get_rag_result(user_sub: str, question: str, language: str, history: list):
+    async def get_rag_result(user_sub: str, data: RAGQueryReq) -> AsyncGenerator[str, None]:
+        """获取RAG服务的结果"""
         url = config["RAG_HOST"].rstrip("/") + "/kb/get_stream_answer"
         headers = {
-            "Content-Type": "application/json"
+            "Content-Type": "application/json",
         }
-        data = {
-            "question": question,
-            "history": history,
-            "language": language,
-            "kb_sn": f'{language}_default_test',
-            "top_k": 5,
-            "fetch_source": False
-        }
-        if config['RAG_KB_SN']:
-            data.update({"kb_sn": config['RAG_KB_SN']})
-        payload = json.dumps(data, ensure_ascii=False)
 
-        yield "data: " + json.dumps({"content": "正在查询知识库，请稍等...\n\n"}) + "\n\n"
+        payload = json.dumps(data.model_dump(exclude_none=True, by_alias=True), ensure_ascii=False)
+
+
         # asyncio HTTP请求
-        async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=300)) as session:
-            async with session.post(url, headers=headers, data=payload, ssl=False) as response:
-                async for line in response.content:
-                    line_str = line.decode('utf-8')
+        async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=300)) as session, session.post(url, headers=headers, data=payload, ssl=False) as response:
+            if response.status != status.HTTP_200_OK:
+                LOGGER.error(f"RAG服务返回错误码: {response.status}\n{await response.text()}")
+                return
 
-                    if line_str != "data: [DONE]" and Activity.is_active(user_sub):
-                        yield line_str
-                    else:
-                        return
+            async for line in response.content:
+                line_str = line.decode("utf-8")
+
+                if not await Activity.is_active(user_sub):
+                    return
+
+                if "data: [DONE]" in line_str:
+                    return
+
+                yield line_str

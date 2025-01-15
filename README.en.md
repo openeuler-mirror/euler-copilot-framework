@@ -1,7 +1,7 @@
 # euler-copilot-framework
 
 #### Description
-A framework named EulerCopilot, designed for resource management and scheduling.
+EulerCopilot 智能体框架
 
 #### Software Architecture
 Software architecture description

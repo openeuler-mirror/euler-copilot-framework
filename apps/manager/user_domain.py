@@ -1,77 +1,46 @@
-# Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
+"""用户画像管理
 
-from datetime import datetime, timezone
-
-import pytz
-import logging
-
-from apps.models.mysql import MysqlDB, UserDomain, Domain
-from sqlalchemy import desc
-
-logger = logging.getLogger('gunicorn.error')
+Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
+"""
+from apps.constants import LOGGER
+from apps.entities.collection import UserDomainData
+from apps.models.mongo import MongoDB
 
 
 class UserDomainManager:
-    def __init__(self):
-        raise NotImplementedError()
+    """用户画像管理"""
 
     @staticmethod
-    def get_user_domain_by_user_sub_and_domain_name(user_sub, domain_name):
-        result = None
+    async def get_user_domain_by_user_sub_and_topk(user_sub: str, topk: int) -> list[str]:
+        """根据用户ID，查询用户最常涉及的n个领域"""
+        user_collection = MongoDB.get_collection("user")
         try:
-            with MysqlDB().get_session() as session:
-                result = session.query(UserDomain).filter(
-                    UserDomain.user_sub == user_sub, UserDomain.domain_name == domain_name).first()
+            domains = await user_collection.aggregate([
+                {"$project": {"_id": 1, "domains": 1}},
+                {"$match": {"_id": user_sub}},
+                {"$unwind": "$domains"},
+                {"$sort": {"domain_count": -1}},
+                {"$limit": topk},
+            ])
+
+            return [UserDomainData.model_validate(domain).name async for domain in domains]
         except Exception as e:
-            logger.info(f"Get user_domain by user_sub_and_domain_name failed: {e}")
-        return result
+            LOGGER.info(f"Get user_domain by user_sub and topk failed: {e}")
+        return []
 
     @staticmethod
-    def get_user_domain_by_user_sub(user_sub):
-        results = []
+    async def update_user_domain_by_user_sub_and_domain_name(user_sub: str, domain_name: str) -> bool:
+        """增加特定用户特定领域的频次"""
+        domain_collection = MongoDB.get_collection("domain")
+        user_collection = MongoDB.get_collection("user")
         try:
-            with MysqlDB().get_session() as session:
-                results = session.query(UserDomain).filter(
-                    UserDomain.user_sub == user_sub).all()
+            # 检查领域是否存在
+            domain = await domain_collection.find_one({"_id": domain_name})
+            if not domain:
+                # 领域不存在，则创建领域
+                await domain_collection.insert_one({"_id": domain_name, "domain_description": ""})
+            await user_collection.update_one({"_id": user_sub, "domains.name": domain_name}, {"$inc": {"domains.$.count": 1}})
+            return True
         except Exception as e:
-            logger.info(f"Get user_domain by user_sub failed: {e}")
-        return results
-    
-    @staticmethod
-    def get_user_domain_by_user_sub_and_topk(user_sub, topk):
-        results = []
-        try:
-            with MysqlDB().get_session() as session:
-                results = session.query(UserDomain.domain_count, Domain.domain_name, Domain.domain_description).join(Domain, UserDomain.domain_name==Domain.domain_name).filter(
-                    UserDomain.user_sub == user_sub).order_by(
-                    desc(UserDomain.domain_count)).limit(topk).all()
-        except Exception as e:
-            logger.info(f"Get user_domain by user_sub and topk failed: {e}")
-        return results
-
-    @staticmethod
-    def update_user_domain_by_user_sub_and_domain_name(user_sub, domain_name):
-        result = None
-        try:
-            with MysqlDB().get_session() as session:
-                cur_user_domain = UserDomainManager.get_user_domain_by_user_sub_and_domain_name(user_sub, domain_name)
-                if not cur_user_domain:
-                    cur_user_domain = UserDomain(
-                        user_sub=user_sub, domain_name=domain_name, domain_count=1,
-                        created_time=datetime.now(timezone.utc).astimezone(pytz.timezone('Asia/Shanghai')),
-                        updated_time=datetime.now(timezone.utc).astimezone(pytz.timezone('Asia/Shanghai')))
-                    session.add(cur_user_domain)
-                    session.commit()
-                else:
-                    update_dict = {
-                        "domain_count": cur_user_domain.domain_count+1,
-                        "updated_time": datetime.now(timezone.utc).astimezone(pytz.timezone('Asia/Shanghai'))
-                    }
-                    session.query(UserDomain).filter(UserDomain.user_sub == user_sub,
-                                                     UserDomain.domain_name == domain_name).update(update_dict)
-                    session.commit()
-            result = UserDomainManager.get_user_domain_by_user_sub_and_domain_name(user_sub, domain_name)
-        except Exception as e:
-            logger.info(f"Update user_domain by user_sub and domain_name failed due to error: {e}")
-        finally:
-            return result
+            LOGGER.info(f"Update user_domain by user_sub and domain_name failed due to error: {e}")
+            return False

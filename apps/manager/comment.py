@@ -1,58 +1,51 @@
-# Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
-import logging
+"""评论 Manager
 
-from apps.models.mysql import Comment, MysqlDB
-from apps.entities.comment import CommentData
+Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
+"""
+from typing import Optional
+
+from apps.constants import LOGGER
+from apps.entities.collection import RecordComment
+from apps.models.mongo import MongoDB
 
 
 class CommentManager:
-    logger = logging.getLogger('gunicorn.error')
+    """评论相关操作"""
 
     @staticmethod
-    def query_comment(record_id: str):
-        result = None
+    async def query_comment(group_id: str, record_id: str) -> Optional[RecordComment]:
+        """根据问答ID查询评论
+
+        :param record_id: 问答ID
+        :return: 评论内容
+        """
         try:
-            with MysqlDB().get_session() as session:
-                result = session.query(Comment).filter(
-                    Comment.record_id == record_id).first()
+            record_group_collection = MongoDB.get_collection("record_group")
+            result = await record_group_collection.aggregate([
+                {"$match": {"_id": group_id, "records._id": record_id}},
+                {"$unwind": "$records"},
+                {"$match": {"records._id": record_id}},
+                {"$limit": 1},
+            ])
+            result = await result.to_list(length=1)
+            if result:
+                return RecordComment.model_validate(result[0]["records"]["comment"])
         except Exception as e:
-            CommentManager.logger.info(
-                f"Query comment failed due to error: {e}")
-        return result
+            LOGGER.info(f"Query comment failed due to error: {e}")
+        return None
 
     @staticmethod
-    def add_comment(user_sub: str, data: CommentData):
-        try:
-            with MysqlDB().get_session() as session:
-                add_comment = Comment(user_sub=user_sub, record_id=data.record_id,
-                                      is_like=data.is_like, dislike_reason=data.dislike_reason,
-                                      reason_link=data.reason_link, reason_description=data.reason_description)
-                session.add(add_comment)
-                session.commit()
-        except Exception as e:
-            CommentManager.logger.info(
-                f"Add comment failed due to error: {e}")
+    async def update_comment(group_id: str, record_id: str, data: RecordComment) -> bool:
+        """更新评论
 
-    @staticmethod
-    def update_comment(user_sub: str, data: CommentData):
+        :param record_id: 问答ID
+        :param data: 评论内容
+        :return: 是否更新成功；True/False
+        """
         try:
-            with MysqlDB().get_session() as session:
-                session.query(Comment).filter(Comment.user_sub == user_sub).filter(
-                    Comment.record_id == data.record_id).update(
-                    {"is_like": data.is_like, "dislike_reason": data.dislike_reason, "reason_link": data.reason_link,
-                     "reason_description": data.reason_description})
-                session.commit()
+            record_group_collection = MongoDB.get_collection("record_group")
+            await record_group_collection.update_one({"_id": group_id, "records._id": record_id}, {"$set": {"records.$.comment": data.model_dump(by_alias=True)}})
+            return True
         except Exception as e:
-            CommentManager.logger.info(
-                f"Add comment failed due to error: {e}")
-
-    @staticmethod
-    def delete_comment_by_user_sub(user_sub: str):
-        try:
-            with MysqlDB().get_session() as session:
-                session.query(Comment).filter(
-                    Comment.user_sub == user_sub).delete()
-                session.commit()
-        except Exception as e:
-            CommentManager.logger.info(
-                f"delete comment by user_sub failed due to error: {e}")
+            LOGGER.info(f"Add comment failed due to error: {e}")
+            return False

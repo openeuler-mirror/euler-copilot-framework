@@ -1,13 +1,17 @@
-# Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
+"""内存SQLite中的表结构
 
-from sqlalchemy import Column, Integer, String, LargeBinary
+Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
+"""
+from sqlalchemy import Column, Integer, LargeBinary, String
 from sqlalchemy.orm import declarative_base
 
 Base = declarative_base()
 
 
 class FlowItem(Base):
-    __tablename__ = 'flow'
+    """Flow数据表"""
+
+    __tablename__ = "flow"
     id = Column(Integer, primary_key=True, autoincrement=True)
     plugin = Column(String(length=100), nullable=False)
     name = Column(String(length=100), nullable=False, unique=True)
@@ -15,9 +19,10 @@ class FlowItem(Base):
 
 
 class PluginItem(Base):
-    __tablename__ = 'plugin'
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    name = Column(String(length=100), nullable=False, unique=True)
+    """Plugin数据表"""
+
+    __tablename__ = "plugin"
+    id = Column(String(length=100), primary_key=True, nullable=False, unique=True)
     show_name = Column(String(length=100), nullable=False, unique=True)
     description = Column(String(length=1500), nullable=False)
     auth = Column(String(length=500), nullable=True)
@@ -26,7 +31,9 @@ class PluginItem(Base):
 
 
 class CallItem(Base):
-    __tablename__ = 'call'
+    """Call数据表"""
+
+    __tablename__ = "call"
     id = Column(Integer, primary_key=True, autoincrement=True)
     plugin = Column(String(length=100), nullable=True)
     name = Column(String(length=100), nullable=False)
