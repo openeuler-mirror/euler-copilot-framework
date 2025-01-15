@@ -1,16 +1,17 @@
-# Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
+"""配置文件处理模块
+
+Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
+"""
 import os
-from typing import Optional
 import secrets
+from typing import Optional
 
 from dotenv import dotenv_values
 from pydantic import BaseModel, Field
 
 
 class ConfigModel(BaseModel):
-    """
-    配置文件的校验Class
-    """
+    """配置文件的校验Class"""
 
     # DEPLOY
     DEPLOY_MODE: str = Field(description="oidc 部署方式", default="online")
@@ -40,7 +41,6 @@ class ConfigModel(BaseModel):
     VECTORIZE_HOST: str = Field(description="Vectorize服务域名")
     # RAG
     RAG_HOST: str = Field(description="RAG服务域名")
-    RAG_KB_SN: Optional[str] = Field(description="RAG 资产库", default=None)
     # FastAPI
     DOMAIN: str = Field(description="当前实例的域名")
     JWT_KEY: str = Field(description="JWT key", default=secrets.token_hex(16))
@@ -51,16 +51,22 @@ class ConfigModel(BaseModel):
     WORDS_LIST: Optional[str] = Field(description="敏感词列表文件路径", default=None)
     # CSRF
     ENABLE_CSRF: bool = Field(description="是否启用CSRF Token功能", default=True)
-    # MySQL
-    MYSQL_HOST: str = Field(description="MySQL主机名、端口号")
-    MYSQL_DATABASE: str = Field(description="MySQL数据库名")
-    MYSQL_USER: str = Field(description="MySQL用户名")
-    MYSQL_PWD: str = Field(description="MySQL密码")
+    # MongoDB
+    MONGODB_HOST: str = Field(description="MongoDB主机名")
+    MONGODB_PORT: int = Field(description="MongoDB端口号", default=27017)
+    MONGODB_USER: str = Field(description="MongoDB用户名")
+    MONGODB_PWD: str = Field(description="MongoDB密码")
+    MONGODB_DATABASE: str = Field(description="MongoDB数据库名")
     # PGSQL
     POSTGRES_HOST: str = Field(description="PGSQL主机名、端口号")
     POSTGRES_DATABASE: str = Field(description="PGSQL数据库名")
     POSTGRES_USER: str = Field(description="PGSQL用户名")
     POSTGRES_PWD: str = Field(description="PGSQL密码")
+    # MinIO
+    MINIO_ENDPOINT: str = Field(description="MinIO主机名、端口号")
+    MINIO_ACCESS_KEY: str = Field(description="MinIO访问密钥")
+    MINIO_SECRET_KEY: str = Field(description="MinIO密钥")
+    MINIO_SECURE: bool = Field(description="MinIO是否启用SSL", default=False)
     # Security
     HALF_KEY1: str = Field(description="Half key 1")
     HALF_KEY2: str = Field(description="Half key 2")
@@ -79,47 +85,43 @@ class ConfigModel(BaseModel):
     SPARK_LLM_DOMAIN: Optional[str] = Field(description="星火大模型API 领域名", default=None)
     # 参数猜解
     SCHEDULER_BACKEND: Optional[str] = Field(description="参数猜解后端", default=None)
+    SCHEDULER_MODEL: Optional[str] = Field(description="参数猜解模型名", default=None)
     SCHEDULER_URL: Optional[str] = Field(description="参数猜解 URL地址", default=None)
     SCHEDULER_API_KEY: Optional[str] = Field(description="参数猜解 API密钥", default=None)
-    SCHEDULER_STRUCTURED_OUTPUT: Optional[bool] = Field(description="是否启用结构化输出", default=True)
+    SCHEDULER_MAX_TOKENS: int = Field(description="参数猜解最大Token数", default=8192)
+    SCHEDULER_TEMPERATURE: float = Field(description="参数猜解温度", default=0.07)
     # 插件位置
     PLUGIN_DIR: Optional[str] = Field(description="插件路径", default=None)
-    # 临时路径
-    TEMP_DIR: str = Field(description="临时目录位置", default="/tmp")
     # SQL接口路径
     SQL_URL: str = Field(description="Chat2DB接口路径")
 
 
 class Config:
-    """
-    配置文件读取和使用Class
-    """
+    """配置文件读取和使用Class"""
 
-    config: ConfigModel
+    _config: ConfigModel
 
-    def __init__(self):
-        """
-        读取配置文件；当PROD环境变量设置时，配置文件将在读取后删除
-        """
-        if os.getenv("CONFIG"):
-            config_file = os.getenv("CONFIG")
-        else:
+    def __init__(self) -> None:
+        """读取配置文件；当PROD环境变量设置时，配置文件将在读取后删除"""
+        config_file = os.getenv("CONFIG")
+        if config_file is None:
             config_file = "./config/.env"
-        self.config = ConfigModel(**(dotenv_values(config_file)))
+        self._config = ConfigModel.model_validate(dotenv_values(config_file))
 
         if os.getenv("PROD"):
             os.remove(config_file)
 
-    def __getitem__(self, key):
-        """
-        获得配置文件中特定条目的值
+    def __getitem__(self, key: str):  # noqa: ANN204
+        """获得配置文件中特定条目的值
+
         :param key: 配置文件条目名
         :return: 条目的值；不存在则返回None
         """
-        if key in self.config.__dict__:
-            return self.config.__dict__[key]
-        else:
-            return None
+        if hasattr(self._config, key):
+            return getattr(self._config, key)
+
+        err = f"Key {key} not found in config"
+        raise KeyError(err)
 
 
 config = Config()

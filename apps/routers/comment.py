@@ -1,48 +1,51 @@
-# Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
+"""FastAPI 评论相关接口
 
-import json
+Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
+"""
+from datetime import datetime, timezone
+from typing import Annotated
 
-from fastapi import APIRouter, Depends, status, HTTPException
-import logging
+from fastapi import APIRouter, Depends, status
+from fastapi.responses import JSONResponse
 
-from apps.dependency.user import verify_user, get_user
-from apps.dependency.csrf import verify_csrf_token
+from apps.constants import LOGGER
+from apps.dependency import get_user, verify_csrf_token, verify_user
+from apps.entities.collection import RecordComment
 from apps.entities.request_data import AddCommentData
 from apps.entities.response_data import ResponseData
-from apps.entities.user import User
-from apps.manager.comment import CommentData, CommentManager
+from apps.manager.comment import CommentManager
 from apps.manager.record import RecordManager
-from apps.manager.conversation import ConversationManager
-
 
 router = APIRouter(
     prefix="/api/comment",
     tags=["comment"],
     dependencies=[
-        Depends(verify_user)
-    ]
+        Depends(verify_user),
+    ],
 )
-logger = logging.getLogger('gunicorn.error')
 
 
-@router.post("", response_model=ResponseData, dependencies=[Depends(verify_csrf_token)])
-async def add_comment(post_body: AddCommentData, user: User = Depends(get_user)):
-    user_sub = user.user_sub
-    cur_record = RecordManager.query_encrypted_data_by_record_id(
-        post_body.record_id)
-    if not cur_record:
-        logger.error("Comment: record_id not found.")
-        raise HTTPException(status_code=status.HTTP_204_NO_CONTENT)
-    cur_conv = ConversationManager.get_conversation_by_conversation_id(
-        cur_record.conversation_id)
-    if not cur_conv or cur_conv.user_sub != user.user_sub:
-        logger.error("Comment: conversation_id not found.")
-        raise HTTPException(status_code=status.HTTP_204_NO_CONTENT)
-    cur_comment = CommentManager.query_comment(post_body.record_id)
-    comment_data = CommentData(post_body.record_id, post_body.is_like, post_body.dislike_reason,
-                               post_body.reason_link, post_body.reason_description)
-    if cur_comment:
-        CommentManager.update_comment(user_sub, comment_data)
-    else:
-        CommentManager.add_comment(user_sub, comment_data)
-    return ResponseData(code=status.HTTP_200_OK, message="success", result={})
+@router.post("", dependencies=[Depends(verify_csrf_token)], response_model=ResponseData)
+async def add_comment(post_body: AddCommentData, user_sub: Annotated[str, Depends(get_user)]):  # noqa: ANN201
+    """给Record添加评论"""
+    if not await RecordManager.verify_record_in_group(post_body.group_id, post_body.record_id, user_sub):
+        LOGGER.error("Comment: record_id not found.")
+        return JSONResponse(status_code=status.HTTP_204_NO_CONTENT, content=ResponseData(
+            code=status.HTTP_204_NO_CONTENT,
+            message="record_id not found",
+            result={},
+        ).model_dump(exclude_none=True, by_alias=True))
+
+    comment_data = RecordComment(
+        is_liked=post_body.is_like,
+        feedback_type=post_body.dislike_reason,
+        feedback_link=post_body.reason_link,
+        feedback_content=post_body.reason_description,
+        feedback_time=round(datetime.now(tz=timezone.utc).timestamp(), 3),
+    )
+    await CommentManager.update_comment(post_body.group_id, post_body.record_id, comment_data)
+    return JSONResponse(status_code=status.HTTP_200_OK, content=ResponseData(
+        code=status.HTTP_200_OK,
+        message="success",
+        result={},
+    ).model_dump(exclude_none=True, by_alias=True))

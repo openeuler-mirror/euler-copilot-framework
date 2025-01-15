@@ -1,78 +1,73 @@
-# Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
+"""Pool：载入器
 
-from __future__ import annotations
-
-import os
-import sys
-from typing import Dict, Any, List
-import json
+Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
+"""
 import importlib.util
-import logging
-
-from apps.common.config import config
-from apps.common.singleton import Singleton
-from apps.entities.plugin import Flow, Step
-from apps.scheduler.pool.pool import Pool
-from apps.scheduler.call import exported
+import json
+import sys
+import traceback
+from pathlib import Path
+from typing import Any, ClassVar, Optional
 
 import yaml
-from langchain_community.agent_toolkits.openapi.spec import reduce_openapi_spec, ReducedOpenAPISpec
+from langchain_community.agent_toolkits.openapi.spec import (
+    ReducedOpenAPISpec,
+    reduce_openapi_spec,
+)
 
+import apps.scheduler.call as system_call
+from apps.common.config import config
+from apps.common.singleton import Singleton
+from apps.constants import LOGGER
+from apps.entities.plugin import Flow, NextFlow, Step
+from apps.scheduler.pool.pool import Pool
 
 OPENAPI_FILENAME = "openapi.yaml"
 METADATA_FILENAME = "plugin.json"
 FLOW_DIR = "flows"
 LIB_DIR = "lib"
 
-logger = logging.getLogger('gunicorn.error')
-
 
 class PluginLoader:
-    """
-    载入单个插件的Loader。
-    """
-    plugin_location: str
-    plugin_name: str
+    """载入单个插件的Loader。"""
 
-    def __init__(self, name: str):
-        """
-        初始化Loader。
+    def __init__(self, plugin_id: str) -> None:
+        """初始化Loader。
+
         设置插件目录，随后遍历每一个
         """
-
-        self.plugin_location = os.path.join(config["PLUGIN_DIR"], name)
-        self.plugin_name = name
+        self._plugin_location = Path(config["PLUGIN_DIR"]) / plugin_id
+        self.plugin_name = plugin_id
 
         metadata = self._load_metadata()
         spec = self._load_openapi_spec()
-        Pool().add_plugin(name=name, spec=spec, metadata=metadata)
+        Pool().add_plugin(plugin_id=plugin_id, spec=spec, metadata=metadata)
 
         if "automatic_flow" in metadata and metadata["automatic_flow"] is True:
             flows = self._single_api_to_flow(spec)
         else:
             flows = []
         flows += self._load_flow()
-        Pool().add_flows(plugin=name, flows=flows)
+        Pool().add_flows(plugin=plugin_id, flows=flows)
 
         calls = self._load_lib()
-        Pool().add_calls(plugin=name, calls=calls)
+        Pool().add_calls(plugin=plugin_id, calls=calls)
 
-    def _load_openapi_spec(self) -> ReducedOpenAPISpec | None:
-        spec_path = os.path.join(self.plugin_location, OPENAPI_FILENAME)
+    def _load_openapi_spec(self) -> Optional[ReducedOpenAPISpec]:
+        spec_path = self._plugin_location / OPENAPI_FILENAME
 
-        if os.path.exists(spec_path):
-            spec = yaml.safe_load(open(spec_path, "r", encoding="utf-8"))
+        if spec_path.exists():
+            with Path(spec_path).open(encoding="utf-8") as f:
+                spec = yaml.safe_load(f)
             return reduce_openapi_spec(spec)
-        else:
-            return None
+        return None
 
-    def _load_metadata(self) -> Dict[str, Any]:
-        metadata_path = os.path.join(self.plugin_location, METADATA_FILENAME)
-        metadata = json.load(open(metadata_path, "r", encoding="utf-8"))
-        return metadata
+    def _load_metadata(self) -> dict[str, Any]:
+        metadata_path = self._plugin_location / METADATA_FILENAME
+        return json.load(Path(metadata_path).open(encoding="utf-8"))
 
     @staticmethod
-    def _single_api_to_flow(spec: ReducedOpenAPISpec | None = None) -> List[Dict[str, Any]]:
+    def _single_api_to_flow(spec: Optional[ReducedOpenAPISpec] = None) -> list[dict[str, Any]]:
         if not spec:
             return []
 
@@ -84,38 +79,39 @@ class PluginLoader:
                     name="start",
                     call_type="api",
                     params={
-                        "endpoint": endpoint[0]
+                        "endpoint": endpoint[0],
                     },
-                    next="end"
+                    next="end",
                 ),
                 "end": Step(
                     name="end",
-                    call_type="none"
-                )
+                    call_type="none",
+                ),
             }
 
             # 构造Flow
             flow = {
-                "name": endpoint[0],
+                "id": endpoint[0],
                 "description": endpoint[1],
-                "data": Flow(steps=step_dict)
+                "data": Flow(steps=step_dict),
             }
 
             flows.append(flow)
         return flows
 
-    def _load_flow(self) -> List[Dict[str, Any]]:
-        flow_path = os.path.join(self.plugin_location, FLOW_DIR)
+    def _load_flow(self) -> list[dict[str, Any]]:
+        flow_path = self._plugin_location / FLOW_DIR
         flows = []
-        if os.path.isdir(flow_path):
-            for item in os.listdir(flow_path):
-                current_flow_path = os.path.join(flow_path, item)
-                logger.info("载入Flow： {}".format(current_flow_path))
+        if flow_path.is_dir():
+            for current_flow_path in flow_path.iterdir():
+                LOGGER.info(f"载入Flow： {current_flow_path}")
 
-                flow_yaml = yaml.safe_load(open(current_flow_path, "r", encoding="utf-8"))
+                with Path(current_flow_path).open(encoding="utf-8") as f:
+                    flow_yaml = yaml.safe_load(f)
 
-                if "." in flow_yaml["name"]:
-                    raise ValueError("Flow名称包含非法字符！")
+                if "/" in flow_yaml["id"]:
+                    err = "Flow名称包含非法字符！"
+                    raise ValueError(err)
 
                 if "on_error" in flow_yaml:
                     error_step = Step(name="error", **flow_yaml["on_error"])
@@ -124,8 +120,8 @@ class PluginLoader:
                         name="error",
                         call_type="llm",
                         params={
-                            "user_prompt": "当前工具执行发生错误，原始错误信息为：{data}. 请向用户展示错误信息，并给出可能的解决方案。\n\n背景信息：{context}"
-                        }
+                            "user_prompt": "当前工具执行发生错误，原始错误信息为：{data}. 请向用户展示错误信息，并给出可能的解决方案。\n\n背景信息：{context}",
+                        },
                     )
 
                 steps = {}
@@ -135,30 +131,43 @@ class PluginLoader:
                 if "next_flow" not in flow_yaml:
                     next_flow = None
                 else:
-                    next_flow = flow_yaml["next_flow"]
-
+                    next_flow = []
+                    for next_flow_item in flow_yaml["next_flow"]:
+                        next_flow.append(NextFlow(
+                            id=next_flow_item["id"],
+                            question=next_flow_item["question"],
+                        ))
                 flows.append({
-                    "name": flow_yaml["name"],
+                    "id": flow_yaml["id"],
                     "description": flow_yaml["description"],
                     "data": Flow(on_error=error_step, steps=steps, next_flow=next_flow),
                 })
         return flows
 
-    def _load_lib(self) -> List[Any]:
-        lib_path = os.path.join(self.plugin_location, LIB_DIR)
-        if os.path.isdir(lib_path):
-            logger.info("载入Lib：{}".format(lib_path))
+    def _load_lib(self) -> list[Any]:
+        lib_path = self._plugin_location / LIB_DIR
+        if lib_path.is_dir():
+            LOGGER.info(f"载入Lib：{lib_path}")
             # 插件lib载入到特定模块
             try:
                 spec = importlib.util.spec_from_file_location(
                     "apps.plugins." + self.plugin_name,
-                    os.path.join(self.plugin_location, "lib")
+                    lib_path,
                 )
+
+                if spec is None:
+                    return []
+
                 module = importlib.util.module_from_spec(spec)
                 sys.modules["apps.plugins." + self.plugin_name] = module
-                spec.loader.exec_module(module)
+
+                loader = spec.loader
+                if loader is None:
+                    return []
+
+                loader.exec_module(module)
             except Exception as e:
-                logger.info(msg=f"Failed to load plugin lib: {e}")
+                LOGGER.info(msg=f"Failed to load plugin lib: {e}")
                 return []
 
             # 注册模块所有工具
@@ -167,67 +176,62 @@ class PluginLoader:
                 try:
                     if self.check_user_class(cls):
                         calls.append(cls)
-                except Exception as e:
-                    logger.info(msg=f"Failed to register tools: {e}")
-                    continue
+                except Exception as e:  # noqa: PERF203
+                    LOGGER.info(msg=f"Failed to register tools: {e}")
             return calls
         return []
 
     @staticmethod
-    # 用户工具不强绑定父类，而是满足要求即可
-    def check_user_class(cls) -> bool:
+    def check_user_class(user_cls) -> bool:  # noqa: ANN001
+        """检查用户类是否符合Call标准要求"""
         flag = True
 
-        if not hasattr(cls, "name") or not isinstance(cls.name, str):
+        if not hasattr(user_cls, "name") or not isinstance(user_cls.name, str):
             flag = False
-        if not hasattr(cls, "description") or not isinstance(cls.description, str):
+        if not hasattr(user_cls, "description") or not isinstance(user_cls.description, str):
             flag = False
-        if not hasattr(cls, "spec") or not isinstance(cls.spec, dict):
+        if not hasattr(user_cls, "spec") or not isinstance(user_cls.spec, dict):
             flag = False
-        if not hasattr(cls, "__call__") or not callable(cls.__call__):
+        if not callable(user_cls) or not callable(user_cls.__call__):
             flag = False
 
         if not flag:
-            logger.info(msg="类{}不符合Call标准要求。".format(cls.__name__))
+            LOGGER.info(msg=f"类{user_cls.__name__}不符合Call标准要求。")
 
         return flag
 
 
-# 载入全部插件
 class Loader(metaclass=Singleton):
-    exclude_list: List[str] = [
+    """载入全部插件"""
+
+    exclude_list: ClassVar[list[str]] = [
         ".git",
-        "example"
+        "example",
     ]
     path: str = config["PLUGIN_DIR"]
 
-    def __init__(self):
-        raise NotImplementedError("Loader无法被实例化")
-
-    # 载入apps/scheduler/call下面的所有工具
     @classmethod
-    def load_predefined_call(cls):
-        calls = []
-        for item in exported:
-            calls.append(item)
+    def load_predefined_call(cls) -> None:
+        """载入apps/scheduler/call下面的所有工具"""
+        calls = [getattr(system_call, name) for name in system_call.__all__]
         try:
             Pool().add_calls(None, calls)
         except Exception as e:
-            logger.info(msg=f"Failed to load predefined call: {str(e)}")
+            LOGGER.info(msg=f"Failed to load predefined call: {e!s}\n{traceback.format_exc()}")
 
-    # 首次初始化
     @classmethod
-    def init(cls):
+    def init(cls) -> None:
+        """初始化插件"""
         cls.load_predefined_call()
-        for item in os.scandir(cls.path):
+        for item in Path(cls.path).iterdir():
             if item.is_dir() and item.name not in cls.exclude_list:
                 try:
-                    PluginLoader(name=item.name)
+                    PluginLoader(plugin_id=item.name)
                 except Exception as e:
-                    logger.error(msg=f"Failed to load plugin: {str(e)}")
+                    LOGGER.info(msg=f"Failed to load plugin: {e!s}\n{traceback.format_exc()}")
 
-    # 后续热重载
     @classmethod
-    def reload(cls):
+    def reload(cls) -> None:
+        """热重载插件"""
         Pool().clean_db()
         cls.init()

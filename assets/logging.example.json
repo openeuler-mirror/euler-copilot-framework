@@ -1,0 +1,47 @@
+{
+  "version": 1,
+  "disable_existing_loggers": false,
+  "root": {
+    "level": "INFO",
+    "handlers": [
+      "console"
+    ]
+  },
+  "loggers": {
+    "gunicorn.error": {
+      "level": "INFO",
+      "handlers": [
+        "error_console"
+      ],
+      "propagate": true,
+      "qualname": "gunicorn.error"
+    },
+    "gunicorn.access": {
+      "level": "INFO",
+      "handlers": [
+        "console"
+      ],
+      "propagate": true,
+      "qualname": "gunicorn.access"
+    }
+  },
+  "handlers": {
+    "console": {
+      "class": "logging.StreamHandler",
+      "formatter": "generic",
+      "stream": "ext://sys.stdout"
+    },
+    "error_console": {
+      "class": "logging.StreamHandler",
+      "formatter": "generic",
+      "stream": "ext://sys.stderr"
+    }
+  },
+  "formatters": {
+    "generic": {
+      "format": "[{asctime}][{levelname}][{name}][P{process}][T{thread}][{message}][{funcName}({filename}:{lineno})]",
+      "datefmt": "[%Y-%m-%d %H:%M:%S %z]",
+      "class": "logging.Formatter"
+    }
+  }
+}

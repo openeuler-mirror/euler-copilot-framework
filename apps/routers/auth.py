@@ -1,170 +1,240 @@
-# Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
+"""FastAPI 用户认证相关路由
 
-from __future__ import annotations
+Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
+"""
+from typing import Annotated, Optional
 
-import logging
-
-from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
-from fastapi.responses import RedirectResponse
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
+from fastapi.responses import JSONResponse, RedirectResponse
 
 from apps.common.config import config
 from apps.common.oidc import get_oidc_token, get_oidc_user
-from apps.dependency.csrf import verify_csrf_token
-from apps.dependency.user import get_user, verify_user
-from apps.entities.request_data import ModifyRevisionData
-from apps.entities.response_data import ResponseData
-from apps.entities.user import User
-from apps.manager.audit_log import AuditLogData, AuditLogManager
+from apps.constants import LOGGER
+from apps.dependency import get_user, verify_csrf_token, verify_user
+from apps.entities.collection import Audit
+from apps.entities.response_data import (
+    AuthUserMsg,
+    AuthUserRsp,
+    OidcRedirectMsg,
+    OidcRedirectRsp,
+    ResponseData,
+)
+from apps.manager.audit_log import AuditLogManager
 from apps.manager.session import SessionManager
+from apps.manager.token import TokenManager
 from apps.manager.user import UserManager
-from apps.models.redis import RedisConnectionPool
-
-logger = logging.getLogger('gunicorn.error')
 
 router = APIRouter(
     prefix="/api/auth",
-    tags=["auth"]
+    tags=["auth"],
 )
 
 
-@router.get("/login", response_class=RedirectResponse)
-async def oidc_login(request: Request, code: str, redirect_index: str = None):
+@router.get("/login")
+async def oidc_login(request: Request, code: str, redirect_index: Optional[str] = None) -> RedirectResponse:
+    """OIDC login
+
+    :param request: Request object
+    :param code: OIDC code
+    :param redirect_index: redirect index
+    :return: RedirectResponse
+    """
     if redirect_index:
-        response = RedirectResponse(redirect_index, status_code=301)
+        response = RedirectResponse(redirect_index, status_code=status.HTTP_301_MOVED_PERMANENTLY)
     else:
-        response = RedirectResponse(config["WEB_FRONT_URL"], status_code=301)
+        response = RedirectResponse(config["WEB_FRONT_URL"], status_code=status.HTTP_301_MOVED_PERMANENTLY)
     try:
         token = await get_oidc_token(code)
         user_info = await get_oidc_user(token["access_token"], token["refresh_token"])
-        user_sub: str | None = user_info.get('user_sub', None)
+        user_sub: Optional[str] = user_info.get("user_sub", None)
     except Exception as e:
-        logger.error(f"User login failed: {e}")
-        if 'auth error' in str(e):
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="auth error")
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="User login failed.")
+        LOGGER.error(f"User login failed: {e}")
+        if "auth error" in str(e):
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="auth error") from e
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="User login failed.") from e
 
-    user_host = request.client.host
+    user_host = None
+    if request.client is not None:
+        user_host = request.client.host
+
     if not user_sub:
-        logger.error("OIDC no user_sub associated.")
-        data = AuditLogData(method_type='get', source_name='/authorize/login',
-                            ip=user_host, result='fail', reason="OIDC no user_sub associated.")
-        AuditLogManager.add_audit_log('None', data)
+        LOGGER.error("OIDC no user_sub associated.")
+        data = Audit(
+            http_method="get",
+            module="auth",
+            client_ip=user_host,
+            message="/api/auth/login: OIDC no user_sub associated.",
+        )
+        await AuditLogManager.add_audit_log(data)
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="User login failed.")
 
-    UserManager.update_userinfo_by_user_sub(User(**user_info))
+    await UserManager.update_userinfo_by_user_sub(user_sub)
 
-    current_session = request.cookies.get("ECSESSION")
+    current_session = request.cookies["ECSESSION"]
     try:
-        SessionManager.delete_session(current_session)
-        current_session = SessionManager.create_session(user_host, extra_keys={
-            "user_sub": user_sub
+        await SessionManager.delete_session(current_session)
+        current_session = await SessionManager.create_session(user_host, extra_keys={
+            "user_sub": user_sub,
         })
     except Exception as e:
-        logger.error(f"Change session failed: {e}")
-        data = AuditLogData(method_type='get', source_name='/authorize/login',
-                            ip=user_host, result='fail', reason="Change session failed.")
-        AuditLogManager.add_audit_log(user_sub, data)
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="User login failed.")
+        LOGGER.error(f"Change session failed: {e}")
+        data = Audit(
+            user_sub=user_sub,
+            http_method="get",
+            module="auth",
+            client_ip=user_host,
+            message="/api/auth/login: Change session failed.",
+        )
+        await AuditLogManager.add_audit_log(data)
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="User login failed.") from e
 
-    new_csrf_token = SessionManager.create_csrf_token(current_session)
-    if config['COOKIE_MODE'] == 'DEBUG':
+    new_csrf_token = await SessionManager.create_csrf_token(current_session)
+    if config["COOKIE_MODE"] == "DEBUG":
         response.set_cookie(
-            "_csrf_tk", 
-            new_csrf_token
+            "_csrf_tk",
+            new_csrf_token,
         )
         response.set_cookie(
-            "ECSESSION", 
-            current_session
+            "ECSESSION",
+            current_session,
         )
     else:
         response.set_cookie(
-            "_csrf_tk", 
-            new_csrf_token, 
+            "_csrf_tk",
+            new_csrf_token,
             max_age=config["SESSION_TTL"] * 60,
-            secure=True, 
-            domain=config["DOMAIN"], 
-            samesite="strict"
+            secure=True,
+            domain=config["DOMAIN"],
+            samesite="strict",
         )
         response.set_cookie(
-            "ECSESSION", 
-            current_session, 
+            "ECSESSION",
+            current_session,
             max_age=config["SESSION_TTL"] * 60,
-            secure=True, 
-            domain=config["DOMAIN"], 
-            httponly=True, 
-            samesite="strict"
+            secure=True,
+            domain=config["DOMAIN"],
+            httponly=True,
+            samesite="strict",
         )
-    data = AuditLogData(
-        method_type='get', 
-        source_name='/authorize/login',
-        ip=user_host, 
-        result='success', 
-        reason="User login."
+    data = Audit(
+        user_sub=user_sub,
+        http_method="get",
+        module="auth",
+        client_ip=user_host,
+        message="/api/auth/login: User login.",
     )
-    AuditLogManager.add_audit_log(user_sub, data)
 
+    await AuditLogManager.add_audit_log(data)
     return response
 
 
 # 用户主动logout
-@router.get("/logout", response_model=ResponseData, dependencies=[Depends(verify_user), Depends(verify_csrf_token)])
-async def logout(request: Request, response: Response, user: User = Depends(get_user)):
-    session_id = request.cookies['ECSESSION']
-    if not SessionManager.verify_user(session_id):
-        logger.info("User already logged out.")
-        return ResponseData(code=200, message="ok", result={})
-
-    # 删除 oidc related token
-    user_sub = user.user_sub
-    with RedisConnectionPool.get_redis_connection() as r:
-        r.delete(f'{user_sub}_oidc_access_token')
-        r.delete(f'{user_sub}_oidc_refresh_token')
-        r.delete(f'aops_{user_sub}_token')
-
-    SessionManager.delete_session(session_id)
-    new_session = SessionManager.create_session(request.client.host)
+@router.get("/logout", dependencies=[Depends(verify_csrf_token)], response_model=ResponseData)
+async def logout(request: Request, response: Response, user_sub: Annotated[str, Depends(get_user)]):  # noqa: ANN201
+    """用户登出EulerCopilot"""
+    session_id = request.cookies["ECSESSION"]
+    if not request.client:
+        return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content=ResponseData(
+            code=status.HTTP_400_BAD_REQUEST,
+            message="IP error",
+            result={},
+        ).model_dump(exclude_none=True, by_alias=True))
+    await TokenManager.delete_plugin_token(user_sub)
+    await SessionManager.delete_session(session_id)
+    new_session = await SessionManager.create_session(request.client.host)
 
     response.set_cookie("ECSESSION", new_session, max_age=config["SESSION_TTL"] * 60,
                         httponly=True, secure=True, samesite="strict", domain=config["DOMAIN"])
     response.delete_cookie("_csrf_tk")
 
-    data = AuditLogData(method_type='get', source_name='/authorize/logout',
-                        ip=request.client.host, result='User logout succeeded.', reason='')
-    AuditLogManager.add_audit_log(user.user_sub, data)
-    return {
-        "code": 200,
-        "message": "success",
-        "result": dict()
-    }
+    data = Audit(
+        http_method="get",
+        module="auth",
+        client_ip=request.client.host,
+        user_sub=user_sub,
+        message="/api/auth/logout: User logout succeeded.",
+    )
+    await AuditLogManager.add_audit_log(data)
+    return JSONResponse(status_code=status.HTTP_200_OK, content=ResponseData(
+        code=status.HTTP_200_OK,
+        message="success",
+        result={},
+    ).model_dump(exclude_none=True, by_alias=True))
 
 
-@router.get("/redirect")
-async def oidc_redirect():
-    return {
-        "code": 200,
-        "message": "success",
-        "result": config["OIDC_REDIRECT_URL"]
-    }
+@router.get("/redirect", response_model=OidcRedirectRsp)
+async def oidc_redirect(action: Annotated[str, Query()] = "login"):  # noqa: ANN201
+    """OIDC重定向URL"""
+    if action == "login":
+        return JSONResponse(status_code=status.HTTP_200_OK, content=OidcRedirectRsp(
+            code=status.HTTP_200_OK,
+            message="success",
+            result=OidcRedirectMsg(url=config["OIDC_REDIRECT_URL"]),
+        ).model_dump(exclude_none=True, by_alias=True))
+    if action == "logout":
+        return JSONResponse(status_code=status.HTTP_200_OK, content=OidcRedirectRsp(
+            code=status.HTTP_200_OK,
+            message="success",
+            result=OidcRedirectMsg(url=config["OIDC_LOGOUT_URL"]),
+        ).model_dump(exclude_none=True, by_alias=True))
+    return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content=ResponseData(
+        code=status.HTTP_400_BAD_REQUEST,
+        message="invalid action",
+        result={},
+    ).model_dump(exclude_none=True, by_alias=True))
 
 
-@router.get("/user", dependencies=[Depends(verify_user)], response_model=ResponseData)
-async def userinfo(user: User = Depends(get_user)):
-    revision_number = UserManager.get_revision_number_by_user_sub(user_sub=user.user_sub)
-    user.revision_number = revision_number
-    return {
-        "code": 200,
-        "message": "success",
-        "result": user.__dict__
-    }
+# TODO(zwt): OIDC主动触发logout
+# 002
+@router.post("/logout", response_model=ResponseData)
+async def oidc_logout(token: str):  # noqa: ANN201
+    """OIDC主动触发登出"""
+    pass
+
+
+@router.get("/user", dependencies=[Depends(verify_user)], response_model=AuthUserRsp)
+async def userinfo(user_sub: Annotated[str, Depends(get_user)]):  # noqa: ANN201
+    """获取用户信息"""
+    user = await UserManager.get_userinfo_by_user_sub(user_sub=user_sub)
+    if not user:
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content=ResponseData(
+                code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                message="Get UserInfo failed.",
+                result={},
+            ).model_dump(exclude_none=True, by_alias=True),
+        )
+    return JSONResponse(status_code=status.HTTP_200_OK, content=AuthUserRsp(
+        code=status.HTTP_200_OK,
+        message="success",
+        result=AuthUserMsg(
+            user_sub=user_sub,
+            revision=user.is_active,
+        ),
+    ).model_dump(exclude_none=True, by_alias=True))
 
 
 @router.post("/update_revision_number", dependencies=[Depends(verify_user), Depends(verify_csrf_token)],
-             response_model=ResponseData)
-async def update_revision_number(post_body: ModifyRevisionData, user: User = Depends(get_user)):
-    user.revision_number = post_body.revision_num
-    ret = UserManager.update_userinfo_by_user_sub(user, refresh_revision=True)
-    return {
-        "code": 200,
-        "message": "success",
-        "result": ret.__dict__
-    }
+             response_model=AuthUserRsp,
+             responses={
+                status.HTTP_500_INTERNAL_SERVER_ERROR: {"model": ResponseData},
+             })
+async def update_revision_number(_post_body, user_sub: Annotated[str, Depends(get_user)]):  # noqa: ANN001, ANN201
+    """更新用户协议信息"""
+    ret: bool = await UserManager.update_userinfo_by_user_sub(user_sub, refresh_revision=True)
+    if not ret:
+        return JSONResponse(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, content=ResponseData(
+            code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            message="update revision failed",
+            result={},
+        ).model_dump(exclude_none=True, by_alias=True))
+
+    return JSONResponse(status_code=status.HTTP_200_OK, content=AuthUserRsp(
+        code=status.HTTP_200_OK,
+        message="success",
+        result=AuthUserMsg(
+            user_sub=user_sub,
+            revision=False,
+        ),
+    ).model_dump(exclude_none=True, by_alias=True))
