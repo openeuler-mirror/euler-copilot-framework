@@ -1,0 +1,34 @@
+# 元数据种类
+type: app
+
+# 应用的ID
+id: test_app
+# 应用的名称（展示用）
+name: 测试应用
+# 应用的描述（展示用，需少于150字）
+description: |
+  这是一个测试应用。
+  可以在该文件夹中放置应用必需的配置，例如OpenAPI文档等。
+# 应用包版本（展示用）
+version: "1.0.0"
+# 关联的用户账号
+author: zjq
+
+# 相关链接
+links:
+  - title: 测试链接
+    url: https://www.example.com
+# 首次提问
+first_questions:
+  - 这是测试指令
+  - 样例问题？
+# 对话轮次
+history_len: 3
+# 应用权限配置
+permissions:
+  # 权限类型（protected: 部分人可用，public: 公开， private: 私有）
+  type: protected
+  # 可访问的用户列表
+  users:
+    - test_user1
+    - test_user2
