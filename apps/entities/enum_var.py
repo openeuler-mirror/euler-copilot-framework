@@ -71,7 +71,7 @@ class MetadataType(str, Enum):
     APP = "app"
 
 
-class AppPermissionsType(str, Enum):
+class AppPermissionType(str, Enum):
     """App的权限类型"""
 
     PROTECTED = "protected"
