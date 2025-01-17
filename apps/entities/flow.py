@@ -7,7 +7,11 @@ from typing import Any, Optional
 
 from pydantic import BaseModel, Field
 
-from apps.entities.enum_var import CallType, MetadataType
+from apps.entities.enum_var import (
+    AppPermissionType,
+    CallType,
+    MetadataType,
+)
 
 
 class Step(BaseModel):
@@ -42,18 +46,6 @@ class Flow(BaseModel):
     next_flow: Optional[list[NextFlow]] = None
 
 
-class Service(BaseModel):
-    """外部服务信息
-
-    collection: service
-    """
-
-    id: str = Field(alias="_id")
-    name: str
-    description: str
-    dir_path: str
-
-
 class StepPool(BaseModel):
     """Step信息
 
@@ -80,17 +72,21 @@ class FlowPool(BaseModel):
 class CallMetadata(BaseModel):
     """Call工具信息
 
-    key: call_metadata
+    key: call
     """
 
-    id: str = Field(alias="_id", description="Call的ID")
+    id: str = Field(alias="_id", description="Call的ID", default_factory=lambda: str(uuid.uuid4()))
     type: CallType = Field(description="Call的类型")
     name: str = Field(description="Call的名称")
     description: str = Field(description="Call的描述")
-    path: str = Field(description="Call的路径；当为系统Call时，形如 system::LLM；当为Python Call时，形如 python::tune::call.tune.CheckSystem")
+    path: str = Field(description="""
+                        Call的路径。
+                        当为系统Call时，路径就是ID，例如：“LLM”；
+                        当为Python Call时，要加上Service名称，例如 “tune::call.tune.CheckSystem”
+                    """)
 
 
-class Metadata(BaseModel):
+class MetadataBase(BaseModel):
     """Service或App的元数据"""
 
     type: MetadataType = Field(description="元数据类型")
@@ -98,4 +94,99 @@ class Metadata(BaseModel):
     name: str = Field(description="元数据名称")
     description: str = Field(description="元数据描述")
     version: str = Field(description="元数据版本")
-    
+    author: str = Field(description="创建者的用户名")
+
+
+class ServiceApiAuthOidc(BaseModel):
+    """Service的API鉴权方式的OIDC配置"""
+
+    client_id: str = Field(description="OIDC客户端ID")
+    client_secret: str = Field(description="OIDC客户端密钥")
+
+
+class ServiceApiAuthKeyVal(BaseModel):
+    """Service的API鉴权方式的键值对"""
+
+    name: str = Field(description="鉴权参数名称")
+    value: str = Field(description="鉴权参数值")
+
+
+class ServiceApiAuth(BaseModel):
+    """Service的API鉴权方式"""
+
+    header: list[ServiceApiAuthKeyVal] = Field(description="HTTP头鉴权配置", default=[])
+    cookie: list[ServiceApiAuthKeyVal] = Field(description="HTTP Cookie鉴权配置", default=[])
+    query: list[ServiceApiAuthKeyVal] = Field(description="HTTP URL参数鉴权配置", default=[])
+    oidc: Optional[ServiceApiAuthOidc] = Field(description="OIDC鉴权配置", default=None)
+
+
+class ServiceApiConfig(BaseModel):
+    """Service的API配置"""
+
+    server: str = Field(description="服务器地址", pattern=r"^(https|http)://.*$")
+    auth: Optional[ServiceApiAuth] = Field(description="API鉴权方式", default=None)
+
+
+class ServiceMetadata(MetadataBase):
+    """Service的元数据"""
+
+    type: MetadataType = MetadataType.SERVICE
+    api: ServiceApiConfig = Field(description="API配置")
+
+
+class AppLink(BaseModel):
+    """App的相关链接"""
+
+    title: str = Field(description="链接标题")
+    url: str = Field(description="链接URL")
+
+
+class AppPermission(BaseModel):
+    """App的权限配置"""
+
+    type: AppPermissionType = Field(description="权限类型", default=AppPermissionType.PRIVATE)
+    users: list[str] = Field(description="可访问的用户列表", default=[])
+
+
+class AppMetadata(MetadataBase):
+    """App的元数据"""
+
+    type: MetadataType = MetadataType.APP
+    links: list[AppLink] = Field(description="相关链接", default=[])
+    first_questions: list[str] = Field(description="首次提问", default=[])
+    history_len: int = Field(description="对话轮次", default=3, le=10)
+    permissions: Optional[AppPermission] = Field(description="应用权限配置", default=None)
+
+
+class ServiceApiSpec(BaseModel):
+    """外部服务API信息"""
+
+    name: str = Field(description="OpenAPI文件名")
+    description: str = Field(description="OpenAPI中关于API的Summary")
+    size: int = Field(description="OpenAPI文件大小（单位：KB）")
+    path: str = Field(description="OpenAPI文件路径")
+    hash: str = Field(description="OpenAPI文件的hash值")
+
+
+class Service(BaseModel):
+    """外部服务信息
+
+    collection: service
+    """
+
+    metadata: ServiceMetadata
+    name: str
+    description: str
+    dir_path: str
+
+
+class App(BaseModel):
+    """应用信息
+
+    collection: app
+    """
+
+    metadata: AppMetadata
+    name: str
+    description: str
+    dir_path: str

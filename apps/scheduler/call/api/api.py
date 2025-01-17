@@ -146,26 +146,6 @@ class API(CoreCall):
         err = "Data type not implemented."
         raise NotImplementedError(err)
 
-    # def _file_to_lists(self, spec: dict[str, Any]) -> aiohttp.FormData:
-    #     file_form = aiohttp.FormData()
-
-    #     if self._params.files is None:
-    #         return file_form
-
-    #     file_names = []
-    #     for file in self._params.files:
-    #         file_names.append(Files.get_by_id(file)["name"])
-
-    #     file_spec = check_upload_file(spec, file_names)
-    #     selected_file = choose_file(file_names, file_spec, self.params_obj.question, self.params_obj.background, self.usage)
-
-    #     for key, val in json.loads(selected_file).items():
-    #         if isinstance(val, str):
-    #             file_form.add_field(key, open(Files.get_by_name(val)["path"], "rb"), filename=val)
-    #         else:
-    #             for item in val:
-    #                 file_form.add_field(key, open(Files.get_by_name(item)["path"], "rb"), filename=item)
-    #     return file_form
 
     async def _call_api(self, method: str, url: str, slot_data: Optional[dict[str, Any]] = None) -> CallResult:
         LOGGER.info(f"调用接口{url}，请求数据为{slot_data}")

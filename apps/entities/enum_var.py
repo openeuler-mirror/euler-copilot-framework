@@ -69,3 +69,11 @@ class MetadataType(str, Enum):
 
     SERVICE = "service"
     APP = "app"
+
+
+class AppPermissionType(str, Enum):
+    """App的权限类型"""
+
+    PROTECTED = "protected"
+    PUBLIC = "public"
+    PRIVATE = "private"

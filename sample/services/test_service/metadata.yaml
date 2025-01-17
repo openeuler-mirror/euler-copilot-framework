@@ -7,12 +7,32 @@ id: test_service
 name: 测试服务
 # 服务的描述（展示用）
 description: |
-  这是一个测试服务！可以在该文件夹中放置连接服务必需的配置，例如OpenAPI文档等。
+  这是一个测试服务。
+  可以在该文件夹中放置连接服务必需的配置，例如OpenAPI鉴权设置等。
 # Service包版本（展示用）
 version: "1.0.0"
 # 关联的用户账号
-user: zjq
+author: zjq
 
 # API相关设置项
-openapi:
+api:
+  # 服务器地址
+  server: https://api.example.com
+  # API鉴权方式；支持header、cookie、query、oidc方式，可自由组合
+  auth:
+    # 鉴权参数
+    header:
+        # 鉴权参数名称
+      - name: Authorization
+        # 鉴权参数值
+        value: "Bearer sk-123456"
+    cookie:
+      - name: JSESSIONID
+        value: "cookie_value"
+    query:
+      - name: token
+        value: "token_value"
+    oidc:
+      client_id: "app_id"
+      client_secret: "app_secret"
   
