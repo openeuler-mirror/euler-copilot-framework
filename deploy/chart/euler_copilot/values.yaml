@@ -7,11 +7,11 @@ globals:
   # 用于问答和推理的大模型(OpenAI兼容)
   llm:
     # [必填] 模型URL
-    url: 
+    url: ""
     # [必填] 模型 API Key
-    key: 
+    key: ""
     # [必填] 模型名称
-    model: 
+    model: ""
     # [必填] 模型最大token数
     max_tokens: 8096
   # 用于Function Call的模型
@@ -19,31 +19,31 @@ globals:
     # [必填] 推理框架类型，可以是vllm、sglang、ollama
     backend: vllm
     # [必填] 模型地址
-    url: 
+    url: ""
     # [必填] 模型 API Key
-    key: 
+    key: ""
     # [必填] 模型名称
-    model: 
+    model: ""
   # 数据库设置
   databases:
     # [必填] database helm安装时的app name
-    app_name: 
+    app_name: "databases" 
     # [必填] database helm安装时的namespace
-    app_namespace: 
+    app_namespace: "euler_copilot"
     # 数据库密码
     passwords:
-      # [必填] MySQL数据库的密码
-      mongo: 
+      # [必填] Mongo数据库的密码
+      mongo: "admin123"
       # [必填] Redis数据库的密码
-      redis: 
+      redis: "admin123"
       # [必填] PostgreSQL数据库密码
-      postgres: 
+      postgres: "admin123"
       # MinIO连接信息
       minio: 
         # [必填] MinIO AK
-        access_key: 
+        access_key: "minioadmin"
         # [必填] MinIO SK
-        secret_key: 
+        secret_key: "admin123"
         # [必填] MinIO 是否启用安全连接
         secure: false
 
@@ -56,8 +56,8 @@ euler_copilot:
       registry: ""
       # [必填] 镜像名
       name: secret_inject
-      # [必填] 镜像标签，为latest或arm
-      tag: latest
+      # [必填] 镜像标签，为x86或arm
+      tag: x86
       # 拉取策略。留空则使用全局设置。
       imagePullPolicy: ""
   
@@ -70,8 +70,8 @@ euler_copilot:
       registry: ""
       # [必填] 镜像名
       name: euler-copilot-vectorize-agent
-      # [必填] 镜像标签
-      tag: "0.9.1"
+      # [必填] 镜像标签, 为0.9.3-x86或0.9.3-arm
+      tag: "0.9.3-x86"
       # 拉取策略。留空则使用全局设置。
       imagePullPolicy: ""
     # [必填] 容器根目录只读
@@ -81,7 +81,7 @@ euler_copilot:
     # Volume设置
     volume:
       # [必填] Embedding模型的位置
-      models: /home/EulerCopilot/models
+      models: "/home/EulerCopilot/models"
     # Service设置
     service:
       # [必填] Service类型，ClusterIP或NodePort
@@ -104,8 +104,8 @@ euler_copilot:
       registry: ""
       # [必填] 镜像名
       name: euler-copilot-framework
-      # [必填] 镜像标签
-      tag: "0.9.3"
+      # [必填] 镜像标签,为0.9.3-x86或0.9.3-arm
+      tag: "0.9.3-x86"
       # 拉取策略。留空则使用全局设置
       imagePullPolicy: ""
     # [必填] 容器根目录只读
@@ -121,7 +121,7 @@ euler_copilot:
     # Volume设置
     volume:
       # [必填] 插件包路径
-      plugin_dir:     # 修改为实际的插件文件夹地址
+      plugin_dir: ""     # 修改为实际的插件文件夹地址
     # [必填] Vectorize服务地址
     vectorize:
       # [必填] 是否使用内部Vectorize服务
@@ -133,13 +133,13 @@ euler_copilot:
     # 加密密钥设置
     half_keys:
       # [必填] 加密密钥1
-      key1: 
+      key1: "123456"
       # [必填] 加密密钥2
-      key2: 
+      key2: "123456"
       # [必填] 加密密钥3
-      key3: 
+      key3: "123456"
     # [必填] Web前端地址，需要添加http/https前缀
-    web_url: 
+    web_url: ""
     # 登录设置
     login:
       # [必填] 是否启用登录
@@ -149,9 +149,9 @@ euler_copilot:
       # OIDC 设置
       oidc:
         # [enabled为true时必填] OIDC 客户端ID
-        client_id:
+        client_id: ""
         # [enabled为true时必填] OIDC 客户端密钥
-        client_secret:
+        client_secret: ""
         # [enabled为true时必填] OIDC Token获取地址
         token_url: http://authhub-backend-service-authhub.euler-copilot.svc.cluster.local:11120/oauth2/token
         # [enabled为true时必填] OIDC 用户信息地址
@@ -172,8 +172,8 @@ euler_copilot:
       registry: ""
       # [必填] 镜像名
       name: euler-copilot-web
-      # [必填] 镜像标签
-      tag: "0.9.3"
+      # [必填] 镜像标签,为0.9.3-x86或0.9.3-arm
+      tag: "0.9.3-x86"
       # 拉取策略。留空则使用全局设置
       imagePullPolicy: ""
     # [必填] 容器根目录只读
@@ -193,7 +193,7 @@ euler_copilot:
       prefix: /
       # [必填] 部署域名
       # 需要修改为EulerCopilot域名。单节点部署时，服务基于Host进行区分，无法使用IP地址
-      domain: 
+      domain: ""
   
   rag_web:
     # [必填] 是否部署RAG Web前端用户界面
@@ -204,8 +204,8 @@ euler_copilot:
       registry: ""
       # [必填] 镜像名
       name: data_chain_web
-      # [必填] 镜像标签
-      tag: "0.9.3"
+      # [必填] 镜像标签,为0.9.3-x86或0.9.3-arm
+      tag: "0.9.3-x86"
       # 拉取策略。留空则使用全局设置
       imagePullPolicy: ""
     # [必填] 容器根目录只读
@@ -225,7 +225,7 @@ euler_copilot:
       prefix: /
       # [必填] 部署域名
       # 需要修改为WitchainD域名。单节点部署时，服务基于Host进行区分，无法使用IP地址
-      domain: 
+      domain: ""
 
   rag:
     # [必填] 是否部署RAG后端服务
@@ -236,8 +236,8 @@ euler_copilot:
       registry: ""
       # [必填] 镜像名
       name: data_chain_back_end
-      # [必填] 镜像标签
-      tag: "0.9.3"
+      # [必填] 镜像标签,为0.9.3-x86或0.9.3-arm
+      tag: "0.9.3-x86"
       # 拉取策略。留空则使用全局设置
       imagePullPolicy: ""
     # [必填] 容器根目录只读
@@ -258,10 +258,10 @@ euler_copilot:
     # [必填] 密钥设置
     security:
       # [必填] CSRF密钥
-      csrf_key: 
+      csrf_key: "123456"
       # [必填] 工作密钥1
-      half_key_1: 
+      half_key_1: "123456"
       # [必填] 工作密钥2
-      half_key_2: 
+      half_key_2: "123456"
       # [必填] 工作密钥3
-      half_key_3: 
+      half_key_3: "123456"

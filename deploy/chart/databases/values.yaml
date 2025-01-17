@@ -28,7 +28,7 @@ databases:
     # [必填] PersistentVolume大小设置
     persistentVolumeSize: 20Gi
     # [必填] 密码设置
-    password: 
+    password: "admin123"
     # Service设置
     service:
       # [必填] Service类型，ClusterIP或NodePort
@@ -43,7 +43,7 @@ databases:
       enabled: true
       # [必填] 部署域名
       # 需要修改为MinIO Console绑定的域名。单节点部署时，服务基于Host进行区分，无法使用IP地址
-      domain: 
+      domain: ""
       # Ingress URL前缀
       prefix: /
   mongo:
@@ -66,7 +66,7 @@ databases:
     # [必填] PersistentVolume大小设置
     persistentVolumeSize: 10Gi
     # [必填] 密码设置
-    password: ""
+    password: "admin123"
     # Service设置
     service:
       # [必填] Service类型，ClusterIP或NodePort
@@ -91,7 +91,7 @@ databases:
     # [必填] 容器根目录只读
     readOnly: false
     # [必填] 密码设置
-    password: ""
+    password: "admin123"
     # Service设置
     service:
       # [必填] Service类型，ClusterIP或NodePort
@@ -124,4 +124,4 @@ databases:
       # 当类型为nodePort时，填写主机的端口号
       nodePort: ""
     # [必填] 密码设置
-    password: 
+    password: "admin123"
