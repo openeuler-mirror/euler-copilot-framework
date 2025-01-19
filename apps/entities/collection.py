@@ -172,3 +172,27 @@ class Domain(BaseModel):
     name: str
     definition: str
     updated_at: float = Field(default_factory=lambda: round(datetime.now(tz=timezone.utc).timestamp(), 3))
+class NodeMetaData(BaseModel):
+    """节点元数据"""
+    pass
+class ServiceNodeMetaDatas(BaseModel):
+    """节点原数据"""
+    pass
+class Position(BaseModel):
+    """前端相对位置"""
+    pass
+class Flow(BaseModel):
+    """流的拓扑数据"""
+    pass
+class Branch(BaseModel):
+    """节点分支信息"""
+    pass
+class Dependency(BaseModel):
+    """节点伴生关系"""
+    pass
+class Node(BaseModel):
+    """流拓扑中的节点数据"""
+    pass
+class Edge(BaseModel):
+    """流拓扑中的边信息"""
+    pass
