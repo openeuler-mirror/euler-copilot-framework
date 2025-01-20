@@ -190,3 +190,46 @@ class App(BaseModel):
     name: str
     description: str
     dir_path: str
+
+
+class PositionItem(BaseModel):
+    """请求/响应中的前端相对位置变量类"""
+    x:float
+    y:float
+class FlowItem(BaseModel):
+    """请求/响应中的流变量类"""
+    flow_id:str=Optional[Field](alias="flowId")
+    name:str
+    description:str
+    enable:bool
+    created_at: str= Field(alias="createdAt")
+class BranchItem(BaseModel):
+    """请求/响应中的节点分支变量类"""
+    branch_id:str=Field(alias="branchId")
+    type:str
+    description:str
+class DependencyItem(BaseModel):
+    """请求/响应中的节点依赖变量类"""
+    node_id:str=Field(alias="nodeId")
+    type:str
+class NodeItem(BaseModel):
+    """请求/响应中的节点变量类"""
+    node_id:str=Field(alias="nodeId")
+    api_id:str=Field(alias="apiId")
+    name:str
+    type:str
+    description:str
+    enable:str
+    branches:list[BranchItem]
+    depedency:DependencyItem
+    position:PositionItem
+    editable:bool
+    created_at: str= Field(alias="createdAt")
+class EdgeItem(BaseModel):
+    """请求/响应中的边变量类"""
+    egde_id:str=Field(alias="edgeId")
+    source_node:str=Field(alias="sourceNode")
+    target_node:str=Field(alias="targetNode")
+    type:str
+    branch_id:str=Field(alias="branchId")
+    created_at: str= Field(alias="createdAt")

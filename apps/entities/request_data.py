@@ -7,7 +7,7 @@ from typing import Optional
 from pydantic import BaseModel, Field
 
 from apps.entities.task import RequestDataPlugin
-
+from apps.entities.flow import PositionItem,FlowItem,NodeItem,EdgeItem
 
 class RequestDataFeatures(BaseModel):
     """POST /api/chat的features字段数据"""
@@ -99,3 +99,14 @@ class PostKnowledgeIDData(BaseModel):
     """添加知识库"""
 
     kb_id: str
+
+class PutFlowReq(BaseModel):
+    """创建/修改流拓扑结构"""
+    flow_id:Optional[str]=Field(alias="flowId")
+    flow:FlowItem
+    nodes:list[NodeItem]
+    edges:list[EdgeItem]
+    focus_point:PositionItem=Field(alias="focusPoint")
+class PutNodeParameterReq:
+    """修改节点的参数"""
+    content:str
