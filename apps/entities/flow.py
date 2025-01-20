@@ -1,89 +1,66 @@
-"""Flow和Service等外置配置数据结构
+"""App、Flow和Service等外置配置数据结构
 
 Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 """
-import uuid
 from typing import Any, Optional
 
 from pydantic import BaseModel, Field
 
 from apps.entities.enum_var import (
     AppPermissionType,
-    CallType,
     MetadataType,
+    EdgeType,
 )
 
 
-class Step(BaseModel):
-    """Flow中Step的数据"""
+class NodePos(BaseModel):
+    """节点在画布上的位置"""
 
-    name: str
-    confirm: bool = False
-    call_type: str
-    params: dict[str, Any] = {}
-    next: Optional[str] = None
+    x: int = Field(description="节点在画布上的X坐标")
+    y: int = Field(description="节点在画布上的Y坐标")
+
+class Edge(BaseModel):
+    """Flow中Edge的数据"""
+
+    id: str = Field(description="边的ID")
+    edge_from: str = Field(description="边的来源节点ID", alias="from")
+    edge_to: str = Field(description="边的目标节点ID", alias="to")
+    edge_type: Optional[EdgeType] = Field(description="边的类型", alias="type")
+
+
+class Node(BaseModel):
+    """Flow中Node的数据"""
+
+    id: str = Field(description="节点的ID；与NodePool中的ID对应")
+    name: str = Field(description="节点名称")
+    description: str = Field(description="节点描述")
+    pos: NodePos = Field(description="节点在画布上的位置", default=NodePos(x=0, y=0))
+    params: dict[str, Any] = Field(description="用户手动指定的节点参数", default={})
 
 
 class NextFlow(BaseModel):
     """Flow中“下一步”的数据格式"""
 
-    id: str
-    plugin: Optional[str] = None
+    flow_id: str
     question: Optional[str] = None
+
+
+class FlowError(BaseModel):
+    """Flow的错误处理节点"""
+
+    use_llm: bool = Field(description="是否使用LLM处理错误")
+    output_format: Optional[str] = Field(description="错误处理节点的输出格式")
 
 
 class Flow(BaseModel):
     """Flow（工作流）的数据格式"""
-
-    on_error: Optional[Step] = Step(
-        name="error",
-        call_type="llm",
-        params={
-            "user_prompt": "当前工具执行发生错误，原始错误信息为：{data}. 请向用户展示错误信息，并给出可能的解决方案。\n\n背景信息：{context}",
-        },
-    )
-    steps: dict[str, Step]
+    
+    name: str = Field(description="Flow的名称")
+    description: str = Field(description="Flow的描述")
+    on_error: FlowError = FlowError(use_llm=True)
+    nodes: list[Node] = Field(description="节点列表", default=[])
+    edges: list[Edge] = Field(description="边列表", default=[])
     next_flow: Optional[list[NextFlow]] = None
-
-
-class StepPool(BaseModel):
-    """Step信息
-
-    collection: step_pool
-    """
-
-    id: str = Field(default_factory=lambda: str(uuid.uuid4()), alias="_id")
-    name: str
-    description: str
-
-
-class FlowPool(BaseModel):
-    """Flow信息
-
-    collection: flow_pool
-    """
-
-    id: str = Field(default_factory=lambda: str(uuid.uuid4()), alias="_id")
-    name: str
-    description: str
-    data: Flow
-
-
-class CallMetadata(BaseModel):
-    """Call工具信息
-
-    key: call
-    """
-
-    id: str = Field(alias="_id", description="Call的ID", default_factory=lambda: str(uuid.uuid4()))
-    type: CallType = Field(description="Call的类型")
-    name: str = Field(description="Call的名称")
-    description: str = Field(description="Call的描述")
-    path: str = Field(description="""
-                        Call的路径。
-                        当为系统Call时，路径就是ID，例如：“LLM”；
-                        当为Python Call时，要加上Service名称，例如 “tune::call.tune.CheckSystem”
-                    """)
 
 
 class MetadataBase(BaseModel):
@@ -166,31 +143,6 @@ class ServiceApiSpec(BaseModel):
     size: int = Field(description="OpenAPI文件大小（单位：KB）")
     path: str = Field(description="OpenAPI文件路径")
     hash: str = Field(description="OpenAPI文件的hash值")
-
-
-class Service(BaseModel):
-    """外部服务信息
-
-    collection: service
-    """
-
-    metadata: ServiceMetadata
-    name: str
-    description: str
-    dir_path: str
-
-
-class App(BaseModel):
-    """应用信息
-
-    collection: app
-    """
-
-    metadata: AppMetadata
-    name: str
-    description: str
-    dir_path: str
-
 
 class PositionItem(BaseModel):
     """请求/响应中的前端相对位置变量类"""
