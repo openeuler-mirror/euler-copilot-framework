@@ -21,11 +21,10 @@ class HeartbeatData(BaseModel):
 class MessageFlow(BaseModel):
     """消息中有关Flow信息的部分"""
 
-    plugin_id: str = Field(description="插件ID")
-    flow_id: str = Field(description="Flow ID")
-    step_name: str = Field(description="当前步骤名称")
-    step_status: StepStatus = Field(description="当前步骤状态")
-    step_progress: str = Field(description="当前步骤进度，例如1/4")
+    app_id: str = Field(description="插件ID", alias="appId")
+    flow_id: str = Field(description="Flow ID", alias="flowId")
+    step_id: str = Field(description="当前步骤ID", alias="stepId")
+    step_status: StepStatus = Field(description="当前步骤状态", alias="stepStatus")
 
 
 class MessageMetadata(RecordMetadata):
@@ -37,17 +36,17 @@ class MessageMetadata(RecordMetadata):
 class InitContentFeature(BaseModel):
     """init消息的feature"""
 
-    max_tokens: int = Field(description="最大生成token数", ge=0)
-    context_num: int = Field(description="上下文消息数量", le=10, ge=0)
-    enable_feedback: bool = Field(description="是否启用反馈")
-    enable_regenerate: bool = Field(description="是否启用重新生成")
+    max_tokens: int = Field(description="最大生成token数", ge=0, alias="maxTokens")
+    context_num: int = Field(description="上下文消息数量", le=10, ge=0, alias="contextNum")
+    enable_feedback: bool = Field(description="是否启用反馈", alias="enableFeedback")
+    enable_regenerate: bool = Field(description="是否启用重新生成", alias="enableRegenerate")
 
 
 class InitContent(BaseModel):
     """init消息的content"""
 
     feature: InitContentFeature = Field(description="问答功能开关")
-    created_at: float = Field(description="创建时间")
+    created_at: float = Field(description="创建时间", alias="createdAt")
 
 
 class TextAddContent(BaseModel):
@@ -59,18 +58,18 @@ class TextAddContent(BaseModel):
 class DocumentAddContent(BaseModel):
     """document.add消息的content"""
 
-    document_id: str = Field(min_length=36, max_length=36, description="文档UUID")
-    document_name: str = Field(description="文档名称")
-    document_type: str = Field(description="文档MIME类型")
-    document_size: float = Field(ge=0, description="文档大小，单位是KB，保留两位小数")
+    document_id: str = Field(min_length=36, max_length=36, description="文档UUID", alias="documentId")
+    document_name: str = Field(description="文档名称", alias="documentName")
+    document_type: str = Field(description="文档MIME类型", alias="documentType")
+    document_size: float = Field(ge=0, description="文档大小，单位是KB，保留两位小数", alias="documentSize")
 
 
 class SuggestContent(BaseModel):
     """suggest消息的content"""
 
-    plugin_id: str = Field(description="插件ID")
-    flow_id: str = Field(description="Flow ID")
-    flow_description: str = Field(description="Flow描述")
+    app_id: str = Field(description="插件ID", alias="appId")
+    flow_id: str = Field(description="Flow ID", alias="flowId")
+    flow_description: str = Field(description="Flow描述", alias="flowDescription")
     question: str = Field(description="用户问题")
 
 
@@ -84,14 +83,14 @@ class FlowStartContent(BaseModel):
 class StepInputContent(BaseModel):
     """step.input消息的content"""
 
-    call_type: str = Field(description="Call类型")
+    call_type: str = Field(description="Call类型", alias="callType")
     params: dict[str, Any] = Field(description="Step最后输入的参数")
 
 
 class StepOutputContent(BaseModel):
     """step.output消息的content"""
 
-    call_type: str = Field(description="Call类型")
+    call_type: str = Field(description="Call类型", alias="callType")
     message: str = Field(description="LLM大模型输出的自然语言文本")
     output: dict[str, Any] = Field(description="Step输出的结构化数据")
 
@@ -107,9 +106,9 @@ class MessageBase(HeartbeatData):
     """基础消息事件结构"""
 
     id: str = Field(min_length=36, max_length=36)
-    group_id: str = Field(min_length=36, max_length=36)
-    conversation_id: str = Field(min_length=36, max_length=36)
-    task_id: str = Field(min_length=36, max_length=36)
+    group_id: str = Field(min_length=36, max_length=36, alias="groupId")
+    conversation_id: str = Field(min_length=36, max_length=36, alias="conversationId")
+    task_id: str = Field(min_length=36, max_length=36, alias="taskId")
     flow: Optional[MessageFlow] = None
     content: dict[str, Any] = {}
     metadata: MessageMetadata
