@@ -77,3 +77,13 @@ class AppPermissionType(str, Enum):
     PROTECTED = "protected"
     PUBLIC = "public"
     PRIVATE = "private"
+
+
+class EdgeType(str, Enum):
+    """边类型
+
+    注：此处为临时定义，待扩展
+    """
+
+    NORMAL = "normal"
+    LOOP = "loop"

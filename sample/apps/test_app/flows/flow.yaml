@@ -1,46 +1,51 @@
-# Flow ID
-id: test
-# Flow 描述
+# [必填] Flow 名称
+name: test
+# [必填] Flow 描述。将影响大模型效果。
 description: 测试工作流
-# Flow无法恢复时的错误处理步骤
+# Flow出错时的错误处理步骤
 on_error:
-  # Call类型
-  call_type: llm
-  # Call参数
-  params:
-    system_prompt: 你是一个擅长Linux系统性能优化，且能够根据具体情况撰写分析报告的智能助手。  # 系统提示词，jinja2语法
-    user_prompt: |  # 用户提示词，jinja2语法，多行；有预定义变量：last - 最后一个Step报错后的数据
-      {% if context %}
-      背景信息：
-      {{ context }}
-      {% endif %}
-      
-      错误信息：
-      {{ last.output }}
+  # [必填] 是否直接使用大模型自动向用户报错？
+  use_llm: false
+  # 不使用大模型时，使用以下模板拼接提示信息并返回
+  output_format: |
+    **当前工作流{{ flow.name }}执行发生错误！**
+    
+    错误信息：{{ error.message }}
 
-      使用自然语言解释这一信息，并给出可能的解决方法。
-# 各个步骤定义
-steps:
-  - name: start    # start步骤，入口点
-    call_type: api    # Call类型：API
-    confirm: true    # 是否操作前向用户确认，默认为False
-    params:
+# 各个节点定义
+nodes:
+  - id: query_data  # 节点的Pool ID
+    name: 查询数据    # 节点名称
+    description: 从API中查询测试数据 # 节点描述
+    pos: # 节点在画布上的位置
+      x: 100
+      y: 100
+    params:  # 节点的参数
       endpoint: GET /api/test  # API Endpoint名称
-    next: flow_choice   # 下一个Step的名称
-  - name: flow_choice
-    call_type: choice    # Call类型：Choice
+  - id: check_data
+    name: 判断数据
+    description: 判断工具的返回值是否包含有效数据
+    pos: # 节点在画布上的位置
+      x: 200
+      y: 100
     params:
-      propose: 工具的返回值是否包含有效数据？  # 判断命题
+      propose: 上一步返回值是否包含有效数据？  # 判断命题
       choices:  # 判断选项
-        - step: get_report    # 跳转步骤
-          description: 返回值存在有效数据时，选择此项   # 选项说明，满足就会选择此项
-        - step: get_data
-          description: 返回值不存在有效数据时，选择此项
-  - name: get_report
-    call_type: llm
+        - branch: valid
+          description: 返回值存在有效数据   # 选项说明，满足就会选择此项
+        - branch: invalid
+          description: 返回值不存在有效数据
+  - id: gen_reply
+    name: 生成回复
+    description: 使用大模型生成回复
+    pos: # 节点在画布上的位置
+      x: 300
+      y: 100
+    depends:  # 节点的后向依赖
+      - format_output
     params:
-      system_prompt: 你是一个擅长Linux系统性能优化，且能够根据具体情况撰写分析报告的智能助手。  # 系统提示词，jinja2语法
-      user_prompt: |  # 用户提示词，jinja2语法，多行；可以使用step name引用对应的数据；可以使用storage[-1]引用上一个步骤的数据
+      system: 你是一个擅长Linux系统性能优化，且能够根据具体情况撰写分析报告的智能助手。  # 系统提示词，jinja2语法
+      user: |  # 用户提示词，jinja2语法，多行；可以使用step name引用对应的数据；可以使用storage[-1]引用上一个步骤的数据
         上下文：
         {{ context }}
         
@@ -53,18 +58,14 @@ steps:
         测试数据：{{ storage[-1].output.result.machines[0].data }}
 
         使用自然语言解释这一信息，并展示为Markdown列表。
-    next: end
-  - name: get_data
-    call_type: sql  # Call类型：SQL
+  - id: format_output
+    name: 格式化输出
+    description: 按照特定格式输出
+    pos: # 节点在画布上的位置
+      x: 400
+      y: 100
     params:
-      statement: select * from test limit 30;   # 固定的SQL语句；不设置则使用大模型猜解
-    next: test
-  - name: test
-    call_type: render  # Call类型：Render，没有参数
-  - name: end
-    call_type: reformat  # Call类型：Reformat，用于重新格式化数据
-    params:
-      text: | # 对生成的文字信息进行格式化，没有则不改动；jinja2语法
+      message: | # 对生成的文字信息进行格式化，没有则不改动；jinja2语法
         # 测试报告
         
         声明： 这是一份由AI生成的报告，仅供参考。
@@ -76,15 +77,39 @@ steps:
         ## 数据解析
         ......
         {% endif %}
-      data: | # 对生成的原始数据（JSON）进行格式化，没有则不改动；jsonnet语法
+      output: | # 对生成的结构化数据进行格式化，没有则不改动；jsonnet语法
         # 注意： 只能使用storage访问之前的数据，不能通过step名访问；其他内容在extra变量中
         {
           "id": storage[-1].id,
           "time": extras.time,
           "machines": [x for x.id in storage[-1].output.result.machines]
         }
-        
+
+# 各个边定义
+# 格式：边ID: 来源节点名称 --> 目标节点名称
+# 若来源节点有多个输出分支，则使用“节点名称.分支名称”表示
+edges:
+  - id: edge_00
+    from: <BEGIN>
+    to: query_data
+    type: normal  # 边的类型，可不填
+  - id: edge_01
+    from: query_data
+    to: check_data
+  - id: edge_02
+    from: check_data.valid
+    to: gen_reply
+  - id: edge_03
+    from: check_data.invalid
+    to: format_output
+  - id: edge_04
+    from: gen_reply
+    to: <END>
+  - id: edge_05
+    from: format_output
+    to: <END>
+
 # 手动设置Flow推荐
 next_flow:
-  - id: test2  # 展示在推荐区域的Flow
+  - flow_id: test2  # 展示在推荐区域的Flow
     question: xxxxx   # 固定的推荐问题
