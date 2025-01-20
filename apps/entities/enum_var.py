@@ -87,3 +87,11 @@ class EdgeType(str, Enum):
 
     NORMAL = "normal"
     LOOP = "loop"
+
+
+class SaveType(str, Enum):
+    """检查类型"""
+
+    APP = "app"
+    SERVICE = "service"
+    FLOW = "flow"

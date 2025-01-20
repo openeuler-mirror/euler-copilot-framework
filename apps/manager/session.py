@@ -78,13 +78,8 @@ class SessionManager:
             except Exception as e:
                 LOGGER.error(f"Read session error: {e}")
 
-        # if not ip:
-        #     session_id = SessionManager.create_session(session_ip)
-        #     return session_id
-        # elif ip != session_ip:
-        #     session_id = SessionManager.create_session(session_ip)
-        #     return session_id
-        # else:
+        if not ip or ip != session_ip:
+            return await SessionManager.create_session(session_ip)
         return session_id
 
     @staticmethod

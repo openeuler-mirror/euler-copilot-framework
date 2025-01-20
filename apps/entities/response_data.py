@@ -301,6 +301,3 @@ class NodeParameterPutMsg(BaseModel):
 class NodeParameterPutRsp(ResponseData):
     """PUT /api/flow/node/parameter 返回数据结构"""
     result:NodeParameterPutMsg
-
-
-    

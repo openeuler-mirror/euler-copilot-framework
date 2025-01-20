@@ -8,16 +8,17 @@ from pydantic import BaseModel, Field
 
 from apps.entities.enum_var import (
     AppPermissionType,
-    MetadataType,
     EdgeType,
+    MetadataType,
 )
 
 
-class NodePos(BaseModel):
+class StepPos(BaseModel):
     """节点在画布上的位置"""
 
     x: int = Field(description="节点在画布上的X坐标")
     y: int = Field(description="节点在画布上的Y坐标")
+
 
 class Edge(BaseModel):
     """Flow中Edge的数据"""
@@ -28,14 +29,15 @@ class Edge(BaseModel):
     edge_type: Optional[EdgeType] = Field(description="边的类型", alias="type")
 
 
-class Node(BaseModel):
-    """Flow中Node的数据"""
+class Step(BaseModel):
+    """Flow中Step的数据"""
 
-    id: str = Field(description="节点的ID；与NodePool中的ID对应")
-    name: str = Field(description="节点名称")
-    description: str = Field(description="节点描述")
-    pos: NodePos = Field(description="节点在画布上的位置", default=NodePos(x=0, y=0))
-    params: dict[str, Any] = Field(description="用户手动指定的节点参数", default={})
+    id: str = Field(description="Step的ID")
+    node: str = Field(description="Step的Node ID")
+    name: str = Field(description="Step的名称")
+    description: str = Field(description="Step的描述")
+    pos: StepPos = Field(description="Step在画布上的位置", default=StepPos(x=0, y=0))
+    params: dict[str, Any] = Field(description="用户手动指定的Node参数", default={})
 
 
 class NextFlow(BaseModel):
@@ -54,11 +56,11 @@ class FlowError(BaseModel):
 
 class Flow(BaseModel):
     """Flow（工作流）的数据格式"""
-    
+
     name: str = Field(description="Flow的名称")
     description: str = Field(description="Flow的描述")
     on_error: FlowError = FlowError(use_llm=True)
-    nodes: list[Node] = Field(description="节点列表", default=[])
+    steps: list[Step] = Field(description="节点列表", default=[])
     edges: list[Edge] = Field(description="边列表", default=[])
     next_flow: Optional[list[NextFlow]] = None
 

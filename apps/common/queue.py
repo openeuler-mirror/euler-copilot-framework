@@ -65,22 +65,20 @@ class MessageQueue:
             if not history_ids:
                 # 如果new_history为空，则说明是第一次执行，创建一个空值
                 flow = MessageFlow(
-                    plugin_id=tcb.flow_state.plugin_id,
-                    flow_id=tcb.flow_state.name,
-                    step_name="start",
-                    step_status=StepStatus.RUNNING,
-                    step_progress="",
+                    appId=tcb.flow_state.plugin_id,
+                    flowId=tcb.flow_state.name,
+                    stepId="start",
+                    stepStatus=StepStatus.RUNNING,
                 )
             else:
                 # 如果new_history不为空，则说明是继续执行，使用最后一个FlowHistory
                 history = tcb.flow_context[tcb.flow_state.step_name]
 
                 flow = MessageFlow(
-                    plugin_id=history.plugin_id,
-                    flow_id=history.flow_id,
-                    step_name=history.step_name,
-                    step_status=history.status,
-                    step_progress=history.step_order,
+                    appId=history.plugin_id,
+                    flowId=history.flow_id,
+                    stepId=history.step_name,
+                    stepStatus=history.status,
                 )
         else:
             flow = None

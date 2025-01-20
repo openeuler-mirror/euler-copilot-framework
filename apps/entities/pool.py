@@ -2,10 +2,10 @@
 
 Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 """
-from typing import Any, Optional
-from pydantic import BaseModel, Field
-
 from datetime import datetime, timezone
+from typing import Any, Optional
+
+from pydantic import BaseModel, Field
 
 from apps.entities.enum_var import CallType
 
@@ -49,7 +49,9 @@ class NodePool(PoolBase):
             2. Python Node的路径格式样例：“tune::call.tune.CheckSystem”
     """
 
+    id: str = Field(description="Node的ID")
     type: CallType = Field(description="Call的类型")
+    service: str = Field(description="服务名称")
     meta_call: Optional[str] = Field(description="基类Call的ID", default=None)
     input_schema: dict[str, Any] = Field(description="输入参数的schema", default={})
     output_schema: dict[str, Any] = Field(description="输出参数的schema", default={})
