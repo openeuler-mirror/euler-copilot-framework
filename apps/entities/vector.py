@@ -9,8 +9,8 @@ from sqlalchemy.ext.declarative import declarative_base
 Base = declarative_base()
 
 
-class FlowVector(Base):
-    """Flow向量信息"""
+class AppVector(Base):
+    """App向量信息"""
 
     __tablename__ = "flow_vector"
     id = Column(String(length=100), primary_key=True, nullable=False, unique=True)
@@ -25,9 +25,9 @@ class ServiceVector(Base):
     embedding = Column(Vector(1024), nullable=False)
 
 
-class StepPoolVector(Base):
-    """StepPool向量信息"""
+class NodeVector(Base):
+    """Node向量信息"""
 
-    __tablename__ = "step_pool_vector"
+    __tablename__ = "node_vector"
     id = Column(String(length=100), primary_key=True, nullable=False, unique=True)
     embedding = Column(Vector(1024), nullable=False)

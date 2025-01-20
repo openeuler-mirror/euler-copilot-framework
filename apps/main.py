@@ -26,7 +26,6 @@ from apps.routers import (
     document,
     health,
     knowledge,
-    plugin,
     record,
 )
 from apps.scheduler.pool.loader import Loader
@@ -49,7 +48,6 @@ app.include_router(api_key.router)
 app.include_router(comment.router)
 app.include_router(record.router)
 app.include_router(health.router)
-app.include_router(plugin.router)
 app.include_router(chat.router)
 app.include_router(client.router)
 app.include_router(blacklist.router)
