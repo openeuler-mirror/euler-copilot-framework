@@ -2,14 +2,14 @@
 
 Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 """
-import hashlib
+from hashlib import sha256, shake_128
 
 
-def get_bytes_hash(s: bytes) -> str:
+def get_short_hash(s: bytes) -> str:
     """获取字节串的哈希值"""
-    return hashlib.sha256(s).hexdigest()
+    return shake_128(s).hexdigest(8)
 
 
-def get_str_hash(s: str) -> str:
-    """获取字符串的哈希值"""
-    return get_bytes_hash(s.encode("utf-8"))
+def get_long_hash(s: bytes) -> str:
+    """获取字节串的哈希值"""
+    return sha256(s).hexdigest()
