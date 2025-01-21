@@ -30,7 +30,7 @@ class RecordDocument(Document):
 class RecordFlowStep(BaseModel):
     """Record表子项：flow的单步数据结构"""
 
-    step_name: str = Field(alias="stepName")
+    step_id: str = Field(alias="stepId")
     step_status: StepStatus = Field(alias="stepStatus")
     input: dict[str, Any]
     output: dict[str, Any]
@@ -50,7 +50,6 @@ class RecordData(BaseModel):
     """GET /api/record/{conversation_id} Result内元素数据结构"""
 
     id: str
-    app_id: str = Field(alias="appId")
     group_id: str = Field(alias="groupId")
     conversation_id: str = Field(alias="conversationId")
     task_id: str = Field(alias="taskId")

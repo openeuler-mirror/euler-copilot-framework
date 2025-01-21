@@ -74,7 +74,7 @@ class ModifyConversationData(BaseModel):
 class DeleteConversationData(BaseModel):
     """删除会话"""
 
-    conversation_list: list[str] = Field(...)
+    conversation_list: list[str] = Field(alias="conversationList")
 
 
 class AddCommentData(BaseModel):

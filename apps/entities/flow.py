@@ -51,7 +51,7 @@ class FlowError(BaseModel):
     """Flow的错误处理节点"""
 
     use_llm: bool = Field(description="是否使用LLM处理错误")
-    output_format: Optional[str] = Field(description="错误处理节点的输出格式")
+    output_format: Optional[str] = Field(description="错误处理节点的输出格式", default=None)
 
 
 class Flow(BaseModel):
