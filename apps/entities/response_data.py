@@ -6,11 +6,11 @@ from typing import Any, Optional
 
 from pydantic import BaseModel, Field
 
-from apps.entities.collection import Blacklist, Document,NodeMetaData
+from apps.entities.collection import Blacklist, Document, NodeMetaData
 from apps.entities.enum_var import DocumentStatus
-from apps.entities.plugin import PluginData
+from apps.entities.flow import EdgeItem, FlowItem, NodeItem, PositionItem
 from apps.entities.record import RecordData
-from apps.entities.flow import PositionItem,FlowItem,NodeItem,EdgeItem
+
 
 class ResponseData(BaseModel):
     """基础返回数据结构"""
@@ -74,17 +74,6 @@ class HealthCheckRsp(BaseModel):
 
     status: str
 
-class GetPluginListMsg(BaseModel):
-    """GET /api/plugin Result数据结构"""
-
-    plugins: list[PluginData]
-
-class GetPluginListRsp(ResponseData):
-    """GET /api/plugin 返回数据结构"""
-
-    result: GetPluginListMsg
-
-
 class GetBlacklistUserMsg(BaseModel):
     """GET /api/blacklist/user Result数据结构"""
 
@@ -112,10 +101,10 @@ class GetBlacklistQuestionRsp(ResponseData):
 class ConversationListItem(BaseModel):
     """GET /api/conversation Result数据结构"""
 
-    conversation_id: str
+    conversation_id: str = Field(alias="conversationId")
     title: str
-    doc_count: int
-    created_time: str
+    doc_count: int = Field(alias="docCount")
+    created_time: str = Field(alias="createdTime")
 
 class ConversationListMsg(BaseModel):
     """GET /api/conversation Result数据结构"""
@@ -129,10 +118,22 @@ class ConversationListRsp(ResponseData):
     result: ConversationListMsg
 
 
+class DeleteConversationMsg(BaseModel):
+    """DELETE /api/conversation Result数据结构"""
+
+    conversation_id_list: list[str] = Field(alias="conversationIdList")
+
+
+class DeleteConversationRsp(ResponseData):
+    """DELETE /api/conversation 返回数据结构"""
+
+    result: DeleteConversationMsg
+
+
 class AddConversationMsg(BaseModel):
     """POST /api/conversation Result数据结构"""
 
-    conversation_id: str
+    conversation_id: str = Field(alias="conversationId")
 
 
 class AddConversationRsp(ResponseData):

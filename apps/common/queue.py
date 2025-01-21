@@ -72,12 +72,12 @@ class MessageQueue:
                 )
             else:
                 # 如果new_history不为空，则说明是继续执行，使用最后一个FlowHistory
-                history = tcb.flow_context[tcb.flow_state.step_name]
+                history = tcb.flow_context[tcb.flow_state.step_id]
 
                 flow = MessageFlow(
                     appId=history.plugin_id,
                     flowId=history.flow_id,
-                    stepId=history.step_name,
+                    stepId=history.step_id,
                     stepStatus=history.status,
                 )
         else:

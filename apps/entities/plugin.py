@@ -10,15 +10,6 @@ from apps.common.queue import MessageQueue
 from apps.entities.task import FlowHistory, RequestDataPlugin
 
 
-class PluginData(BaseModel):
-    """插件数据格式"""
-
-    id: str
-    name: str
-    description: str
-    auth: dict[str, Any] = {}
-
-
 class CallResult(BaseModel):
     """Call运行后的返回值"""
 
