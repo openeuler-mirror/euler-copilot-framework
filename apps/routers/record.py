@@ -56,16 +56,16 @@ async def get_record(conversation_id: str, user_sub: Annotated[str, Depends(get_
 
             tmp_record = RecordData(
                 id=record.record_id,
-                group_id=record_group.id,
-                task_id=record_group.task_id,
-                conversation_id=conversation_id,
+                groupId=record_group.id,
+                taskId=record_group.task_id,
+                conversationId=conversation_id,
                 content=record_data,
                 metadata=record.metadata if record.metadata else RecordMetadata(
                     input_tokens=0,
                     output_tokens=0,
                     time=0,
                 ),
-                created_at=record.created_at,
+                createdAt=record.created_at,
             )
 
             # 获得Record关联的文档
@@ -76,17 +76,15 @@ async def get_record(conversation_id: str, user_sub: Annotated[str, Depends(get_
             if flow_list:
                 tmp_record.flow = RecordFlow(
                     id=flow_list[0].id,
-                    record_id=record.record_id,
-                    plugin_id=flow_list[0].plugin_id,
-                    flow_id=flow_list[0].flow_id,
-                    step_num=len(flow_list),
+                    recordId=record.record_id,
+                    flowId=flow_list[0].flow_id,
+                    stepNum=len(flow_list),
                     steps=[],
                 )
                 for flow in flow_list:
                     tmp_record.flow.steps.append(RecordFlowStep(
-                        step_name=flow.step_name,
-                        step_status=flow.status,
-                        step_order=flow.step_order,
+                        stepId=flow.step_id,
+                        stepStatus=flow.status,
                         input=flow.input_data ,
                         output=flow.output_data,
                     ))
