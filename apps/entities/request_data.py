@@ -6,7 +6,7 @@ from typing import Optional
 
 from pydantic import BaseModel, Field
 
-from apps.entities.task import RequestDataPlugin
+from apps.entities.task import RequestDataApp
 from apps.entities.flow import PositionItem,FlowItem,NodeItem,EdgeItem
 
 class RequestDataFeatures(BaseModel):
@@ -24,7 +24,7 @@ class RequestData(BaseModel):
     group_id: str
     language: str = Field(default="zh", description="语言")
     files: list[str] = Field(default=[])
-    plugins: list[RequestDataPlugin] = Field(default=[])
+    apps: list[RequestDataApp] = Field(default=[])
     features: RequestDataFeatures = Field(description="消息功能设置")
 
 
