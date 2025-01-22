@@ -105,6 +105,8 @@ class ConversationListItem(BaseModel):
     title: str
     doc_count: int = Field(alias="docCount")
     created_time: str = Field(alias="createdTime")
+    app_id: str = Field(alias="appId")
+    is_debug: bool = Field(alias="isDebug")
 
 class ConversationListMsg(BaseModel):
     """GET /api/conversation Result数据结构"""
