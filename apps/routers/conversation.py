@@ -43,7 +43,12 @@ router = APIRouter(
 )
 
 
-async def create_new_conversation(user_sub: str, conv_list: list[Conversation]) -> Optional[Conversation]:
+async def create_new_conversation(
+    user_sub: str,
+    conv_list: list[Conversation],
+    app_id: str = "",
+    is_debug: bool = False,
+) -> Optional[Conversation]:
     """判断并创建新对话"""
     create_new = False
     if not conv_list:
@@ -115,15 +120,17 @@ async def get_conversation_list(user_sub: Annotated[str, Depends(get_user)]):  #
 @router.post("", dependencies=[Depends(verify_csrf_token)], response_model=AddConversationRsp)
 async def add_conversation(
     user_sub: Annotated[str, Depends(get_user)],
-    appId: Annotated[Optional[str], Query()] = None,
-    isDebug: Annotated[Optional[bool], Query()] = None,
+    appId: Optional[str] = None,  # noqa: N803
+    isDebug: Optional[bool] = None, # noqa: N803
 ): 
     """手动创建新对话"""
-    # TODO(@fangbo):增加is_debug和appId作用
     conversations = await ConversationManager.get_conversation_by_user_sub(user_sub)
     # 尝试创建新对话
     try:
-        new_conv = await create_new_conversation(user_sub, conversations)
+        app_id = appId if appId else ""
+        is_debug = isDebug if isDebug is not None else False
+        new_conv = await create_new_conversation(user_sub, conversations,
+                                                app_id=app_id, is_debug=is_debug)
     except RuntimeError as e:
         return JSONResponse(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, content=ResponseData(
             code=status.HTTP_500_INTERNAL_SERVER_ERROR,
