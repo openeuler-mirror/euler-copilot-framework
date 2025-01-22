@@ -22,6 +22,8 @@ from apps.entities.response_data import (
     ConversationListItem,
     ConversationListMsg,
     ConversationListRsp,
+    DeleteConversationMsg,
+    DeleteConversationRsp,
     ResponseData,
     UpdateConversationRsp,
 )
@@ -54,7 +56,7 @@ async def create_new_conversation(user_sub: str, conv_list: list[Conversation]) 
 
     # 新建对话
     if create_new:
-        new_conv = await ConversationManager.add_conversation_by_user_sub(user_sub)
+        new_conv = await ConversationManager.add_conversation_by_user_sub(user_sub, app_id, is_debug=False)
         if not new_conv:
             err = "Create new conversation failed."
             raise RuntimeError(err)
@@ -71,10 +73,10 @@ async def get_conversation_list(user_sub: Annotated[str, Depends(get_user)]):  #
     # 把已有对话转换为列表
     result_conversations = [
         ConversationListItem(
-            conversation_id=conv.id,
+            conversationId=conv.id,
             title=conv.title,
-            doc_count=await DocumentManager.get_doc_count(user_sub, conv.id),
-            created_time=datetime.fromtimestamp(conv.created_at, tz=pytz.timezone("Asia/Shanghai")).strftime("%Y-%m-%d %H:%M:%S"),
+            docCount=await DocumentManager.get_doc_count(user_sub, conv.id),
+            createdTime=datetime.fromtimestamp(conv.created_at, tz=pytz.timezone("Asia/Shanghai")).strftime("%Y-%m-%d %H:%M:%S"),
         ) for conv in conversations
     ]
 
@@ -90,10 +92,10 @@ async def get_conversation_list(user_sub: Annotated[str, Depends(get_user)]):  #
 
     if new_conv:
         result_conversations.append(ConversationListItem(
-            conversation_id=new_conv.id,
+            conversationId=new_conv.id,
             title=new_conv.title,
-            doc_count=0,
-            created_time=datetime.fromtimestamp(new_conv.created_at, tz=pytz.timezone("Asia/Shanghai")).strftime("%Y-%m-%d %H:%M:%S"),
+            docCount=0,
+            createdTime=datetime.fromtimestamp(new_conv.created_at, tz=pytz.timezone("Asia/Shanghai")).strftime("%Y-%m-%d %H:%M:%S"),
         ))
 
     return JSONResponse(status_code=status.HTTP_200_OK,
@@ -129,19 +131,19 @@ async def add_conversation(user_sub: Annotated[str, Depends(get_user)]):  # noqa
     return JSONResponse(status_code=status.HTTP_200_OK, content=AddConversationRsp(
         code=status.HTTP_200_OK,
         message="success",
-        result=AddConversationMsg(conversation_id=new_conv.id),
+        result=AddConversationMsg(conversationId=new_conv.id),
     ).model_dump(exclude_none=True, by_alias=True))
 
 
 @router.put("", response_model=UpdateConversationRsp, dependencies=[Depends(verify_csrf_token)])
 async def update_conversation(  # noqa: ANN201
     post_body: ModifyConversationData,
-    conversation_id: Annotated[str, Query()],
+    conversationId: Annotated[str, Query()],  # noqa: N803
     user_sub: Annotated[str, Depends(get_user)],
 ):
     """更新特定Conversation的数据"""
     # 判断Conversation是否合法
-    conv = await ConversationManager.get_conversation_by_conversation_id(user_sub, conversation_id)
+    conv = await ConversationManager.get_conversation_by_conversation_id(user_sub, conversationId)
     if not conv or conv.user_sub != user_sub:
         LOGGER.error("Conversation: conversation_id not found.")
         return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content=ResponseData(
@@ -153,7 +155,7 @@ async def update_conversation(  # noqa: ANN201
     # 更新Conversation数据
     change_status = await ConversationManager.update_conversation_by_conversation_id(
         user_sub,
-        conversation_id,
+        conversationId,
         {
             "title": post_body.title,
         },
@@ -171,10 +173,10 @@ async def update_conversation(  # noqa: ANN201
             code=status.HTTP_200_OK,
             message="success",
             result=ConversationListItem(
-                conversation_id=conv.id,
+                conversationId=conv.id,
                 title=conv.title,
-                doc_count=await DocumentManager.get_doc_count(user_sub, conv.id),
-                created_time=datetime.fromtimestamp(conv.created_at, tz=pytz.timezone("Asia/Shanghai")).strftime("%Y-%m-%d %H:%M:%S"),
+                docCount=await DocumentManager.get_doc_count(user_sub, conv.id),
+                createdTime=datetime.fromtimestamp(conv.created_at, tz=pytz.timezone("Asia/Shanghai")).strftime("%Y-%m-%d %H:%M:%S"),
             ),
         ).model_dump(exclude_none=True, by_alias=True),
     )
@@ -208,8 +210,8 @@ async def delete_conversation(request: Request, post_body: DeleteConversationDat
 
         deleted_conversation.append(conversation_id)
 
-    return JSONResponse(status_code=status.HTTP_200_OK, content=ResponseData(
+    return JSONResponse(status_code=status.HTTP_200_OK, content=DeleteConversationRsp(
         code=status.HTTP_200_OK,
         message="success",
-        result={"conversation_id_list": deleted_conversation},
+        result=DeleteConversationMsg(conversationIdList=deleted_conversation),
     ).model_dump(exclude_none=True, by_alias=True))

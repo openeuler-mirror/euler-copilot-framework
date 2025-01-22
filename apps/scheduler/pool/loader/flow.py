@@ -1,60 +1,45 @@
+"""Flow加载器
+
+Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
+"""
+from pathlib import Path
+
+import yaml
+
+from apps.common.config import config
+from apps.entities.flow import Flow
+
+
 class FlowLoader:
     """工作流加载器"""
 
-    @staticmethod
-    async def generate(flow_id: str) -> None:
-        """从数据库中加载工作流"""
+    @classmethod
+    def load(cls, app_id: str, flow_id: str) -> Flow:
+        """从文件系统中加载【单个】工作流"""
+        flow_path = Path(config["SERVICE_DIR"]) / "app" / app_id / "flow" / f"{flow_id}.yaml"
+
+        with flow_path.open(encoding="utf-8") as f:
+            flow_yaml = yaml.safe_load(f)
+
+        if "name" not in flow_yaml:
+            err = f"工作流名称不能为空：{flow_path!s}"
+            raise ValueError(err)
+
+        if "::" in flow_yaml["id"]:
+            err = f"工作流名称包含非法字符：{flow_path!s}"
+            raise ValueError(err)
+
+        try:
+            # 检查Flow格式，并转换为Flow对象
+            flow = Flow.model_validate(flow_yaml)
+        except Exception as e:
+            err = f"工作流格式错误：{e!s}; 文件路径：{flow_path!s}"
+            raise ValueError(err) from e
+
+        return flow
+
+
+    @classmethod
+    def save(cls, app_id: str, flow_id: str, flow: Flow) -> None:
+        """保存工作流"""
         pass
-
-
-    @staticmethod
-    def load() -> None:
-        """执行工作流加载"""
-        pass
-
-
-
-def _load_flow(self) -> list[dict[str, Any]]:
-        flow_path = self._plugin_location / FLOW_DIR
-        flows = []
-        if flow_path.is_dir():
-            for current_flow_path in flow_path.iterdir():
-                LOGGER.info(f"载入Flow： {current_flow_path}")
-
-                with Path(current_flow_path).open(encoding="utf-8") as f:
-                    flow_yaml = yaml.safe_load(f)
-
-                if "/" in flow_yaml["id"]:
-                    err = "Flow名称包含非法字符！"
-                    raise ValueError(err)
-
-                if "on_error" in flow_yaml:
-                    error_step = Step(name="error", **flow_yaml["on_error"])
-                else:
-                    error_step = Step(
-                        name="error",
-                        call_type="llm",
-                        params={
-                            "user_prompt": "当前工具执行发生错误，原始错误信息为：{data}. 请向用户展示错误信息，并给出可能的解决方案。\n\n背景信息：{context}",
-                        },
-                    )
-
-                steps = {}
-                for step in flow_yaml["steps"]:
-                    steps[step["name"]] = Step(**step)
-
-                if "next_flow" not in flow_yaml:
-                    next_flow = None
-                else:
-                    next_flow = []
-                    for next_flow_item in flow_yaml["next_flow"]:
-                        next_flow.append(NextFlow(
-                            id=next_flow_item["id"],
-                            question=next_flow_item["question"],
-                        ))
-                flows.append({
-                    "id": flow_yaml["id"],
-                    "description": flow_yaml["description"],
-                    "data": Flow(on_error=error_step, steps=steps, next_flow=next_flow),
-                })
-        return flows

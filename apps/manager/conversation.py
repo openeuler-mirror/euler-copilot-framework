@@ -38,12 +38,14 @@ class ConversationManager:
             return None
 
     @staticmethod
-    async def add_conversation_by_user_sub(user_sub: str) -> Optional[Conversation]:
+    async def add_conversation_by_user_sub(user_sub: str, app_id: str, *, is_debug: bool) -> Optional[Conversation]:
         """通过用户ID查询历史记录"""
         conversation_id = str(uuid.uuid4())
         conv = Conversation(
             _id=conversation_id,
             user_sub=user_sub,
+            app_id=app_id,
+            is_debug=is_debug,
         )
         try:
             async with MongoDB.get_session() as session, await session.start_transaction():

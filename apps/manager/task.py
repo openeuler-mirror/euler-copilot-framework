@@ -106,9 +106,9 @@ class TaskManager:
         # 创建新的Record，缺失的数据延迟关联
         new_record = RecordData(
             id=str(uuid.uuid4()),
-            conversation_id=post_body.conversation_id,
-            group_id=str(uuid.uuid4()) if not post_body.group_id else post_body.group_id,
-            task_id="",
+            conversationId=post_body.conversation_id,
+            groupId=str(uuid.uuid4()) if not post_body.group_id else post_body.group_id,
+            taskId="",
             content=RecordContent(
                 question=post_body.question,
                 answer="",
@@ -119,7 +119,7 @@ class TaskManager:
                 time=0,
                 feature=post_body.features.model_dump(by_alias=True),
             ),
-            created_at=round(datetime.now(timezone.utc).timestamp(), 3),
+            createdAt=round(datetime.now(timezone.utc).timestamp(), 3),
         )
 
         if not task:
@@ -240,7 +240,7 @@ class TaskManager:
         try:
             async for history in flow_context_collection.find({"task_id": task_id}):
                 history_obj = FlowHistory.model_validate(history)
-                flow_context[history_obj.step_name] = history_obj
+                flow_context[history_obj.step_id] = history_obj
 
             return flow_context
         except Exception as e:

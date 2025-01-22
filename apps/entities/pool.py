@@ -50,12 +50,13 @@ class NodePool(PoolBase):
     """
 
     id: str = Field(description="Node的ID")
+    service_id: str = Field(description="Node所属的Service ID")
     type: CallType = Field(description="Call的类型")
-    service: str = Field(description="服务名称")
-    meta_call: Optional[str] = Field(description="基类Call的ID", default=None)
+    base_node_id: Optional[str] = Field(description="基类Node的ID", default=None)
     input_schema: dict[str, Any] = Field(description="输入参数的schema", default={})
     output_schema: dict[str, Any] = Field(description="输出参数的schema", default={})
     params: dict[str, Any] = Field(description="参数", default={})
+    params_schema: dict[str, Any] = Field(description="参数的schema", default={})
     path: str = Field(description="Node的路径；包括Node的作用域等")
 
 

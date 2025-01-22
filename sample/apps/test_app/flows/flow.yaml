@@ -13,8 +13,9 @@ on_error:
     错误信息：{{ error.message }}
 
 # 各个节点定义
-nodes:
+steps:
   - id: query_data  # 节点的Pool ID
+    node: api
     name: 查询数据    # 节点名称
     description: 从API中查询测试数据 # 节点描述
     pos: # 节点在画布上的位置
@@ -23,6 +24,7 @@ nodes:
     params:  # 节点的参数
       endpoint: GET /api/test  # API Endpoint名称
   - id: check_data
+    node: check_data
     name: 判断数据
     description: 判断工具的返回值是否包含有效数据
     pos: # 节点在画布上的位置
@@ -36,6 +38,7 @@ nodes:
         - branch: invalid
           description: 返回值不存在有效数据
   - id: gen_reply
+    node: llm
     name: 生成回复
     description: 使用大模型生成回复
     pos: # 节点在画布上的位置
@@ -59,6 +62,7 @@ nodes:
 
         使用自然语言解释这一信息，并展示为Markdown列表。
   - id: format_output
+    node: format_output
     name: 格式化输出
     description: 按照特定格式输出
     pos: # 节点在画布上的位置
