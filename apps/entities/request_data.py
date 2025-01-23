@@ -6,8 +6,10 @@ from typing import Optional
 
 from pydantic import BaseModel, Field
 
+from apps.entities.appcenter import AppData
+from apps.entities.flow import EdgeItem, FlowItem, NodeItem, PositionItem
 from apps.entities.task import RequestDataApp
-from apps.entities.flow import PositionItem,FlowItem,NodeItem,EdgeItem
+
 
 class RequestDataFeatures(BaseModel):
     """POST /api/chat的features字段数据"""
@@ -57,6 +59,18 @@ class AbuseProcessRequest(BaseModel):
 
     id: str
     is_deletion: int
+
+
+class CreateAppRequest(AppData):
+    """POST /api/app 请求数据结构"""
+
+    app_id: Optional[str] = Field(None, alias="appId", description="应用ID")
+
+
+class ModFavAppRequest(BaseModel):
+    """PUT /api/app/{appId} 请求数据结构"""
+
+    favorited: bool = Field(..., description="是否收藏")
 
 
 class ClientSessionData(BaseModel):
