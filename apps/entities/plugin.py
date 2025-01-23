@@ -2,21 +2,12 @@
 
 Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 """
-from typing import Any, Optional
+from typing import Any
 
 from pydantic import BaseModel, Field
 
 from apps.common.queue import MessageQueue
 from apps.entities.task import FlowHistory, RequestDataPlugin
-
-
-class CallResult(BaseModel):
-    """Call运行后的返回值"""
-
-    message: str = Field(description="经LLM理解后的Call的输出")
-    output: dict[str, Any] = Field(description="Call的原始输出")
-    output_schema: dict[str, Any] = Field(description="Call中Output对应的Schema")
-    extra: Optional[dict[str, Any]] = Field(description="Call的额外输出", default=None)
 
 
 class SysCallVars(BaseModel):

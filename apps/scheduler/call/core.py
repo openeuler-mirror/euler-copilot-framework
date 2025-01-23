@@ -53,10 +53,17 @@ class CoreCall(type):
         if not issubclass(kwargs["param_cls"], BaseModel):
             err = f"参数模板{kwargs['param_cls']}不是Pydantic类！"
             raise TypeError(err)
+        if "output_cls" not in kwargs:
+            err = f"请给工具{name}提供输出模板！"
+            raise AttributeError(err)
+        if not issubclass(kwargs["output_cls"], BaseModel):
+            err = f"输出模板{kwargs['output_cls']}不是Pydantic类！"
+            raise TypeError(err)
 
         # 设置参数相关的属性
         attrs["_param_cls"] = kwargs["param_cls"]
         attrs["params_schema"] = kwargs["param_cls"].model_json_schema()
+        attrs["output_schema"] = kwargs["output_cls"].model_json_schema()
         # __init__不允许自定义
         attrs["__init__"] = lambda self, syscall_vars, **kwargs: self._class_init_fixed(syscall_vars, **kwargs)
         # 提供空逻辑占位

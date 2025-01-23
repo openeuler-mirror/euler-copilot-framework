@@ -18,5 +18,5 @@ MAX_API_RESPONSE_LENGTH = 4096
 MAX_SCHEDULER_HISTORY_SIZE = 3
 # 语义接口目录中工具子目录
 CALL_DIR = "call"
-
+# 日志记录器
 LOGGER = logging.getLogger("ray")

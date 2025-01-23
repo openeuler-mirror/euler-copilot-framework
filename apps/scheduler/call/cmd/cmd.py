@@ -6,7 +6,6 @@ from typing import Any, Optional
 
 from pydantic import BaseModel, Field
 
-from apps.entities.plugin import CallResult
 from apps.scheduler.call.core import CoreCall
 
 
@@ -17,14 +16,17 @@ class _CmdParams(BaseModel):
     args: list[str] = Field(default=[], description="命令中可执行文件的参数（例如 `--help`），可选")
 
 
+class _CmdOutput(BaseModel):
+    """Cmd工具的输出"""
+
+
 
 class Cmd(CoreCall):
     """Cmd工具。用于根据BTDL描述文件，生成命令。"""
 
     name: str = "cmd"
     description: str = "根据BTDL描述文件，生成命令。"
-    params: type[_CmdParams] = _CmdParams
 
-    async def call(self, _slot_data: dict[str, Any]) -> CallResult:
+    async def __call__(self, _slot_data: dict[str, Any]) -> _CmdOutput:
         """调用Cmd工具"""
         pass

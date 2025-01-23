@@ -14,7 +14,8 @@ class Solver:
     """解析命令行生成器"""
 
     @staticmethod
-    async def _get_option(agent_input: str, collection_name: str, binary_name: str, subcmd_name: str, spec: dict[str, Any]):
+    async def _get_option(agent_input: str, collection_name: str, binary_name: str, subcmd_name: str, spec: dict[str, Any]) -> tuple[str, str]:
+        """选择最匹配的命令行参数"""
         # 选择最匹配的Global Options
         global_options = CommandlineAssembler.get_data("global_option", agent_input, collection_name, binary_name, num=2)
         # 选择最匹配的Options
