@@ -4,12 +4,12 @@ Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 """
 from typing import Optional
 
-from apps.entities.task import RequestDataPlugin
+from apps.entities.task import RequestDataApp
 from apps.llm.patterns import Select
 from apps.scheduler.pool.pool import Pool
 
 
-async def choose_flow(task_id: str, question: str, origin_plugin_list: list[RequestDataPlugin]) -> tuple[str, Optional[RequestDataPlugin]]:
+async def choose_flow(task_id: str, question: str, origin_app_list: list[RequestDataApp]) -> tuple[str, Optional[RequestDataApp]]:
     """依据用户的输入和选择，构造对应的Flow。
 
     - 当用户没有选择任何Plugin时，直接进行智能问答
@@ -21,21 +21,21 @@ async def choose_flow(task_id: str, question: str, origin_plugin_list: list[Requ
     :result: 经LLM选择的Plugin ID和Flow ID
     """
     # 去掉无效的插件选项：plugin_id为空
-    plugin_ids = []
+    app_ids = []
     flow_ids = []
-    for item in origin_plugin_list:
-        if not item.plugin_id:
+    for item in origin_app_list:
+        if not item.app_id:
             continue
-        plugin_ids.append(item.plugin_id)
+        app_ids.append(item.app_id)
         if item.flow_id:
             flow_ids.append(item)
 
     # 用户什么都不选，直接智能问答
-    if len(plugin_ids) == 0:
+    if len(app_ids) == 0:
         return "", None
 
     # 用户只选了auto
-    if len(plugin_ids) == 1 and plugin_ids[0] == "auto":
+    if len(app_ids) == 1 and app_ids[0] == "auto":
         # 用户要求自动识别
         plugin_top = Pool().get_k_plugins(question)
         # 聚合插件的Flow
@@ -67,11 +67,10 @@ async def choose_flow(task_id: str, question: str, origin_plugin_list: list[Requ
     if selected_id == "KnowledgeBase":
         return "", None
 
-    plugin_id = selected_id.split("/")[0]
+    app_id = selected_id.split("/")[0]
     flow_id = selected_id.split("/")[1]
-    return plugin_id, RequestDataPlugin(
-        plugin_id=plugin_id,
+    return app_id, RequestDataApp(
+        app_id=app_id,
         flow_id=flow_id,
         params={},
-        auth={},
     )

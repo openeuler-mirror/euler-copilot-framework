@@ -9,7 +9,6 @@ from apps.constants import LOGGER, MAX_SCHEDULER_HISTORY_SIZE
 from apps.entities.enum_var import StepStatus
 from apps.entities.flow import Step
 from apps.entities.plugin import (
-    CallResult,
     SysCallVars,
     SysExecVars,
 )

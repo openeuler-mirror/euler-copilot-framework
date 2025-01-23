@@ -14,6 +14,7 @@ from apps.constants import CALL_DIR, LOGGER
 from apps.entities.enum_var import CallType
 from apps.entities.pool import CallPool
 from apps.models.mongo import MongoDB
+from apps.scheduler.pool.util import get_short_hash
 
 
 class CallLoader:
@@ -39,19 +40,6 @@ class CallLoader:
             LOGGER.info(msg=f"类{user_cls.__name__}不符合Call标准要求。")
 
         return flag
-
-    @staticmethod
-    def _check_package(package_name: str) -> bool:
-        """检查包是否符合要求"""
-        package = sys.modules["call." + package_name]
-
-        if not hasattr(package, "service") or not isinstance(package.service, str) or not package.service:
-            return False
-
-        if not hasattr(package, "__all__") or not isinstance(package.__all__, list) or not package.__all__:  # noqa: SIM103
-            return False
-
-        return True
 
     @staticmethod
     async def _load_system_call() -> list[CallPool]:
@@ -101,10 +89,6 @@ class CallLoader:
             if not call_file.is_dir():
                 continue
 
-            if not cls._check_package(call_file.name):
-                LOGGER.info(msg=f"包call.{call_file.name}不符合Call标准要求，跳过载入。")
-                continue
-
             # 载入包
             try:
                 call_package = importlib.import_module("call." + call_file.name)
@@ -118,13 +102,14 @@ class CallLoader:
                         LOGGER.info(msg=f"类{call_cls.__name__}不符合Call标准要求，跳过载入。")
                         continue
 
+                    cls_path = f"{call_package.service}::call.{call_file.name}.{call_id}"
                     metadata.append(
-                        CallMetadata(
-                            _id=call_id,
+                        CallPool(
+                            _id=get_short_hash(cls_path.encode()),
                             type=CallType.PYTHON,
                             name=call_cls.name,
                             description=call_cls.description,
-                            path=f"{call_package.service}::call.{call_file.name}.{call_id}",
+                            path=cls_path,
                         ),
                     )
             except Exception as e:

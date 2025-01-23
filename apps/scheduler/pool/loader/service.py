@@ -2,12 +2,16 @@
 
 Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 """
-from pathlib import Path
 from typing import Any
 
+from anyio import Path
+
 from apps.common.config import config
+from apps.entities.vector import NodeVector, ServiceVector
 from apps.models.mongo import MongoDB
+from apps.models.postgres import PostgreSQL
 from apps.scheduler.pool.loader.metadata import MetadataLoader
+from apps.scheduler.pool.loader.openapi import OpenAPILoader
 
 
 class ServiceLoader:
@@ -21,9 +25,33 @@ class ServiceLoader:
         """加载单个Service"""
         service_path = Path(config["SERVICE_DIR"]) / "service" / service_dir
         # 载入元数据
-        metadata = MetadataLoader.load(service_path / "metadata.yaml")
-        # 载入OpenAPI文档
-        
+        metadata = await MetadataLoader.load(service_path / "metadata.yaml")
+        # 载入OpenAPI文档，获取Node列表
+        nodes = await OpenAPILoader.load_one(service_path / "openapi.yaml")
+
+        # 向量化所有数据
+        session = await PostgreSQL.get_session()
+        service_vec = ServiceVector(
+            _id=metadata.id,
+            embedding=PostgreSQL.get_embedding([metadata.description]),
+        )
+        session.add(service_vec)
+
+        node_descriptions = []
+        for node in nodes:
+            node_descriptions += [node.description]
+
+        node_vecs = await PostgreSQL.get_embedding(node_descriptions)
+        for i, data in enumerate(node_vecs):
+            node_vec = NodeVector(
+                _id=nodes[i].id,
+                embedding=data,
+            )
+            session.add(node_vec)
+
+        await session.commit()
+
+
 
 
 

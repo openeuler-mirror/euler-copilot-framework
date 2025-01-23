@@ -130,19 +130,19 @@ class API(metaclass=CoreCall, param_cls=_APIParams, output_cls=_APIOutput):
         if data is None:
             data = {}
 
-        if self._auth is not None and "type" in self._auth:
-            if self._auth["type"] == "header":
-                req_header.update(self._auth["args"])
-            elif self._auth["type"] == "cookie":
-                req_cookie.update(self._auth["args"])
-            elif self._auth["type"] == "params":
-                req_params.update(self._auth["args"])
-            elif self._auth["type"] == "oidc":
+        if params.auth is not None and "type" in params.auth:
+            if params.auth["type"] == "header":
+                req_header.update(params.auth["args"])
+            elif params.auth["type"] == "cookie":
+                req_cookie.update(params.auth["args"])
+            elif params.auth["type"] == "params":
+                req_params.update(params.auth["args"])
+            elif params.auth["type"] == "oidc":
                 token = await TokenManager.get_plugin_token(
-                    self._auth["domain"],
+                    params.auth["domain"],
                     syscall_vars.session_id,
-                    self._auth["access_token_url"],
-                    int(self._auth["token_expire_time"]),
+                    params.auth["access_token_url"],
+                    int(params.auth["token_expire_time"]),
                 )
                 req_header.update({"access-token": token})
 
@@ -190,6 +190,7 @@ class API(metaclass=CoreCall, param_cls=_APIParams, output_cls=_APIOutput):
                     message=text,
                     data={"api_response_data": await response.text()},
                 )
+            response_status = response.status
             response_data = await response.text()
 
         # 返回值只支持JSON的情况
@@ -202,14 +203,15 @@ class API(metaclass=CoreCall, param_cls=_APIParams, output_cls=_APIOutput):
         # 如果没有返回结果
         if response_data is None:
             return _APIOutput(
-                http_code=response.status,
+                http_code=response_status,
                 output={},
                 message=f"调用接口{params.full_url}，作用为但返回值为空。",
             )
 
         response_data = self._process_response_schema(response_data, response_schema)
         return _APIOutput(
+            http_code=response_status,
             output=json.loads(response_data),
-            output_schema=response_schema,
             message=f"""调用API从外部数据源获取了数据。API和数据源的描述为：{usage}""",
         )
+
