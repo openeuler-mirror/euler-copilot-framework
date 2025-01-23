@@ -33,6 +33,7 @@ from apps.manager import (
     DocumentManager,
     RecordManager,
 )
+from apps.manager.application import AppManager
 
 router = APIRouter(
     prefix="/api/conversation",
@@ -43,7 +44,12 @@ router = APIRouter(
 )
 
 
-async def create_new_conversation(user_sub: str, conv_list: list[Conversation]) -> Optional[Conversation]:
+async def create_new_conversation(
+    user_sub: str,
+    conv_list: list[Conversation],
+    app_id: str = "",
+    is_debug: bool = False,
+) -> Optional[Conversation]:
     """判断并创建新对话"""
     create_new = False
     if not conv_list:
@@ -56,7 +62,12 @@ async def create_new_conversation(user_sub: str, conv_list: list[Conversation]) 
 
     # 新建对话
     if create_new:
-        new_conv = await ConversationManager.add_conversation_by_user_sub(user_sub, app_id, is_debug=False)
+        if not AppManager.validate_user_app_access(user_sub, app_id):
+            err = "Invalid app_id."
+            raise RuntimeError(err)
+        new_conv = await ConversationManager.add_conversation_by_user_sub(user_sub,
+                                                                        app_id=app_id,
+                                                                        is_debug=is_debug)
         if not new_conv:
             err = "Create new conversation failed."
             raise RuntimeError(err)
@@ -77,6 +88,8 @@ async def get_conversation_list(user_sub: Annotated[str, Depends(get_user)]):  #
             title=conv.title,
             docCount=await DocumentManager.get_doc_count(user_sub, conv.id),
             createdTime=datetime.fromtimestamp(conv.created_at, tz=pytz.timezone("Asia/Shanghai")).strftime("%Y-%m-%d %H:%M:%S"),
+            appId=conv.app_id,
+            isDebug=conv.is_debug,
         ) for conv in conversations
     ]
 
@@ -96,6 +109,8 @@ async def get_conversation_list(user_sub: Annotated[str, Depends(get_user)]):  #
             title=new_conv.title,
             docCount=0,
             createdTime=datetime.fromtimestamp(new_conv.created_at, tz=pytz.timezone("Asia/Shanghai")).strftime("%Y-%m-%d %H:%M:%S"),
+            appId=new_conv.app_id,
+            isDebug=new_conv.is_debug,
         ))
 
     return JSONResponse(status_code=status.HTTP_200_OK,
@@ -109,12 +124,19 @@ async def get_conversation_list(user_sub: Annotated[str, Depends(get_user)]):  #
 
 
 @router.post("", dependencies=[Depends(verify_csrf_token)], response_model=AddConversationRsp)
-async def add_conversation(user_sub: Annotated[str, Depends(get_user)]):  # noqa: ANN201
+async def add_conversation(
+    user_sub: Annotated[str, Depends(get_user)],
+    appId: Optional[str] = None,  # noqa: N803
+    isDebug: Optional[bool] = None, # noqa: N803
+): 
     """手动创建新对话"""
     conversations = await ConversationManager.get_conversation_by_user_sub(user_sub)
     # 尝试创建新对话
     try:
-        new_conv = await create_new_conversation(user_sub, conversations)
+        app_id = appId if appId else ""
+        is_debug = isDebug if isDebug is not None else False
+        new_conv = await create_new_conversation(user_sub, conversations,
+                                                app_id=app_id, is_debug=is_debug)
     except RuntimeError as e:
         return JSONResponse(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, content=ResponseData(
             code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -177,6 +199,8 @@ async def update_conversation(  # noqa: ANN201
                 title=conv.title,
                 docCount=await DocumentManager.get_doc_count(user_sub, conv.id),
                 createdTime=datetime.fromtimestamp(conv.created_at, tz=pytz.timezone("Asia/Shanghai")).strftime("%Y-%m-%d %H:%M:%S"),
+                appId=conv.app_id,
+                isDebug=conv.is_debug,
             ),
         ).model_dump(exclude_none=True, by_alias=True),
     )

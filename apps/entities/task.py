@@ -54,13 +54,11 @@ class TaskBlock(BaseModel):
     new_context: list[str] = Field(description="Flow的执行信息（增量ID）", default=[])
 
 
-class RequestDataPlugin(BaseModel):
-    """POST /api/chat的plugins字段数据"""
-
-    plugin_id: str = Field(description="插件ID")
-    flow_id: str = Field(description="Flow ID")
+class RequestDataApp(BaseModel):
+    """模型对话中包含的app信息"""
+    app_id: str = Field(description="应用ID", alias="appId")
+    flow_id: str = Field(description="Flow ID", alias="flowId")
     params: dict[str, Any] = Field(description="插件参数")
-    auth: dict[str, Any] = Field(description="插件鉴权信息")
 
 
 class Task(BaseModel):
@@ -76,3 +74,4 @@ class Task(BaseModel):
     state: Optional[ExecutorState] = Field(description="Flow的状态", default=None)
     ended: bool = False
     updated_at: float = Field(default_factory=lambda: round(datetime.now(tz=timezone.utc).timestamp(), 3))
+
