@@ -34,41 +34,36 @@ class ReasoningLLM(metaclass=Singleton):
             result += len(self._encoder.encode(msg["content"]))
 
         return result
-    
+
     def _validate_messages(self, messages: list[dict[str, str]]) -> list[dict[str, str]]:
         """验证消息格式是否正确"""
         if messages[0]["role"] != "system":
             # 添加默认系统消息
             messages.insert(0, {"role": "system", "content": "You are a helpful assistant."})
-        
+
         if messages[-1]["role"] != "user":
-            raise ValueError("消息格式错误：最后一个消息必须是用户消息。")
+            err = f"消息格式错误，最后一个消息必须是用户消息：{messages[-1]}"
+            raise ValueError(err)
 
         return messages
 
     async def call(self, task_id: str, messages: list[dict[str, str]],
                    max_tokens: int = 8192, temperature: float = 0.07, *, streaming: bool = True) -> AsyncGenerator[str, None]:
-        """调用大模型，分为流式和非流式两种
-
-        :param task_id: 任务ID
-        :param messages: 原始消息
-        :param streaming: 是否启用流式输出
-        :param max_tokens: 最大Token数
-        :param temperature: 模型温度（随机化程度）
-        """
+        """调用大模型，分为流式和非流式两种"""
         input_tokens = self._calculate_token_length(messages)
         try:
             msg_list = self._validate_messages(messages)
         except ValueError as e:
-            raise ValueError(f"消息格式错误：{e}") from e
+            err = f"消息格式错误：{e}"
+            raise ValueError(err) from e
 
-        stream = self._client.chat.completions.create(
+        stream = await self._client.chat.completions.create(
             model=config["LLM_MODEL"],
-            messages=msg_list,
-            stream=True,
+            messages=msg_list,     # type: ignore[]
             max_tokens=max_tokens,
             temperature=temperature,
-        )
+            stream=True,
+        )     # type: ignore[]
 
         if streaming:
             result = ""

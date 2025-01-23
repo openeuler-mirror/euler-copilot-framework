@@ -7,46 +7,62 @@ from typing import Any
 
 from pydantic import BaseModel
 
-from apps.entities.plugin import CallResult, SysCallVars
+from apps.entities.plugin import SysCallVars
 
 
-class AdditionalParams(BaseModel):
-    """Call的额外参数"""
+class CoreCall(type):
+    """Call元类。所有Call必须继承此类，并实现所有方法。"""
 
+    @staticmethod
+    def _check_class_attr(cls_name: str, attrs: dict[str, Any]) -> None:
+        """检查类属性是否存在"""
+        if "name" not in attrs:
+            err = f"类{cls_name}中不存在属性name"
+            raise AttributeError(err)
+        if "description" not in attrs:
+            err = f"类{cls_name}中不存在属性description"
+            raise AttributeError(err)
+        if "call" not in attrs or not callable(attrs["call"]):
+            err = f"类{cls_name}中不存在属性call"
+            raise AttributeError(err)
 
-
-class CoreCall:
-    """Call抽象类。所有Call必须继承此类，并实现所有方法。"""
-
-    name: str = ""
-    description: str = ""
-    params: type[BaseModel] = AdditionalParams
-
-    @property
-    def params_schema(self) -> dict[str, Any]:
-        """返回params的schema"""
-        return self.params.model_json_schema()
-
-    async def init(self, syscall_vars: SysCallVars, **kwargs) -> None:  # noqa: ANN003
-        """初始化Call，赋值参数
-
-        :param syscall_vars: Call所需的固定参数。此处的参数为系统提供。
-        :param kwargs: Call所需的额外参数。此处的参数为Flow开发者填充。
-        """
-        # 使用此种方式进行params校验
+    @staticmethod
+    def _class_init_fixed(self, syscall_vars: SysCallVars, **kwargs) -> None:  # type: ignore[] # noqa: ANN001, ANN003, PLW0211
+        """Call子类的固定初始化函数"""
         self._syscall_vars = syscall_vars
-        self._params = self.params.model_validate(kwargs)
-        # 在此初始化Slot Schema
-        self.slot_schema: dict[str, Any] = {}
+        self._params = self._param_cls.model_validate(kwargs)
+        # 调用附加的初始化函数
+        self.init(syscall_vars, **kwargs)
 
-    async def load(self) -> None:
-        """如果Call需要载入文件，则在这里定义逻辑"""
-        pass  # noqa: PIE790
+    @staticmethod
+    def _class_init(self, syscall_vars: SysCallVars, **kwargs) -> None:  # type: ignore[] # noqa: ANN001, ANN003, PLW0211
+        """Call子类的附加初始化函数"""
 
-    async def call(self, slot_data: dict[str, Any]) -> CallResult:
-        """运行Call。
 
-        :param slot_data: Call的参数槽。此处的参数槽为用户通过大模型交互式填充。
-        :return: CallResult类型的数据。返回值中"output"为工具的原始返回信息（有格式字符串）；"message"为工具经LLM处理后的返回信息（字符串）。也可以带有其他字段，其他字段将起到额外的说明和信息传递作用。
-        """
-        raise NotImplementedError
+    @staticmethod
+    def _class_load(self) -> None:  # type: ignore[] # noqa: ANN001, PLW0211
+        """Call子类的文件载入函数"""
+
+
+    def __new__(cls, name: str, bases: tuple[type, ...], attrs: dict[str, Any], **kwargs) -> type:  # noqa: ANN003
+        """创建Call类"""
+        # 检查kwargs
+        if "param_cls" not in kwargs:
+            err = f"请给工具{name}提供参数模板！"
+            raise AttributeError(err)
+        if not issubclass(kwargs["param_cls"], BaseModel):
+            err = f"参数模板{kwargs['param_cls']}不是Pydantic类！"
+            raise TypeError(err)
+
+        # 设置参数相关的属性
+        attrs["_param_cls"] = kwargs["param_cls"]
+        attrs["params_schema"] = kwargs["param_cls"].model_json_schema()
+        # __init__不允许自定义
+        attrs["__init__"] = lambda self, syscall_vars, **kwargs: self._class_init_fixed(syscall_vars, **kwargs)
+        # 提供空逻辑占位
+        if "init" not in attrs:
+            attrs["init"] = cls._class_init
+        if "load" not in attrs:
+            attrs["load"] = cls._class_load
+        # 提供
+        return super().__new__(cls, name, bases, attrs)

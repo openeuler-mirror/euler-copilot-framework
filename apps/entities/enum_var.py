@@ -71,6 +71,14 @@ class MetadataType(str, Enum):
     APP = "app"
 
 
+class SaveType(str, Enum):
+    """保存类型"""
+
+    APP = "app"
+    SERVICE = "service"
+    FLOW = "flow"
+
+
 class AppPermissionType(str, Enum):
     """App的权限类型"""
 
@@ -87,11 +95,3 @@ class EdgeType(str, Enum):
 
     NORMAL = "normal"
     LOOP = "loop"
-
-
-class SaveType(str, Enum):
-    """检查类型"""
-
-    APP = "app"
-    SERVICE = "service"
-    FLOW = "flow"

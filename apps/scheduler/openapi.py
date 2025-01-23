@@ -6,16 +6,25 @@ from collections.abc import Sequence
 from copy import deepcopy
 from typing import Any, Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
+
+
+class ReducedOpenAPIEndpoint(BaseModel):
+    """精简后的OpenAPI文档中的单个API"""
+
+    uri: str = Field(..., description="API的URI")
+    method: str = Field(..., description="API的请求方法")
+    name: str = Field(..., description="API的自定义名称")
+    description: str = Field(..., description="API的描述信息")
+    schema: dict = Field(..., description="API的JSON Schema")
 
 
 class ReducedOpenAPISpec(BaseModel):
     """精简后的OpenAPISpec文档"""
 
-    servers: list[dict]
     id: str
     description: str
-    endpoints: list[tuple[str, str, dict]]
+    endpoints: list[ReducedOpenAPIEndpoint]
 
 
 def _retrieve_ref(path: str, schema: dict) -> dict:
@@ -117,45 +126,41 @@ def dereference_refs(
     return _dereference_refs_helper(schema_obj, full_schema, skip_keys)
 
 
+def reduce_endpoint_docs(docs: dict) -> dict:
+    """精简API文档"""
+    out = {}
+    if docs.get("description"):
+        out["description"] = docs.get("description")
+    if docs.get("parameters"):
+        out["parameters"] = [
+            parameter
+            for parameter in docs.get("parameters", [])
+            if parameter.get("required")
+        ]
+    if "200" in docs["responses"]:
+        out["responses"] = docs["responses"]["200"]
+    if docs.get("requestBody"):
+        out["requestBody"] = docs.get("requestBody")
+    return out
+
+
 def reduce_openapi_spec(spec: dict) -> ReducedOpenAPISpec:
     """解析和处理OpenAPI文档"""
-    # 只支持get, post, patch, put, delete API
+    # 只支持get, post, patch, put, delete API；强制去除ref；提取关键字段
     endpoints = [
-        (f"{operation_name.upper()} {route}", docs.get("description"), docs)
+        ReducedOpenAPIEndpoint(
+            uri=route,
+            method=operation_name.upper(),
+            name=docs.get("summary"),
+            description=docs.get("description"),
+            schema=reduce_endpoint_docs(dereference_refs(docs, full_schema=spec)),
+        )
         for route, operation in spec["paths"].items()
         for operation_name, docs in operation.items()
         if operation_name in ["get", "post", "patch", "put", "delete"]
     ]
 
-    # 强制去除ref
-    endpoints = [
-        (name, description, dereference_refs(docs, full_schema=spec))
-        for name, description, docs in endpoints
-    ]
-
-    # 只提取关键字段【可修改】
-    def reduce_endpoint_docs(docs: dict) -> dict:
-        out = {}
-        if docs.get("description"):
-            out["description"] = docs.get("description")
-        if docs.get("parameters"):
-            out["parameters"] = [
-                parameter
-                for parameter in docs.get("parameters", [])
-                if parameter.get("required")
-            ]
-        if "200" in docs["responses"]:
-            out["responses"] = docs["responses"]["200"]
-        if docs.get("requestBody"):
-            out["requestBody"] = docs.get("requestBody")
-        return out
-
-    endpoints = [
-        (name, description, reduce_endpoint_docs(docs))
-        for name, description, docs in endpoints
-    ]
     return ReducedOpenAPISpec(
-        servers=spec["servers"],
         id=spec["info"]["title"],
         description=spec["info"].get("description", ""),
         endpoints=endpoints,

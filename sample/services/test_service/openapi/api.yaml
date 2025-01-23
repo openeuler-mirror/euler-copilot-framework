@@ -4,19 +4,19 @@ info:
   title: "文档标题"
 
 servers:
-  - url: "http://example.com:port/suffix"
+  - url: "http://any.value"
 
 paths:
   /url:
     post:
-      dangerous: true
+      summary: "API的自定义名称"
       description: "API的描述信息"
       requestBody:
-        description: "API请求体的总描述"
         content:
           application/json:
             schema:
               type: object
+              description: "API请求体的总描述"
               properties:
                 data:
                   type: string
@@ -24,11 +24,11 @@ paths:
                   description: "字段的描述信息"
       responses:
         '200':
-          description: "API返回体的总描述"
           content:
             application/json:
               schema:
                 type: object
+                description: "API返回体的总描述"
                 properties:
                   name:
                     type: string

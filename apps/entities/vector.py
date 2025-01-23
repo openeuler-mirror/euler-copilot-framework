@@ -12,7 +12,7 @@ Base = declarative_base()
 class AppVector(Base):
     """App向量信息"""
 
-    __tablename__ = "flow_vector"
+    __tablename__ = "app_vector"
     id = Column(String(length=100), primary_key=True, nullable=False, unique=True)
     embedding = Column(Vector(1024), nullable=False)
 

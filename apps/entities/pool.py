@@ -2,8 +2,9 @@
 
 Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 """
+import uuid
 from datetime import datetime, timezone
-from typing import Any, Optional
+from typing import Any
 
 from pydantic import BaseModel, Field
 
@@ -38,6 +39,17 @@ class ServicePool(PoolBase):
     hashes: dict[str, str] = Field(description="关联文件的hash值；Service作为整体更新或删除", default={})
 
 
+class CallPool(PoolBase):
+    """Call信息
+
+    collection: call
+    """
+
+    id: str = Field(description="Call的ID")
+    type: CallType = Field(description="Call的类型")
+    path: str = Field(description="Call的路径")
+
+
 class NodePool(PoolBase):
     """Node信息
 
@@ -49,15 +61,13 @@ class NodePool(PoolBase):
             2. Python Node的路径格式样例：“tune::call.tune.CheckSystem”
     """
 
-    id: str = Field(description="Node的ID")
+    id: str = Field(description="Node的ID", default_factory=lambda: str(uuid.uuid4()))
+    created_at: None = None
     service_id: str = Field(description="Node所属的Service ID")
-    type: CallType = Field(description="Call的类型")
-    base_node_id: Optional[str] = Field(description="基类Node的ID", default=None)
-    input_schema: dict[str, Any] = Field(description="输入参数的schema", default={})
-    output_schema: dict[str, Any] = Field(description="输出参数的schema", default={})
-    params: dict[str, Any] = Field(description="参数", default={})
-    params_schema: dict[str, Any] = Field(description="参数的schema", default={})
-    path: str = Field(description="Node的路径；包括Node的作用域等")
+    call_id: str = Field(description="所使用的Call的ID")
+    fixed_params: dict[str, Any] = Field(description="Node的固定参数", default={})
+    params_schema: dict[str, Any] = Field(description="Node的参数schema；只包含用户可以改变的参数", default={})
+    output_schema: dict[str, Any] = Field(description="Node的输出schema；做输出的展示用", default={})
 
 
 class AppFlow(PoolBase):
