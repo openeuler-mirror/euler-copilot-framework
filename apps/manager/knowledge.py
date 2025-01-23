@@ -16,10 +16,11 @@ class KnowledgeBaseManager:
         """修改当前用户的知识库ID"""
         user_collection = MongoDB.get_collection("user")
         try:
-            result = await user_collection.update_one({"_id": user_sub}, {"$set": {"kb_id": kb_id}})
-            if result.modified_count == 0:
+            user = await user_collection.find_one({"_id": user_sub}, {"kb_id": 1})
+            if user is None:
                 LOGGER.error("[KnowledgeBaseManager] change kb_id error: user_sub not found")
                 return False
+            await user_collection.update_one({"_id": user_sub}, {"$set": {"kb_id": kb_id}})
             return True
         except Exception as e:
             LOGGER.error(f"[KnowledgeBaseManager] change kb_id error: {e}")

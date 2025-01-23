@@ -6,7 +6,6 @@ import string
 from typing import Any, Literal, Optional
 
 from apps.llm.patterns.select import Select
-from apps.scheduler.vector import DocumentWrapper, VectorDB
 
 
 class CommandlineAssembler:

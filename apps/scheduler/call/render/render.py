@@ -6,25 +6,52 @@ import json
 from pathlib import Path
 from typing import Any
 
-from apps.entities.plugin import CallError, CallResult, SysCallVars
+from pydantic import BaseModel, Field
+
+from apps.entities.plugin import CallError, SysCallVars
 from apps.scheduler.call.core import CoreCall
 from apps.scheduler.call.render.style import RenderStyle
 
 
-class Render(CoreCall):
+class _RenderAxis(BaseModel):
+    """ECharts图表的轴配置"""
+
+    type: str = Field(description="轴的类型")
+    axisTick: dict = Field(description="轴刻度配置")  # noqa: N815
+
+
+class _RenderFormat(BaseModel):
+    """ECharts图表配置"""
+
+    tooltip: dict[str, Any] = Field(description="ECharts图表的提示框配置")
+    legend: dict[str, Any] = Field(description="ECharts图表的图例配置")
+    dataset: dict[str, Any] = Field(description="ECharts图表的数据集配置")
+    xAxis: _RenderAxis = Field(description="ECharts图表的X轴配置")  # noqa: N815
+    yAxis: _RenderAxis = Field(description="ECharts图表的Y轴配置")  # noqa: N815
+    series: list[dict[str, Any]] = Field(description="ECharts图表的数据列配置")
+
+
+class _RenderOutput(BaseModel):
+    """Render工具的输出"""
+
+    output: _RenderFormat = Field(description="ECharts图表配置")
+    message: str = Field(description="Render工具的输出")
+
+
+class _RenderParam(BaseModel):
+    """Render工具的参数"""
+
+
+
+class Render(metaclass=CoreCall, param_cls=_RenderParam, output_cls=_RenderOutput):
     """Render Call，用于将SQL Tool查询出的数据转换为图表"""
 
     name: str = "render"
     description: str = "渲染图表工具，可将给定的数据绘制为图表。"
 
 
-    async def init(self, syscall_vars: SysCallVars, **_kwargs) -> None:  # noqa: ANN003
-        """初始化Render Call，校验参数，读取option模板
-
-        :param syscall_vars: Render Call参数
-        """
-        await super().init(syscall_vars, **_kwargs)
-
+    def init(self, _syscall_vars: SysCallVars, **_kwargs) -> None:  # noqa: ANN003
+        """初始化Render Call，校验参数，读取option模板"""
         try:
             option_location = Path(__file__).parent / "option.json"
             with Path(option_location).open(encoding="utf-8") as f:
@@ -33,10 +60,13 @@ class Render(CoreCall):
             raise CallError(message=f"图表模板读取失败：{e!s}", data={}) from e
 
 
-    async def call(self, _slot_data: dict[str, Any]) -> CallResult:
+    async def __call__(self, _slot_data: dict[str, Any]) -> _RenderOutput:
         """运行Render Call"""
+        # 获取必要参数
+        syscall_vars: SysCallVars = getattr(self, "_syscall_vars")
+
         # 检测前一个工具是否为SQL
-        data = CallResult(**self._syscall_vars.history[-1].output_data).output
+        data = syscall_vars.history[-1].output_data
         if data["type"] != "sql" or "dataset" not in data:
             raise CallError(
                 message="图表生成失败！Render必须在SQL后调用！",
@@ -67,64 +97,17 @@ class Render(CoreCall):
         self._option_template["dataset"]["source"] = data
 
         try:
-            llm_output = await RenderStyle().generate(self._syscall_vars.task_id, question=self._syscall_vars.question)
+            llm_output = await RenderStyle().generate(syscall_vars.task_id, question=syscall_vars.question)
             add_style = llm_output.get("additional_style", "")
             self._parse_options(column_num, llm_output["chart_type"], add_style, llm_output["scale_type"])
         except Exception as e:
             raise CallError(message=f"图表生成失败：{e!s}", data={"data": data}) from e
 
-        return CallResult(
-            output=self._option_template,
-            output_schema={
-                "type": "object",
-                "description": "ECharts图表配置",
-                "properties": {
-                    "tooltip": {
-                        "type": "object",
-                        "description": "ECharts图表的提示框配置",
-                    },
-                    "legend": {
-                        "type": "object",
-                        "description": "ECharts图表的图例配置",
-                    },
-                    "dataset": {
-                        "type": "object",
-                        "description": "ECharts图表的数据集配置",
-                    },
-                    "xAxis": {
-                        "type": "object",
-                        "description": "ECharts图表的X轴配置",
-                        "properties": {
-                            "type": {
-                                "type": "string",
-                                "description": "ECharts图表的X轴类型",
-                                "default": "category",
-                            },
-                            "axisTick": {
-                                "type": "object",
-                                "description": "ECharts图表的X轴刻度配置",
-                            },
-                        },
-                    },
-                    "yAxis": {
-                        "type": "object",
-                        "description": "ECharts图表的Y轴配置",
-                        "properties": {
-                            "type": {
-                                "type": "string",
-                                "description": "ECharts图表的Y轴类型",
-                                "default": "value",
-                            },
-                        },
-                    },
-                    "series": {
-                        "type": "array",
-                        "description": "ECharts图表的数据列配置",
-                    },
-                },
-            },
+        return _RenderOutput(
+            output=_RenderFormat.model_validate(self._option_template),
             message="图表生成成功！图表将使用外置工具进行展示。",
         )
+
 
     @staticmethod
     def _separate_key_value(data: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -140,6 +123,7 @@ class Render(CoreCall):
             for key, val in item.items():
                 result.append({"type": key, "value": val})
         return result
+
 
     def _parse_options(self, column_num: int, chart_style: str, additional_style: str, scale_style: str) -> None:
         """解析LLM做出的图表样式选择"""

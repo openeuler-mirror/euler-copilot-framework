@@ -10,7 +10,7 @@ from fastapi import status
 from pydantic import BaseModel, Field
 
 from apps.constants import LOGGER
-from apps.entities.plugin import CallError, CallResult, SysCallVars
+from apps.entities.plugin import CallError, SysCallVars
 from apps.manager.token import TokenManager
 from apps.scheduler.call.core import CoreCall
 from apps.scheduler.slot.slot import Slot
@@ -26,6 +26,12 @@ class _APIParams(BaseModel):
     service_id: Optional[str] = Field(description="服务ID")
 
 
+class _APIOutput(BaseModel):
+    """API调用工具的输出"""
+
+    output: dict[str, Any] = Field(description="API调用工具的输出")
+
+
 class API(CoreCall):
     """API调用工具"""
 
@@ -36,8 +42,6 @@ class API(CoreCall):
 
     async def init(self, syscall_vars: SysCallVars, **kwargs) -> None:  # noqa: ANN003
         """初始化API调用工具"""
-        await super().init(syscall_vars, **kwargs)
-
         # 插件鉴权
         self._auth = json.loads(str(plugin_data.auth))
         # 从spec中找出该接口对应的spec
@@ -54,7 +58,7 @@ class API(CoreCall):
                 self.slot_schema, self._data_type = self._check_data_type(self._spec[2]["requestBody"]["content"])
         elif method == "GET":
             if "parameters" in self._spec[2]:
-                self.slot_schema = APISanitizer.parameters_to_spec(self._spec[2]["parameters"])
+                self.slot_schema = self.parameters_to_spec(self._spec[2]["parameters"])
                 self._data_type = "json"
         else:
             err = "[API] HTTP method not implemented."
@@ -217,4 +221,4 @@ class API(CoreCall):
             response_schema = {}
         LOGGER.info(f"调用接口{url}, 结果为 {response_data}")
 
-        return APISanitizer.process(response_data, url, self._spec[1], response_schema)
+        return self.process(response_data, url, self._spec[1], response_schema)
