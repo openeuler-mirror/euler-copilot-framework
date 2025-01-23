@@ -116,11 +116,8 @@ class PostKnowledgeIDData(BaseModel):
 
 class PutFlowReq(BaseModel):
     """创建/修改流拓扑结构"""
-    flow_id:Optional[str]=Field(alias="flowId")
-    flow:FlowItem
-    nodes:list[NodeItem]
-    edges:list[EdgeItem]
-    focus_point:PositionItem=Field(alias="focusPoint")
-class PutNodeParameterReq:
-    """修改节点的参数"""
-    content:str
+    flow: FlowItem
+    nodes: list[NodeItem]
+    edges: list[EdgeItem]
+    focus_point: PositionItem = Field(alias="focusPoint")
+    

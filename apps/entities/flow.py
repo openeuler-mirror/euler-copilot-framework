@@ -7,7 +7,7 @@ from typing import Any, Optional
 from pydantic import BaseModel, Field, HttpUrl
 
 from apps.entities.enum_var import (
-    AppPermissionType,
+    PermissionType,
     EdgeType,
     MetadataType,
 )
@@ -16,8 +16,8 @@ from apps.entities.enum_var import (
 class StepPos(BaseModel):
     """节点在画布上的位置"""
 
-    x: int = Field(description="节点在画布上的X坐标")
-    y: int = Field(description="节点在画布上的Y坐标")
+    x: float = Field(description="节点在画布上的X坐标")
+    y: float = Field(description="节点在画布上的Y坐标")
 
 
 class Edge(BaseModel):
@@ -34,6 +34,7 @@ class Step(BaseModel):
 
     id: str = Field(description="Step的ID")
     node: str = Field(description="Step的Node ID")
+    type: str = Field(description="Step的类型")
     name: str = Field(description="Step的名称")
     description: str = Field(description="Step的描述")
     pos: StepPos = Field(description="Step在画布上的位置", default=StepPos(x=0, y=0))
@@ -93,10 +94,14 @@ class ServiceApiAuthKeyVal(BaseModel):
 class ServiceApiAuth(BaseModel):
     """Service的API鉴权方式"""
 
-    header: list[ServiceApiAuthKeyVal] = Field(description="HTTP头鉴权配置", default=[])
-    cookie: list[ServiceApiAuthKeyVal] = Field(description="HTTP Cookie鉴权配置", default=[])
-    query: list[ServiceApiAuthKeyVal] = Field(description="HTTP URL参数鉴权配置", default=[])
-    oidc: Optional[ServiceApiAuthOidc] = Field(description="OIDC鉴权配置", default=None)
+    header: list[ServiceApiAuthKeyVal] = Field(
+        description="HTTP头鉴权配置", default=[])
+    cookie: list[ServiceApiAuthKeyVal] = Field(
+        description="HTTP Cookie鉴权配置", default=[])
+    query: list[ServiceApiAuthKeyVal] = Field(
+        description="HTTP URL参数鉴权配置", default=[])
+    oidc: Optional[ServiceApiAuthOidc] = Field(
+        description="OIDC鉴权配置", default=None)
 
 
 class ServiceApiConfig(BaseModel):
@@ -123,7 +128,8 @@ class AppLink(BaseModel):
 class AppPermission(BaseModel):
     """App的权限配置"""
 
-    type: AppPermissionType = Field(description="权限类型", default=AppPermissionType.PRIVATE)
+    type: PermissionType = Field(
+        description="权限类型", default=PermissionType.PRIVATE)
     users: list[str] = Field(description="可访问的用户列表", default=[])
 
 
@@ -134,7 +140,8 @@ class AppMetadata(MetadataBase):
     links: list[AppLink] = Field(description="相关链接", default=[])
     first_questions: list[str] = Field(description="首次提问", default=[])
     history_len: int = Field(description="对话轮次", default=3, le=10)
-    permissions: Optional[AppPermission] = Field(description="应用权限配置", default=None)
+    permissions: Optional[AppPermission] = Field(
+        description="应用权限配置", default=None)
 
 
 class ServiceApiSpec(BaseModel):
@@ -145,45 +152,3 @@ class ServiceApiSpec(BaseModel):
     size: int = Field(description="OpenAPI文件大小（单位：KB）")
     path: str = Field(description="OpenAPI文件路径")
     hash: str = Field(description="OpenAPI文件的hash值")
-
-class PositionItem(BaseModel):
-    """请求/响应中的前端相对位置变量类"""
-    x:float
-    y:float
-class FlowItem(BaseModel):
-    """请求/响应中的流变量类"""
-    flow_id:str=Optional[Field](alias="flowId")
-    name:str
-    description:str
-    enable:bool
-    created_at: str= Field(alias="createdAt")
-class BranchItem(BaseModel):
-    """请求/响应中的节点分支变量类"""
-    branch_id:str=Field(alias="branchId")
-    type:str
-    description:str
-class DependencyItem(BaseModel):
-    """请求/响应中的节点依赖变量类"""
-    node_id:str=Field(alias="nodeId")
-    type:str
-class NodeItem(BaseModel):
-    """请求/响应中的节点变量类"""
-    node_id:str=Field(alias="nodeId")
-    api_id:str=Field(alias="apiId")
-    name:str
-    type:str
-    description:str
-    enable:str
-    branches:list[BranchItem]
-    depedency:DependencyItem
-    position:PositionItem
-    editable:bool
-    created_at: str= Field(alias="createdAt")
-class EdgeItem(BaseModel):
-    """请求/响应中的边变量类"""
-    egde_id:str=Field(alias="edgeId")
-    source_node:str=Field(alias="sourceNode")
-    target_node:str=Field(alias="targetNode")
-    type:str
-    branch_id:str=Field(alias="branchId")
-    created_at: str= Field(alias="createdAt")
