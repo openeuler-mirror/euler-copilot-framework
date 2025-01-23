@@ -6,6 +6,7 @@ from typing import Any, Optional
 
 from pydantic import BaseModel, Field
 
+from apps.entities.appcenter import AppCenterCardItem, AppData
 from apps.entities.collection import Blacklist, Document, NodeMetaData
 from apps.entities.enum_var import DocumentStatus
 from apps.entities.flow import EdgeItem, FlowItem, NodeItem, PositionItem
@@ -230,6 +231,77 @@ class GetKnowledgeIDRsp(ResponseData):
     """GET /api/knowledge 返回数据结构"""
 
     result: GetKnowledgeIDMsg
+
+
+class BaseAppOperationMsg(BaseModel):
+    """基础应用操作Result数据结构"""
+
+    app_id: str = Field(..., alias="appId", description="应用ID")
+
+
+class BaseAppOperationRsp(ResponseData):
+    """基础应用操作返回数据结构"""
+
+    result: BaseAppOperationMsg
+
+
+class GetAppPropertyMsg(AppData):
+    """GET /api/app/{appId} Result数据结构"""
+
+    app_id: str = Field(..., alias="appId", description="应用ID")
+    published: bool = Field(..., description="是否已发布")
+
+
+class GetAppPropertyRsp(ResponseData):
+    """GET /api/app/{appId} 返回数据结构"""
+
+    result: GetAppPropertyMsg
+
+
+class ModFavAppMsg(BaseModel):
+    """PUT /api/app/{appId} Result数据结构"""
+
+    app_id: str = Field(..., alias="appId", description="应用ID")
+    favorited: bool = Field(..., description="是否已收藏")
+
+
+class ModFavAppRsp(ResponseData):
+    """PUT /api/app/{appId} 返回数据结构"""
+
+    result: ModFavAppMsg
+
+
+class GetAppListMsg(BaseModel):
+    """GET /api/app Result数据结构"""
+
+    page_number: int = Field(..., alias="currentPage", description="当前页码")
+    page_count: int = Field(..., alias="totalPages", description="总页数")
+    applications: list[AppCenterCardItem] = Field(..., description="应用列表")
+
+
+class GetAppListRsp(ResponseData):
+    """GET /api/app 返回数据结构"""
+
+    result: GetAppListMsg
+
+
+class RecentAppListItem(BaseModel):
+    """GET /api/app/recent 列表项数据结构"""
+
+    app_id: str = Field(..., alias="appId", description="应用ID")
+    name: str = Field(..., description="应用名称")
+
+
+class RecentAppList(BaseModel):
+    """GET /api/app/recent Result数据结构"""
+
+    applications: list[RecentAppListItem] = Field(..., description="最近使用的应用列表")
+
+
+class GetRecentAppListRsp(ResponseData):
+    """GET /api/app/recent 返回数据结构"""
+
+    result: RecentAppList
 
 
 class NodeMetaDataItem(BaseModel):

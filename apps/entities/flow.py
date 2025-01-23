@@ -4,7 +4,7 @@ Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 """
 from typing import Any, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, HttpUrl
 
 from apps.entities.enum_var import (
     AppPermissionType,
@@ -117,7 +117,7 @@ class AppLink(BaseModel):
     """App的相关链接"""
 
     title: str = Field(description="链接标题")
-    url: str = Field(description="链接URL")
+    url: HttpUrl = Field(..., description="链接地址")
 
 
 class AppPermission(BaseModel):

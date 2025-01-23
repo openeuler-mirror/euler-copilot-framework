@@ -95,3 +95,12 @@ class EdgeType(str, Enum):
 
     NORMAL = "normal"
     LOOP = "loop"
+
+
+class SearchType(str, Enum):
+    """搜索类型"""
+
+    ALL = "all"
+    NAME = "name"
+    DESCRIPTION = "description"
+    AUTHOR = "author"

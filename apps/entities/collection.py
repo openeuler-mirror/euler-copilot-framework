@@ -33,6 +33,13 @@ class UserDomainData(BaseModel):
     count: int
 
 
+class AppUsageData(BaseModel):
+    """User表子项：应用使用情况数据"""
+
+    count: int = 0
+    last_used: float = Field(default_factory=lambda: round(datetime.now(tz=timezone.utc).timestamp(), 3))
+
+
 class User(BaseModel):
     """用户信息
 
@@ -49,6 +56,7 @@ class User(BaseModel):
     kb_id: Optional[str] = None
     conversations: list[str] = []
     domains: list[UserDomainData] = []
+    app_usage: dict[str, AppUsageData] = {}
 
 
 class Conversation(BaseModel):
@@ -174,6 +182,8 @@ class Domain(BaseModel):
     name: str
     definition: str
     updated_at: float = Field(default_factory=lambda: round(datetime.now(tz=timezone.utc).timestamp(), 3))
+
+
 class NodeMetaData(BaseModel):
     """节点元数据"""
     pass
