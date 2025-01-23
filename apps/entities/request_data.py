@@ -7,7 +7,7 @@ from typing import Optional
 from pydantic import BaseModel, Field
 
 from apps.entities.appcenter import AppData
-from apps.entities.flow import EdgeItem, FlowItem, NodeItem, PositionItem
+from apps.entities.flow_topology import EdgeItem, FlowItem, NodeItem, PositionItem
 from apps.entities.task import RequestDataApp
 
 
@@ -114,10 +114,11 @@ class PostKnowledgeIDData(BaseModel):
 
     kb_id: str
 
+
 class PutFlowReq(BaseModel):
     """创建/修改流拓扑结构"""
+
     flow: FlowItem
     nodes: list[NodeItem]
     edges: list[EdgeItem]
     focus_point: PositionItem = Field(alias="focusPoint")
-    

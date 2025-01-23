@@ -7,9 +7,9 @@ from typing import Any, Optional
 from pydantic import BaseModel, Field, HttpUrl
 
 from apps.entities.enum_var import (
-    PermissionType,
     EdgeType,
     MetadataType,
+    PermissionType,
 )
 
 
@@ -125,11 +125,10 @@ class AppLink(BaseModel):
     url: HttpUrl = Field(..., description="链接地址")
 
 
-class AppPermission(BaseModel):
+class Permission(BaseModel):
     """App的权限配置"""
 
-    type: PermissionType = Field(
-        description="权限类型", default=PermissionType.PRIVATE)
+    type: PermissionType = Field(description="权限类型", default=PermissionType.PRIVATE)
     users: list[str] = Field(description="可访问的用户列表", default=[])
 
 
@@ -140,8 +139,7 @@ class AppMetadata(MetadataBase):
     links: list[AppLink] = Field(description="相关链接", default=[])
     first_questions: list[str] = Field(description="首次提问", default=[])
     history_len: int = Field(description="对话轮次", default=3, le=10)
-    permissions: Optional[AppPermission] = Field(
-        description="应用权限配置", default=None)
+    permission: Optional[Permission] = Field(description="应用权限配置", default=None)
 
 
 class ServiceApiSpec(BaseModel):
