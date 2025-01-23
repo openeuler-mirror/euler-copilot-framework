@@ -95,3 +95,12 @@ class SaveType(str, Enum):
     APP = "app"
     SERVICE = "service"
     FLOW = "flow"
+
+
+class SearchType(str, Enum):
+    """搜索类型"""
+
+    ALL = "all"
+    NAME = "name"
+    DESCRIPTION = "description"
+    AUTHOR = "author"

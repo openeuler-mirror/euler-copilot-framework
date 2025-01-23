@@ -8,6 +8,7 @@ from typing import Any, Optional
 from pydantic import BaseModel, Field
 
 from apps.entities.enum_var import CallType
+from apps.entities.flow import AppLink, AppPermission
 
 
 class PoolBase(BaseModel):
@@ -73,6 +74,13 @@ class AppPool(PoolBase):
     collection: app
     """
 
-    author: str
+    author: str = Field(description="作者的用户ID")
+    icon: str = Field(description="应用图标")
+    published: bool = Field(description="是否发布", default=False)
+    links: list[AppLink] = Field(description="相关链接", default=[])
+    first_questions: list[str] = Field(description="推荐问题", default=[])
+    history_len: int = Field(3, ge=1, le=10, description="对话轮次（1～10）")
+    permission: AppPermission = Field(description="应用权限配置", default=AppPermission())
     flows: list[AppFlow] = Field(description="Flow列表", default=[])
+    favorites: list[str] = Field(description="收藏此应用的用户列表", default=[])
     hashes: dict[str, str] = Field(description="关联文件的hash值", default={})
