@@ -7,15 +7,15 @@ from typing import Any, Optional
 
 from pydantic import BaseModel, Field
 
-from apps.entities.enum_var import CallType, PermissionType
+from apps.entities.enum_var import CallType
+from apps.entities.flow import AppLink, Permission
 from apps.entities.flow_topology import PositionItem
-from apps.entities.flow import AppLink
 
 
 class PoolBase(BaseModel):
     """Pool的基础信息"""
 
-    id: str = Field(alias='_id')
+    id: str = Field(alias="_id")
     name: str
     description: str
     created_at: float = Field(default_factory=lambda: round(datetime.now(tz=timezone.utc).timestamp(), 3))
@@ -29,14 +29,6 @@ class ServiceApiInfo(BaseModel):
     path: str = Field(description="OpenAPI文件路径")
 
 
-class Permission(BaseModel):
-    """App的权限配置"""
-
-    type: PermissionType = Field(
-        description="权限类型", default=PermissionType.PRIVATE)
-    users: list[str] = Field(description="可访问的用户列表", default=[])
-
-
 class ServicePool(PoolBase):
     """外部服务信息
 
@@ -45,11 +37,9 @@ class ServicePool(PoolBase):
 
     author: str
     api: list[ServiceApiInfo] = Field(description="API信息列表", default=[])
-    permissions: Optional[Permission] = Field(
-        description="用户与服务的权限关系", default=[])
+    permission: Permission = Field(description="用户与服务的权限关系", default=Permission())
     favorites: list[str] = Field(description="收藏此应用的用户列表", default=[])
-    hashes: dict[str, str] = Field(
-        description="关联文件的hash值；Service作为整体更新或删除", default={})
+    hashes: dict[str, str] = Field(description="关联文件的hash值；Service作为整体更新或删除", default={})
 
 
 class NodePool(PoolBase):
@@ -97,8 +87,7 @@ class AppPool(PoolBase):
     links: list[AppLink] = Field(description="相关链接", default=[])
     first_questions: list[str] = Field(description="推荐问题", default=[])
     history_len: int = Field(3, ge=1, le=10, description="对话轮次（1～10）")
-    permission: Permission = Field(
-        description="应用权限配置", default=Permission(type=PermissionType.PRIVATE.value,users=[]))
+    permission: Permission = Field(description="应用权限配置", default=Permission())
     flows: list[AppFlow] = Field(description="Flow列表", default=[])
     favorites: list[str] = Field(description="收藏此应用的用户列表", default=[])
     hashes: dict[str, str] = Field(description="关联文件的hash值", default={})

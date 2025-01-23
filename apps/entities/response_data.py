@@ -9,8 +9,8 @@ from pydantic import BaseModel, Field
 from apps.entities.appcenter import AppCenterCardItem, AppData
 from apps.entities.collection import Blacklist, Document, NodeMetaData
 from apps.entities.enum_var import DocumentStatus
+from apps.entities.flow_topology import FlowItem, NodeMetaDataItem, PositionItem, ServiceItem
 from apps.entities.record import RecordData
-from apps.entities.flow_topology import ServiceItem, NodeMetaDataItem, PositionItem, FlowItem
 
 
 class ResponseData(BaseModel):
@@ -315,23 +315,27 @@ class GetRecentAppListRsp(ResponseData):
 
 class NodeServiceListMsg(BaseModel):
     """GET /api/flow/service result"""
+
     total: int
     services: list[ServiceItem]
 
 
 class NodeServiceListRsp(ResponseData):
     """GET /api/flow/service 返回数据结构"""
+
     result: NodeServiceListMsg
 
 
 class NodeMetaDataListMsg(BaseModel):
     """GET /api/flow/service/node result"""
+
     service_id: str = Field(alias="serviceId")
     node_meta_datas: list[NodeMetaDataItem]
 
 
 class ServiceNodeMetaDatasMsg(BaseModel):
     """GET /api/flow/node/metadata 服务与服务下节点元数据结构"""
+
     service_id: str = Field(alias="serviceId")
     name: str
     type: str
@@ -346,35 +350,42 @@ class NodeMetaDataListMsg(ResponseData):
 
 class NodeMetaDataListRsp(ResponseData):
     """GET /api/flow/service/node 返回数据结构"""
+
     result: NodeMetaDataListMsg
 
 
 class FlowStructureGetMsg(BaseModel):
     """GET /api/flow result"""
+
     flow: FlowItem
     focus_point: PositionItem
 
 
 class FlowStructureGetRsp(ResponseData):
     """GET /api/flow 返回数据结构"""
+
     result: FlowStructureGetMsg
 
 
 class FlowStructurePutMsg(BaseModel):
     """PUT /api/flow result"""
+
     flow_id: str = Field(alias="flowId")
 
 
 class FlowStructurePutRsp(ResponseData):
     """PUT /api/flow 返回数据结构"""
+
     result: FlowStructurePutMsg
 
 
 class FlowStructureDeleteMsg(BaseModel):
     """DELETE /api/flow/{flowId} result"""
+
     flow_id: str = Field(alias="flowId")
 
 
 class FlowStructureDeleteRsp(ResponseData):
     """DELETE /api/flow/{flowId} 返回数据结构"""
+
     result: FlowStructureDeleteMsg
