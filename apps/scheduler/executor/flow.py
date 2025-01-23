@@ -75,7 +75,7 @@ class Executor:
                 description=str(flow.description),
                 status=StepStatus.RUNNING,
                 plugin_id=str(sysexec_vars.plugin_data.plugin_id),
-                step_name="start",
+                step_id="start",
                 thought="",
                 slot_data=sysexec_vars.plugin_data.params,
             )
@@ -88,7 +88,7 @@ class Executor:
         """获取上一步的输出"""
         if not task.flow_context:
             return None
-        return CallResult(**task.flow_context[self.flow_state.step_name].output_data)
+        return CallResult(**task.flow_context[self.flow_state.step_id].output_data)
 
 
     async def _run_step(self, step_data: Step) -> CallResult:  # noqa: PLR0915
@@ -100,7 +100,7 @@ class Executor:
             raise ValueError(err)
 
         # 更新State
-        self.flow_state.step_name = step_data.name
+        self.flow_state.step_id = step_data.name
         self.flow_state.status = StepStatus.RUNNING
 
         # Call类型为none，直接错误
@@ -273,14 +273,14 @@ class Executor:
 
         while not self._stop:
             # 当前步骤不存在
-            if self.flow_state.step_name not in self._flow_data.steps:
+            if self.flow_state.step_id not in self._flow_data.steps:
                 break
 
             if self.flow_state.status == StepStatus.ERROR:
                 # 当前步骤为错误处理步骤
                 step = self._flow_data.on_error
             else:
-                step = self._flow_data.steps[self.flow_state.step_name]
+                step = self._flow_data.steps[self.flow_state.step_id]
 
             # 当前步骤空白
             if not step:

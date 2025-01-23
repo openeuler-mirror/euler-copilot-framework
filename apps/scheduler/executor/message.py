@@ -44,14 +44,14 @@ async def push_step_input(task_id: str, queue: MessageQueue, state: ExecutorStat
         task_id=task_id,
         flow_id=state.name,
         plugin_id=state.plugin_id,
-        step_name=state.step_name,
-        step_order=await _calculate_step_order(flow, state.step_name),
+        step_id=state.step_id,
+        step_order=await _calculate_step_order(flow, state.step_id),
         status=state.status,
         input_data=state.slot_data,
         output_data={},
     )
     task.new_context.append(flow_history.id)
-    task.flow_context[state.step_name] = flow_history
+    task.flow_context[state.step_id] = flow_history
     # 保存Task到TaskMap
     await TaskManager.set_task(task_id, task)
 
@@ -62,12 +62,12 @@ async def push_step_input(task_id: str, queue: MessageQueue, state: ExecutorStat
             err = "当前步骤不存在错误处理步骤！"
             raise ValueError(err)
         content = StepInputContent(
-            call_type=flow.on_error.call_type,
+            callType=flow.on_error,
             params=state.slot_data,
         )
     else:
         content = StepInputContent(
-            call_type=flow.steps[state.step_name].call_type,
+            callType=flow.steps[state.step_id].call_type,
             params=state.slot_data,
         )
     # 推送消息
@@ -87,14 +87,14 @@ async def push_step_output(task_id: str, queue: MessageQueue, state: ExecutorSta
     task.flow_state = state
 
     # 更新FlowContext
-    task.flow_context[state.step_name].output_data = output.model_dump(exclude_none=True, by_alias=True) if output else {}
-    task.flow_context[state.step_name].status = state.status
+    task.flow_context[state.step_id].output_data = output.model_dump(exclude_none=True, by_alias=True) if output else {}
+    task.flow_context[state.step_id].status = state.status
     # 保存Task到TaskMap
     await TaskManager.set_task(task_id, task)
 
     # 组装消息；只保留message和output
     content = StepOutputContent(
-        call_type=flow.steps[state.step_name].call_type,
+        callType=flow.steps[state.step_id].call_type,
         message=output.message if output else "",
         output=output.output if output else {},
     )
@@ -127,7 +127,7 @@ async def push_flow_stop(task_id: str, queue: MessageQueue, state: ExecutorState
     await TaskManager.set_task(task_id, task)
 
     # 准备必要数据
-    call_type = flow.steps[state.step_name].call_type
+    call_type = flow.steps[state.step_id].call_type
 
     if state.remaining_schema:
         # 如果当前Flow是填充步骤，则推送Schema
@@ -137,7 +137,7 @@ async def push_flow_stop(task_id: str, queue: MessageQueue, state: ExecutorState
         ).model_dump(exclude_none=True, by_alias=True)
     elif call_type == "render":
         # 如果当前Flow是图表，则推送Chart
-        chart_option = CallResult(**task.flow_context[state.step_name].output_data).output
+        chart_option = CallResult(**task.flow_context[state.step_id].output_data).output
         content = FlowStopContent(
             type=FlowOutputType.CHART,
             data=chart_option,
