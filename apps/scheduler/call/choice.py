@@ -14,8 +14,8 @@ from apps.scheduler.call.core import CoreCall
 class _ChoiceBranch(BaseModel):
     """Choice工具的选项"""
 
-    name: str = Field(description="选项的名称")
-    value: str = Field(description="选项的值")
+    branch: str = Field(description="选项的名称")
+    description: str = Field(description="选项的描述")
 
 
 class _ChoiceParams(BaseModel):
@@ -37,7 +37,6 @@ class Choice(metaclass=CoreCall):
 
     name: str = "choice"
     description: str = "选择工具，用于根据给定的上下文和问题，判断正确/错误，或从选项列表中选择最符合用户要求的一项。"
-    params: type[_ChoiceParams] = _ChoiceParams
 
 
     async def __call__(self, _slot_data: dict[str, Any]) -> _ChoiceOutput:
@@ -51,11 +50,12 @@ class Choice(metaclass=CoreCall):
             previous_data = syscall_vars.history[-1].output_data
 
         try:
+            choice_list = [item.model_dump() for item in params.choices]
             result = await Select().generate(
                 question=params.propose,
                 background=syscall_vars.background,
                 data=previous_data,
-                choices=params.choices,
+                choices=choice_list,
                 task_id=syscall_vars.task_id,
             )
         except Exception as e:
@@ -63,5 +63,5 @@ class Choice(metaclass=CoreCall):
 
         return _ChoiceOutput(
             next_step=result,
-            message=f"针对“{self.params.propose}”，作出的选择为：{result}。",
+            message=f"针对“{params.propose}”，作出的选择为：{result}。",
         )

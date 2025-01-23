@@ -12,7 +12,7 @@ import apps.scheduler.call as system_call
 from apps.common.config import config
 from apps.constants import CALL_DIR, LOGGER
 from apps.entities.enum_var import CallType
-from apps.entities.flow import CallMetadata
+from apps.entities.pool import CallPool
 from apps.models.mongo import MongoDB
 
 
@@ -54,7 +54,7 @@ class CallLoader:
         return True
 
     @staticmethod
-    async def _load_system_call() -> list[CallMetadata]:
+    async def _load_system_call() -> list[CallPool]:
         """加载系统Call"""
         metadata = []
 
@@ -66,7 +66,7 @@ class CallLoader:
                 continue
 
             metadata.append(
-                CallMetadata(
+                CallPool(
                     _id=call_name,
                     type=CallType.SYSTEM,
                     name=call_cls.name,
@@ -78,7 +78,7 @@ class CallLoader:
         return metadata
 
     @classmethod
-    async def _load_python_call(cls) -> list[CallMetadata]:
+    async def _load_python_call(cls) -> list[CallPool]:
         """加载Python Call"""
         call_dir = Path(config["SERVICE_DIR"]) / CALL_DIR
         metadata = []
@@ -136,25 +136,21 @@ class CallLoader:
 
 
     @staticmethod
-    async def load_one()
-
-
-    @staticmethod
-    async def load() -> None:
+    async def load_one() -> None:
         """加载Call"""
         call_metadata = await CallLoader._load_system_call()
         call_metadata.extend(await CallLoader._load_python_call())
 
 
     @staticmethod
-    async def get() -> list[CallMetadata]:
+    async def get() -> list[CallPool]:
         """获取当前已知的所有Call元数据"""
         call_collection = MongoDB.get_collection("call")
-        result: list[CallMetadata] = []
+        result: list[CallPool] = []
         try:
             cursor = call_collection.find({})
             async for item in cursor:
-                result.extend([CallMetadata(**item)])
+                result.extend([CallPool.model_validate(item)])
         except Exception as e:
             LOGGER.error(msg=f"获取Call元数据失败：{e}")
 

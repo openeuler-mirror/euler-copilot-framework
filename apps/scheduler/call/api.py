@@ -23,27 +23,27 @@ class _APIParams(BaseModel):
     ] = Field(description="API接口的HTTP Method")
     timeout: int = Field(description="工具超时时间", default=300)
     input_data: dict[str, Any] = Field(description="固定数据", default={})
+    auth: dict[str, Any] = Field(description="API鉴权信息", default={})
     service_id: Optional[str] = Field(description="服务ID")
 
 
 class _APIOutput(BaseModel):
     """API调用工具的输出"""
 
+    http_code: int = Field(description="API调用工具的HTTP返回码")
+    message: str = Field(description="API调用工具的执行结果")
     output: dict[str, Any] = Field(description="API调用工具的输出")
 
 
-class API(CoreCall):
+class API(metaclass=CoreCall, param_cls=_APIParams, output_cls=_APIOutput):
     """API调用工具"""
 
     name: str = "api"
     description: str = "根据给定的用户输入和历史记录信息，向某一个API接口发送请求、获取数据。"
-    params: type[_APIParams] = _APIParams
 
 
-    async def init(self, syscall_vars: SysCallVars, **kwargs) -> None:  # noqa: ANN003
+    def init(self, syscall_vars: SysCallVars, **kwargs) -> None:  # noqa: ANN003
         """初始化API调用工具"""
-        # 插件鉴权
-        self._auth = json.loads(str(plugin_data.auth))
         # 从spec中找出该接口对应的spec
         for item in full_spec.endpoints:
             name, _, _ = item
@@ -53,10 +53,10 @@ class API(CoreCall):
             err = "[API] Endpoint not found."
             raise ValueError(err)
 
-        if method == "POST":
+        if kwargs["method"] == "POST":
             if "requestBody" in self._spec[2]:
                 self.slot_schema, self._data_type = self._check_data_type(self._spec[2]["requestBody"]["content"])
-        elif method == "GET":
+        elif kwargs["method"] == "GET":
             if "parameters" in self._spec[2]:
                 self.slot_schema = self.parameters_to_spec(self._spec[2]["parameters"])
                 self._data_type = "json"
@@ -65,11 +65,11 @@ class API(CoreCall):
             raise NotImplementedError(err)
 
 
-    async def call(self, slot_data: dict[str, Any]) -> CallResult:
+    async def __call__(self, slot_data: dict[str, Any]) -> _APIOutput:
         """调用API，然后返回LLM解析后的数据"""
         self._session = aiohttp.ClientSession()
         try:
-            result = await self._call_api(method, url, slot_data)
+            result = await self._call_api(slot_data)
             await self._session.close()
             return result
         except Exception as e:
@@ -112,78 +112,53 @@ class API(CoreCall):
         return schema
 
 
-    @staticmethod
-    def process(
-        response_data: Optional[str], url: str, usage: str, response_schema: dict[str, Any],
-    ) -> CallResult:
-        """对返回值进行整体处理"""
-        # 如果结果太长，不使用大模型进行总结；否则使用大模型生成自然语言总结
-        if response_data is None:
-            return CallResult(
-                output={},
-                output_schema={},
-                message=f"调用接口{url}成功，但返回值为空。",
-            )
+    async def _make_api_call(self, data: Optional[dict], files: aiohttp.FormData):  # noqa: ANN202, C901
+        # 获取必要参数
+        params: _APIParams = getattr(self, "_params")
+        syscall_vars: SysCallVars = getattr(self, "_syscall_vars")
 
-        if len(response_data) > MAX_API_RESPONSE_LENGTH:
-            response_data = response_data[:MAX_API_RESPONSE_LENGTH]
-            response_data = response_data[:response_data.rfind(",") - 1]
-            response_data = untrunc.complete(response_data)
-
-        response_data = APISanitizer._process_response_schema(response_data, response_schema)
-
-        message = dedent(f"""调用API从外部数据源获取了数据。API和数据源的描述为：{usage}""")
-
-        return CallResult(
-            output=json.loads(response_data),
-            output_schema=response_schema,
-            message=message,
-        )
-
-
-    async def _make_api_call(self, method: str, url: str, data: Optional[dict], files: aiohttp.FormData):  # noqa: ANN202, C901
         """调用API"""
         if self._data_type != "form":
-            header = {
+            req_header = {
                 "Content-Type": "application/json",
             }
         else:
-            header = {}
-        cookie = {}
-        params = {}
+            req_header = {}
+        req_cookie = {}
+        req_params = {}
 
         if data is None:
             data = {}
 
         if self._auth is not None and "type" in self._auth:
             if self._auth["type"] == "header":
-                header.update(self._auth["args"])
+                req_header.update(self._auth["args"])
             elif self._auth["type"] == "cookie":
-                cookie.update(self._auth["args"])
+                req_cookie.update(self._auth["args"])
             elif self._auth["type"] == "params":
-                params.update(self._auth["args"])
+                req_params.update(self._auth["args"])
             elif self._auth["type"] == "oidc":
                 token = await TokenManager.get_plugin_token(
                     self._auth["domain"],
-                    self._syscall_vars.session_id,
+                    syscall_vars.session_id,
                     self._auth["access_token_url"],
                     int(self._auth["token_expire_time"]),
                 )
-                header.update({"access-token": token})
+                req_header.update({"access-token": token})
 
-        if self._params.method == "GET":
-            params.update(data)
-            return self._session.get(self._server + url, params=params, headers=header, cookies=cookie,
-                                    timeout=self.params.timeout)
-        if method == "POST":
+        if params.method == "GET":
+            req_params.update(data)
+            return self._session.get(params.full_url, params=req_params, headers=req_header, cookies=req_cookie,
+                                    timeout=params.timeout)
+        if params.method == "POST":
             if self._data_type == "form":
                 form_data = files
                 for key, val in data.items():
                     form_data.add_field(key, val)
-                return self._session.post(self._server + url, data=form_data, headers=header, cookies=cookie,
-                                         timeout=self.params.timeout)
-            return self._session.post(self._server + url, json=data, headers=header, cookies=cookie,
-                                     timeout=self.params.timeout)
+                return self._session.post(params.full_url, data=form_data, headers=req_header, cookies=req_cookie,
+                                         timeout=params.timeout)
+            return self._session.post(params.full_url, json=data, headers=req_header, cookies=req_cookie,
+                                     timeout=params.timeout)
 
         err = "Method not implemented."
         raise NotImplementedError(err)
@@ -201,9 +176,12 @@ class API(CoreCall):
         raise NotImplementedError(err)
 
 
-    async def _call_api(self, method: str, url: str, slot_data: Optional[dict[str, Any]] = None) -> CallResult:
-        LOGGER.info(f"调用接口{url}，请求数据为{slot_data}")
-        session_context = await self._make_api_call(method, url, slot_data, aiohttp.FormData())
+    async def _call_api(self, slot_data: Optional[dict[str, Any]] = None) -> _APIOutput:
+        # 获取必要参数
+        params: _APIParams = getattr(self, "_params")
+        LOGGER.info(f"调用接口{params.full_url}，请求数据为{slot_data}")
+
+        session_context = await self._make_api_call(slot_data, aiohttp.FormData())
         async with session_context as response:
             if response.status >= status.HTTP_400_BAD_REQUEST:
                 text = f"API发生错误：API返回状态码{response.status}, 原因为{response.reason}。"
@@ -219,6 +197,19 @@ class API(CoreCall):
             response_schema = self._spec[2]["responses"]["content"]["application/json"]["schema"]
         else:
             response_schema = {}
-        LOGGER.info(f"调用接口{url}, 结果为 {response_data}")
+        LOGGER.info(f"调用接口{params.full_url}, 结果为 {response_data}")
 
-        return self.process(response_data, url, self._spec[1], response_schema)
+        # 如果没有返回结果
+        if response_data is None:
+            return _APIOutput(
+                http_code=response.status,
+                output={},
+                message=f"调用接口{params.full_url}，作用为但返回值为空。",
+            )
+
+        response_data = self._process_response_schema(response_data, response_schema)
+        return _APIOutput(
+            output=json.loads(response_data),
+            output_schema=response_schema,
+            message=f"""调用API从外部数据源获取了数据。API和数据源的描述为：{usage}""",
+        )
