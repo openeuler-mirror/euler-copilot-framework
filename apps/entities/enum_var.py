@@ -71,22 +71,6 @@ class MetadataType(str, Enum):
     APP = "app"
 
 
-class SaveType(str, Enum):
-    """保存类型"""
-
-    APP = "app"
-    SERVICE = "service"
-    FLOW = "flow"
-
-
-class AppPermissionType(str, Enum):
-    """App的权限类型"""
-
-    PROTECTED = "protected"
-    PUBLIC = "public"
-    PRIVATE = "private"
-
-
 class EdgeType(str, Enum):
     """边类型
 
@@ -97,6 +81,32 @@ class EdgeType(str, Enum):
     LOOP = "loop"
 
 
+class NodeType(str, Enum):
+    """节点类型
+
+    注：此处为临时定义，待扩展
+    """
+
+    START = "start"
+    END = "end"
+    NORMAL = "normal"
+    CHOICE = "choice"
+
+
+class SaveType(str, Enum):
+    """检查类型"""
+
+    APP = "app"
+    SERVICE = "service"
+    FLOW = "flow"
+
+
+class PermissionType(str, Enum):
+    """权限类型"""
+
+    PROTECTED = "protected"
+    PUBLIC = "public"
+    PRIVATE = "private"
 class SearchType(str, Enum):
     """搜索类型"""
 

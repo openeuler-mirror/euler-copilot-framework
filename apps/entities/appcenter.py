@@ -6,7 +6,7 @@ from typing import Optional
 
 from pydantic import BaseModel, Field
 
-from apps.entities.enum_var import AppPermissionType
+from apps.entities.enum_var import PermissionType
 from apps.entities.flow import AppLink
 
 
@@ -25,8 +25,8 @@ class AppCenterCardItem(BaseModel):
 class AppPermissionData(BaseModel):
     """应用权限数据结构"""
 
-    type: AppPermissionType = Field(
-        default=AppPermissionType.PRIVATE,
+    type: PermissionType = Field(
+        default=PermissionType.PRIVATE,
         alias="visibility",
         description="可见性（public/private/protected）",
     )

@@ -7,8 +7,8 @@ from typing import Optional
 from pydantic import BaseModel, Field
 
 from apps.entities.appcenter import AppData
-from apps.entities.flow import EdgeItem, FlowItem, NodeItem, PositionItem
-from apps.entities.task import RequestDataPlugin
+from apps.entities.flow_topology import EdgeItem, FlowItem, NodeItem, PositionItem
+from apps.entities.task import RequestDataApp
 
 
 class RequestDataFeatures(BaseModel):
@@ -26,7 +26,7 @@ class RequestData(BaseModel):
     group_id: str
     language: str = Field(default="zh", description="语言")
     files: list[str] = Field(default=[])
-    plugins: list[RequestDataPlugin] = Field(default=[])
+    apps: list[RequestDataApp] = Field(default=[])
     features: RequestDataFeatures = Field(description="消息功能设置")
 
 
@@ -114,13 +114,11 @@ class PostKnowledgeIDData(BaseModel):
 
     kb_id: str
 
+
 class PutFlowReq(BaseModel):
     """创建/修改流拓扑结构"""
-    flow_id:Optional[str]=Field(alias="flowId")
-    flow:FlowItem
-    nodes:list[NodeItem]
-    edges:list[EdgeItem]
-    focus_point:PositionItem=Field(alias="focusPoint")
-class PutNodeParameterReq:
-    """修改节点的参数"""
-    content:str
+
+    flow: FlowItem
+    nodes: list[NodeItem]
+    edges: list[EdgeItem]
+    focus_point: PositionItem = Field(alias="focusPoint")

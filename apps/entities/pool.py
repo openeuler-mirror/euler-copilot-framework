@@ -9,13 +9,14 @@ from typing import Any
 from pydantic import BaseModel, Field
 
 from apps.entities.enum_var import CallType
-from apps.entities.flow import AppLink, AppPermission
+from apps.entities.flow import AppLink, Permission
+from apps.entities.flow_topology import PositionItem
 
 
 class PoolBase(BaseModel):
     """Pool的基础信息"""
 
-    id: str
+    id: str = Field(alias="_id")
     name: str
     description: str
     created_at: float = Field(default_factory=lambda: round(datetime.now(tz=timezone.utc).timestamp(), 3))
@@ -37,6 +38,8 @@ class ServicePool(PoolBase):
 
     author: str
     api: list[ServiceApiInfo] = Field(description="API信息列表", default=[])
+    permission: Permission = Field(description="用户与服务的权限关系", default=Permission())
+    favorites: list[str] = Field(description="收藏此应用的用户列表", default=[])
     hashes: dict[str, str] = Field(description="关联文件的hash值；Service作为整体更新或删除", default={})
 
 
@@ -76,6 +79,8 @@ class AppFlow(PoolBase):
 
     enabled: bool = Field(description="是否启用", default=True)
     path: str = Field(description="Flow的路径")
+    focus_point: PositionItem = Field(
+        description="Flow的视觉焦点", default=PositionItem(x=0, y=0))
 
 
 class AppPool(PoolBase):
@@ -85,12 +90,13 @@ class AppPool(PoolBase):
     """
 
     author: str = Field(description="作者的用户ID")
+    type: str = Field(description="应用类型", default="default")
     icon: str = Field(description="应用图标")
     published: bool = Field(description="是否发布", default=False)
     links: list[AppLink] = Field(description="相关链接", default=[])
     first_questions: list[str] = Field(description="推荐问题", default=[])
     history_len: int = Field(3, ge=1, le=10, description="对话轮次（1～10）")
-    permission: AppPermission = Field(description="应用权限配置", default=AppPermission())
+    permission: Permission = Field(description="应用权限配置", default=Permission())
     flows: list[AppFlow] = Field(description="Flow列表", default=[])
     favorites: list[str] = Field(description="收藏此应用的用户列表", default=[])
     hashes: dict[str, str] = Field(description="关联文件的hash值", default={})

@@ -9,7 +9,7 @@ from pydantic import BaseModel, Field
 from apps.entities.appcenter import AppCenterCardItem, AppData
 from apps.entities.collection import Blacklist, Document, NodeMetaData
 from apps.entities.enum_var import DocumentStatus
-from apps.entities.flow import EdgeItem, FlowItem, NodeItem, PositionItem
+from apps.entities.flow_topology import FlowItem, NodeMetaDataItem, PositionItem, ServiceItem
 from apps.entities.record import RecordData
 
 
@@ -57,6 +57,7 @@ class PostClientSessionRsp(ResponseData):
 
     result: PostClientSessionMsg
 
+
 class AuthUserMsg(BaseModel):
     """GET /api/auth/user Result数据结构"""
 
@@ -74,6 +75,7 @@ class HealthCheckRsp(BaseModel):
     """GET /health_check 返回数据结构"""
 
     status: str
+
 
 class GetBlacklistUserMsg(BaseModel):
     """GET /api/blacklist/user Result数据结构"""
@@ -106,6 +108,9 @@ class ConversationListItem(BaseModel):
     title: str
     doc_count: int = Field(alias="docCount")
     created_time: str = Field(alias="createdTime")
+    app_id: str = Field(alias="appId")
+    is_debug: bool = Field(alias="isDebug")
+
 
 class ConversationListMsg(BaseModel):
     """GET /api/conversation Result数据结构"""
@@ -142,6 +147,7 @@ class AddConversationRsp(ResponseData):
 
     result: AddConversationMsg
 
+
 class UpdateConversationRsp(ResponseData):
     """POST /api/conversation 返回数据结构"""
 
@@ -152,6 +158,7 @@ class RecordListMsg(BaseModel):
     """GET /api/record/{conversation_id} Result数据结构"""
 
     records: list[RecordData]
+
 
 class RecordListRsp(ResponseData):
     """GET /api/record/{conversation_id} 返回数据结构"""
@@ -204,6 +211,7 @@ class UploadDocumentMsg(BaseModel):
 
     documents: list[UploadDocumentMsgItem]
 
+
 class UploadDocumentRsp(ResponseData):
     """POST /api/document/{conversation_id} 返回数据结构"""
 
@@ -226,6 +234,7 @@ class GetKnowledgeIDMsg(BaseModel):
     """GET /api/knowledge Result数据结构"""
 
     kb_id: str
+
 
 class GetKnowledgeIDRsp(ResponseData):
     """GET /api/knowledge 返回数据结构"""
@@ -304,73 +313,79 @@ class GetRecentAppListRsp(ResponseData):
     result: RecentAppList
 
 
-class NodeMetaDataItem(BaseModel):
-    """GET /api/flow/node/metadata 单个节点元数据结构"""
-    api_id: str = Field(alias="apiId")
-    name:str
-    type:str
-    created_at: str= Field(alias="createdAt")
-class ServiceNodeMetaDatasItem(BaseModel):
+class NodeServiceListMsg(BaseModel):
+    """GET /api/flow/service result"""
+
+    total: int
+    services: list[ServiceItem]
+
+
+class NodeServiceListRsp(ResponseData):
+    """GET /api/flow/service 返回数据结构"""
+
+    result: NodeServiceListMsg
+
+
+class NodeMetaDataListMsg(BaseModel):
+    """GET /api/flow/service/node result"""
+
+    service_id: str = Field(alias="serviceId")
+    node_meta_datas: list[NodeMetaDataItem]
+
+
+class ServiceNodeMetaDatasMsg(BaseModel):
     """GET /api/flow/node/metadata 服务与服务下节点元数据结构"""
-    service_id:str=Field(alias="serviceId")
-    name:str
-    type:str
-    node_meta_datas:list[NodeMetaDataItem]=Field(alias="nodeMetaData",default=[])
-    created_at: str= Field(alias="createdAt")
+
+    service_id: str = Field(alias="serviceId")
+    name: str
+    type: str
+    node_meta_datas: list[NodeMetaDataItem] = Field(
+        alias="nodeMetaDatas", default=[])
+    created_at: Optional[float] = Field(alias="createdAt")
+
+
 class NodeMetaDataListMsg(ResponseData):
-    services:list[ServiceNodeMetaDatasItem]
+    services: list[ServiceNodeMetaDatasMsg]
+
+
 class NodeMetaDataListRsp(ResponseData):
-    """GET /api/flow/node/metadata 返回数据结构"""
-    result:NodeMetaDataListMsg
+    """GET /api/flow/service/node 返回数据结构"""
+
+    result: NodeMetaDataListMsg
 
 
 class FlowStructureGetMsg(BaseModel):
-    """GET /api/flow/{flowId} result"""
-    flow:FlowItem
-    nodes:list[NodeItem]
-    edges:list[EdgeItem]
-    focus_point:PositionItem=Field(alias="focusPoint")
+    """GET /api/flow result"""
 
-class FlowStructureGetRsp(BaseModel):
-    """GET /api/flow/{flowId} 返回数据结构"""
-    result:FlowStructureGetMsg
+    flow: FlowItem
+    focus_point: PositionItem
+
+
+class FlowStructureGetRsp(ResponseData):
+    """GET /api/flow 返回数据结构"""
+
+    result: FlowStructureGetMsg
+
+
 class FlowStructurePutMsg(BaseModel):
     """PUT /api/flow result"""
-    flow_id:str=Field(alias="flowId")
+
+    flow_id: str = Field(alias="flowId")
+
+
 class FlowStructurePutRsp(ResponseData):
     """PUT /api/flow 返回数据结构"""
-    flow_id:str=Field(alias="flowId")
+
+    result: FlowStructurePutMsg
+
 
 class FlowStructureDeleteMsg(BaseModel):
     """DELETE /api/flow/{flowId} result"""
-    flow_id:str=Field(alias="flowId")
+
+    flow_id: str = Field(alias="flowId")
+
+
 class FlowStructureDeleteRsp(ResponseData):
     """DELETE /api/flow/{flowId} 返回数据结构"""
-    flow_id:str=Field(alias="flowId")
 
-class NodeParameterItem(BaseModel):
-    parameter_id:str=Field(alias="parameterId")
-    content:str
-    updated_at: str= Field(alias="updatedAt")
-class NodeParameterGetMsg(BaseModel):
-    """GET /api/flow/node/parameter result"""
-    node_id:str=Field(alias="nodeId")
-    parameter:NodeParameterItem
-class NodeParameterGetRsp(ResponseData):
-    """GET /api/flow/node/parameter 返回数据结构"""
-    result:NodeParameterGetMsg
-class NodeParameterListMsg(BaseModel):
-    """GET /api/flow/node/parameter/history result"""
-    node_id:str=Field(alias="nodeId")
-    parameter_history:list[NodeParameterItem]=Field(alias="parameterHistory")
-class NodeParameterListRsp(ResponseData):
-    """GET /api/flow/node/parameter/history 返回数据结构"""
-    result:NodeParameterListMsg
-
-class NodeParameterPutMsg(BaseModel):
-    """PUT /api/flow/node/parameter result"""
-    node_id:str=Field(alias="nodeId")
-    parameter_id:str=Field(alias="parameterId")
-class NodeParameterPutRsp(ResponseData):
-    """PUT /api/flow/node/parameter 返回数据结构"""
-    result:NodeParameterPutMsg
+    result: FlowStructureDeleteMsg
