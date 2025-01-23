@@ -33,6 +33,7 @@ from apps.manager import (
     DocumentManager,
     RecordManager,
 )
+from apps.manager.application import AppManager
 
 router = APIRouter(
     prefix="/api/conversation",
@@ -61,7 +62,12 @@ async def create_new_conversation(
 
     # 新建对话
     if create_new:
-        new_conv = await ConversationManager.add_conversation_by_user_sub(user_sub, app_id, is_debug=False)
+        if not AppManager.validate_user_app_access(user_sub, app_id):
+            err = "Invalid app_id."
+            raise RuntimeError(err)
+        new_conv = await ConversationManager.add_conversation_by_user_sub(user_sub,
+                                                                        app_id=app_id,
+                                                                        is_debug=is_debug)
         if not new_conv:
             err = "Create new conversation failed."
             raise RuntimeError(err)
