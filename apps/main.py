@@ -17,6 +17,7 @@ from apps.cron.delete_user import DeleteUserCron
 from apps.dependency.session import VerifySessionMiddleware
 from apps.routers import (
     api_key,
+    appcenter,
     auth,
     blacklist,
     chat,
@@ -45,6 +46,7 @@ app.add_middleware(VerifySessionMiddleware)
 app.include_router(conversation.router)
 app.include_router(auth.router)
 app.include_router(api_key.router)
+app.include_router(appcenter.router)
 app.include_router(comment.router)
 app.include_router(record.router)
 app.include_router(health.router)
