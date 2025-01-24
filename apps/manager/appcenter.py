@@ -6,8 +6,11 @@ import uuid
 from enum import Enum
 from typing import Any, Optional
 
+from fastapi.encoders import jsonable_encoder
+
 from apps.constants import LOGGER
 from apps.entities.appcenter import AppCenterCardItem, AppData
+from apps.entities.collection import User
 from apps.entities.enum_var import SearchType
 from apps.entities.flow import Permission
 from apps.entities.pool import AppPool
@@ -164,7 +167,7 @@ class AppCenterManager:
         )
         try:
             app_collection = MongoDB.get_collection("app")
-            await app_collection.insert_one(app.model_dump(by_alias=True))
+            await app_collection.insert_one(jsonable_encoder(app))
             return app_id
         except Exception as e:
             LOGGER.error(f"[AppCenterManager] Create app failed: {e}")
@@ -255,21 +258,23 @@ class AppCenterManager:
         try:
             user_collection = MongoDB.get_collection("user")
             app_collection = MongoDB.get_collection("app")
-            user_data = await user_collection.find_one({"_id": user_sub}, {"_id": 0, "app_usage": 1})
-            if user_data and "app_usage" in user_data and user_data["app_usage"]:
-                usage_list = sorted(
-                    user_data["app_usage"].items(),
-                    key=lambda x: x[1]["last_used"],
-                    reverse=True,
-                )[:count]
-                app_ids = [t[0] for t in usage_list]
-                apps = await app_collection.find(
-                    {"_id": {"$in": app_ids}}, {"name": 1}).to_list(len(app_ids))
-                app_map = {str(a["_id"]): a.get("name", "") for a in apps}
-                return RecentAppList(applications=[
-                    RecentAppListItem(appId=app_id, name=app_map.get(app_id, ""))
-                    for app_id in app_ids
-                ])
+            # 校验用户信息
+            user_data = User.model_validate(await user_collection.find_one({"_id": user_sub}))
+            # 获取最近使用的应用ID列表，按最后使用时间倒序排序
+            # 允许 app_usage 为空
+            usage_list = sorted(
+                user_data.app_usage.items(),
+                key=lambda x: x[1].last_used,
+                reverse=True,
+            )[:count]
+            app_ids = [t[0] for t in usage_list]
+            apps = await app_collection.find(
+                {"_id": {"$in": app_ids}}, {"name": 1}).to_list(len(app_ids))
+            app_map = {str(a["_id"]): a.get("name", "") for a in apps}
+            return RecentAppList(applications=[
+                RecentAppListItem(appId=app_id, name=app_map.get(app_id, ""))
+                for app_id in app_ids
+            ])
         except Exception as e:
             LOGGER.info(f"[AppCenterManager] Get recently used apps failed: {e}")
         return None
