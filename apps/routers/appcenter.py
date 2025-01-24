@@ -37,12 +37,13 @@ router = APIRouter(
 @router.get("", response_model=Union[GetAppListRsp, ResponseData])
 async def get_applications(  # noqa: ANN201, PLR0913
     user_sub: Annotated[str, Depends(get_user)],
-    my_app: Annotated[Optional[bool], Query(None, alias="createdByMe", description="筛选我创建的")],
-    my_fav: Annotated[Optional[bool], Query(None, alias="favorited", description="筛选我收藏的")],
-    search_type: Annotated[SearchType, Query(SearchType.ALL, alias="searchType", description="搜索类型")],
-    keyword: Annotated[Optional[str], Query(None, alias="keyword", description="搜索关键字")],
-    page: Annotated[int, Query(1, alias="page", ge=1, description="页码")],
-    page_size: Annotated[int, Query(20, alias="pageSize", ge=1, le=100, description="每页条数")],
+    *,
+    my_app: Annotated[bool, Query(..., alias="createdByMe", description="筛选我创建的")] = False,
+    my_fav: Annotated[bool, Query(..., alias="favorited", description="筛选我收藏的")] = False,
+    search_type: Annotated[SearchType, Query(..., alias="searchType", description="搜索类型")] = SearchType.ALL,
+    keyword: Annotated[Optional[str], Query(..., alias="keyword", description="搜索关键字")] = None,
+    page: Annotated[int, Query(..., alias="page", ge=1, description="页码")] = 1,
+    page_size: Annotated[int, Query(..., alias="pageSize", ge=1, le=100, description="每页条数")] = 20,
 ):
     """获取应用列表"""
     if my_app and my_fav:  # 只能同时使用一个过滤条件
@@ -117,13 +118,13 @@ async def create_or_update_application(  # noqa: ANN201
 
 @router.get("/recent", response_model=Union[GetRecentAppListRsp, ResponseData])
 async def get_recently_used_applications(  # noqa: ANN201
-    count: Annotated[int, Query(5, ge=1, le=10)],
     user_sub: Annotated[str, Depends(get_user)],
+    count: Annotated[int, Query(..., ge=1, le=10)] = 5,
 ):
     """获取最近使用的应用"""
     recent_apps = await AppCenterManager.get_recently_used_apps(
         count, user_sub)
-    if not recent_apps:
+    if recent_apps is None:
         return JSONResponse(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, content=ResponseData(
             code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             message="查询失败",
