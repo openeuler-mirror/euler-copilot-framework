@@ -3,6 +3,7 @@
 Copyright (c) Huawei Technologies Co., Ltd. 2024-2025. All rights reserved.
 """
 import uuid
+from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, Optional
 
@@ -45,7 +46,7 @@ class AppCenterManager:
                 search_type,
                 keyword,
             ) if keyword and search_type != SearchType.AUTHOR else {}
-            apps, total_pages = await AppCenterManager._search_apps_by_filter(filters, page, page_size)
+            apps, total_apps = await AppCenterManager._search_apps_by_filter(filters, page, page_size)
             return [
                 AppCenterCardItem(
                     appId=app.id,
@@ -57,7 +58,7 @@ class AppCenterManager:
                     published=app.published,
                 )
                 for app in apps
-            ], total_pages
+            ], total_apps
         except Exception as e:
             LOGGER.error(f"[AppCenterManager] Get app list failed: {e}")
         return [], -1
@@ -79,7 +80,7 @@ class AppCenterManager:
                 search_type,
                 keyword,
             ) if keyword and search_type != SearchType.AUTHOR else base_filter
-            apps, total_pages = await AppCenterManager._search_apps_by_filter(filters, page, page_size)
+            apps, total_apps= await AppCenterManager._search_apps_by_filter(filters, page, page_size)
             return [
                 AppCenterCardItem(
                     appId=app.id,
@@ -91,7 +92,7 @@ class AppCenterManager:
                     published=app.published,
                 )
                 for app in apps
-            ], total_pages
+            ], total_apps
         except Exception as e:
             LOGGER.info(f"[AppCenterManager] Get app list by user failed: {e}")
         return [], -1
@@ -117,7 +118,7 @@ class AppCenterManager:
                 search_type,
                 keyword,
             ) if keyword else base_filter
-            apps, total_pages = await AppCenterManager._search_apps_by_filter(filters, page, page_size)
+            apps, total_apps = await AppCenterManager._search_apps_by_filter(filters, page, page_size)
             return [
                 AppCenterCardItem(
                     appId=app.id,
@@ -129,7 +130,7 @@ class AppCenterManager:
                     published=app.published,
                 )
                 for app in apps
-            ], total_pages
+            ], total_apps
         except Exception as e:
             LOGGER.info(f"[AppCenterManager] Get favorite app list failed: {e}")
         return [], -1
@@ -197,7 +198,7 @@ class AppCenterManager:
             }
             if published_false_needed:
                 update_data["published"] = False
-            await app_collection.update_one({"_id": app_id}, {"$set": update_data})
+            await app_collection.update_one({"_id": app_id}, {"$set": jsonable_encoder(update_data)})
             return True
         except Exception as e:
             LOGGER.error(f"[AppCenterManager] Update app failed: {e}")
@@ -329,14 +330,13 @@ class AppCenterManager:
         try:
             app_collection = MongoDB.get_collection("app")
             total_apps = await app_collection.count_documents(search_conditions)
-            total_pages = (total_apps + page_size - 1) // page_size
             db_data = await app_collection.find(search_conditions) \
                 .sort("created_at", -1) \
                 .skip((page - 1) * page_size) \
                 .limit(page_size) \
                 .to_list(length=page_size)
             apps = [AppPool.model_validate(doc) for doc in db_data]
-            return apps, total_pages
+            return apps, total_apps
         except Exception as e:
             LOGGER.info(f"[AppCenterManager] Search apps by filter failed: {e}")
         return [], -1
@@ -351,3 +351,44 @@ class AppCenterManager:
         except Exception as e:
             LOGGER.info(f"[AppCenterManager] Get favorite app ids by user_sub failed: {e}")
         return []
+
+    @staticmethod
+    async def update_recent_app(user_sub: str, app_id: str) -> bool:
+        """更新用户的最近使用应用列表
+
+        :param user_sub: 用户唯一标识
+        :param app_id: 应用唯一标识
+        :return: 更新是否成功
+        """
+        try:
+            # 获取 user 集合
+            user_collection = MongoDB.get_collection("user")
+
+            # 获取当前时间戳
+            current_time = round(datetime.now(tz=timezone.utc).timestamp(), 3)
+
+            # 更新用户的 app_usage 字段
+            result = await user_collection.update_one(
+                {"_id": user_sub},  # 查询条件
+                {
+                    "$set": {
+                        f"app_usage.{app_id}.last_used": current_time,  # 更新最后使用时间
+                    },
+                    "$inc": {
+                        f"app_usage.{app_id}.count": 1,  # 增加使用次数
+                    },
+                },
+                upsert=True,  # 如果 app_usage 字段或 app_id 不存在，则创建
+            )
+
+            # 检查更新是否成功
+            if result.modified_count > 0 or result.upserted_id is not None:
+                LOGGER.info(f"[AppCenterManager] Updated recent app for user {user_sub}: {app_id}")
+                return True
+            else:
+                LOGGER.warning(f"[AppCenterManager] No changes made for user {user_sub}")
+                return False
+
+        except Exception as e:
+            LOGGER.error(f"[AppCenterManager] Failed to update recent app: {e}")
+            return False

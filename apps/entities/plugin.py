@@ -7,7 +7,7 @@ from typing import Any
 from pydantic import BaseModel, Field
 
 from apps.common.queue import MessageQueue
-from apps.entities.task import FlowHistory, RequestDataPlugin
+from apps.entities.task import FlowHistory, RequestDataApp
 
 
 class SysCallVars(BaseModel):
@@ -42,7 +42,7 @@ class SysExecVars(BaseModel):
     question: str = Field(description="当前Agent的目标")
     task_id: str = Field(description="当前Executor关联的TaskID")
     session_id: str = Field(description="当前用户的Session ID")
-    plugin_data: RequestDataPlugin = Field(description="传递给Executor中Call的参数")
+    app_data: RequestDataApp = Field(description="传递给Executor中Call的参数")
     background: ExecutorBackground = Field(description="当前Executor的背景信息")
 
     class Config:

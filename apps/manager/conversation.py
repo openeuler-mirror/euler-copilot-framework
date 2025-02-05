@@ -56,16 +56,17 @@ class ConversationManager:
                 update_data: dict[str, dict[str, Any]] = {
                     "$push": {"conversations": conversation_id},
                 }
+                if app_id:
                 # 非调试模式下更新应用使用情况
-                if not is_debug:
-                    update_data["$set"] = {f"app_usage.{app_id}.last_used": round(datetime.now(timezone.utc).timestamp(), 3)}
-                    update_data["$inc"] = {f"app_usage.{app_id}.count": 1}
-                await user_collection.update_one(
-                    {"_id": user_sub},
-                    update_data,
-                    session=session,
-                )
-                await session.commit_transaction()
+                    if not is_debug:
+                        update_data["$set"] = {f"app_usage.{app_id}.last_used": round(datetime.now(timezone.utc).timestamp(), 3)}
+                        update_data["$inc"] = {f"app_usage.{app_id}.count": 1}
+                    await user_collection.update_one(
+                        {"_id": user_sub},
+                        update_data,
+                        session=session,
+                    )
+                    await session.commit_transaction()
                 return conv
         except Exception as e:
             LOGGER.info(f"[ConversationManager] Add conversation by user_sub failed: {e}")

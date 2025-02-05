@@ -9,7 +9,12 @@ from pydantic import BaseModel, Field
 from apps.entities.appcenter import AppCenterCardItem, AppData
 from apps.entities.collection import Blacklist, Document, NodeMetaData
 from apps.entities.enum_var import DocumentStatus
-from apps.entities.flow_topology import FlowItem, NodeMetaDataItem, PositionItem, ServiceItem
+from apps.entities.flow_topology import (
+    FlowItem,
+    NodeMetaDataItem,
+    PositionItem,
+    ServiceItem,
+)
 from apps.entities.record import RecordData
 
 
@@ -284,7 +289,7 @@ class GetAppListMsg(BaseModel):
     """GET /api/app Result数据结构"""
 
     page_number: int = Field(..., alias="currentPage", description="当前页码")
-    page_count: int = Field(..., alias="totalPages", description="总页数")
+    app_count: int = Field(..., alias="total", description="总页数")
     applications: list[AppCenterCardItem] = Field(..., description="应用列表")
 
 

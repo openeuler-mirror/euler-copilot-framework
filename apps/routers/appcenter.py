@@ -5,6 +5,7 @@ Copyright (c) Huawei Technologies Co., Ltd. 2024-2025. All rights reserved.
 from typing import Annotated, Optional, Union
 
 from fastapi import APIRouter, Body, Depends, Path, Query, status
+from fastapi.requests import HTTPConnection
 from fastapi.responses import JSONResponse
 
 from apps.dependency.csrf import verify_csrf_token
@@ -53,17 +54,17 @@ async def get_applications(  # noqa: ANN201, PLR0913
             result={},
         )
 
-    app_cards, total_pages = [], -1
+    app_cards, total_apps = [], -1
     if my_app:    # 筛选我创建的
-        app_cards, total_pages = await AppCenterManager.fetch_user_apps(
+        app_cards, total_apps = await AppCenterManager.fetch_user_apps(
             user_sub, search_type, keyword, page, page_size)
     elif my_fav:  # 筛选已收藏的
-        app_cards, total_pages = await AppCenterManager.fetch_favorite_apps(
+        app_cards, total_apps = await AppCenterManager.fetch_favorite_apps(
             user_sub, search_type, keyword, page, page_size)
     else:         # 获取所有应用
-        app_cards, total_pages = await AppCenterManager.fetch_all_apps(
+        app_cards, total_apps = await AppCenterManager.fetch_all_apps(
             user_sub, search_type, keyword, page, page_size)
-    if total_pages == -1:
+    if total_apps == -1:
         return JSONResponse(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, content=ResponseData(
             code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             message="查询失败",
@@ -74,7 +75,7 @@ async def get_applications(  # noqa: ANN201, PLR0913
         message="查询成功",
         result=GetAppListMsg(
             currentPage=page,
-            totalPages=total_pages,
+            total=total_apps,
             applications=app_cards,
         ),
     ).model_dump(exclude_none=True, by_alias=True))

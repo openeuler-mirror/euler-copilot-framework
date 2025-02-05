@@ -22,11 +22,11 @@ class RequestData(BaseModel):
     """POST /api/chat 请求的总的数据结构"""
 
     question: str = Field(max_length=2000, description="用户输入")
-    conversation_id: str
-    group_id: str
+    conversation_id: str = Field(default=None, alias="conversationId", description="会话ID")
+    group_id: Optional[str] = Field(default=None, alias="groupId", description="群组ID")
     language: str = Field(default="zh", description="语言")
-    files: list[str] = Field(default=[])
-    apps: list[RequestDataApp] = Field(default=[])
+    files: list[str] = Field(default=[], description="文件列表")
+    app: list[RequestDataApp] = Field(default=[], description="应用列表")
     features: RequestDataFeatures = Field(description="消息功能设置")
 
 
