@@ -11,7 +11,7 @@ from apps.constants import LOGGER
 from apps.entities.collection import RecordContent
 from apps.entities.enum_var import EventType
 from apps.entities.message import SuggestContent
-from apps.entities.task import RequestDataPlugin
+from apps.entities.task import RequestDataApp
 from apps.llm.patterns.recommend import Recommend
 from apps.manager import (
     RecordManager,
@@ -28,7 +28,7 @@ USER_TOP_DOMAINS_NUM = 5
 HISTORY_QUESTIONS_NUM = 4
 
 
-async def plan_next_flow(user_sub: str, task_id: str, queue: MessageQueue, user_selected_plugins: list[RequestDataPlugin]) -> None:  # noqa: C901, PLR0912
+async def plan_next_flow(user_sub: str, task_id: str, queue: MessageQueue, user_selected_plugins: RequestDataApp) -> None:  # noqa: C901, PLR0912
     """生成用户“下一步”Flow的推荐。
 
     - 若Flow的配置文件中已定义`next_flow[]`字段，则直接使用该字段给定的值
@@ -69,99 +69,102 @@ async def plan_next_flow(user_sub: str, task_id: str, queue: MessageQueue, user_
             generated_questions += f"{question}\n"
             content = SuggestContent(
                 question=question,
-                plugin_id="",
-                flow_id="",
-                flow_description="",
+                appId="",
+                flowId="",
+                flowDescription="",
             )
             await queue.push_output(event_type=EventType.SUGGEST, data=content.model_dump(exclude_none=True, by_alias=True))
         return
 
     # 当前使用了Flow
     flow_id = task.flow_state.name
-    plugin_id = task.flow_state.plugin_id
-    _, flow_data = Pool().get_flow(flow_id, plugin_id)
-    if flow_data is None:
-        err = "Flow数据不存在"
-        raise ValueError(err)
-
-    if flow_data.next_flow is None:
-        # 根据用户选择的插件，选一次top_k flow
-        plugin_ids = []
-        for plugin in user_selected_plugins:
-            if plugin.plugin_id and plugin.plugin_id not in plugin_ids:
-                plugin_ids.append(plugin.plugin_id)
-        result = Pool().get_k_flows(task.record.content.question, plugin_ids)
-        for i, flow in enumerate(result):
-            if i >= MAX_RECOMMEND:
-                break
-            # 改写问题
-            rewrite_question = await Recommend().generate(
-                task_id=task_id,
-                action_description=flow.description,
-                history_questions=last_n_questions,
-                recent_question=current_record,
-                user_preference=str(user_domain),
-                shown_questions=generated_questions,
-            )
-            generated_questions += f"{rewrite_question}\n"
-
-            content = SuggestContent(
-                plugin_id=plugin_id,
-                flow_id=flow_id,
-                flow_description=str(flow.description),
-                question=rewrite_question,
-            )
-            await queue.push_output(event_type=EventType.SUGGEST, data=content.model_dump(exclude_none=True, by_alias=True))
-        return
-
-    # 当前有next_flow
-    for i, next_flow in enumerate(flow_data.next_flow):
-        # 取前MAX_RECOMMEND个Flow，保持顺序
-        if i >= MAX_RECOMMEND:
-            break
-
-        if next_flow.plugin is not None:
-            next_flow_plugin_id = next_flow.plugin
-        else:
-            next_flow_plugin_id = plugin_id
-
-        flow_metadata, _ = Pool().get_flow(
-            next_flow.id,
-            next_flow_plugin_id,
-        )
-
-        # flow不合法
-        if flow_metadata is None:
-            LOGGER.error(f"Flow {next_flow.id} in {next_flow_plugin_id} not found")
-            continue
-
-        # 如果设置了question，直接使用这个question
-        if next_flow.question is not None:
-            content = SuggestContent(
-                plugin_id=next_flow_plugin_id,
-                flow_id=next_flow.id,
-                flow_description=str(flow_metadata.description),
-                question=next_flow.question,
-            )
-            await queue.push_output(event_type=EventType.SUGGEST, data=content.model_dump(exclude_none=True, by_alias=True))
-            continue
-
-        # 没有设置question，则需要生成问题
-        rewrite_question = await Recommend().generate(
-            task_id=task_id,
-            action_description=flow_metadata.description,
-            history_questions=last_n_questions,
-            recent_question=current_record,
-            user_preference=str(user_domain),
-            shown_questions=generated_questions,
-        )
-        generated_questions += f"{rewrite_question}\n"
-        content = SuggestContent(
-            plugin_id=next_flow_plugin_id,
-            flow_id=next_flow.id,
-            flow_description=str(flow_metadata.description),
-            question=rewrite_question,
-        )
-        await queue.push_output(event_type=EventType.SUGGEST, data=content.model_dump(exclude_none=True, by_alias=True))
-        continue
+    app_id = task.flow_state.app_id
     return
+    # TODO: 推荐flow待完善
+    # _, flow_data = Pool().get_flow(flow_id, app_id)
+    # if flow_data is None:
+    #     err = "Flow数据不存在"
+    #     raise ValueError(err)
+
+    # if flow_data.next_flow is None:
+    #     # 根据用户选择的插件，选一次top_k flow
+    #     app_ids = []
+    #     for plugin in user_selected_plugins:
+    #         if plugin.app_id and plugin.app_id not in app_ids:
+    #             app_ids.append(plugin.app_id)
+    #     result = Pool().get_k_flows(task.record.content.question, app_ids)
+    #     for i, flow in enumerate(result):
+    #         if i >= MAX_RECOMMEND:
+    #             break
+    #         # 改写问题
+    #         rewrite_question = await Recommend().generate(
+    #             task_id=task_id,
+    #             action_description=flow.description,
+    #             history_questions=last_n_questions,
+    #             recent_question=current_record,
+    #             user_preference=str(user_domain),
+    #             shown_questions=generated_questions,
+    #         )
+    #         generated_questions += f"{rewrite_question}\n"
+
+    #         content = SuggestContent(
+    #             app_id=app_id,
+    #             flow_id=flow_id,
+    #             flow_description=str(flow.description),
+    #             question=rewrite_question,
+    #         )
+    #         await queue.push_output(event_type=EventType.SUGGEST, data=content.model_dump(exclude_none=True, by_alias=True))
+    #     return
+
+    # # 当前有next_flow
+    # for i, next_flow in enumerate(flow_data.next_flow):
+    #     # 取前MAX_RECOMMEND个Flow，保持顺序
+    #     if i >= MAX_RECOMMEND:
+    #         break
+
+    #     if next_flow.plugin is not None:
+    #         next_flow_app_id = next_flow.plugin
+    #     else:
+    #         next_flow_app_id = app_id
+
+    #     flow_metadata, _ = next_flow.id, next_flow_app_id,
+    #     # flow_metadata, _ = Pool().get_flow(
+    #     #     next_flow.id,
+    #     #     next_flow_app_id,
+    #     # )
+
+    #     # flow不合法
+    #     if flow_metadata is None:
+    #         LOGGER.error(f"Flow {next_flow.id} in {next_flow_app_id} not found")
+    #         continue
+
+    #     # 如果设置了question，直接使用这个question
+    #     if next_flow.question is not None:
+    #         content = SuggestContent(
+    #             appId=next_flow_app_id,
+    #             flowId=next_flow.id,
+    #             flowDescription=str(flow_metadata.description),
+    #             question=next_flow.question,
+    #         )
+    #         await queue.push_output(event_type=EventType.SUGGEST, data=content.model_dump(exclude_none=True, by_alias=True))
+    #         continue
+
+    #     # 没有设置question，则需要生成问题
+    #     rewrite_question = await Recommend().generate(
+    #         task_id=task_id,
+    #         action_description=flow_metadata.description,
+    #         history_questions=last_n_questions,
+    #         recent_question=current_record,
+    #         user_preference=str(user_domain),
+    #         shown_questions=generated_questions,
+    #     )
+    #     generated_questions += f"{rewrite_question}\n"
+    #     content = SuggestContent(
+    #         appId=next_flow_app_id,
+    #         flowId=next_flow.id,
+    #         flowDescription=str(flow_metadata.description),
+    #         question=rewrite_question,
+    #     )
+    #     await queue.push_output(event_type=EventType.SUGGEST, data=content.model_dump(exclude_none=True, by_alias=True))
+    #     continue
+    # return

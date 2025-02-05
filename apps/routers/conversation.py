@@ -62,7 +62,7 @@ async def create_new_conversation(
 
     # 新建对话
     if create_new:
-        if not AppManager.validate_user_app_access(user_sub, app_id):
+        if app_id and not await AppManager.validate_user_app_access(user_sub, app_id):
             err = "Invalid app_id."
             raise RuntimeError(err)
         new_conv = await ConversationManager.add_conversation_by_user_sub(user_sub,
@@ -134,6 +134,8 @@ async def add_conversation(
     # 尝试创建新对话
     try:
         app_id = appId if appId else ""
+        if appId:
+            conversations = []
         is_debug = isDebug if isDebug is not None else False
         new_conv = await create_new_conversation(user_sub, conversations,
                                                 app_id=app_id, is_debug=is_debug)
