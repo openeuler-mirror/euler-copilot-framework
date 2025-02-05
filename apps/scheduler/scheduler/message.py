@@ -34,17 +34,17 @@ async def push_init_message(task_id: str, queue: MessageQueue, post_body: Reques
     # 组装feature
     if is_flow:
         feature = InitContentFeature(
-            max_tokens=post_body.features.max_tokens,
-            context_num=post_body.features.context_num,
-            enable_feedback=False,
-            enable_regenerate=False,
+            maxTokens=post_body.features.max_tokens,
+            contextNum=post_body.features.context_num,
+            enableFeedback=False,
+            enableRegenerate=False,
         )
     else:
         feature = InitContentFeature(
-            max_tokens=post_body.features.max_tokens,
-            context_num=post_body.features.context_num,
-            enable_feedback=True,
-            enable_regenerate=True,
+            maxTokens=post_body.features.max_tokens,
+            contextNum=post_body.features.context_num,
+            enableFeedback=True,
+            enableRegenerate=True,
         )
 
     # 保存必要信息到Task
@@ -54,7 +54,7 @@ async def push_init_message(task_id: str, queue: MessageQueue, post_body: Reques
     await TaskManager.set_task(task_id, task)
 
     # 推送初始化消息
-    await queue.push_output(event_type=EventType.INIT, data=InitContent(feature=feature, created_at=created_at).model_dump(exclude_none=True, by_alias=True))
+    await queue.push_output(event_type=EventType.INIT, data=InitContent(feature=feature, createdAt=created_at).model_dump(exclude_none=True, by_alias=True))
 
 
 async def push_rag_message(task_id: str, queue: MessageQueue, user_sub: str, rag_data: RAGQueryReq) -> None:
@@ -108,9 +108,9 @@ async def _push_rag_chunk(task_id: str, queue: MessageQueue, content: str, rag_i
 async def push_document_message(queue: MessageQueue, doc: Union[RecordDocument, Document]) -> None:
     """推送文档消息"""
     content = DocumentAddContent(
-        document_id=doc.id,
-        document_name=doc.name,
-        document_type=doc.type,
-        document_size=round(doc.size, 2),
+        documentId=doc.id,
+        documentName=doc.name,
+        documentType=doc.type,
+        documentSize=round(doc.size, 2),
     )
     await queue.push_output(event_type=EventType.DOCUMENT_ADD, data=content.model_dump(exclude_none=True, by_alias=True))

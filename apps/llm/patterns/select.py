@@ -78,8 +78,8 @@ class Select(CorePattern):
         choices_prompt = ""
         choice_str_list = []
         for choice in choices:
-            choices_prompt += "- {}: {}\n".format(choice["name"], choice["description"])
-            choice_str_list.append(choice["name"])
+            choices_prompt += "- {}: {}\n".format(choice["branch"], choice["description"])
+            choice_str_list.append(choice["branch"])
         return choices_prompt, choice_str_list
 
     async def _generate_single_attempt(self, task_id: str, user_input: str, choice_list: list[str]) -> str:

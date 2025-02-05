@@ -12,4 +12,3 @@ class NextFlowCall(metaclass=CoreCall):
 
     async def __call__(self, _slot_data: dict[str, Any]):
         """调用NextFlow工具"""
-

@@ -2,9 +2,8 @@
 
 Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 """
-from pathlib import Path
-
 import yaml
+from anyio import Path
 
 from apps.constants import LOGGER
 from apps.entities.pool import NodePool
@@ -23,14 +22,15 @@ class OpenAPILoader:
 
 
     @classmethod
-    def load(cls, yaml_path: Path) -> ReducedOpenAPISpec:
+    async def load(cls, yaml_path: Path) -> ReducedOpenAPISpec:
         """从本地磁盘加载OpenAPI文档"""
         if not yaml_path.exists():
             msg = f"File not found: {yaml_path}"
             raise FileNotFoundError(msg)
 
-        with yaml_path.open(mode="r") as f:
-            spec = yaml.safe_load(f)
+        f = await yaml_path.open(mode="r")
+        spec = yaml.safe_load(await f.read())
+        await f.aclose()
 
         return reduce_openapi_spec(spec)
 
@@ -56,11 +56,13 @@ class OpenAPILoader:
         return nodes
 
     @classmethod
-    async def load_one(cls, yaml_path: Path) -> None:
+    async def load_one(cls, yaml_path: Path) -> list[NodePool]:
         """加载单个OpenAPI文档，可以直接指定路径"""
         try:
-            spec = cls.load(yaml_path)
+            spec = await cls.load(yaml_path)
         except Exception as e:
             err = f"加载OpenAPI文档失败：{e}"
             LOGGER.error(msg=err)
             raise RuntimeError(err) from e
+
+        return cls._process_spec(yaml_path.name, spec)

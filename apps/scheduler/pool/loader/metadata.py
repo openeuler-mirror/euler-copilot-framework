@@ -2,10 +2,10 @@
 
 Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 """
-from pathlib import Path
 from typing import Any, Union
 
 import yaml
+from anyio import Path
 
 from apps.common.config import config
 from apps.constants import LOGGER
@@ -24,7 +24,7 @@ class MetadataLoader:
         """加载【单个】元数据"""
         # 检查yaml格式
         try:
-            metadata_dict = yaml.safe_load(file_path.read_text())
+            metadata_dict = yaml.safe_load(await file_path.read_text())
             metadata_type = metadata_dict["type"]
         except Exception as e:
             err = f"metadata.yaml读取失败: {e}"
@@ -74,4 +74,4 @@ class MetadataLoader:
             raise RuntimeError(err) from e
 
         yaml_data = data.model_dump(by_alias=True, exclude_none=True)
-        resource_path.write_text(yaml.safe_dump(yaml_data))
+        await resource_path.write_text(yaml.safe_dump(yaml_data))

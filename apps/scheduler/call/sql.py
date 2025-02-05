@@ -4,47 +4,70 @@
 Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 """
 import json
-from typing import Any
+from typing import Any, Optional
 
 import aiohttp
 from fastapi import status
-from sqlalchemy import create_engine, text
+from pydantic import BaseModel, Field
+from sqlalchemy import text
 
 from apps.common.config import config
 from apps.constants import LOGGER
-from apps.entities.plugin import CallError, CallResult, SysCallVars
+from apps.entities.plugin import CallError, SysCallVars
+from apps.models.postgres import PostgreSQL
 from apps.scheduler.call.core import CoreCall
 
 
-class SQL(CoreCall):
+class _SQLParams(BaseModel):
+    """SQL工具的参数"""
+
+    sql: Optional[str] = Field(description="用户输入")
+
+
+class _SQLOutput(BaseModel):
+    """SQL工具的输出"""
+
+    message: str = Field(description="SQL工具的执行结果")
+    dataset: list[dict[str, Any]] = Field(description="SQL工具的执行结果")
+
+
+class SQL(metaclass=CoreCall, param_cls=_SQLParams, output_cls=_SQLOutput):
     """SQL工具。用于调用外置的Chat2DB工具的API，获得SQL语句；再在PostgreSQL中执行SQL语句，获得数据。"""
 
     name: str = "sql"
     description: str = "SQL工具，用于查询数据库中的结构化数据"
 
 
-    async def init(self, syscall_vars: SysCallVars, **kwargs) -> None:  # noqa: ANN003
+    def init(self, _syscall_vars: SysCallVars, **_kwargs) -> None:  # noqa: ANN003
         """初始化SQL工具。"""
-        await super().init(syscall_vars, **kwargs)
         # 初始化aiohttp的ClientSession
         self._session = aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(300))
-        # 初始化SQLAlchemy Engine
-        try:
-            db_url = f'postgresql+psycopg2://{config["POSTGRES_USER"]}:{config["POSTGRES_PWD"]}@{config["POSTGRES_HOST"]}/{config["POSTGRES_DATABASE"]}'
-            self._engine = create_engine(db_url, pool_size=20, max_overflow=80, pool_recycle=300, pool_pre_ping=True)
-        except Exception as e:
-            raise CallError(message=f"数据库连接失败：{e!s}", data={}) from e
 
 
-    async def call(self, _slot_data: dict[str, Any]) -> CallResult:
-        """运行SQL工具。
+    async def __call__(self, _slot_data: dict[str, Any]) -> _SQLOutput:
+        """运行SQL工具"""
+        # 获取必要参数
+        params: _SQLParams = getattr(self, "_params")
+        syscall_vars: SysCallVars = getattr(self, "_syscall_vars")
 
-        访问Chat2DB工具API，拿到针对用户输入的最多5条SQL语句。依次尝试每一条语句，直到查询出数据或全部不可用。
-        :param slot_data: 经用户确认后的参数（目前未使用）
-        :return: 从数据库中查询得到的数据，或报错信息
-        """
+        # 若手动设置了SQL，则直接使用
+        session = await PostgreSQL.get_session()
+        if params.sql:
+            try:
+                result = (await session.execute(text(params.sql))).all()
+                await session.close()
+
+                dataset_list = [db_item._asdict() for db_item in result]
+                return _SQLOutput(
+                    message="SQL查询成功！",
+                    dataset=dataset_list,
+                )
+            except Exception as e:
+                raise CallError(message=f"SQL查询错误：{e!s}", data={}) from e
+
+        # 若未设置SQL，则调用Chat2DB工具API，获取SQL
         post_data = {
-            "question": self._syscall_vars.question,
+            "question": syscall_vars.question,
             "topk_sql": 5,
             "use_llm_enhancements": True,
         }
@@ -60,29 +83,18 @@ class SQL(CoreCall):
                 )
             result = json.loads(await response.text())
             LOGGER.info(f"SQL工具返回的信息为：{result}")
-
         await self._session.close()
+
         for item in result["sql_list"]:
             try:
-                with self._engine.connect() as connection:
-                    db_result = connection.execute(text(item["sql"])).all()
-                    dataset_list = [db_item._asdict() for db_item in db_result]
-                    return CallResult(
-                        output={
-                            "dataset": dataset_list,
-                        },
-                        output_schema={
-                            "dataset": {
-                                "type": "array",
-                                "description": "数据库查询结果",
-                                "items": {
-                                    "type": "object",
-                                    "description": "数据库查询结果的每一行",
-                                },
-                            },
-                        },
-                        message="数据库查询成功！",
-                    )
+                db_result = (await session.execute(text(item["sql"]))).all()
+                await session.close()
+
+                dataset_list = [db_item._asdict() for db_item in db_result]
+                return _SQLOutput(
+                    message="数据库查询成功！",
+                    dataset=dataset_list,
+                )
             except Exception as e:  # noqa: PERF203
                 LOGGER.error(f"SQL查询错误，错误信息为：{e}，正在换用下一条SQL语句。")
 

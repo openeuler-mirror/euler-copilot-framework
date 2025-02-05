@@ -66,7 +66,13 @@ class Render(metaclass=CoreCall, param_cls=_RenderParam, output_cls=_RenderOutpu
         syscall_vars: SysCallVars = getattr(self, "_syscall_vars")
 
         # 检测前一个工具是否为SQL
-        data = syscall_vars.history[-1].output_data
+        if "dataset" not in syscall_vars.history[-1].output_data:
+            raise CallError(
+                message="图表生成失败！Render必须在SQL后调用！",
+                data={},
+            )
+
+        data = syscall_vars.history[-1].output_data["output"]
         if data["type"] != "sql" or "dataset" not in data:
             raise CallError(
                 message="图表生成失败！Render必须在SQL后调用！",

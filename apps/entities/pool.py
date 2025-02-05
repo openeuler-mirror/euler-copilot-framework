@@ -49,7 +49,7 @@ class CallPool(PoolBase):
     collection: call
     """
 
-    id: str = Field(description="Call的ID")
+    id: str = Field(description="Call的ID", alias="_id")
     type: CallType = Field(description="Call的类型")
     path: str = Field(description="Call的路径")
 
@@ -65,8 +65,7 @@ class NodePool(PoolBase):
             2. Python Node的路径格式样例：“tune::call.tune.CheckSystem”
     """
 
-    id: str = Field(description="Node的ID", default_factory=lambda: str(uuid.uuid4()))
-    created_at: None = None
+    id: str = Field(description="Node的ID", default_factory=lambda: str(uuid.uuid4()), alias="_id")
     service_id: str = Field(description="Node所属的Service ID")
     call_id: str = Field(description="所使用的Call的ID")
     fixed_params: dict[str, Any] = Field(description="Node的固定参数", default={})

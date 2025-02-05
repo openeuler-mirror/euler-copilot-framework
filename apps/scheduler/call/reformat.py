@@ -68,7 +68,7 @@ class Reformat(metaclass=CoreCall, param_cls=_ReformatParam, output_cls=_Reforma
                 "time": time,
                 "question": syscall_vars.question,
             }, ensure_ascii=False)
-            history_str = json.dumps([CallResult(**item.output_data).output for item in syscall_vars.history], ensure_ascii=False)
+            history_str = json.dumps([item.output_data["output"] for item in syscall_vars.history if "output" in item.output_data], ensure_ascii=False)
             data_template = dedent(f"""
                 local extra =  {extra_str};
                 local history = {history_str};

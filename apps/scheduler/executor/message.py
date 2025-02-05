@@ -12,9 +12,6 @@ from apps.entities.message import (
     StepOutputContent,
     TextAddContent,
 )
-from apps.entities.plugin import (
-    CallResult,
-)
 from apps.entities.task import ExecutorState, FlowHistory
 from apps.llm.patterns.executor import ExecutorResult
 from apps.manager.task import TaskManager
