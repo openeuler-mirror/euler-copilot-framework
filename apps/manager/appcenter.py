@@ -46,7 +46,7 @@ class AppCenterManager:
                 search_type,
                 keyword,
             ) if keyword and search_type != SearchType.AUTHOR else {}
-            apps, total_pages = await AppCenterManager._search_apps_by_filter(filters, page, page_size)
+            apps, total_apps = await AppCenterManager._search_apps_by_filter(filters, page, page_size)
             return [
                 AppCenterCardItem(
                     appId=app.id,
@@ -58,7 +58,7 @@ class AppCenterManager:
                     published=app.published,
                 )
                 for app in apps
-            ], total_pages
+            ], total_apps
         except Exception as e:
             LOGGER.error(f"[AppCenterManager] Get app list failed: {e}")
         return [], -1
@@ -80,7 +80,7 @@ class AppCenterManager:
                 search_type,
                 keyword,
             ) if keyword and search_type != SearchType.AUTHOR else base_filter
-            apps, total_pages = await AppCenterManager._search_apps_by_filter(filters, page, page_size)
+            apps, total_apps= await AppCenterManager._search_apps_by_filter(filters, page, page_size)
             return [
                 AppCenterCardItem(
                     appId=app.id,
@@ -92,7 +92,7 @@ class AppCenterManager:
                     published=app.published,
                 )
                 for app in apps
-            ], total_pages
+            ], total_apps
         except Exception as e:
             LOGGER.info(f"[AppCenterManager] Get app list by user failed: {e}")
         return [], -1
@@ -118,7 +118,7 @@ class AppCenterManager:
                 search_type,
                 keyword,
             ) if keyword else base_filter
-            apps, total_pages = await AppCenterManager._search_apps_by_filter(filters, page, page_size)
+            apps, total_apps = await AppCenterManager._search_apps_by_filter(filters, page, page_size)
             return [
                 AppCenterCardItem(
                     appId=app.id,
@@ -130,7 +130,7 @@ class AppCenterManager:
                     published=app.published,
                 )
                 for app in apps
-            ], total_pages
+            ], total_apps
         except Exception as e:
             LOGGER.info(f"[AppCenterManager] Get favorite app list failed: {e}")
         return [], -1
@@ -330,14 +330,13 @@ class AppCenterManager:
         try:
             app_collection = MongoDB.get_collection("app")
             total_apps = await app_collection.count_documents(search_conditions)
-            total_pages = total_apps
             db_data = await app_collection.find(search_conditions) \
                 .sort("created_at", -1) \
                 .skip((page - 1) * page_size) \
                 .limit(page_size) \
                 .to_list(length=page_size)
             apps = [AppPool.model_validate(doc) for doc in db_data]
-            return apps, total_pages
+            return apps, total_apps
         except Exception as e:
             LOGGER.info(f"[AppCenterManager] Search apps by filter failed: {e}")
         return [], -1
