@@ -5,7 +5,6 @@ Copyright (c) Huawei Technologies Co., Ltd. 2024-2025. All rights reserved.
 from typing import Annotated, Optional, Union
 
 from fastapi import APIRouter, Body, Depends, Path, Query, status
-from fastapi.requests import HTTPConnection
 from fastapi.responses import JSONResponse
 
 from apps.dependency.csrf import verify_csrf_token

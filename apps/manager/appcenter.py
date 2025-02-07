@@ -39,7 +39,15 @@ class AppCenterManager:
         page: int,
         page_size: int,
     ) -> tuple[list[AppCenterCardItem], int]:
-        """获取所有应用列表"""
+        """获取所有应用列表
+
+        :param user_sub: 用户唯一标识
+        :param search_type: 搜索类型
+        :param keyword: 搜索关键字
+        :param page: 页码
+        :param page_size: 每页条数
+        :return: 应用列表, 总应用数
+        """
         try:
             # 构建基础搜索条件
             filters: dict[str, Any] = {}
@@ -96,7 +104,15 @@ class AppCenterManager:
         page: int,
         page_size: int,
     ) -> tuple[list[AppCenterCardItem], int]:
-        """获取用户应用列表"""
+        """获取用户应用列表
+
+        :param user_sub: 用户唯一标识
+        :param search_type: 搜索类型
+        :param keyword: 搜索关键词
+        :param page: 页码
+        :param page_size: 每页数量
+        :return: 应用列表, 总应用数
+        """
         try:
             # 搜索条件
             base_filter = {"author": user_sub}
@@ -130,7 +146,15 @@ class AppCenterManager:
         page: int,
         page_size: int,
     ) -> tuple[list[AppCenterCardItem], int]:
-        """获取用户收藏的应用列表"""
+        """获取用户收藏的应用列表
+
+        :param user_sub: 用户唯一标识
+        :param search_type: 搜索类型
+        :param keyword: 搜索关键词
+        :param page: 页码
+        :param page_size: 每页数量
+        :return: 应用列表，总应用数
+        """
         try:
             fav_app = await AppCenterManager._get_favorite_app_ids_by_user(user_sub)
             # 搜索条件
@@ -163,11 +187,16 @@ class AppCenterManager:
 
     @staticmethod
     async def fetch_app_data_by_id(app_id: str) -> Optional[AppPool]:
-        """根据应用ID获取应用元数据"""
+        """根据应用ID获取应用元数据
+
+        :param app_id: 应用ID
+        :return: 应用元数据
+        """
         try:
             app_collection = MongoDB.get_collection("app")
             db_data = await app_collection.find_one({"_id": app_id})
             if not db_data:
+                LOGGER.warning(f"[AppCenterManager] No data found for app_id: {app_id}")
                 return None
             return AppPool.model_validate(db_data)
         except Exception as e:
@@ -176,7 +205,12 @@ class AppCenterManager:
 
     @staticmethod
     async def create_app(user_sub: str, data: AppData) -> Optional[str]:
-        """创建应用"""
+        """创建应用
+
+        :param user_sub: 用户唯一标识
+        :param data: 应用数据
+        :return: 应用ID
+        """
         app_id = str(uuid.uuid4())
         app = AppPool(
             _id=app_id,
@@ -202,7 +236,12 @@ class AppCenterManager:
 
     @staticmethod
     async def update_app(app_id: str, data: AppData) -> bool:
-        """更新应用"""
+        """更新应用
+
+        :param app_id: 应用唯一标识
+        :param data: 应用数据
+        :return: 是否成功
+        """
         try:
             app_collection = MongoDB.get_collection("app")
             app_data = AppPool.model_validate(await app_collection.find_one({"_id": app_id}))
@@ -232,7 +271,11 @@ class AppCenterManager:
 
     @staticmethod
     async def publish_app(app_id: str) -> bool:
-        """发布应用"""
+        """发布应用
+
+        :param app_id: 应用唯一标识
+        :return: 是否成功
+        """
         try:
             app_collection = MongoDB.get_collection("app")
             await app_collection.update_one(
@@ -246,7 +289,13 @@ class AppCenterManager:
 
     @staticmethod
     async def modify_favorite_app(app_id: str, user_sub: str, *, favorited: bool) -> ModFavAppFlag:
-        """修改收藏状态"""
+        """修改收藏状态
+
+        :param app_id: 应用唯一标识
+        :param user_sub: 用户唯一标识
+        :param favorited: 是否收藏
+        :return: 修改结果
+        """
         try:
             app_collection = MongoDB.get_collection("app")
             db_data = await app_collection.find_one({"_id": app_id})
@@ -281,7 +330,12 @@ class AppCenterManager:
 
     @staticmethod
     async def get_recently_used_apps(count: int, user_sub: str) -> Optional[RecentAppList]:
-        """获取用户最近使用的应用列表"""
+        """获取用户最近使用的应用列表
+
+        :param count: 应用数量
+        :param user_sub: 用户唯一标识
+        :return: 最近使用的应用列表
+        """
         try:
             user_collection = MongoDB.get_collection("user")
             app_collection = MongoDB.get_collection("app")
@@ -308,7 +362,12 @@ class AppCenterManager:
 
     @staticmethod
     async def delete_app(app_id: str, user_sub: str) -> bool:
-        """删除应用"""
+        """删除应用
+
+        :param app_id: 应用唯一标识
+        :param user_sub: 用户唯一标识
+        :return: 删除是否成功
+        """
         try:
             async with MongoDB.get_session() as session, await session.start_transaction():
                 app_collection = MongoDB.get_collection("app")
@@ -334,13 +393,8 @@ class AppCenterManager:
         :return: 更新是否成功
         """
         try:
-            # 获取 user 集合
             user_collection = MongoDB.get_collection("user")
-
-            # 获取当前时间戳
             current_time = round(datetime.now(tz=timezone.utc).timestamp(), 3)
-
-            # 更新用户的 app_usage 字段
             result = await user_collection.update_one(
                 {"_id": user_sub},  # 查询条件
                 {
@@ -353,14 +407,11 @@ class AppCenterManager:
                 },
                 upsert=True,  # 如果 app_usage 字段或 app_id 不存在，则创建
             )
-
-            # 检查更新是否成功
             if result.modified_count > 0 or result.upserted_id is not None:
                 LOGGER.info(f"[AppCenterManager] Updated recent app for user {user_sub}: {app_id}")
                 return True
             LOGGER.warning(f"[AppCenterManager] No changes made for user {user_sub}")
             return False
-
         except Exception as e:
             LOGGER.error(f"[AppCenterManager] Failed to update recent app: {e}")
             return False
