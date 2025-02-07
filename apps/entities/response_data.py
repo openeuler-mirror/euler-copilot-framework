@@ -12,8 +12,8 @@ from apps.entities.enum_var import DocumentStatus
 from apps.entities.flow_topology import (
     FlowItem,
     NodeMetaDataItem,
+    NodeServiceItem,
     PositionItem,
-    ServiceItem,
 )
 from apps.entities.record import RecordData
 
@@ -320,28 +320,18 @@ class GetRecentAppListRsp(ResponseData):
 
 class NodeServiceListMsg(BaseModel):
     """GET /api/flow/service result"""
-    services: list[ServiceItem]=Field(default=[])
-
-
+    services: list[NodeServiceItem] = Field(..., description="服务列表",default=[])
 class NodeServiceListRsp(ResponseData):
     """GET /api/flow/service 返回数据结构"""
     result: NodeServiceListMsg
-
-
-class NodeMetaDataListMsg(BaseModel):
-    """GET /api/flow/service/node result"""
-    service_id: str = Field(alias="serviceId",default=[])
-    node_meta_datas: list[NodeMetaDataItem] = Field(alias="nodeMetaDatas", default=[])
-
-
-class NodeMetaDataListRsp(ResponseData):
+class NodeMetaDataRsp(ResponseData):
     """GET /api/flow/service/node 返回数据结构"""
-    result: NodeMetaDataListMsg
+    result: NodeMetaDataItem
 
 class FlowStructureGetMsg(BaseModel):
     """GET /api/flow result"""
     flow: FlowItem = Field(default=FlowItem())
-    focus_point: PositionItem = Field(default=PositionItem(x=0.0, y=0.0))
+    focus_point: PositionItem = Field(default=PositionItem())
 
 
 class FlowStructureGetRsp(ResponseData):

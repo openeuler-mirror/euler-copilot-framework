@@ -9,26 +9,23 @@ from pydantic import BaseModel, Field
 
 from apps.entities.enum_var import EdgeType, NodeType
 
-
-class ServiceItem(BaseModel):
-    """元数据归属的服务类"""
-    service_id: str = Field(alias="serviceId")
-    name: str
-    type: str
-    created_at: Optional[float] = Field(alias="createdAt")
-
-
 class NodeMetaDataItem(BaseModel):
     """节点元数据类"""
-    api_id: str = Field(alias="apiId")
+    node_meta_data_id: str = Field(alias="nodeMetaDataId")
     type: str
     name: str
     description: str
-    parameters_template: dict[str, Any] = Field(alias="parametersTemplate")
+    parameters_template: Optional[dict[str, Any]] = Field(alias="parametersTemplate")
     editable: bool = Field(default=True)
     created_at: Optional[float] = Field(alias="createdAt")
 
-
+class NodeServiceItem(BaseModel):
+    """GET /api/flow/service 中单个service信息以及service下的节点元数据的信息"""
+    service_id: str = Field(..., alias="serviceId", description="服务ID")
+    name: str = Field(..., description="服务名称")
+    type: str = Field(..., description="服务类型")
+    node_meta_datas: list[NodeMetaDataItem] = Field(alias="nodeMetaDatas", default=[])
+    created_at: str = Field(..., alias="createdAt", description="创建时间")
 class PositionItem(BaseModel):
     """请求/响应中的前端相对位置变量类"""
     x: float = Field(default=0.0)
@@ -43,15 +40,15 @@ class DependencyItem(BaseModel):
 
 class NodeItem(BaseModel):
     """请求/响应中的节点变量类"""
-    node_id: str = Field(alias="nodeId")
-    api_id: str = Field(alias="apiId")
-    name: str
+    node_id: str = Field(alias="nodeId",default="")
+    api_id: str = Field(alias="apiId",default="")
+    name: str=Field(default="")
     type: str = Field(default=NodeType.NORMAL.value)
     description: str = Field(default='')
     enable: bool = Field(default=True)
-    parameters: dict[str, Any]
+    parameters: Optional[dict[str, Any]]=None
     depedency: Optional[DependencyItem] = None
-    position: PositionItem
+    position: PositionItem=Field(default=PositionItem())
     editable: bool = Field(default=True)
 
 

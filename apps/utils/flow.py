@@ -2,6 +2,7 @@
 
 Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 """
+import queue
 from apps.constants import LOGGER
 from apps.entities.enum_var import NodeType
 from apps.entities.flow_topology import FlowItem
@@ -93,23 +94,29 @@ class FlowService:
     @staticmethod
     async def validate_flow_connectivity(flow_item: FlowItem) -> None:
         id_of_start_node = None
-        id_of_end_node = None
-        node_in_degrees = {}
-        node_out_degrees = {}
+        node_id_set=set()
+        node_edge_dict={}
         for node in flow_item.nodes:
             if node.type == NodeType.START.value:
                 id_of_start_node = node.node_id
-            if node.type == NodeType.END.value:
-                id_of_end_node = node.node_id
         for edge in flow_item.edges:
-            node_in_degrees[edge.target_node] = node_in_degrees.get(
-                edge.target_node, 0) + 1
-            node_out_degrees[edge.source_node] = node_out_degrees.get(
-                edge.source_node, 0) + 1
-        for node in flow_item.nodes:
-            if node.node_id != id_of_start_node and node.node_id not in node_in_degrees.keys():
-                LOGGER.error(msg=f"节点{node.node_id}的入度为0")
-                raise Exception(f"节点{node.node_id}的入度为0")
-            if node.node_id != id_of_end_node and node.node_id not in node_out_degrees.keys():
-                LOGGER.error(msg=f"节点{node.node_id}的出度为0")
-                raise Exception(f"节点{node.node_id}的出度为0")
+            if edge.source_node not in node_edge_dict.keys():
+                node_edge_dict[edge.source_node] = []
+            node_edge_dict[edge.target_node].append(edge.target_node)
+        node_q=queue.Queue()
+        node_q.put(id_of_start_node)
+        node_reached_cnt=0
+        node_id_set.add(id_of_start_node)
+        while len(node_q)>0:
+            node_id=node_q.get()
+            node_reached_cnt+=1
+            if node_id in node_edge_dict.keys():
+                for target_node in node_edge_dict[node_id]:
+                    if target_node not in node_id_set:
+                        node_id_set.add(target_node)
+                        node_q.put(target_node)
+        if node_reached_cnt!=len(flow_item.nodes):
+            LOGGER.error(msg="流程图存在孤立子图")
+            raise Exception("流程图存在孤立子图")
+        
+

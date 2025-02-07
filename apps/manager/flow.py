@@ -8,7 +8,7 @@ from pymongo import ASCENDING
 from apps.constants import LOGGER
 from apps.entities.flow import StepPos, Edge, Step, Flow, FlowConfig
 from apps.entities.pool import AppFlow
-from apps.entities.flow_topology import ServiceItem, NodeMetaDataItem, FlowItem, NodeItem, EdgeItem, PositionItem
+from apps.entities.flow_topology import NodeServiceItem, NodeMetaDataItem, FlowItem, NodeItem, EdgeItem, PositionItem
 from apps.models.mongo import MongoDB
 from apps.entities.enum_var import PermissionType
 
@@ -16,17 +16,18 @@ from apps.entities.enum_var import PermissionType
 class FlowManager:
 
     @staticmethod
-    async def validate_user_service_access(user_sub: str, service_id: str) -> bool:
+    async def validate_user_node_meta_data_access(user_sub: str, node_meta_data_id: str) -> bool:
         """验证用户对服务的访问权限
 
         :param user_sub: 用户唯一标识符
         :param service_id: 服务id
         :return: 如果用户具有所需权限则返回True，否则返回False
         """
+        node_pool_collection = MongoDB.get_collection("node") 
         service_collection = MongoDB.get_collection("service")
 
         try:
-            service_collection = MongoDB.get_collection("service")
+            node_pool_record = await node_pool_collection.find_one({"_id": node_meta_data_id})
             match_conditions = [
                 {"author": user_sub},
                 {"permissions.type": PermissionType.PUBLIC.value},
@@ -37,17 +38,51 @@ class FlowManager:
                     ]
                 }
             ]
-            query = {"$and": [{"_id": service_id},
+            query = {"$and": [{"_id": node_pool_record["service_id"]},
                             {"$or": match_conditions}
                             ]}
 
             result = await service_collection.count_documents(query)
             return (result > 0)
         except Exception as e:
-            LOGGER.error(f"Validate user service access failed due to: {e}")
+            LOGGER.error(f"Validate user node meta data access failed due to: {e}")
             return False
+    @staticmethod
+    async def get_node_meta_datas_by_service_id(service_id: str) -> List[NodeMetaDataItem]:
+        """serviceId获取service的接口数据，并将接口转换为节点元数据
 
-    async def get_service_by_user_id(user_sub: str) -> Tuple[int, List[ServiceItem]]:
+        :param service_id: 服务id
+        :return: 节点元数据的列表
+        """
+        node_pool_collection = MongoDB.get_collection("node")  # 获取节点集合
+        try:
+            cursor = node_pool_collection.find(
+                {"service_id": service_id}).sort("created_at", ASCENDING)
+
+            nodes_meta_data_items = []
+            async for node_pool_record in cursor:
+                node_meta_data_item = NodeMetaDataItem(
+                    nodeMetaDataId=node_pool_record["_id"],
+                    type=node_pool_record["call_id"],
+                    name=node_pool_record['name'],
+                    description=node_pool_record['description'],
+                    editable=True,
+                    createdAt=node_pool_record['created_at'],
+                )
+                nodes_meta_data_items.append(node_meta_data_item)
+
+            return nodes_meta_data_items
+
+        except Exception as e:
+            LOGGER.error(
+                f"Get node metadatas by service_id failed due to: {e}")
+            return None
+    async def get_service_by_user_id(user_sub: str) -> List[NodeServiceItem]:
+        """通过user_id获取用户自己上传的、其他人公开的且收藏的、受保护且有权限访问并收藏的service
+
+        :user_sub: 用户的唯一标识符
+        :return: service的列表
+        """
         service_collection = MongoDB.get_collection("service")
         try:
             match_conditions = [
@@ -56,7 +91,6 @@ class FlowManager:
                 {
                     "$and": [
                         {"permissions.type": PermissionType.PUBLIC.value},
-                        {"permissions.users": user_sub},
                         {"favorites": user_sub}
                     ]
                 },
@@ -76,70 +110,52 @@ class FlowManager:
             )
             service_records = await service_records_cursor.to_list(length=None)
             service_items = [
-                ServiceItem(
-                    serviceId=str(record["_id"]),
+                NodeServiceItem(
+                    serviceId=record["_id"],
                     name=record["name"],
                     type="default",
+                    nodeMetaDatas=[],
                     createdAt=record["created_at"]
                 )
                 for record in service_records
             ]
-
+            for service_item in service_items:
+                node_meta_datas = await FlowManager.get_node_meta_datas_by_service_id(service_item.service_id)
+                if node_meta_datas is None:
+                    node_meta_datas=[]
+                service_item.node_meta_datas = node_meta_datas
             return service_items
 
         except Exception as e:
             LOGGER.error(f"Get service by user id failed due to: {e}")
             return None
-
     @staticmethod
-    async def get_node_meta_datas_by_service_id(service_id: str) -> List[NodeMetaDataItem]:
-        """serviceId获取service的接口数据，并将接口转换为节点元数据
+    async def get_node_meta_data_by_node_meta_data_id(node_meta_data_id: str) -> NodeMetaDataItem:
+        """通过node_meta_data_id获取对应的节点源数据信息
 
-        :param service_id: 服务id
-        :return: 节点元数据的列表
+        :param node_meta_data_id: node_meta_data的id
+        :return: node meta data id对应的节点源数据信息
         """
         node_pool_collection = MongoDB.get_collection("node")  # 获取节点集合
         try:
-            cursor = node_pool_collection.find(
-                {"service_id": service_id}).sort("created_at", ASCENDING)   # 查询指定service_id的所有node_poool
-
-            nodes_meta_data_items = []
-            async for node_pool_record in cursor:
-                # 将每个node_pool换成NodeMetaDataItem实例
-                parameters_template = {
-                    "fixed_params": node_pool_record['fixed_params'],
-                    "params_schema": node_pool_record['params_schema'],
+            node_pool_record = await node_pool_collection.find_one({"_id": node_meta_data_id})
+            parameters_template = {
+                    "input_schema": node_pool_record['params_schema'],
                     "output_schema": node_pool_record['output_schema']
                 }
-                if node_pool_record['call_id'] == 'choice':
-                    parameters_template['choice'] = [
-                        {
-                            "branch": "valid",
-                            "description": "返回值存在有效数据"
-                        },
-                        {
-                            "branch": "invalid",
-                            "description": "返回值不存在有效数据"
-                        },
-                    ]
-                node_meta_data_item = NodeMetaDataItem(
-                    apiId=node_pool_record["_id"],
-                    type=node_pool_record["call_id"],
-                    name=node_pool_record['name'],
-                    description=node_pool_record['description'],
-                    parametersTemplate=parameters_template,
-                    editable=True,
-                    createdAt=node_pool_record['created_at'],
-                )
-                nodes_meta_data_items.append(node_meta_data_item)
-
-            return nodes_meta_data_items
-
+            node_meta_data=NodeMetaDataItem(
+                nodeMetaDataId=node_pool_record["_id"],
+                type=node_pool_record["call_id"],
+                name=node_pool_record['name'],
+                description=node_pool_record['description'],
+                editable=True,
+                parametersTemplate=parameters_template,
+                createdAt=node_pool_record['created_at'],
+            )
+            return node_meta_data
         except Exception as e:
-            LOGGER.error(
-                f"Get node metadatas by service_id failed due to: {e}")
+            LOGGER.error(f"获取节点元数据失败: {e}")
             return None
-
     @staticmethod
     async def get_flow_by_app_and_flow_id(app_id: str, flow_id: str) -> Tuple[FlowItem, PositionItem]:
         """通过appId flowId获取flow config的路径和focus，并通过flow config的路径获取flow config，并将其转换为flow item。

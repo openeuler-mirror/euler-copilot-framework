@@ -68,7 +68,6 @@ class NodePool(PoolBase):
     id: str = Field(description="Node的ID", default_factory=lambda: str(uuid.uuid4()), alias="_id")
     service_id: str = Field(description="Node所属的Service ID")
     call_id: str = Field(description="所使用的Call的ID")
-    fixed_params: dict[str, Any] = Field(description="Node的固定参数", default={})
     params_schema: dict[str, Any] = Field(description="Node的参数schema；只包含用户可以改变的参数", default={})
     output_schema: dict[str, Any] = Field(description="Node的输出schema；做输出的展示用", default={})
 
