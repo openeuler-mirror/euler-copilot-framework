@@ -21,18 +21,18 @@ class ServiceItem(BaseModel):
 class NodeMetaDataItem(BaseModel):
     """节点元数据类"""
     api_id: str = Field(alias="apiId")
-    name: str
     type: str
+    name: str
     description: str
-    parameters_template: str = Field(alias="parametersTemplate")
+    parameters_template: dict[str, Any] = Field(alias="parametersTemplate")
     editable: bool = Field(default=True)
     created_at: Optional[float] = Field(alias="createdAt")
 
 
 class PositionItem(BaseModel):
     """请求/响应中的前端相对位置变量类"""
-    x: float
-    y: float
+    x: float = Field(default=0.0)
+    y: float = Field(default=0.0)
 
 
 class DependencyItem(BaseModel):
@@ -48,12 +48,11 @@ class NodeItem(BaseModel):
     name: str
     type: str = Field(default=NodeType.NORMAL.value)
     description: str = Field(default='')
-    enable: str = Field(default=True)
+    enable: bool = Field(default=True)
     parameters: dict[str, Any]
     depedency: Optional[DependencyItem] = None
     position: PositionItem
     editable: bool = Field(default=True)
-    created_at: Optional[float] = Field(alias="createdAt")
 
 
 class EdgeItem(BaseModel):
@@ -63,16 +62,15 @@ class EdgeItem(BaseModel):
     target_node: str = Field(alias="targetNode")
     type: str = Field(default=EdgeType.NORMAL.value)
     branch_id: str = Field(alias="branchId")
-    created_at: Optional[float] = Field(alias="createdAt")
 
 
 class FlowItem(BaseModel):
     """请求/响应中的流变量类"""
-    flow_id: Optional[str] = Field(alias="flowId")
-    name: str
-    description: str
+    flow_id: Optional[str] = Field(alias="flowId", default='flow id')
+    name: str = Field(default='flow name')
+    description: str = Field(default='flow description')
     enable: bool = Field(default=True)
     editable: bool = Field(default=True)
-    created_at: Optional[float] = Field(alias="createdAt")
-    nodes: list[NodeItem]
-    edeges: list[EdgeItem]
+    nodes: list[NodeItem] = Field(default=[])
+    edges: list[EdgeItem] = Field(default=[])
+    created_at: Optional[float] = Field(alias="createdAt", default=0)

@@ -119,6 +119,5 @@ class PutFlowReq(BaseModel):
     """创建/修改流拓扑结构"""
 
     flow: FlowItem
-    nodes: list[NodeItem]
-    edges: list[EdgeItem]
     focus_point: PositionItem = Field(alias="focusPoint")
+

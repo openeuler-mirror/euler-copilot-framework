@@ -6,7 +6,7 @@ from typing import Tuple, List
 from pymongo import ASCENDING
 
 from apps.constants import LOGGER
-from apps.entities.flow import StepPos, Edge, Step, Flow
+from apps.entities.flow import StepPos, Edge, Step, Flow, FlowConfig
 from apps.entities.pool import AppFlow
 from apps.entities.flow_topology import ServiceItem, NodeMetaDataItem, FlowItem, NodeItem, EdgeItem, PositionItem
 from apps.models.mongo import MongoDB
@@ -38,8 +38,8 @@ class FlowManager:
                 }
             ]
             query = {"$and": [{"_id": service_id},
-                              {"$or": match_conditions},
-                              {"favorites": user_sub}]}
+                            {"$or": match_conditions}
+                            ]}
 
             result = await service_collection.count_documents(query)
             return (result > 0)
@@ -47,50 +47,45 @@ class FlowManager:
             LOGGER.error(f"Validate user service access failed due to: {e}")
             return False
 
-    @staticmethod
-    async def get_service_by_user_id(user_sub: str, page: int, page_size: int) -> Tuple[int, List[ServiceItem]]:
-        """根据用户ID获取用户有执行权限且收藏的服务列表
-
-        :param user_sub: 用户唯一标识符
-        :param page: 当前页码
-        :param page_size: 每页大小
-        :return: 返回符合条件的服务总数和分页后的服务列表
-        """
+    async def get_service_by_user_id(user_sub: str) -> Tuple[int, List[ServiceItem]]:
         service_collection = MongoDB.get_collection("service")
         try:
-            skip_count = (page - 1) * page_size
             match_conditions = [
+                {"name": "系统"},
                 {"author": user_sub},
-                {"permissions.type": "PUBLIC"},
                 {
                     "$and": [
-                        {"permissions.type": "PROTECTED"},
-                        {"permissions.users": user_sub}
+                        {"permissions.type": PermissionType.PUBLIC.value},
+                        {"permissions.users": user_sub},
+                        {"favorites": user_sub}
+                    ]
+                },
+                {
+                    "$and": [
+                        {"permissions.type": PermissionType.PROTECTED.value},
+                        {"permissions.users": user_sub},
+                        {"favorites": user_sub}
                     ]
                 }
             ]
-            query = {"$and": [{"$or": match_conditions},
-                              {"favorites": user_sub}]}
+            query = {"$or": match_conditions}
 
-            total_services = await service_collection.count_documents(query)
             service_records_cursor = service_collection.find(
                 query,
-                skip=skip_count,
-                limit=page_size,
                 sort=[("created_at", ASCENDING)]
             )
             service_records = await service_records_cursor.to_list(length=None)
             service_items = [
                 ServiceItem(
-                    service_id=str(record["_id"]),
+                    serviceId=str(record["_id"]),
                     name=record["name"],
-                    type=record["type"],
-                    created_at=record["created_at"]
+                    type="default",
+                    createdAt=record["created_at"]
                 )
                 for record in service_records
             ]
 
-            return total_services, service_items
+            return service_items
 
         except Exception as e:
             LOGGER.error(f"Get service by user id failed due to: {e}")
@@ -106,19 +101,35 @@ class FlowManager:
         node_pool_collection = MongoDB.get_collection("node")  # 获取节点集合
         try:
             cursor = node_pool_collection.find(
-                {"service": service_id}).sort("created_at", ASCENDING)   # 查询指定service_id的所有node_poool
+                {"service_id": service_id}).sort("created_at", ASCENDING)   # 查询指定service_id的所有node_poool
 
             nodes_meta_data_items = []
             async for node_pool_record in cursor:
                 # 将每个node_pool换成NodeMetaDataItem实例
+                parameters_template = {
+                    "fixed_params": node_pool_record['fixed_params'],
+                    "params_schema": node_pool_record['params_schema'],
+                    "output_schema": node_pool_record['output_schema']
+                }
+                if node_pool_record['call_id'] == 'choice':
+                    parameters_template['choice'] = [
+                        {
+                            "branch": "valid",
+                            "description": "返回值存在有效数据"
+                        },
+                        {
+                            "branch": "invalid",
+                            "description": "返回值不存在有效数据"
+                        },
+                    ]
                 node_meta_data_item = NodeMetaDataItem(
-                    api_id=node_pool_record["id"],
+                    apiId=node_pool_record["_id"],
+                    type=node_pool_record["call_id"],
                     name=node_pool_record['name'],
-                    type=node_pool_record['type'],
                     description=node_pool_record['description'],
-                    parameters_template=node_pool_record['parameters_template'],
+                    parametersTemplate=parameters_template,
                     editable=True,
-                    created_at=node_pool_record['created_at']
+                    createdAt=node_pool_record['created_at'],
                 )
                 nodes_meta_data_items.append(node_meta_data_item)
 
@@ -138,64 +149,87 @@ class FlowManager:
         :return: 流的item和用户在这个流上的视觉焦点
         """
         try:
-            flow_collection = MongoDB.get_collection("app")
-            flow_record = await flow_collection.aggregate([
-                {"$match": {"_id": app_id, "flows._id": flow_id}},
-                {"$unwind": "$flows"},
-                {"$match": {"flows._id": flow_id}},
-                {"$limit": 1},
-            ]).to_list(length=1)
+            app_collection = MongoDB.get_collection("app")
+            app_record = await app_collection.find_one({"_id": app_id})
+            if app_record is None:
+                LOGGER.error(f"应用{app_id}不存在")
+                return None
+            cursor = app_collection.find(
+                {"_id": app_id, "flows._id": flow_id},
+                {"flows.$": 1}  # 只返回 flows 数组中符合条件的第一个元素
+            )
+
+            # 获取结果列表，并限制长度为1，因为我们只期待一个结果
+            app_records = await cursor.to_list(length=1)
+            if len(app_records) == 0:
+                return None
+            app_record = app_records[0]
+            if "flows" not in app_record.keys() or len(app_record["flows"]) == 0:
+                return None
+            flow_record = app_record["flows"][0]
         except Exception as e:
             LOGGER.error(
                 f"Get flow by app_id and flow_id failed due to: {e}")
             return None
         if flow_record:
-            flow_config = await get_flow_config(app_id, flow_id)
+            flow_config_collection = MongoDB.get_collection("flow_config")
+            flow_config_record = await flow_config_collection.find_one({"app_id": app_id, "flow_id": flow_id})
+            if flow_config_record  is None or not flow_config_record.get("flow_config"):
+                return None
+            flow_config = flow_config_record['flow_config']
             if not flow_config:
                 LOGGER.error(
                     "Get flow config by app_id and flow_id failed")
                 return None
             focus_point = flow_record["focus_point"]
             flow_item = FlowItem(
-                flow_id=flow_id,
-                name=flow_config.name,
-                description=flow_config.description,
+                flowId=flow_id,
+                name=flow_config['name'],
+                description=flow_config['description'],
                 enable=True,
                 editable=True,
                 nodes=[],
-                edeges=[]
+                edges=[],
+                createdAt=flow_record["created_at"]
             )
-            for node_config in flow_config.steps:
+            for node_config in flow_config['steps']:
                 node_item = NodeItem(
-                    node_id=node_config.node_id,
-                    app_id=node_config.node,
-                    name=node_config.name,
-                    description=node_config.description,
+                    nodeId=node_config['id'],
+                    apiId=node_config['node'],
+                    name=node_config['name'],
+                    description=node_config['description'],
                     enable=True,
                     editable=True,
-                    type=node_config.type,
-                    parameters=node_config.params,
+                    type=node_config['type'],
+                    parameters=node_config['params'],
                     position=PositionItem(
-                        x=node_config.position.x, y=node_config.position.y)
+                        x=node_config['pos']['x'], y=node_config['pos']['y'])
                 )
                 flow_item.nodes.append(node_item)
 
-            for edge_config in flow_config.edges:
-                tmp_list = edge_config.edge_from.split('.')
-                branch_id = tmp_list[1] if len(tmp_list) > 2 else ''
-                flow_item.edeges.append(EdgeItem(
-                    edge_id=edge_config.id,
-                    source_node=edge_config.edge_from,
-                    target_node=edge_config.edge_to,
-                    type=edge_config.type.value,
-                    branch_id=branch_id,
+            for edge_config in flow_config['edges']:
+                edge_from = edge_config['edge_from']
+                branch_id = ''
+                tmp_list = edge_config['edge_from'].split('.')
+                if len(tmp_list)==0 or len(tmp_list)>=2:
+                    LOGGER.error("edge from format error")
+                    continue
+                if len(tmp_list) == 2:
+                    edge_from = tmp_list[0]
+                    branch_id = tmp_list[1]
+                flow_item.edges.append(EdgeItem(
+                    edgeId=edge_config['id'],
+                    sourceNode=edge_from,
+                    targetNode=edge_config['edge_to'],
+                    type=edge_config['edge_type'],
+                    branchId=branch_id,
                 ))
-                flow_item.nodes.append(node_item)
             return (flow_item, focus_point)
         return None
 
     @staticmethod
-    async def put_flow_by_app_and_flow_id(app_id: str, flow_id: str, flow_item: FlowItem, focus_point: PositionItem) -> str:
+    async def put_flow_by_app_and_flow_id(
+            app_id: str, flow_id: str, flow_item: FlowItem, focus_point: PositionItem) -> str:
         """存储/更新flow的数据库数据和配置文件
 
         :param app_id: 应用的id
@@ -204,13 +238,21 @@ class FlowManager:
         :return: 流的id
         """
         try:
-            flow_collection = MongoDB.get_collection("app")
-            flow_record = await flow_collection.aggregate([
-                {"$match": {"_id": app_id, "flows._id": flow_id}},
-                {"$unwind": "$flows"},
-                {"$match": {"flows._id": flow_id}},
-                {"$limit": 1},
-            ]).to_list(length=1)
+            app_collection = MongoDB.get_collection("app")
+            app_record = await app_collection.find_one({"_id": app_id})
+            if app_record is None:
+                LOGGER.error(f"应用{app_id}不存在")
+                return None
+            cursor = app_collection.find(
+                {"_id": app_id, "flows._id": flow_id},
+                {"flows.$": 1}
+            )
+            app_records = await cursor.to_list(length=1)
+            flow_record = None
+            if len(app_records) != 0:
+                app_record = app_records[0]
+                if "flows" in app_record.keys() and len(app_record["flows"]) != 0:
+                    flow_record = app_record["flows"][0]
         except Exception as e:
             LOGGER.error(
                 f"Get flow by app_id and flow_id failed due to: {e}")
@@ -225,6 +267,7 @@ class FlowManager:
             for node_item in flow_item.nodes:
                 edge_config = Step(
                     id=node_item.node_id,
+                    type=node_item.type,
                     node=node_item.api_id,
                     name=node_item.name,
                     description=node_item.description,
@@ -233,7 +276,7 @@ class FlowManager:
                     params=node_item.parameters
                 )
                 flow_config.steps.append(edge_config)
-            for edge_item in flow_item.edeges:
+            for edge_item in flow_item.edges:
                 edge_from = edge_item.source_node
                 if edge_item.branch_id:
                     edge_from = edge_from+'.'+edge_item.branch_id
@@ -244,38 +287,43 @@ class FlowManager:
                     edge_type=edge_item.type
                 )
                 flow_config.edges.append(edge_config)
+            flow_config = FlowConfig(app_id=app_id, flow_id=flow_id, flow_config=flow_config)
+            try:
+                flow_config_collection = MongoDB.get_collection("flow_config")
+                await flow_config_collection.update_one(
+                    {"app_id": app_id, "flow_id": flow_id},
+                    {"$set": flow_config.dict()},
+                    upsert=True  # 如果没有找到匹配的文档，则插入新文档
+                )
+            except Exception as e:
+                LOGGER.error(f"Error updating flow config due to: {e}")
+                return None
             if flow_record:
-                result = await update_flow_config(app_id, flow_id, flow_config)
-                if not result:
-                    LOGGER.error(f"Update flow config failed")
-                    return None
-                app_collection = await MongoDB.get_collection("app")
-                result = await app_collection.update_one(
+                app_collection = MongoDB.get_collection("app")
+                result = await app_collection.find_one_and_update(
                     {'_id': app_id},
                     {
                         '$set': {
-                            'flows.$[flow].focus_point': focus_point
+                            'flows.$[element].focus_point': focus_point.model_dump(by_alias=True)
                         }
                     },
-                    array_filters=[{'flow._id': flow_id}]
+                    array_filters=[{'element._id': flow_id}],
+                    return_document=True  # 返回更新后的文档
                 )
-                if result.modified_count > 0:
-                    return flow_id
-                else:
+                if result is None:
+                    LOGGER.error("Update flow failed")
                     return None
+                return result
             else:
-                new_path = await add_flow_config(app_id, flow_id, flow_config)
-                if not new_path:
-                    LOGGER.error(f"Add flow config failed")
-                    return None
                 new_flow = AppFlow(
-                    id=flow_id,
+                    _id=flow_id,
                     name=flow_item.name,
                     description=flow_item.description,
-                    path=new_path,
+                    path="",
                     focus_point=PositionItem(x=focus_point.x, y=focus_point.y),
                 )
-                result = await app_collection.update_one(
+                app_collection = MongoDB.get_collection("app")
+                result = await app_collection.find_one_and_update(
                     {'_id': app_id},
                     {
                         '$push': {
@@ -283,16 +331,15 @@ class FlowManager:
                         }
                     }
                 )
-                if result.modified_count > 0:
-                    return flow_id
-                else:
+                if result is None:
+                    LOGGER.error("Add flow failed")
                     return None
+                return flow_item
         except Exception as e:
             LOGGER.error(
                 f"Put flow by app_id and flow_id failed due to: {e}")
-            return flow_id
+            return None
 
-    @staticmethod
     async def delete_flow_by_app_and_flow_id(app_id: str, flow_id: str) -> str:
         """删除flow的数据库数据和配置文件
 
@@ -302,26 +349,25 @@ class FlowManager:
         """
 
         try:
-            result = await delete_flow_config(app_id, flow_id)
-            if not result:
-                LOGGER.error(f"Delete flow config failed")
+            flow_config_collection = MongoDB.get_collection("flow_config")
+            result = await flow_config_collection.delete_one({"app_id": app_id, "flow_id": flow_id})
+            if result.deleted_count == 0:
+                LOGGER.error("Delete flow config failed")
                 return None
-            app_pool_collection = await MongoDB.get_collection("app")  # 获取集合
+            app_pool_collection = MongoDB.get_collection("app")  # 获取集合
 
-            # 执行删除操作，从指定的AppPool文档中移除匹配的AppFlow
-            result = await app_pool_collection.update_one(
-                {'_id': app_id},  # 查询条件，找到要更新的AppPool文档
+            result = await app_pool_collection.find_one_and_update(
+                {'_id': app_id}, 
                 {
                     '$pull': {
-                        'flows': {'id': flow_id}  # 假设'flows'数组中每个对象都有'id'字段
+                        'flows': {'_id': flow_id}
                     }
                 }
             )
-
-            if result.modified_count > 0:
-                return flow_id
-            else:
+            if result is None:
+                LOGGER.error("Delete flow from app pool failed")
                 return None
+            return flow_id
         except Exception as e:
             LOGGER.error(
                 f"Delete flow by app_id and flow_id failed due to: {e}")
