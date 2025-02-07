@@ -1,0 +1,27 @@
+@startuml DB User 数据模型
+class User {
+  _id: str
+  last_login: float
+  is_active: bool
+  is_whitelisted: bool
+  credit: int
+  api_key: Optional[str]
+  kb_id: Optional[str]
+  conversations: List[str]
+  domains: List[UserDomainData]
+  app_usage: Dict[str, AppUsageData]
+}
+
+class AppUsageData {
+  count: int
+  last_used: float
+}
+
+class UserDomainData {
+  name: str
+  count: int
+}
+
+User --> AppUsageData
+User --> UserDomainData
+@enduml

@@ -1,0 +1,13 @@
+@startuml API 创建应用
+actor User
+participant "AppCenter Router" as Router
+participant "AppCenter Manager" as Manager
+database MongoDB
+
+User -> Router: POST /api/app
+Router -> Manager: create_app()
+Manager -> MongoDB: insert app data
+MongoDB --> Manager: return app_id
+Manager --> Router: return app_id
+Router --> User: return success response
+@enduml

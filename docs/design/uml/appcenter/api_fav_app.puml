@@ -1,0 +1,15 @@
+@startuml API 收藏应用
+actor User
+participant "AppCenter Router" as Router
+participant "AppCenter Manager" as Manager
+database MongoDB
+
+User -> Router: PUT /api/app/{appId}
+Router -> Manager: modify_favorite_app()
+Manager -> MongoDB: find app
+MongoDB --> Manager: return app data
+Manager -> Manager: verify favorite status
+Manager -> MongoDB: update favorites array
+Manager --> Router: return ModFavAppFlag
+Router --> User: return response
+@enduml

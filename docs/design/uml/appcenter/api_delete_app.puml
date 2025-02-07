@@ -1,0 +1,21 @@
+@startuml API 删除应用
+actor User
+participant "AppCenter Router" as Router
+participant "AppCenter Manager" as Manager
+participant "FlowManager" as FlowManager
+database MongoDB
+
+User -> Router: DELETE /api/app/{appId}
+Router -> Manager: fetch_app_data_by_id()
+MongoDB --> Manager: return app data
+Router -> Router: verify author
+Router -> FlowManager: delete_flow_by_app_and_flow_id()
+FlowManager -> MongoDB: delete flows
+Router -> Manager: delete_app()
+Manager -> MongoDB: start transaction
+Manager -> MongoDB: delete app
+Manager -> MongoDB: update user app_usage
+MongoDB -> MongoDB: commit transaction
+Manager --> Router: return result
+Router --> User: return response
+@enduml
