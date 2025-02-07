@@ -75,7 +75,7 @@ async def get_applications(  # noqa: ANN201, PLR0913
         message="查询成功",
         result=GetAppListMsg(
             currentPage=page,
-            total=total_apps,
+            totalApps=total_apps,
             applications=app_cards,
         ),
     ).model_dump(exclude_none=True, by_alias=True))

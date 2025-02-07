@@ -326,6 +326,46 @@ class AppCenterManager:
         return False
 
     @staticmethod
+    async def update_recent_app(user_sub: str, app_id: str) -> bool:
+        """更新用户的最近使用应用列表
+
+        :param user_sub: 用户唯一标识
+        :param app_id: 应用唯一标识
+        :return: 更新是否成功
+        """
+        try:
+            # 获取 user 集合
+            user_collection = MongoDB.get_collection("user")
+
+            # 获取当前时间戳
+            current_time = round(datetime.now(tz=timezone.utc).timestamp(), 3)
+
+            # 更新用户的 app_usage 字段
+            result = await user_collection.update_one(
+                {"_id": user_sub},  # 查询条件
+                {
+                    "$set": {
+                        f"app_usage.{app_id}.last_used": current_time,  # 更新最后使用时间
+                    },
+                    "$inc": {
+                        f"app_usage.{app_id}.count": 1,  # 增加使用次数
+                    },
+                },
+                upsert=True,  # 如果 app_usage 字段或 app_id 不存在，则创建
+            )
+
+            # 检查更新是否成功
+            if result.modified_count > 0 or result.upserted_id is not None:
+                LOGGER.info(f"[AppCenterManager] Updated recent app for user {user_sub}: {app_id}")
+                return True
+            LOGGER.warning(f"[AppCenterManager] No changes made for user {user_sub}")
+            return False
+
+        except Exception as e:
+            LOGGER.error(f"[AppCenterManager] Failed to update recent app: {e}")
+            return False
+
+    @staticmethod
     def _build_filters(
         base_filters: dict[str, Any],
         search_type: SearchType,
@@ -377,44 +417,3 @@ class AppCenterManager:
         except Exception as e:
             LOGGER.info(f"[AppCenterManager] Get favorite app ids by user_sub failed: {e}")
         return []
-
-    @staticmethod
-    async def update_recent_app(user_sub: str, app_id: str) -> bool:
-        """更新用户的最近使用应用列表
-
-        :param user_sub: 用户唯一标识
-        :param app_id: 应用唯一标识
-        :return: 更新是否成功
-        """
-        try:
-            # 获取 user 集合
-            user_collection = MongoDB.get_collection("user")
-
-            # 获取当前时间戳
-            current_time = round(datetime.now(tz=timezone.utc).timestamp(), 3)
-
-            # 更新用户的 app_usage 字段
-            result = await user_collection.update_one(
-                {"_id": user_sub},  # 查询条件
-                {
-                    "$set": {
-                        f"app_usage.{app_id}.last_used": current_time,  # 更新最后使用时间
-                    },
-                    "$inc": {
-                        f"app_usage.{app_id}.count": 1,  # 增加使用次数
-                    },
-                },
-                upsert=True,  # 如果 app_usage 字段或 app_id 不存在，则创建
-            )
-
-            # 检查更新是否成功
-            if result.modified_count > 0 or result.upserted_id is not None:
-                LOGGER.info(f"[AppCenterManager] Updated recent app for user {user_sub}: {app_id}")
-                return True
-            else:
-                LOGGER.warning(f"[AppCenterManager] No changes made for user {user_sub}")
-                return False
-
-        except Exception as e:
-            LOGGER.error(f"[AppCenterManager] Failed to update recent app: {e}")
-            return False
