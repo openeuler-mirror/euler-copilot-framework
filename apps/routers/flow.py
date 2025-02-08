@@ -9,8 +9,9 @@ from typing import Annotated, Optional
 from apps.dependency.csrf import verify_csrf_token
 from apps.dependency.user import verify_user
 from apps.dependency import get_user
+from apps.entities.flow_topology import NodeItem
 from apps.entities.request_data import PutFlowReq
-from apps.entities.response_data import NodeServiceListRsp, NodeServiceListMsg, NodeMetaDataListRsp, NodeMetaDataListMsg, FlowStructureGetRsp, \
+from apps.entities.response_data import NodeServiceListRsp, NodeServiceListMsg, NodeMetaDataRsp, FlowStructureGetRsp, \
     FlowStructureGetMsg, FlowStructurePutRsp, FlowStructurePutMsg, FlowStructureDeleteRsp, FlowStructureDeleteMsg, ResponseData
 from apps.manager.flow import FlowManager
 from apps.manager.application import AppManager
@@ -25,7 +26,7 @@ router = APIRouter(
 )
 
 
-@router.get("/service", response_model=NodeMetaDataListRsp, responses={
+@router.get("/service", response_model=NodeServiceListRsp, responses={
     status.HTTP_404_NOT_FOUND: {"model": ResponseData},
 })
 async def get_services(
@@ -37,7 +38,7 @@ async def get_services(
         return NodeServiceListRsp(
             code=status.HTTP_404_NOT_FOUND,
             message="未找到符合条件的服务",
-            result=NodeServiceListMsg(services=[])
+            result=NodeServiceListMsg()
         )
 
     return NodeServiceListRsp(
@@ -47,33 +48,33 @@ async def get_services(
     )
 
 
-@router.get("/service/node", response_model=NodeMetaDataListRsp, responses={
+@router.get("/service/node", response_model=NodeMetaDataRsp, responses={
     status.HTTP_403_FORBIDDEN: {"model": ResponseData},
     status.HTTP_404_NOT_FOUND: {"model": ResponseData}
 })
 async def get_node_metadatas(
     user_sub: Annotated[str, Depends(get_user)],
-    service_id: int = Query(..., alias="serviceId")
+    node_metadata_id: int = Query(..., alias="NodeMetadataId")
 ):
-    """获取用户可访问的节点元数据"""
-    if not await AppManager.validate_user_app_access(user_sub, service_id):
-        return JSONResponse(status_code=status.HTTP_403_FORBIDDEN, content=ResponseData(
+    """获取节点元数据的详细信息"""
+    if not await FlowManager.validate_user_node_meta_data_access(user_sub, node_metadata_id):
+        return JSONResponse(status_code=status.HTTP_403_FORBIDDEN, content=NodeMetaDataRsp(
             code=status.HTTP_403_FORBIDDEN,
-            message="用户没有权限访问该服务",
-            result={},
+            message="用户没有权限访问该节点原数据",
+            result=NodeItem(),
         ).model_dump(exclude_none=True, by_alias=True))
 
-    result = await FlowManager.get_node_meta_datas_by_service_id(service_id)
+    result = await FlowManager.get_node_meta_data_by_node_meta_data_id(node_metadata_id)
     if result is None:
-        return JSONResponse(status_code=status.HTTP_404_NOT_FOUND, content=NodeMetaDataListRsp(
+        return JSONResponse(status_code=status.HTTP_404_NOT_FOUND, content=NodeMetaDataRsp(
             code=status.HTTP_404_NOT_FOUND,
-            message="服务下节点元数据获取失败",
-            result=NodeMetaDataListMsg(serviceId=service_id),
+            message="节点元数据详细信息获取失败",
+            result=NodeItem(),
         ).model_dump(exclude_none=True, by_alias=True))
-    return JSONResponse(status_code=status.HTTP_200_OK, content=NodeMetaDataListRsp(
+    return JSONResponse(status_code=status.HTTP_200_OK, content=NodeMetaDataRsp(
         code=status.HTTP_200_OK,
-        message="服务下节点元数据获取成功",
-        result=NodeMetaDataListMsg(serviceId=service_id, nodeMetaDatas=result)
+        message="节点元数据详细信息获取成功",
+        result=result
     ).model_dump(exclude_none=True, by_alias=True))
 
 
