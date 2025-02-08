@@ -71,25 +71,19 @@ class ConfigModel(BaseModel):
     HALF_KEY1: str = Field(description="Half key 1")
     HALF_KEY2: str = Field(description="Half key 2")
     HALF_KEY3: str = Field(description="Half key 3")
-    # 模型类型
-    MODEL: str = Field(description="选择的模型类型", default="openai")
     # OpenAI API
     LLM_KEY: Optional[str] = Field(description="OpenAI API 密钥", default=None)
     LLM_URL: Optional[str] = Field(description="OpenAI API URL地址", default=None)
     LLM_MODEL: Optional[str] = Field(description="OpenAI API 模型名", default=None)
-    # 星火大模型
-    SPARK_APP_ID: Optional[str] = Field(description="星火大模型API 应用名", default=None)
-    SPARK_API_KEY: Optional[str] = Field(description="星火大模型API 密钥名", default=None)
-    SPARK_API_SECRET: Optional[str] = Field(description="星火大模型API 密钥值", default=None)
-    SPARK_API_URL: Optional[str] = Field(description="星火大模型API URL地址", default=None)
-    SPARK_LLM_DOMAIN: Optional[str] = Field(description="星火大模型API 领域名", default=None)
-    # 参数猜解
-    SCHEDULER_BACKEND: Optional[str] = Field(description="参数猜解后端", default=None)
+    LLM_MAX_TOKENS: int = Field(description="OpenAI API 最大Token数", default=8192)
+    LLM_TEMPERATURE: float = Field(description="OpenAI API 温度", default=0.7)
+    # 参数提取
+    SCHEDULER_TYPE: Optional[str] = Field(description="参数猜解后端", default=None)
     SCHEDULER_MODEL: Optional[str] = Field(description="参数猜解模型名", default=None)
     SCHEDULER_URL: Optional[str] = Field(description="参数猜解 URL地址", default=None)
     SCHEDULER_API_KEY: Optional[str] = Field(description="参数猜解 API密钥", default=None)
     SCHEDULER_MAX_TOKENS: int = Field(description="参数猜解最大Token数", default=8192)
-    SCHEDULER_TEMPERATURE: float = Field(description="参数猜解温度", default=0.07)
+    SCHEDULER_TEMPERATURE: float = Field(description="参数猜解温度", default=0.7)
     # 插件位置
     PLUGIN_DIR: Optional[str] = Field(description="插件路径", default=None)
     # SQL接口路径
