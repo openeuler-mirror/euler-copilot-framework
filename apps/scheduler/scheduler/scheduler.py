@@ -123,7 +123,7 @@ class Scheduler:
             if need_recommend:
                 routine_results = await asyncio.gather(
                     generate_facts(self._task_id, post_body.question),
-                    plan_next_flow(user_sub, self._task_id, self._queue, post_body.plugins),
+                    plan_next_flow(user_sub, self._task_id, self._queue, post_body.app),
                 )
             else:
                 routine_results = await asyncio.gather(generate_facts(self._task_id, post_body.question))
@@ -154,7 +154,7 @@ class Scheduler:
             question=post_body.question,
             task_id=self._task_id,
             session_id=session_id,
-            plugin_data=user_selected_flow,
+            app_data=user_selected_flow,
             background=background,
         )
 

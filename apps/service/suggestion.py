@@ -28,7 +28,7 @@ USER_TOP_DOMAINS_NUM = 5
 HISTORY_QUESTIONS_NUM = 4
 
 
-async def plan_next_flow(user_sub: str, task_id: str, queue: MessageQueue, user_selected_plugins: RequestDataApp) -> None:  # noqa: C901, PLR0912
+async def plan_next_flow(user_sub: str, task_id: str, queue: MessageQueue, app: RequestDataApp) -> None:  # noqa: C901, PLR0912
     """生成用户“下一步”Flow的推荐。
 
     - 若Flow的配置文件中已定义`next_flow[]`字段，则直接使用该字段给定的值
@@ -79,9 +79,8 @@ async def plan_next_flow(user_sub: str, task_id: str, queue: MessageQueue, user_
     # 当前使用了Flow
     flow_id = task.flow_state.name
     app_id = task.flow_state.app_id
-    return
     # TODO: 推荐flow待完善
-    # _, flow_data = Pool().get_flow(flow_id, app_id)
+    _, flow_data = Pool().get_flow(flow_id, app_id)
     # if flow_data is None:
     #     err = "Flow数据不存在"
     #     raise ValueError(err)
@@ -116,22 +115,22 @@ async def plan_next_flow(user_sub: str, task_id: str, queue: MessageQueue, user_
     #         await queue.push_output(event_type=EventType.SUGGEST, data=content.model_dump(exclude_none=True, by_alias=True))
     #     return
 
-    # # 当前有next_flow
-    # for i, next_flow in enumerate(flow_data.next_flow):
-    #     # 取前MAX_RECOMMEND个Flow，保持顺序
-    #     if i >= MAX_RECOMMEND:
-    #         break
+    # 当前有next_flow
+    for i, next_flow in enumerate(flow_data.next_flow):
+        # 取前MAX_RECOMMEND个Flow，保持顺序
+        if i >= MAX_RECOMMEND:
+            break
 
-    #     if next_flow.plugin is not None:
-    #         next_flow_app_id = next_flow.plugin
-    #     else:
-    #         next_flow_app_id = app_id
+        if next_flow.plugin is not None:
+            next_flow_app_id = next_flow.plugin
+        else:
+              next_flow_app_id = app_id
 
-    #     flow_metadata, _ = next_flow.id, next_flow_app_id,
-    #     # flow_metadata, _ = Pool().get_flow(
-    #     #     next_flow.id,
-    #     #     next_flow_app_id,
-    #     # )
+        flow_metadata, _ = next_flow.id, next_flow_app_id,
+        # flow_metadata, _ = Pool().get_flow(
+        #     next_flow.id,
+        #     next_flow_app_id,
+        # )
 
     #     # flow不合法
     #     if flow_metadata is None:
