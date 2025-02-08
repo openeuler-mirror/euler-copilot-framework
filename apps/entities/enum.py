@@ -55,3 +55,12 @@ class EventType(str, Enum):
     STEP_OUTPUT = "step.output"
     FLOW_STOP = "flow.stop"
     DONE = "done"
+
+
+class LLMType(str, Enum):
+    """大模型类型"""
+
+    OPENAI = "openai"
+    VLLM = "vllm"
+    OLLAMA = "ollama"
+    SGLANG = "sglang"
