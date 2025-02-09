@@ -1,15 +1,16 @@
-{{- if and .Values.databases.minio.enabled }}
+{{- if .Values.databases.mongo.enabled }}
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: minio-pvc-{{ .Release.Name }}
+  name: mongo-storage
   namespace: {{ .Release.Namespace }}
   annotations:
     helm.sh/resource-policy: keep
 spec:
+  storageClassName: {{ default "local-path" .Values.globals.storageClass }}
   accessModes:
     - ReadWriteOnce
   resources:
     requests:
-      storage: {{ .Values.databases.minio.persistentVolumeSize }}
+      storage: {{ default "10Gi" .Values.storage.mongo }}
 {{- end }}

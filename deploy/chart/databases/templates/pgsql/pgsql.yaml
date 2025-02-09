@@ -1,26 +1,42 @@
 {{- if .Values.databases.pgsql.enabled }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: pgsql-db
+  namespace: {{ .Release.Namespace }}
+spec:
+  type: {{ default "ClusterIP" .Values.databases.pgsql.service.type }}
+  selector:
+    app: pgsql
+  ports:
+    - port: 5432
+      targetPort: 5432
+      nodePort: {{ default nil .Values.databases.pgsql.service.nodePort }}
+
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: pgsql-deploy-{{ .Release.Name }}
+  name: pgsql-deploy
   namespace: {{ .Release.Namespace }}
   labels:
-    app: pgsql-{{ .Release.Name }}
+    app: pgsql
 spec:
-  replicas: {{ .Values.globals.replicaCount }}
+  replicas: {{ default 1 .Values.globals.replicaCount }}
   selector:
     matchLabels:
-      app: pgsql-{{ .Release.Name }}
+      app: pgsql
   template:
     metadata:
       labels:
-        app: pgsql-{{ .Release.Name }}
+        app: pgsql
     spec:
       automountServiceAccountToken: false
       containers:
         - name: pgsql
-          image: "{{if ne ( .Values.databases.pgsql.image.registry | toString ) ""}}{{ .Values.databases.pgsql.image.registry }}{{ else }}{{ .Values.globals.imageRegistry }}{{ end }}/{{ .Values.databases.pgsql.image.name }}:{{ .Values.databases.pgsql.image.tag | toString }}"
-          imagePullPolicy: {{ if ne ( .Values.databases.pgsql.image.imagePullPolicy | toString ) "" }}{{ .Values.databases.pgsql.image.imagePullPolicy }}{{ else }}{{ .Values.globals.imagePullPolicy }}{{ end }}
+          image: {{ default "hub.oepkgs.net/neocopilot/pgsql-empty:pg16" .Values.databases.pgsql.image }}
+          imagePullPolicy: {{ default "IfNotPresent" .Values.globals.imagePullPolicy }}
           ports:
             - containerPort: 5432
               protocol: TCP
@@ -40,7 +56,10 @@ spec:
             - name: POSTGRES_USER
               value: "postgres"
             - name: POSTGRES_PASSWORD
-              value: "{{ .Values.databases.pgsql.password }}"
+              valueFrom:
+                secretKeyRef:
+                  name: euler-copilot-database
+                  key: pgsql-password
           volumeMounts:
             - mountPath: /var/lib/postgresql/data
               name: pgsql-data
@@ -48,12 +67,16 @@ spec:
               name: pgsql-init
               subPath: init.sql
           resources:
-            {{- toYaml .Values.databases.pgsql.resources | nindent 12 }}
+            requests:
+              cpu: 0.25
+              memory: 256Mi
+            limits:
+                {{- toYaml .Values.databases.pgsql.resourceLimits | nindent 14 }}
       volumes:
         - name: pgsql-data
           persistentVolumeClaim:
-            claimName: pgsql-pvc-{{ .Release.Name }}
+            claimName: pgsql-storage
         - name: pgsql-init
-          secret:
-            secretName: pgsql-secret-{{ .Release.Name }}
+          configMap:
+            name: pgsql-config
 {{- end }}
