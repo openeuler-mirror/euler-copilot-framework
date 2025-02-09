@@ -1,0 +1,13 @@
+{{- if .Values.databases.pgsql.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: pgsql-config
+  namespace: {{ .Release.Namespace }}
+data:
+  init.sql: |
+    CREATE EXTENSION zhparser;
+    CREATE EXTENSION vector;
+    CREATE TEXT SEARCH CONFIGURATION zhparser (PARSER = zhparser);
+    ALTER TEXT SEARCH CONFIGURATION zhparser ADD MAPPING FOR n,v,a,i,e,l WITH simple;
+{{- end }}
