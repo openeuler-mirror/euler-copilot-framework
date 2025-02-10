@@ -29,7 +29,8 @@ from apps.routers import (
     knowledge,
     record,
 )
-from apps.scheduler.pool.loader import Loader
+
+# from apps.scheduler.pool.loader import Loader
 
 # 定义FastAPI app
 app = FastAPI(docs_url=None, redoc_url=None)
@@ -71,7 +72,7 @@ class FastAPIWrapper:
 if __name__ == "__main__":
     # 初始化
     WordsCheck.init()
-    Loader.init()
+    # Loader.init()
     # 启动Ray
     ray.init(dashboard_host="0.0.0.0", num_cpus=4)  # noqa: S104
     serve.start(http_options=HTTPOptions(host="0.0.0.0", port=8002))  # noqa: S104

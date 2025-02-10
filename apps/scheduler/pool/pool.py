@@ -3,6 +3,9 @@
 Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 """
 
+from apps.entities.flow_topology import DependencyItem, FlowItem, NodeItem, PositionItem
+
+
 class Pool:
     """资源池"""
 
@@ -19,6 +22,28 @@ class Pool:
 
 
     @classmethod
-    def get_flow(cls, app_id: str, flow_id: str) -> None:
-        """获取【单个】Flow完整数据"""
+    def get_flow(cls, app_id: str, flow_id: str) -> FlowItem:
+        ret = FlowItem(
+            {
+            "flowId": flow_id,
+            "nodes": [
+                (NodeItem){
+                    "name": "test",
+                    "node_id": "test",
+                    "type": "test",
+                    "parameters": {},
+                    "position": (PositionItem){
+                        "x": 0,
+                        "y": 0,
+                    },
+                    "editable": true,
+                    "enable": true,
+                    "description":"",
+                }
+            ],
+            "edeges": [],
+            "editable": true,
+            "enable": true,
+        )
+        return FlowItem
         pass
