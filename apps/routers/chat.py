@@ -130,8 +130,8 @@ async def chat(
     if await Activity.is_active(user_sub):
         raise HTTPException(status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail="Too many requests")
 
-    if post_body.app and post_body.app.app_id:
-        await AppCenterManager.update_recent_app(user_sub, post_body.app.app_id)
+    if post_body.app and post_body.app[0].app_id:
+        await AppCenterManager.update_recent_app(user_sub, post_body.app[0].app_id)
     res = chat_generator(post_body, user_sub, session_id)
     return StreamingResponse(
         content=res,
