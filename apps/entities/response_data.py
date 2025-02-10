@@ -7,13 +7,13 @@ from typing import Any, Optional
 from pydantic import BaseModel, Field
 
 from apps.entities.appcenter import AppCenterCardItem, AppData
-from apps.entities.collection import Blacklist, Document, NodeMetaData
+from apps.entities.collection import Blacklist, Document
 from apps.entities.enum_var import DocumentStatus
 from apps.entities.flow_topology import (
     FlowItem,
     NodeMetaDataItem,
+    NodeServiceItem,
     PositionItem,
-    ServiceItem,
 )
 from apps.entities.record import RecordData
 
@@ -320,77 +320,41 @@ class GetRecentAppListRsp(ResponseData):
 
 class NodeServiceListMsg(BaseModel):
     """GET /api/flow/service result"""
-
-    total: int
-    services: list[ServiceItem]
-
-
+    services: list[NodeServiceItem] = Field(..., description="服务列表",default=[])
 class NodeServiceListRsp(ResponseData):
     """GET /api/flow/service 返回数据结构"""
-
     result: NodeServiceListMsg
-
-
-class NodeMetaDataListMsg(BaseModel):
-    """GET /api/flow/service/node result"""
-
-    service_id: str = Field(alias="serviceId")
-    node_meta_datas: list[NodeMetaDataItem]
-
-
-class ServiceNodeMetaDatasMsg(BaseModel):
-    """GET /api/flow/node/metadata 服务与服务下节点元数据结构"""
-
-    service_id: str = Field(alias="serviceId")
-    name: str
-    type: str
-    node_meta_datas: list[NodeMetaDataItem] = Field(
-        alias="nodeMetaDatas", default=[])
-    created_at: Optional[float] = Field(alias="createdAt")
-
-
-class NodeMetaDataListMsg(ResponseData):
-    services: list[ServiceNodeMetaDatasMsg]
-
-
-class NodeMetaDataListRsp(ResponseData):
+class NodeMetaDataRsp(ResponseData):
     """GET /api/flow/service/node 返回数据结构"""
-
-    result: NodeMetaDataListMsg
-
+    result: NodeMetaDataItem
 
 class FlowStructureGetMsg(BaseModel):
     """GET /api/flow result"""
-
-    flow: FlowItem
-    focus_point: PositionItem
+    flow: FlowItem = Field(default=FlowItem())
+    focus_point: PositionItem = Field(default=PositionItem())
 
 
 class FlowStructureGetRsp(ResponseData):
     """GET /api/flow 返回数据结构"""
-
     result: FlowStructureGetMsg
 
+class PutFlowReq(BaseModel):
+    """创建/修改流拓扑结构"""
+    flow: FlowItem
+    focus_point: PositionItem = Field(alias="focusPoint")
 
 class FlowStructurePutMsg(BaseModel):
     """PUT /api/flow result"""
-
-    flow_id: str = Field(alias="flowId")
-
-
+    flow: FlowItem = Field(default=FlowItem())
 class FlowStructurePutRsp(ResponseData):
     """PUT /api/flow 返回数据结构"""
-
     result: FlowStructurePutMsg
 
-
 class FlowStructureDeleteMsg(BaseModel):
-    """DELETE /api/flow/{flowId} result"""
-
-    flow_id: str = Field(alias="flowId")
+    """DELETE /api/flow/ result"""
+    flow_id: str = Field(alias="flowId", default="")
 
 
 class FlowStructureDeleteRsp(ResponseData):
-    """DELETE /api/flow/{flowId} 返回数据结构"""
-
+    """DELETE /api/flow/ 返回数据结构"""
     result: FlowStructureDeleteMsg
