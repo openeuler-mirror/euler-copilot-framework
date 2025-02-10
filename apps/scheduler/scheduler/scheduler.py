@@ -26,15 +26,15 @@ from apps.manager import (
     TaskManager,
     UserManager,
 )
-from apps.scheduler.executor import Executor
+# from apps.scheduler.executor import Executor
 from apps.scheduler.scheduler.context import generate_facts, get_context
-from apps.scheduler.scheduler.flow import choose_flow
+# from apps.scheduler.scheduler.flow import choose_flow
 from apps.scheduler.scheduler.message import (
     push_document_message,
     push_init_message,
     push_rag_message,
 )
-from apps.service.suggestion import plan_next_flow
+# from apps.service.suggestion import plan_next_flow
 
 
 class Scheduler:
@@ -123,7 +123,7 @@ class Scheduler:
             if need_recommend:
                 routine_results = await asyncio.gather(
                     generate_facts(self._task_id, post_body.question),
-                    plan_next_flow(user_sub, self._task_id, self._queue, post_body.app),
+                    # plan_next_flow(user_sub, self._task_id, self._queue, post_body.app),
                 )
             else:
                 routine_results = await asyncio.gather(generate_facts(self._task_id, post_body.question))
@@ -159,12 +159,12 @@ class Scheduler:
         )
 
         # 执行Executor
-        flow_exec = Executor()
-        await flow_exec.load_state(param)
-        # 开始运行
-        await flow_exec.run()
-        # 判断状态
-        return flow_exec.flow_state.status != StepStatus.PARAM
+        # flow_exec = Executor()
+        # await flow_exec.load_state(param)
+        # # 开始运行
+        # await flow_exec.run()
+        # # 判断状态
+        # return flow_exec.flow_state.status != StepStatus.PARAM
 
     async def save_state(self, user_sub: str, post_body: RequestData) -> None:
         """保存当前Executor、Task、Record等的数据"""
