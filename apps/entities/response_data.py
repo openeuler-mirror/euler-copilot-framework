@@ -320,7 +320,7 @@ class GetRecentAppListRsp(ResponseData):
 
 class NodeServiceListMsg(BaseModel):
     """GET /api/flow/service result"""
-    services: list[NodeServiceItem] = Field(..., description="服务列表",default=[])
+    services: list[NodeServiceItem] = Field(description="服务列表",default=[])
 class NodeServiceListRsp(ResponseData):
     """GET /api/flow/service 返回数据结构"""
     result: NodeServiceListMsg
