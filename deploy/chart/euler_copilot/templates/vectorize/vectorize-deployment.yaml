@@ -67,7 +67,7 @@ spec:
           imagePullPolicy: {{ if ne ( .Values.euler_copilot.init.image.imagePullPolicy | toString ) "" }}{{ .Values.euler_copilot.init.image.imagePullPolicy }}{{ else }}{{ .Values.globals.imagePullPolicy }}{{ end }}
           env:
             - name: CHECK_URL
-              value: "http://vectorize-agent-service-{{ .Release.Name }}.euler-copilot.svc.cluster.local:8001/health_check/ping"
+              value: "http://vectorize-agent-service-{{ .Release.Name }}.{{ .Release.Namespace }}.svc.cluster.local:8001/health_check/ping"
             - name: INTERVAL
               value: "60"
             - name: CONFIG_FILES
