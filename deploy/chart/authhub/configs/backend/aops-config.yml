@@ -1,19 +1,19 @@
 infrastructure:
   mysql:
-    host: mysql-db-{{ .Release.Name }}.{{ .Release.Namespace }}.svc.cluster.local
+    host: mysql-db.{{ .Release.Namespace }}.svc.cluster.local
     port: 3306
     username: authhub
     pool_size: 100
     pool_recycle: 7200
     database: oauth2
-    password: {{ .Values.authhub.mysql.password }}
+    password: ${mysql-password}
   redis:
-    host: redis-db-{{ .Values.globals.databases.app_name }}.{{ .Values.globals.databases.app_namespace }}.svc.cluster.local
+    host: redis-db.{{ .Release.Namespace }}.svc.cluster.local
     port: 6379
-    password: {{ .Values.globals.databases.redis }}
+    password: ${redis-password}
 
 include: "/etc/aops/conf.d"
-domain: {{ .Values.globals.domain }}
+domain: {{ .Values.domain.authhub }}
 
 services:
   log:

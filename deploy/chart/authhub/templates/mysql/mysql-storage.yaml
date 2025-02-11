@@ -2,14 +2,15 @@
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: mysql-pvc-{{ .Release.Name }}
+  name: mysql-pvc
   namespace: {{ .Release.Namespace }}
   annotations:
     helm.sh/resource-policy: keep
 spec:
+  storageClassName: {{ default "local-path" .Values.globals.storageClassName }}
   accessModes:
     - ReadWriteOnce
   resources:
     requests:
-      storage: {{ .Values.authhub.mysql.persistentVolumeSize }}
+      storage: {{ default "10Gi" .Values.authhub.mysql.persistentVolumeSize }}
 {{- end }}
