@@ -1,28 +1,44 @@
 {{- if .Values.authhub.mysql.enabled }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mysql-db
+  namespace: {{ .Release.Namespace }}
+spec:
+  type: {{ default "ClusterIP" .Values.authhub.mysql.service.type }}
+  selector:
+    app: mysql
+  ports:
+    - port: 3306
+      targetPort: 3306
+      nodePort: {{ default nil .Values.authhub.mysql.service.nodePort }}
+
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: mysql-deploy-{{ .Release.Name }}
+  name: mysql-deploy
   namespace: {{ .Release.Namespace }}
   labels:
-    app: mysql-{{ .Release.Name }}
+    app: mysql
 spec:
-  replicas: {{ .Values.globals.replicaCount }}
+  replicas: {{ default 1 .Values.globals.replicaCount }}
   selector:
     matchLabels:
-      app: mysql-{{ .Release.Name }}
+      app: mysql
   template:
     metadata:
       annotations:
-        checksum/secret: {{ include (print $.Template.BasePath "/mysql/mysql-secret.yaml") . | sha256sum }}
+        checksum/config: {{ include (print $.Template.BasePath "/mysql/mysql-config.yaml") . | sha256sum }}
       labels:
-        app: mysql-{{ .Release.Name }}
+        app: mysql
     spec:
       automountServiceAccountToken: false
       containers:
         - name: mysql
-          image: "{{ if ne (.Values.authhub.mysql.image.registry | toString ) "" }}{{ .Values.authhub.mysql.image.registry }}{{ else }}{{ .Values.globals.imageRegistry }}{{ end }}/{{ .Values.authhub.mysql.image.name }}:{{ .Values.authhub.mysql.image.tag | toString }}"
-          imagePullPolicy: {{ if ne (.Values.authhub.mysql.image.imagePullPolicy | toString) "" }}{{ .Values.authhub.mysql.image.imagePullPolicy }}{{ else }}{{ .Values.globals.imagePullPolicy }}{{ end }}
+          image: {{ default "hub.oepkgs.net/neocopilot/mysql:8-x86" .Values.authhub.mysql.image }}
+          imagePullPolicy: {{ default "IfNotPresent" .Values.globals.imagePullPolicy }}
           args:
             - "--character-set-server=utf8mb4"
             - "--collation-server=utf8mb4_unicode_ci"
@@ -48,7 +64,7 @@ spec:
             - name: MYSQL_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: mysql-secret-{{ .Release.Name }}
+                  name: authhub-secret
                   key: mysql-password
           volumeMounts:
             - mountPath: /var/lib/mysql
@@ -57,13 +73,17 @@ spec:
               name: mysql-init
               subPath: init.sql
           resources:
-            {{- toYaml .Values.authhub.mysql.resources | nindent 12 }}
+            requests:
+              cpu: 0.1
+              memory: 256Mi
+            limits:
+              {{- toYaml .Values.authhub.mysql.resourceLimits | nindent 14 }}
       restartPolicy: Always
       volumes:
         - name: mysql-data
           persistentVolumeClaim:
-            claimName: mysql-pvc-{{ .Release.Name }}
+            claimName: mysql-pvc
         - name: mysql-init
-          secret:
-            secretName: mysql-secret-{{ .Release.Name }}
+          configMap:
+            name: mysql-config
 {{- end }}
