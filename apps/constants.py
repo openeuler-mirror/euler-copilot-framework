@@ -14,3 +14,10 @@ MAX_API_RESPONSE_LENGTH = 4096
 MAX_SCHEDULER_HISTORY_SIZE = 3
 
 LOGGER = logging.getLogger("gunicorn.error")
+
+REASONING_BEGIN_TOKEN = [
+    "<think>",
+]
+REASONING_END_TOKEN = [
+    "</think>",
+]

@@ -1,28 +1,42 @@
 {{- if .Values.databases.mongo.enabled }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mongo-db
+  namespace: {{ .Release.Namespace }}
+spec:
+  type: {{ default "ClusterIP" .Values.databases.mongo.service.type }}
+  selector:
+    app: mongo
+  ports:
+    - port: 27017
+      targetPort: 27017
+      nodePort: {{ default nil .Values.databases.mongo.service.nodePort }}
+
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: mongo-deploy-{{ .Release.Name }}
+  name: mongo-deploy
   namespace: {{ .Release.Namespace }}
   labels:
-    app: mongo-{{ .Release.Name }}
+    app: mongo
 spec:
-  replicas: {{ .Values.globals.replicaCount }}
+  replicas: {{ default 1 .Values.globals.replicaCount }}
   selector:
     matchLabels:
-      app: mongo-{{ .Release.Name }}
+      app: mongo
   template:
     metadata:
-      annotations:
-        checksum/secret: {{ include (print $.Template.BasePath "/mongo/mongo-secret.yaml") . | sha256sum }}
       labels:
-        app: mongo-{{ .Release.Name }}
+        app: mongo
     spec:
       automountServiceAccountToken: false
       containers:
         - name: mongo
-          image: "{{ if ne (.Values.databases.mongo.image.registry | toString ) "" }}{{ .Values.databases.mongo.image.registry }}{{ else }}{{ .Values.globals.imageRegistry }}{{ end }}/{{ .Values.databases.mongo.image.name }}:{{ .Values.databases.mongo.image.tag | toString }}"
-          imagePullPolicy: {{ if ne (.Values.databases.mongo.image.imagePullPolicy | toString) "" }}{{ .Values.databases.mongo.image.imagePullPolicy }}{{ else }}{{ .Values.globals.imagePullPolicy }}{{ end }}
+          image: {{ default "hub.oepkgs.net/neocopilot/mongo:7.0.16-x86" .Values.databases.mongo.image }}
+          imagePullPolicy: {{ default "IfNotPresent" .Values.globals.imagePullPolicy }}
           command:
             - bash
             - -c
@@ -59,7 +73,7 @@ spec:
             - name: MONGO_INITDB_ROOT_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: mongo-secret-{{ .Release.Name }}
+                  name: euler-copilot-database
                   key: mongo-password
             - name: MONGO_INITDB_DATABASE
               value: euler_copilot
@@ -70,13 +84,17 @@ spec:
               name: mongo-init
               subPath: healthcheck.sh
           resources:
-            {{- toYaml .Values.databases.mongo.resources | nindent 12 }}
+            requests:
+              cpu: 0.25
+              memory: 256Mi
+            limits:
+              {{- toYaml .Values.databases.mongo.resourceLimits | nindent 14 }}
       restartPolicy: Always
       volumes:
         - name: mongo-data
           persistentVolumeClaim:
-            claimName: mongo-pvc-{{ .Release.Name }}
+            claimName: mongo-storage
         - name: mongo-init
-          secret:
-            secretName: mongo-secret-{{ .Release.Name }}
+          configMap:
+            name: mongo-config
 {{- end }}

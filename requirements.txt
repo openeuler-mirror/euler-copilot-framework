@@ -43,7 +43,6 @@ redis==5.2.0
 requests==2.32.3
 sglang==0.4.0.post1
 sortedcontainers==2.4.0
-spark-ai-python==0.4.5
 sqlalchemy==2.0.35
 starlette==0.41.2
 tiktoken==0.8.0

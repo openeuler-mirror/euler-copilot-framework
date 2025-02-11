@@ -1,127 +1,88 @@
 # 全局设置
 globals:
-  # [必填] 部署副本数
-  replicaCount: 1
-  # [必填] 镜像仓库
-  imageRegistry: "hub.oepkgs.net/neocopilot"
-  # [必填] 镜像拉取策略
-  imagePullPolicy: IfNotPresent
+  # 部署副本数，默认为1
+  replicaCount:
+  # 镜像拉取策略，默认为IfNotPresent
+  imagePullPolicy: 
+  # 存储类，默认为local-path
+  storageClass: 
+
+# 存储设置
+storage:
+  # MinIO存储大小，默认为10GB
+  minio:
+  # MongoDB存储大小，默认为10GB
+  mongo:
+  # 向量数据库存储大小，默认为10GB
+  pgsql:
+
+# 域名设置
+domain:
+  # 需要修改为MinIO Console绑定的域名。单节点部署时，服务基于Host进行区分，无法使用IP地址
+  minioConsole: 
 
 databases:
   minio:
     # [必填] 是否部署MinIO实例
     enabled: true
-    # 镜像设置
+    # 镜像设置：默认为hub.oepkgs.net/neocopilot/minio:empty
+    # 镜像版本：["empty", "empty-arm"]
     image:
-      # 镜像仓库。留空则使用全局设置。
-      registry: ""
-      # [必填] 镜像名
-      name: "minio"
-      # [必填] 镜像标签, 为empty或empty-arm
-      tag: "empty"
-      # 拉取策略。留空则使用全局设置。
-      imagePullPolicy: ""
     # 性能限制设置
-    resources: {}
-    # [必填] 容器根目录只读
-    readOnly: false
-    # [必填] PersistentVolume大小设置
-    persistentVolumeSize: 20Gi
-    # [必填] 密码设置
-    password: "admin123"
+    resourceLimits: {}
     # Service设置
     service:
-      # [必填] Service类型，ClusterIP或NodePort
-      type: ClusterIP
-      # 当类型为nodePort时，填写MinIO数据端口对应的主机的端口号
-      dataNodePort: ""
-      # 当类型为nodePort时，填写MinIO控制台对应的主机的端口号
-      consoleNodePort: ""
+      # Service类型，例如NodePort
+      type:
+      # 当类型为NodePort时，填写MinIO数据端口对应的主机的端口号
+      dataNodePort:
+      # 当类型为NodePort时，填写MinIO控制台对应的主机的端口号
+      consoleNodePort:
     # Ingress设置
     ingress:
       # [必填] 是否暴露MinIO的Console
       enabled: true
-      # [必填] 部署域名
-      # 需要修改为MinIO Console绑定的域名。单节点部署时，服务基于Host进行区分，无法使用IP地址
-      domain: ""
       # Ingress URL前缀
       prefix: /
   mongo:
     # [必填] 是否部署MySQL数据库实例
     enabled: true
-    # 镜像设置
+    # 镜像设置；默认为hub.oepkgs.net/neocopilot/mongo:7.0.16-x86
+    # 镜像版本： ["7.0.16-x86", "7.0.16-arm"]
     image:
-      # 镜像仓库。留空则使用全局设置。
-      registry: ""
-      # [必填] 镜像名
-      name: mongo
-      # [必填] 镜像标签，为7.0.16-x86或7.0.16-arm
-      tag: "7.0.16-x86"
-      # 拉取策略。留空则使用全局设置。
-      imagePullPolicy: ""
     # 性能限制设置
-    resources: {}
-    # [必填] 容器根目录只读
-    readOnly: false
-    # [必填] PersistentVolume大小设置
-    persistentVolumeSize: 10Gi
-    # [必填] 密码设置
-    password: "admin123"
+    resourceLimits: {}
     # Service设置
     service:
-      # [必填] Service类型，ClusterIP或NodePort
-      type: ClusterIP
+      # [必填] Service类型，例如NodePort
+      type:
       # 当类型为nodePort时，填写主机的端口号
-      nodePort: ""
+      nodePort: 
   redis:
     # [必填] 是否部署Redis实例
     enabled: true
-    # 镜像设置
+    # 镜像设置，默认为hub.oepkgs.net/neocopilot/redis:7.4-alpine
+    # 镜像版本: ["7.4-alpine", "7.4-alpine-arm"]
     image:
-      # 镜像仓库。留空则使用全局设置。
-      registry: ""
-      # [必填] 镜像名
-      name: redis
-      # [必填] 镜像标签，为7.4-alpine或7.4-alpine-arm
-      tag: 7.4-alpine
-      # 拉取策略。留空则使用全局设置
-      imagePullPolicy: ""
     # 性能限制设置
-    resources: {}
-    # [必填] 容器根目录只读
-    readOnly: false
-    # [必填] 密码设置
-    password: "admin123"
+    resourceLimits: {}
     # Service设置
     service:
-      # [必填] Service类型，ClusterIP或NodePort
-      type: ClusterIP
+      # Service类型，如NodePort
+      type:
       # 当类型为nodePort时，填写主机的端口号
-      nodePort: ""
+      nodePort: 
   pgsql:
     # [必填] 是否部署PostgreSQL实例
     enabled: true
-    # 镜像设置
+    # 镜像设置，默认为hub.oepkgsnet/neocopilot/pgsql-empty:pg16
+    # 镜像版本： ["pg16", "pg16-arm"]
     image:
-      # 镜像仓库。留空则使用全局设置。
-      registry: ""
-      # [必填] 镜像名
-      name: pgsql-empty
-      # [必填] 镜像标签，为pg16或pg16-arm
-      tag: pg16
-      # 拉取策略。留空则使用全局设置。
-      imagePullPolicy: ""
     # 性能限制设置
-    resources: {}
-    # [必填] 容器根目录只读
-    readOnly: false
-    # [必填] Volume大小设置
-    persistentVolumeSize: 10Gi
+    resourceLimits: {}
     # Service设置
     service:
-      # [必填] Service类型，ClusterIP或NodePort
-      type: ClusterIP
-      # 当类型为nodePort时，填写主机的端口号
-      nodePort: ""
-    # [必填] 密码设置
-    password: "admin123"
+      # Service类型，如NodePort
+      type:
+      # 当类型为NodePort时，填写主机的端口号
+      nodePort:
