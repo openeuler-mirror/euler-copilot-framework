@@ -26,7 +26,7 @@ class RequestData(BaseModel):
     group_id: Optional[str] = Field(default=None, alias="groupId", description="群组ID")
     language: str = Field(default="zh", description="语言")
     files: list[str] = Field(default=[], description="文件列表")
-    app: RequestDataApp = Field(default=[], description="应用")
+    app: RequestDataApp = Field(default=None, description="应用")
     features: RequestDataFeatures = Field(description="消息功能设置")
 
 
