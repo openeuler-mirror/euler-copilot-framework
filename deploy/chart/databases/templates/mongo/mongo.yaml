@@ -29,6 +29,8 @@ spec:
       app: mongo
   template:
     metadata:
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/mongo/mongo-config.yaml") . | sha256sum }}
       labels:
         app: mongo
     spec:

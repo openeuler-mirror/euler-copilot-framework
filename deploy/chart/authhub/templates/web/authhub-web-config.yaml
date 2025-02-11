@@ -1,0 +1,44 @@
+{{- if .Values.authhub.web.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: authhub-web-config
+  namespace: {{ .Release.Namespace }}
+data:
+  authhub.nginx.conf: |-
+    server {
+        listen       8000;
+        server_name  localhost;
+    
+        # gzip config
+        gzip on;
+        gzip_min_length 1k;
+        gzip_comp_level 6;
+        gzip_types text/plain text/css text/javascript application/json application/javascript application/x-javascript application/xml;
+        gzip_vary on;
+        gzip_disable "MSIE [1-6]\.";
+    
+        location / {
+          proxy_set_header X-Real-IP $remote_addr;
+          root /opt/authhub/web/dist;
+          index index.html;
+          try_files $uri $uri/ /index.html;
+        }
+    
+        location /authhub {
+          add_header Access-Control-Allow-Origin *;
+          add_header Access-Control-Allow-Methods 'GET, POST, DELETE, PUT, OPTIONS';
+          alias /opt/authhub/web/dist;
+          index index.html;
+          try_files $uri $uri/ /index.html last;
+        }
+    
+        location /oauth2 {
+          proxy_pass http://authhub-backend-service.{{ .Release.Namespace }}.svc.cluster.local:11120;
+          proxy_set_header Host $host;
+          proxy_set_header X-Real-URL $request_uri;
+          proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+          proxy_set_header Request-Header $http_request_header;
+        }
+    }
+{{- end }}

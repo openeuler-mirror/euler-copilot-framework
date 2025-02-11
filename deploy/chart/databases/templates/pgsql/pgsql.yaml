@@ -29,6 +29,8 @@ spec:
       app: pgsql
   template:
     metadata:
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/pgsql/pgsql-config.yaml") . | sha256sum }}
       labels:
         app: pgsql
     spec:

@@ -1,0 +1,86 @@
+{{- if .Values.authhub.web.enabled }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: authhub-web-service
+  namespace: {{ .Release.Namespace }}
+spec:
+  type: {{ default "ClusterIP" .Values.authhub.web.service.type }}
+  selector:
+    app: authhub-web
+  ports:
+    - port: 8000
+      targetPort: 8000
+      nodePort: {{ default nil .Values.authhub.web.service.nodePort }}
+
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: authhub-web-ingress
+  namespace: {{ .Release.Namespace }}
+spec:
+  rules:
+  - host: {{ default "authhub.eulercopilot.local" .Values.domain.authhub }}
+    http:
+      paths:
+      - path: {{ default "/" .Values.authhub.web.ingress.prefix }}
+        pathType: Prefix
+        backend:
+          service:
+            name: authhub-web-service
+            port:
+              number: 8000
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: authhub-web-deploy
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: authhub-web
+spec:
+  replicas: {{ default 1 .Values.globals.replicaCount }}
+  selector:
+    matchLabels:
+      app: authhub-web
+  template:
+    metadata:
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/web/authhub-web-config.yaml") . | sha256sum }}
+      labels:
+        app: authhub-web
+    spec:
+      automountServiceAccountToken: false
+      containers:
+        - name: authhub-web
+          image: {{ default "hub.oepkgs.net/neocopilot/authhub-web:0.9.3-x86" .Values.authhub.web.image }}
+          imagePullPolicy: {{ default "IfNotPresent" .Values.globals.imagePullPolicy }}
+          ports:
+            - containerPort: 8000
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 8000
+              scheme: HTTP
+            failureThreshold: 5
+            initialDelaySeconds: 60
+            periodSeconds: 90
+          volumeMounts:
+            - name: web-config
+              mountPath: /etc/nginx/conf.d/authhub.nginx.conf
+              subPath: authhub.nginx.conf
+          resources:
+            requests:
+              cpu: 0.05
+              memory: 64Mi
+            limits:
+              {{- toYaml .Values.authhub.web.resourceLimits | nindent 14 }}
+      volumes:
+        - name: web-config
+          configMap:
+            name: authhub-web-config
+{{- end }}
