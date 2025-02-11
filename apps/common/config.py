@@ -37,8 +37,10 @@ class ConfigModel(BaseModel):
     SESSION_TTL: int = Field(description="用户需要刷新Token的间隔(min)", default=30)
     # Logging
     LOG: str = Field(description="日志记录模式")
-    # Vectorize
-    VECTORIZE_HOST: str = Field(description="Vectorize服务域名")
+    # Embedding
+    EMBEDDING_URL: str = Field(description="Embedding模型地址")
+    EMBEDDING_KEY: str = Field(description="Embedding模型API Key")
+    EMBEDDING_MODEL: str = Field(description="Embedding模型名称")
     # RAG
     RAG_HOST: str = Field(description="RAG服务域名")
     # FastAPI
