@@ -150,7 +150,7 @@ async def get_application(  # noqa: ANN201
             message="找不到应用",
             result={},
         ).model_dump(exclude_none=True, by_alias=True))
-    workflows = [flow.id for flow in app_data.flows]
+    workflows = [{"id":flow.id,"name":flow.name} for flow in app_data.flows]
     return JSONResponse(status_code=status.HTTP_200_OK, content=GetAppPropertyRsp(
         code=status.HTTP_200_OK,
         message="查询成功",

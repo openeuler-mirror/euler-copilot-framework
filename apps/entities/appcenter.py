@@ -49,4 +49,4 @@ class AppData(BaseModel):
     history_len: int = Field(3, alias="dialogRounds", ge=1, le=10, description="对话轮次（1～10）")
     permission: AppPermissionData = Field(
         default_factory=lambda: AppPermissionData(authorizedUsers=None), description="权限配置")
-    workflows: list[str] = Field(default=[], description="工作流ID列表")
+    workflows: list[dict] = Field(default=[], description="工作流ID，名称列表")

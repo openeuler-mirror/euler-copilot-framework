@@ -10,7 +10,7 @@ from apps.entities.flow import StepPos, Edge, Step, Flow, FlowConfig
 from apps.entities.pool import AppFlow
 from apps.entities.flow_topology import NodeServiceItem, NodeMetaDataItem, FlowItem, NodeItem, EdgeItem, PositionItem
 from apps.models.mongo import MongoDB
-from apps.entities.enum_var import PermissionType
+from apps.entities.enum_var import NodeType, PermissionType
 
 
 class FlowManager:
@@ -61,15 +61,21 @@ class FlowManager:
 
             nodes_meta_data_items = []
             async for node_pool_record in cursor:
+                parameters = {
+                    "input_parameters": node_pool_record["params_schema"],
+                    "output_parameters": node_pool_record["output_schema"]
+                }
                 node_meta_data_item = NodeMetaDataItem(
                     nodeMetaDataId=node_pool_record["_id"],
                     type=node_pool_record["call_id"],
-                    name=node_pool_record['name'],
-                    description=node_pool_record['description'],
+                    name=node_pool_record["name"],
+                    description=node_pool_record["description"],
                     editable=True,
-                    createdAt=node_pool_record['created_at'],
+                    createdAt=node_pool_record["created_at"],
+                    parameters=parameters,  # 添加 parametersTemplate 参数
                 )
                 nodes_meta_data_items.append(node_meta_data_item)
+
 
             return nodes_meta_data_items
 
@@ -115,7 +121,7 @@ class FlowManager:
                     name=record["name"],
                     type="default",
                     nodeMetaDatas=[],
-                    createdAt=record["created_at"]
+                    createdAt=str(record["created_at"])
                 )
                 for record in service_records
             ]
@@ -139,9 +145,9 @@ class FlowManager:
         node_pool_collection = MongoDB.get_collection("node")  # 获取节点集合
         try:
             node_pool_record = await node_pool_collection.find_one({"_id": node_meta_data_id})
-            parameters_template = {
-                    "input_schema": node_pool_record['params_schema'],
-                    "output_schema": node_pool_record['output_schema']
+            parameters = {
+                    "input_parameters": node_pool_record['params_schema'],
+                    "output_parameters": node_pool_record['output_schema']
                 }
             node_meta_data=NodeMetaDataItem(
                 nodeMetaDataId=node_pool_record["_id"],
@@ -149,7 +155,7 @@ class FlowManager:
                 name=node_pool_record['name'],
                 description=node_pool_record['description'],
                 editable=True,
-                parametersTemplate=parameters_template,
+                parameters=parameters,
                 createdAt=node_pool_record['created_at'],
             )
             return node_meta_data
@@ -187,61 +193,66 @@ class FlowManager:
             LOGGER.error(
                 f"Get flow by app_id and flow_id failed due to: {e}")
             return None
-        if flow_record:
-            flow_config_collection = MongoDB.get_collection("flow_config")
-            flow_config_record = await flow_config_collection.find_one({"app_id": app_id, "flow_id": flow_id})
-            if flow_config_record  is None or not flow_config_record.get("flow_config"):
-                return None
-            flow_config = flow_config_record['flow_config']
-            if not flow_config:
-                LOGGER.error(
-                    "Get flow config by app_id and flow_id failed")
-                return None
-            focus_point = flow_record["focus_point"]
-            flow_item = FlowItem(
-                flowId=flow_id,
-                name=flow_config['name'],
-                description=flow_config['description'],
-                enable=True,
-                editable=True,
-                nodes=[],
-                edges=[],
-                createdAt=flow_record["created_at"]
-            )
-            for node_config in flow_config['steps']:
-                node_item = NodeItem(
-                    nodeId=node_config['id'],
-                    apiId=node_config['node'],
-                    name=node_config['name'],
-                    description=node_config['description'],
+        try:
+            if flow_record:
+                flow_config_collection = MongoDB.get_collection("flow_config")
+                flow_config_record = await flow_config_collection.find_one({"app_id": app_id, "flow_id": flow_id})
+                if flow_config_record  is None or not flow_config_record.get("flow_config"):
+                    return None
+                flow_config = flow_config_record['flow_config']
+                if not flow_config:
+                    LOGGER.error(
+                        "Get flow config by app_id and flow_id failed")
+                    return None
+                focus_point = flow_record["focus_point"]
+                flow_item = FlowItem(
+                    flowId=flow_id,
+                    name=flow_config['name'],
+                    description=flow_config['description'],
                     enable=True,
                     editable=True,
-                    type=node_config['type'],
-                    parameters=node_config['params'],
-                    position=PositionItem(
-                        x=node_config['pos']['x'], y=node_config['pos']['y'])
+                    nodes=[],
+                    edges=[],
+                    createdAt=flow_record["created_at"]
                 )
-                flow_item.nodes.append(node_item)
+                for node_config in flow_config['steps']:
+                    node_item = NodeItem(
+                        nodeId=node_config['id'],
+                        nodeMetaDataId=node_config['node'],
+                        name=node_config['name'],
+                        description=node_config['description'],
+                        enable=True,
+                        editable=True,
+                        type=node_config['type'],
+                        parameters=node_config['params'],
+                        position=PositionItem(
+                            x=node_config['pos']['x'], y=node_config['pos']['y'])
+                    )
+                    flow_item.nodes.append(node_item)
 
-            for edge_config in flow_config['edges']:
-                edge_from = edge_config['edge_from']
-                branch_id = ''
-                tmp_list = edge_config['edge_from'].split('.')
-                if len(tmp_list)==0 or len(tmp_list)>=2:
-                    LOGGER.error("edge from format error")
-                    continue
-                if len(tmp_list) == 2:
-                    edge_from = tmp_list[0]
-                    branch_id = tmp_list[1]
-                flow_item.edges.append(EdgeItem(
-                    edgeId=edge_config['id'],
-                    sourceNode=edge_from,
-                    targetNode=edge_config['edge_to'],
-                    type=edge_config['edge_type'],
-                    branchId=branch_id,
-                ))
-            return (flow_item, focus_point)
-        return None
+                for edge_config in flow_config['edges']:
+                    edge_from = edge_config['edge_from']
+                    branch_id = ""
+                    tmp_list = edge_config['edge_from'].split('.')
+                    if len(tmp_list)==0 or len(tmp_list)>2:
+                        LOGGER.error("edge from format error")
+                        continue
+                    if len(tmp_list) == 2:
+                        edge_from = tmp_list[0]
+                        branch_id = tmp_list[1]
+                    flow_item.edges.append(EdgeItem(
+                        edgeId=edge_config['id'],
+                        sourceNode=edge_from,
+                        targetNode=edge_config['edge_to'],
+                        type=edge_config['edge_type'],
+                        branchId=branch_id,
+                    ))
+                return (flow_item, focus_point)
+            return None
+        except Exception as e:
+            LOGGER.error(
+                f"Get flow by app_id and flow_id failed due to: {e}")
+            return None
 
     @staticmethod
     async def put_flow_by_app_and_flow_id(
@@ -284,18 +295,18 @@ class FlowManager:
                 edge_config = Step(
                     id=node_item.node_id,
                     type=node_item.type,
-                    node=node_item.api_id,
+                    node=node_item.node_meta_data_id,
                     name=node_item.name,
                     description=node_item.description,
                     pos=StepPos(x=node_item.position.x,
                                 y=node_item.position.y),
-                    params=node_item.parameters
+                    params=node_item.parameters,
                 )
                 flow_config.steps.append(edge_config)
             for edge_item in flow_item.edges:
                 edge_from = edge_item.source_node
                 if edge_item.branch_id:
-                    edge_from = edge_from+'.'+edge_item.branch_id
+                    edge_from = edge_from+"."+edge_item.branch_id
                 edge_config = Edge(
                     id=edge_item.edge_id,
                     edge_from=edge_from,
