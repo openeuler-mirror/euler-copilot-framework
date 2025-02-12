@@ -25,6 +25,7 @@ from apps.routers import (
     comment,
     conversation,
     document,
+    flow,
     health,
     knowledge,
     record,
@@ -56,6 +57,7 @@ app.include_router(client.router)
 app.include_router(blacklist.router)
 app.include_router(document.router)
 app.include_router(knowledge.router)
+app.include_router(flow.router)
 # 初始化后台定时任务
 scheduler = BackgroundScheduler()
 scheduler.start()
