@@ -16,17 +16,18 @@ class FlowService:
         for node in flow_item.nodes:
             node_to_branches[node.node_id] = set()
             if node.type == NodeType.CHOICE.value:
+                node.parameters = node.parameters["input_parameters"]
                 if 'choices' not in node.parameters.keys():
                     node.parameters['choices'] = []
                 for branch in node.parameters['choices']:
-                    if branch['branch'] in node_to_branches[node.node_id]:
+                    if branch['branchId'] in node_to_branches[node.node_id]:
                         LOGGER.error(msg="分支id重复")
-                        raise Exception(f"节点{node.name}的分支{branch['branch']}重复")
+                        raise Exception(f"节点{node.name}的分支{branch['branchId']}重复")
                     for illegal_char in branch_illegal_chars:
-                        if illegal_char in branch['branch']:
+                        if illegal_char in branch['branchId']:
                             LOGGER.error(msg="分支名称中含有非法字符")
-                            raise Exception(f"节点{node.name}的分支{branch['branch']}名称中含有非法字符")
-                    node_to_branches[node.node_id].add(branch['branch'])
+                            raise Exception(f"节点{node.name}的分支{branch['branchId']}名称中含有非法字符")
+                    node_to_branches[node.node_id].add(branch['branchId'])
             else:
                 node_to_branches[node.node_id].add('')
         new_edges_items = []
