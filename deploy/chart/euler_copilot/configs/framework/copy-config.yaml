@@ -1,0 +1,7 @@
+copy:
+  - from: /config/.env
+    to: /config-rw/.env
+    mode:
+      uid: 1001
+      gid: 1001
+      mode: "0o650"
