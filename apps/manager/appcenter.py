@@ -463,7 +463,7 @@ class AppCenterManager:
         """获取用户收藏的应用ID"""
         try:
             app_collection = MongoDB.get_collection("app")
-            cursor = app_collection.find({"favorites": user_sub})
+            cursor = app_collection.find({"favorites": {"$in": [user_sub]}})
             return [AppPool.model_validate(doc).id async for doc in cursor]
         except Exception as e:
             LOGGER.info(f"[AppCenterManager] Get favorite app ids by user_sub failed: {e}")
