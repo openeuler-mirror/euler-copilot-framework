@@ -1,4 +1,4 @@
-{{- if .Values.databases.minio.enabled }}
+{{- if .Values.databases.minio.enabled -}}
 ---
 apiVersion: v1
 kind: Service
@@ -99,9 +99,9 @@ spec:
               cpu: 0.25
               memory: 256Mi
             limits:
-              {{- toYaml .Values.databases.minio.resourceLimits | nindent 14 }}
+              {{ toYaml .Values.databases.minio.resourceLimits | nindent 14 }}
       volumes:
         - name: minio-data
           persistentVolumeClaim:
             claimName: minio-storage
-{{- end }}
+{{- end -}}
