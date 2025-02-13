@@ -1,4 +1,4 @@
-{{- if .Values.authhub.web.enabled }}
+{{- if .Values.authhub.web.enabled -}}
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -41,4 +41,4 @@ data:
           proxy_set_header Request-Header $http_request_header;
         }
     }
-{{- end }}
+{{- end -}}
