@@ -1,4 +1,4 @@
-{{- if .Values.authhub.mysql.enabled }}
+{{- if .Values.authhub.mysql.enabled -}}
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
@@ -13,4 +13,4 @@ spec:
   resources:
     requests:
       storage: {{ default "10Gi" .Values.authhub.mysql.persistentVolumeSize }}
-{{- end }}
+{{- end -}}

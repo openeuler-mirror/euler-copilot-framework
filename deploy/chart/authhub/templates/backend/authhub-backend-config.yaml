@@ -1,4 +1,4 @@
-{{- if .Values.authhub.backend.enabled }}
+{{- if .Values.authhub.backend.enabled -}}
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -11,4 +11,4 @@ data:
 {{ tpl (.Files.Get "configs/backend/authhub.yml") . | indent 4 }}
   copy-config.yml: |-
 {{ tpl (.Files.Get "configs/backend/copy-config.yml") . | indent 4 }}
-{{- end }}
+{{- end -}}

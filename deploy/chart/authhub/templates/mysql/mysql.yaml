@@ -1,4 +1,4 @@
-{{- if .Values.authhub.mysql.enabled }}
+{{- if .Values.authhub.mysql.enabled -}}
 ---
 apiVersion: v1
 kind: Service
@@ -75,9 +75,9 @@ spec:
           resources:
             requests:
               cpu: 0.1
-              memory: 256Mi
+              memory: 384Mi
             limits:
-              {{- toYaml .Values.authhub.mysql.resourceLimits | nindent 14 }}
+              {{ toYaml .Values.authhub.mysql.resourceLimits | nindent 14 }}
       restartPolicy: Always
       volumes:
         - name: mysql-data
@@ -86,4 +86,4 @@ spec:
         - name: mysql-init
           configMap:
             name: mysql-config
-{{- end }}
+{{- end -}}

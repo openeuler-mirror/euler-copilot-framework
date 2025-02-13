@@ -1,4 +1,4 @@
-{{- if .Values.authhub.backend.enabled }}
+{{- if .Values.authhub.backend.enabled -}}
 ---
 apiVersion: v1
 kind: Service
@@ -53,6 +53,12 @@ spec:
             failureThreshold: 5
             initialDelaySeconds: 60
             periodSeconds: 90
+          resources:
+            requests:
+              cpu: 0.1
+              memory: 128Mi
+            limits:
+              {{ toYaml .Values.authhub.backend.resourceLimits | nindent 14 }}
       initContainers:
         - name: authhub-backend-copy-secret
           image: {{ default "hub.oepkgs.net/neocopilot/secret_inject:x86" .Values.authhub.secret_inject.image }}
@@ -88,4 +94,4 @@ spec:
         - name: euler-copilot-database-vl
           secret:
             secretName: euler-copilot-database
-{{- end }}
+{{- end -}}
