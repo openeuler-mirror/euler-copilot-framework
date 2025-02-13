@@ -12,9 +12,6 @@ from apps.llm.reasoning import ReasoningLLM
 class Domain(CorePattern):
     """从问答中提取领域信息"""
 
-    system_prompt: str = ""
-    """系统提示词（暂不使用）"""
-
     user_prompt: str = r"""
         根据对话上文，提取推荐系统所需的关键词标签，要求：
         1. 实体名词、技术术语、时间范围、地点、产品等关键信息均可作为关键词标签
@@ -53,7 +50,7 @@ class Domain(CorePattern):
 
     async def generate(self, task_id: str, **kwargs) -> list[str]:  # noqa: ANN003
         """从问答中提取领域信息"""
-        messages = [{"role": "system", "content": self.system_prompt}]
+        messages = [{"role": "system", "content": ""}]
         messages += kwargs["conversation"]
         messages += [{"role": "user", "content": self.user_prompt}]
 

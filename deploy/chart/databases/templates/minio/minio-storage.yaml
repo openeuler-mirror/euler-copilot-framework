@@ -1,4 +1,4 @@
-{{- if and .Values.databases.minio.enabled }}
+{{- if and .Values.databases.minio.enabled -}}
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
@@ -13,4 +13,4 @@ spec:
   resources:
     requests:
       storage: {{ default "10Gi" .Values.storage.minio }}
-{{- end }}
+{{- end -}}

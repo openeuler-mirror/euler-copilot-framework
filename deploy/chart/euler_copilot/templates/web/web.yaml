@@ -1,29 +1,64 @@
-{{- if .Values.euler_copilot.web.enabled }}
+{{- if .Values.euler_copilot.web.enabled -}}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: web-service
+  namespace: {{ .Release.Namespace }}
+spec:
+  type: {{ default "ClusterIP" .Values.euler_copilot.web.service.type }}
+  selector:
+    app: web
+  ports:
+    - port: 8080
+      targetPort: 8080
+      nodePort: {{ default nil .Values.euler_copilot.web.service.nodePort }}
+
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: web-ingress
+  namespace: {{ .Release.Namespace }}
+spec:
+  rules:
+  - host: {{ default "www.eulercopilot.local" .Values.domain.euler_copilot }}
+    http:
+      paths:
+      - path: {{ default "/" .Values.euler_copilot.web.ingress.prefix }}
+        pathType: Prefix
+        backend:
+          service:
+            name: web-service
+            port:
+              number: 8080
+
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: web-deploy-{{ .Release.Name }}
+  name: web-deploy
   namespace: {{ .Release.Namespace }}
   labels:
-    app: web-{{ .Release.Name }}
+    app: web
 spec:
   selector:
     matchLabels:
-      app: web-{{ .Release.Name }}
+      app: web
   template:
     metadata:
       annotations:
         checksum/config: {{ include (print $.Template.BasePath "/web/web-config.yaml") . | sha256sum }}
       labels:
-        app: web-{{ .Release.Name }}
+        app: web
     spec:
       automountServiceAccountToken: false
       securityContext:
         fsGroup: 1001
       containers:
         - name: web
-          image: "{{ if ne ( .Values.euler_copilot.web.image.registry | toString ) ""}}{{ .Values.euler_copilot.web.image.registry }}{{ else }}{{ .Values.globals.imageRegistry }}{{ end }}/{{ .Values.euler_copilot.web.image.name }}:{{ .Values.euler_copilot.web.image.tag | toString }}"
-          imagePullPolicy: {{ if ne ( .Values.euler_copilot.web.image.imagePullPolicy | toString ) "" }}{{ .Values.euler_copilot.web.image.imagePullPolicy }}{{ else }}{{ .Values.globals.imagePullPolicy }}{{ end }}
+          image: {{ default "hub.oepkgs.net/neocopilot/euler-copilot-web:0.9.3-x86" .Values.euler_copilot.web.image }}
+          imagePullPolicy: {{ default "IfNotPresent" .Values.globals.imagePullPolicy }}
           ports:
             - containerPort: 8080
               protocol: TCP
@@ -47,9 +82,13 @@ spec:
               name: web-env-volume
               subPath: .env
           resources:
-            {{- toYaml .Values.euler_copilot.web.resources | nindent 12 }}
+            requests:
+              cpu: 0.05
+              memory: 64Mi
+            limits:
+              {{ toYaml .Values.euler_copilot.web.resourceLimits | nindent 14 }}
           securityContext:
-            readOnlyRootFilesystem: {{ .Values.euler_copilot.web.readOnly }}
+            readOnlyRootFilesystem: {{ default false .Values.euler_copilot.web.readOnly }}
             capabilities:
               drop:
                 - ALL
@@ -64,8 +103,8 @@ spec:
             medium: Memory
         - name: web-env-volume
           configMap:
-            name: web-config-{{ .Release.Name }}
+            name: web-config
         - name: web-tmp
           emptyDir:
             medium: Memory
-{{- end }}
+{{- end -}}

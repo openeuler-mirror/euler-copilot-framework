@@ -1,4 +1,4 @@
-{{- if .Values.authhub.web.enabled }}
+{{- if .Values.authhub.web.enabled -}}
 ---
 apiVersion: v1
 kind: Service
@@ -78,9 +78,9 @@ spec:
               cpu: 0.05
               memory: 64Mi
             limits:
-              {{- toYaml .Values.authhub.web.resourceLimits | nindent 14 }}
+              {{ toYaml .Values.authhub.web.resourceLimits | nindent 14 }}
       volumes:
         - name: web-config
           configMap:
             name: authhub-web-config
-{{- end }}
+{{- end -}}

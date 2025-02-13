@@ -1,4 +1,4 @@
-{{- if .Values.authhub.mysql.enabled }}
+{{- if .Values.authhub.mysql.enabled -}}
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -7,4 +7,4 @@ metadata:
 data:
   init.sql: |-
 {{ tpl (.Files.Get "configs/mysql/init.sql") . | indent 4 }}
-{{- end }}
+{{- end -}}

@@ -2,5 +2,5 @@ apiVersion: v2
 name: euler-copilot
 description: Euler Copilot Helm部署包
 type: application
-version: 0.9.1
-appVersion: "1.16.0"
+version: 0.9.3
+appVersion: "0.9.3"

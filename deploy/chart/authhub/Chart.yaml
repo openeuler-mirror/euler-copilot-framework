@@ -3,4 +3,4 @@ name: authhub-chart
 description: AuthHub Helm部署包
 type: application
 version: 0.9.3
-appVersion: "1.16.0"
+appVersion: "0.9.3"
