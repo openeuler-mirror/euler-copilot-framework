@@ -80,7 +80,7 @@ class ConfigModel(BaseModel):
     LLM_MAX_TOKENS: int = Field(description="OpenAI API 最大Token数", default=8192)
     LLM_TEMPERATURE: float = Field(description="OpenAI API 温度", default=0.7)
     # 参数提取
-    SCHEDULER_TYPE: Optional[str] = Field(description="参数猜解后端", default=None)
+    SCHEDULER_BACKEND: Optional[str] = Field(description="参数猜解后端", default=None)
     SCHEDULER_MODEL: Optional[str] = Field(description="参数猜解模型名", default=None)
     SCHEDULER_URL: Optional[str] = Field(description="参数猜解 URL地址", default=None)
     SCHEDULER_API_KEY: Optional[str] = Field(description="参数猜解 API密钥", default=None)
