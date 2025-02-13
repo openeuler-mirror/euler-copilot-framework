@@ -1,0 +1,15 @@
+@startuml API 搜索应用
+actor User
+participant "AppCenter Router" as Router
+participant "AppCenter Manager" as Manager
+database MongoDB
+
+User -> Router: GET /api/app with filters
+Router -> Manager: fetch_all_apps()
+Manager -> Manager: build search filters
+Manager -> MongoDB: find with filters
+MongoDB --> Manager: return apps
+Manager -> Manager: build response items
+Manager --> Router: return app list
+Router --> User: return apps response
+@enduml
