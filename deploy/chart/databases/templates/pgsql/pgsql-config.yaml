@@ -1,4 +1,4 @@
-{{- if .Values.databases.pgsql.enabled }}
+{{- if .Values.databases.pgsql.enabled -}}
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -10,4 +10,4 @@ data:
     CREATE EXTENSION vector;
     CREATE TEXT SEARCH CONFIGURATION zhparser (PARSER = zhparser);
     ALTER TEXT SEARCH CONFIGURATION zhparser ADD MAPPING FOR n,v,a,i,e,l WITH simple;
-{{- end }}
+{{- end -}}

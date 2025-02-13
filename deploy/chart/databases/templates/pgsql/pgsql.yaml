@@ -1,4 +1,4 @@
-{{- if .Values.databases.pgsql.enabled }}
+{{- if .Values.databases.pgsql.enabled -}}
 ---
 apiVersion: v1
 kind: Service
@@ -71,9 +71,9 @@ spec:
           resources:
             requests:
               cpu: 0.25
-              memory: 256Mi
+              memory: 512Mi
             limits:
-                {{- toYaml .Values.databases.pgsql.resourceLimits | nindent 14 }}
+                {{ toYaml .Values.databases.pgsql.resourceLimits | nindent 14 }}
       volumes:
         - name: pgsql-data
           persistentVolumeClaim:
@@ -81,4 +81,4 @@ spec:
         - name: pgsql-init
           configMap:
             name: pgsql-config
-{{- end }}
+{{- end -}}

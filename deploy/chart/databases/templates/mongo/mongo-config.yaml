@@ -1,4 +1,4 @@
-{{- if .Values.databases.mongo.enabled }}
+{{- if .Values.databases.mongo.enabled -}}
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -20,4 +20,4 @@ data:
         echo "初始化MongoDB集群成功！"
         exit 0
     fi
-{{- end }}
+{{- end -}}

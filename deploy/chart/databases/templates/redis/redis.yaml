@@ -1,4 +1,4 @@
-{{- if .Values.databases.redis.enabled }}
+{{- if .Values.databases.redis.enabled -}}
 ---
 apiVersion: v1
 kind: Service
@@ -68,10 +68,10 @@ spec:
               cpu: 0.1
               memory: 64Mi
             limits:
-              {{- toYaml .Values.databases.redis.resourceLimits | nindent 14 }}
+              {{ toYaml .Values.databases.redis.resourceLimits | nindent 14 }}
       restartPolicy: Always
       volumes:
         - name: redis-tmp
           emptyDir:
             medium: Memory
-{{- end }}
+{{- end -}}

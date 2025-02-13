@@ -1,4 +1,4 @@
-{{- if .Values.databases.mongo.enabled }}
+{{- if .Values.databases.mongo.enabled -}}
 ---
 apiVersion: v1
 kind: Service
@@ -90,7 +90,7 @@ spec:
               cpu: 0.25
               memory: 256Mi
             limits:
-              {{- toYaml .Values.databases.mongo.resourceLimits | nindent 14 }}
+              {{ toYaml .Values.databases.mongo.resourceLimits | nindent 14 }}
       restartPolicy: Always
       volumes:
         - name: mongo-data
@@ -99,4 +99,4 @@ spec:
         - name: mongo-init
           configMap:
             name: mongo-config
-{{- end }}
+{{- end -}}
