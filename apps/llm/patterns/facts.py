@@ -1,5 +1,4 @@
 """事实提取"""
-import json
 from typing import Any, ClassVar, Optional
 
 from apps.llm.patterns.core import CorePattern
@@ -46,7 +45,7 @@ class Facts(CorePattern):
         }
         ```
 
-        输出结果：
+        现在，请开始输出结果：
     """
     """用户提示词"""
 
@@ -75,8 +74,10 @@ class Facts(CorePattern):
     async def generate(self, task_id: str, **kwargs) -> list[str]:  # noqa: ANN003
         """事实提取"""
         messages = [
-            {"role": "system", "content": self.system_prompt},
-            {"role": "user", "content": self.user_prompt.format(message_json_str=json.dumps(kwargs["message"], ensure_ascii=False))},
+            {"role": "system", "content": ""},
+            {"role": "user", "content": kwargs["message"]["question"]},
+            {"role": "assistant", "content": kwargs["message"]["answer"]},
+            {"role": "user", "content": self.user_prompt},
         ]
         result = ""
         async for chunk in ReasoningLLM().call(task_id, messages, streaming=False):

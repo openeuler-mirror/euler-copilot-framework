@@ -75,7 +75,7 @@ class SysCallVars(BaseModel):
 class ExecutorBackground(BaseModel):
     """Executor的背景信息"""
 
-    conversation: list[dict[str, str]] = Field(description="当前Executor的背景信息")
+    conversation: list[dict[str, str]] = Field(description="当前Executor的上下文对话")
     facts: list[str] = Field(description="当前Executor的背景信息")
     thought: str = Field(description="之前Executor的思考内容", default="")
 
