@@ -1,0 +1,19 @@
+copy:
+  - from: /config/.env
+    to: /config-rw/.env
+    mode:
+      uid: 1001
+      gid: 1001
+      mode: "0o650"
+  - from: /config/prompt.yaml
+    to: /config-rw/prompt.yaml
+    mode:
+      uid: 1001
+      gid: 1001
+      mode: "0o650"
+  - from: /config/stop_words.txt
+    to: /config-rw/stop_words.txt
+    mode:
+      uid: 1001
+      gid: 1001
+      mode: "0o650"
