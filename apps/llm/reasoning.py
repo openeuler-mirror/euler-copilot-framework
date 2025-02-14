@@ -57,7 +57,7 @@ class ReasoningLLM(metaclass=Singleton):
 
     async def call(self, task_id: str, messages: list[dict[str, str]],  # noqa: C901, PLR0912
                    max_tokens: Optional[int] = None, temperature: Optional[float] = None,
-                   *, streaming: bool = True) -> AsyncGenerator[str, None]:
+                   *, streaming: bool = True, result_only: bool = True) -> AsyncGenerator[str, None]:
         """调用大模型，分为流式和非流式两种"""
         input_tokens = self._calculate_token_length(messages)
         try:
@@ -80,40 +80,80 @@ class ReasoningLLM(metaclass=Singleton):
             stream=True,
         )     # type: ignore[]
 
+        reasoning_content = ""
         result = ""
 
+        is_first_chunk = True
+        is_reasoning = True
+        reasoning_type = ""
+
         async for chunk in stream:
-            content = chunk.choices[0].delta.content or ""
+            # 当前Chunk内的信息
             reason = ""
-            if hasattr(chunk.choices[0].delta, "reasoning_content"):
-                reason = chunk.choices[0].delta.reasoning_content or ""
+            text = ""
 
-            if reason:
-                if "<think>" not in result:
-                    reason = "<think>" + reason
-                    result += reason
-                    if streaming:
-                        yield reason
-                    continue
-            else:
-                if "<think>" in result and "</think>" not in result:
-                    result += "</think>"
-                    if streaming:
-                        yield "</think>"
+            if is_first_chunk:
+                if hasattr(chunk.choices[0].delta, "reasoning_content"):
+                    reason = "<think>" + chunk.choices[0].delta.reasoning_content or ""
+                    reasoning_type = "args"
+                    is_reasoning = True
+                else:
+                    for token in REASONING_BEGIN_TOKEN:
+                        if token in chunk.choices[0].delta.content or "":
+                            reason = "<think>" + chunk.choices[0].delta.content or ""
+                            reasoning_type = "tokens"
+                            is_reasoning = True
+                            break
 
-                for token in REASONING_BEGIN_TOKEN:
-                    if token in content:
-                        content = content.replace(token, "<think>")
+            # 当前已经不是第一个Chunk了
+            is_first_chunk = False
 
-                for token in REASONING_END_TOKEN:
-                    if token in content:
-                        content = content.replace(token, "</think>")
+            # 当前处于推理状态
+            if not is_first_chunk and is_reasoning:
+                # 如果推理内容用特殊参数传递
+                if reasoning_type == "args":
+                    # 还在推理
+                    if hasattr(chunk.choices[0].delta, "reasoning_content"):
+                        reason = chunk.choices[0].delta.reasoning_content or ""
+                    # 推理结束
+                    else:
+                        is_reasoning = False
+                        reason = "</think>"
+                        text = chunk.choices[0].delta.content or ""
 
-                result += content
-                if streaming:
-                    yield content
+                # 如果推理内容用特殊token传递
+                elif reasoning_type == "tokens":
+                    # 结束推理
+                    for token in REASONING_END_TOKEN:
+                        if token in chunk.choices[0].delta.content or "":
+                            is_reasoning = False
+                            reason, text = (chunk.choices[0].delta.content or "").split(token)
+                            reason += "</think>"
+                            break
+                    # 还在推理
+                    if is_reasoning:
+                        reason = chunk.choices[0].delta.content or ""
+
+            # 当前是正常问答
+            if not is_reasoning:
+                text = chunk.choices[0].delta.content or ""
+
+            # 推送消息
+            if streaming:
+                # 如果需要推送推理内容
+                if reason and not result_only:
+                    yield reason
+
+                # 推送text
+                yield text
+
+            # 整理结果
+            reasoning_content += reason
+            result += text
 
         if not streaming:
+            if not result_only:
+                yield reasoning_content
             yield result
 
         output_tokens = self._calculate_token_length([{"role": "assistant", "content": result}], pure_text=True)

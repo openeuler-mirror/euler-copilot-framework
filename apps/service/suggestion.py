@@ -48,7 +48,6 @@ async def plan_next_flow(user_sub: str, task_id: str, queue: MessageQueue, user_
         Question: {task.record.content.question}
         Answer: {task.record.content.answer}
     """)
-    generated_questions = ""
 
     records = await RecordManager.query_record_by_conversation_id(user_sub, task.record.conversation_id, HISTORY_QUESTIONS_NUM)
     last_n_questions = ""
@@ -64,9 +63,7 @@ async def plan_next_flow(user_sub: str, task_id: str, queue: MessageQueue, user_
                 history_questions=last_n_questions,
                 recent_question=current_record,
                 user_preference=user_domain,
-                shown_questions=generated_questions,
             )
-            generated_questions += f"{question}\n"
             content = SuggestContent(
                 question=question,
                 plugin_id="",
@@ -101,9 +98,7 @@ async def plan_next_flow(user_sub: str, task_id: str, queue: MessageQueue, user_
                 history_questions=last_n_questions,
                 recent_question=current_record,
                 user_preference=str(user_domain),
-                shown_questions=generated_questions,
             )
-            generated_questions += f"{rewrite_question}\n"
 
             content = SuggestContent(
                 plugin_id=plugin_id,
@@ -153,9 +148,7 @@ async def plan_next_flow(user_sub: str, task_id: str, queue: MessageQueue, user_
             history_questions=last_n_questions,
             recent_question=current_record,
             user_preference=str(user_domain),
-            shown_questions=generated_questions,
         )
-        generated_questions += f"{rewrite_question}\n"
         content = SuggestContent(
             plugin_id=next_flow_plugin_id,
             flow_id=next_flow.id,
