@@ -99,7 +99,7 @@ class Scheduler:
             need_recommend = True
             # 如果是智能问答，直接执行
             if not user_selected_flow:
-                await push_init_message(self._task_id, self._queue, post_body, is_flow=False)
+                # await push_init_message(self._task_id, self._queue, post_body, is_flow=False)
                 await asyncio.sleep(0.1)
                 for doc in docs:
                     # 保存使用的文件ID
@@ -110,7 +110,7 @@ class Scheduler:
                 await push_rag_message(self._task_id, self._queue, user_sub, rag_data)
             else:
                 # 需要执行Flow
-                await push_init_message(self._task_id, self._queue, post_body, is_flow=True)
+                # await push_init_message(self._task_id, self._queue, post_body, is_flow=True)
                 # 组装上下文
                 background = ExecutorBackground(
                     conversation=context,
