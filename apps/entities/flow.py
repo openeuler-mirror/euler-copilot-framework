@@ -39,6 +39,7 @@ class Step(BaseModel):
     description: str = Field(description="Step的描述")
     pos: StepPos = Field(description="Step在画布上的位置", default=StepPos(x=0, y=0))
     params: dict[str, Any] = Field(description="用户手动指定的Node参数", default={})
+    debug: bool =Field(description="是否经过调试", default=False)
 
 
 class NextFlow(BaseModel):
@@ -64,7 +65,7 @@ class Flow(BaseModel):
     steps: list[Step] = Field(description="节点列表", default=[])
     edges: list[Edge] = Field(description="边列表", default=[])
     next_flow: Optional[list[NextFlow]] = None
-
+    debug: bool = Field(description="是否经过调试", default=False)
 
 class MetadataBase(BaseModel):
     """Service或App的元数据"""

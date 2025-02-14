@@ -51,7 +51,7 @@ class NodeItem(BaseModel):
     depedency: Optional[DependencyItem] = None
     position: PositionItem=Field(default=PositionItem())
     editable: bool = Field(default=True)
-
+    debug: bool = Field(default=False)
 
 class EdgeItem(BaseModel):
     """请求/响应中的边变量类"""
@@ -72,3 +72,4 @@ class FlowItem(BaseModel):
     nodes: list[NodeItem] = Field(default=[])
     edges: list[EdgeItem] = Field(default=[])
     created_at: Optional[float] = Field(alias="createdAt", default=0)
+    debug: bool = Field(default=False)
