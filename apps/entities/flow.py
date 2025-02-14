@@ -64,7 +64,7 @@ class Flow(BaseModel):
     steps: list[Step] = Field(description="节点列表", default=[])
     edges: list[Edge] = Field(description="边列表", default=[])
     next_flow: Optional[list[NextFlow]] = None
-
+    debug: bool = Field(description="是否经过调试", default=False)
 
 class MetadataBase(BaseModel):
     """Service或App的元数据"""
@@ -152,7 +152,7 @@ class ServiceApiSpec(BaseModel):
     hash: str = Field(description="OpenAPI文件的hash值")
 
 class FlowConfig(BaseModel):
-        """Flow的配置信息 用于前期调试使用"""
-        app_id: str
-        flow_id: str
-        flow_config: Flow
+    """Flow的配置信息 用于前期调试使用"""
+    app_id: str
+    flow_id: str
+    flow_config: Flow
