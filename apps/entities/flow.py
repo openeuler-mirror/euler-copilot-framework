@@ -122,7 +122,7 @@ class AppLink(BaseModel):
     """App的相关链接"""
 
     title: str = Field(description="链接标题")
-    url: HttpUrl = Field(..., description="链接地址")
+    url: str = Field(..., description="链接地址", pattern=r"^(https|http)://.*$")
 
 
 class Permission(BaseModel):
