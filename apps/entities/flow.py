@@ -39,7 +39,6 @@ class Step(BaseModel):
     description: str = Field(description="Step的描述")
     pos: StepPos = Field(description="Step在画布上的位置", default=StepPos(x=0, y=0))
     params: dict[str, Any] = Field(description="用户手动指定的Node参数", default={})
-    debug: bool =Field(description="是否经过调试", default=False)
 
 
 class NextFlow(BaseModel):
@@ -153,7 +152,7 @@ class ServiceApiSpec(BaseModel):
     hash: str = Field(description="OpenAPI文件的hash值")
 
 class FlowConfig(BaseModel):
-        """Flow的配置信息 用于前期调试使用"""
-        app_id: str
-        flow_id: str
-        flow_config: Flow
+    """Flow的配置信息 用于前期调试使用"""
+    app_id: str
+    flow_id: str
+    flow_config: Flow

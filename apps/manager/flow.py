@@ -231,7 +231,6 @@ class FlowManager:
                         parameters=node_config["params"],
                         position=PositionItem(
                             x=node_config['pos']['x'], y=node_config['pos']['y']),
-                        debug=node_config['debug']
                     )
                     flow_item.nodes.append(node_item)
 
@@ -295,7 +294,7 @@ class FlowManager:
                 description=flow_item.description,
                 steps=[],
                 edges=[],
-                debug=flow_item.debug,
+                debug=False,
             )
             for node_item in flow_item.nodes:
                 edge_config = Step(

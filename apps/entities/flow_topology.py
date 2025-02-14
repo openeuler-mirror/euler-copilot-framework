@@ -51,7 +51,6 @@ class NodeItem(BaseModel):
     depedency: Optional[DependencyItem] = None
     position: PositionItem=Field(default=PositionItem())
     editable: bool = Field(default=True)
-    debug: bool = Field(default=False)
 
 class EdgeItem(BaseModel):
     """请求/响应中的边变量类"""
