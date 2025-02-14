@@ -25,10 +25,10 @@ class Recommend(CorePattern):
         1. 从用户角度生成预测问题。
         2. 预测问题应为疑问句或祈使句，必须少于30字。
         3. 预测问题应优先贴合工具描述，特别是工具描述与背景或倾向无关时。
-        5. 预测问题必须精简，不得输出非必要信息。
+        5. 预测问题必须精简，不得输出非必要信息，不得输出除问题以外的文字。
         6. 预测问题不得与“用户历史提问”重复或相似。
 
-        ==示例==
+        ==以下是一个例子==
         工具描述：调用API，查询天气数据
 
         用户历史提问：
@@ -40,9 +40,9 @@ class Recommend(CorePattern):
 
         生成的预测问题：
         杭州西湖景区的门票价格是多少？
-        ==结束示例==
+        ==例子结束==
 
-
+        现在，进行问题生成：
         工具描述：{action_description}
 
         用户历史提问：
@@ -76,16 +76,10 @@ class Recommend(CorePattern):
         else:
             history_questions = kwargs["history_questions"]
 
-        if "shown_questions" not in kwargs or not kwargs["shown_questions"]:
-            shown_questions = "[Empty]"
-        else:
-            shown_questions = kwargs["shown_questions"]
-
         user_input = self.user_prompt.format(
             action_description=action_description,
             history_questions=history_questions,
             recent_question=kwargs["recent_question"],
-            shown_questions=shown_questions,
             user_preference=user_preference,
         )
 
@@ -95,7 +89,7 @@ class Recommend(CorePattern):
         ]
 
         result = ""
-        async for chunk in ReasoningLLM().call(task_id, messages, streaming=False, temperature=1.0):
+        async for chunk in ReasoningLLM().call(task_id, messages, streaming=False, temperature=0.7, result_only=True):
             result += chunk
 
         return result
