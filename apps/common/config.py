@@ -17,7 +17,7 @@ class ConfigModel(BaseModel):
     DEPLOY_MODE: str = Field(description="oidc 部署方式", default="online")
     COOKIE_MODE: str = Field(description="COOKIE SET 方式", default="domain")
     # WEB
-    WEB_FRONT_URL: str = Field(description="web前端地址")
+    WEB_FRONT_URL: str = Field(description="web前端跳转地址", default="/")
     # Redis
     REDIS_HOST: str = Field(description="Redis主机名")
     REDIS_PORT: int = Field(description="Redis端口号", default=6379)

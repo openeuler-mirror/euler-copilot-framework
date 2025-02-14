@@ -31,7 +31,7 @@ app = FastAPI(docs_url=None, redoc_url=None)
 # 定义FastAPI全局中间件
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[config["WEB_FRONT_URL"]],
+    allow_origins=[config["DOMAIN"]],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
