@@ -2,7 +2,6 @@
 
 Copyright (c) Huawei Technologies Co., Ltd. 2024-2025. All rights reserved.
 """
-from datetime import datetime, timezone
 import uuid
 from datetime import datetime, timezone
 from enum import Enum
@@ -64,15 +63,15 @@ class AppCenterManager:
                 filters = {
                     "$or": [
                         {"author": user_sub},
-                        {"published": True}
-                    ]
+                        {"published": True},
+                    ],
                 }
 
                 # 如果有关键词且是按作者搜索，额外添加关键词过滤
                 if keyword and search_type == SearchType.AUTHOR:
                     filters["$and"] = [
                         filters["$or"],
-                        {"author": {"$regex": keyword, "$options": "i"}}
+                        {"author": {"$regex": keyword, "$options": "i"}},
                     ]
 
             # 执行应用搜索
@@ -162,7 +161,6 @@ class AppCenterManager:
                 "_id": {"$in": fav_app},
                 "published": True,
             }
-            print(base_filter)
             filters: dict[str, Any] = AppCenterManager._build_filters(
                 base_filter,
                 search_type,
