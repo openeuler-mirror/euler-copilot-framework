@@ -99,14 +99,18 @@ class ReasoningLLM(metaclass=Singleton):
                     is_reasoning = True
                 else:
                     for token in REASONING_BEGIN_TOKEN:
-                        if token in chunk.choices[0].delta.content or "":
-                            reason = "<think>" + chunk.choices[0].delta.content or ""
+                        if token == (chunk.choices[0].delta.content or ""):
+                            reason = "<think>"
                             reasoning_type = "tokens"
                             is_reasoning = True
                             break
 
             # 当前已经不是第一个Chunk了
             is_first_chunk = False
+
+            # 当前是正常问答
+            if not is_reasoning:
+                text = chunk.choices[0].delta.content or ""
 
             # 当前处于推理状态
             if not is_first_chunk and is_reasoning:
@@ -119,24 +123,19 @@ class ReasoningLLM(metaclass=Singleton):
                     else:
                         is_reasoning = False
                         reason = "</think>"
-                        text = chunk.choices[0].delta.content or ""
 
                 # 如果推理内容用特殊token传递
                 elif reasoning_type == "tokens":
                     # 结束推理
                     for token in REASONING_END_TOKEN:
-                        if token in chunk.choices[0].delta.content or "":
+                        if token == (chunk.choices[0].delta.content or ""):
                             is_reasoning = False
-                            reason, text = (chunk.choices[0].delta.content or "").split(token)
-                            reason += "</think>"
+                            reason = "</think>"
+                            text = ""
                             break
                     # 还在推理
                     if is_reasoning:
                         reason = chunk.choices[0].delta.content or ""
-
-            # 当前是正常问答
-            if not is_reasoning:
-                text = chunk.choices[0].delta.content or ""
 
             # 推送消息
             if streaming:
