@@ -22,10 +22,10 @@ metadata:
   namespace: {{ .Release.Namespace }}
 spec:
   rules:
-  - host: {{ default "witchaind.eulercopilot.local" .Values.domain.witchaind }}
+  - host: {{ default "www.eulercopilot.local" .Values.domain.euler_copilot }}
     http:
       paths:
-      - path: {{ default "/" .Values.euler_copilot.rag_web.ingress.prefix }}
+      - path: {{ default "/witchaind" .Values.euler_copilot.rag_web.ingress.prefix }}
         pathType: Prefix
         backend:
           service:

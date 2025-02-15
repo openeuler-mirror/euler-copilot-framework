@@ -9,7 +9,7 @@ globals:
 models:
   # 用于问答的大模型；需要为OpenAI兼容接口
   answer:
-    # [必填] 接口URL；需要带上“v1”等后缀
+    # [必填] 接口URL（无需带上“v1”后缀）
     url: 
     # [必填] 接口API Key；默认置空
     key: 
@@ -36,7 +36,7 @@ models:
     max_tokens: 
   # 用于数据向量化（Embedding）的模型
   embedding:
-    # [必填] Embedding URL；需要带上“v1”等后缀
+    # [必填] Embedding URL（无需带上“v1”后缀）
     url: 
     # [必填] Embedding 模型API Key
     key: 
@@ -69,8 +69,6 @@ login:
 
 # 域名设置
 domain:
-  # 用于WitchainD的域名；默认为witchaind.eulercopilot.local
-  witchaind:
   # 用于EulerCopilot的域名；默认为www.eulercopilot.local
   euler_copilot:
   # 部署authhub时使用的域名；默认为suthhub.eulercopilot.local
