@@ -75,7 +75,7 @@ databases:
   pgsql:
     # [必填] 是否部署PostgreSQL实例
     enabled: true
-    # 镜像设置，默认为hub.oepkgsnet/neocopilot/pgsql-empty:pg16
+    # 镜像设置，默认为hub.oepkgs.net/neocopilot/pgsql-empty:pg16
     # 镜像版本： ["pg16", "pg16-arm"]
     image:
     # 性能限制设置
