@@ -48,11 +48,11 @@ async def create_new_conversation(
     user_sub: str,
     conv_list: list[Conversation],
     app_id: str = "",
-    is_debug: bool = False,
+    debug: bool = False,
 ) -> Optional[Conversation]:
     """判断并创建新对话"""
     create_new = False
-    if not conv_list:
+    if not conv_list or debug is True:
         create_new = True
     else:
         last_conv = conv_list[-1]
@@ -67,7 +67,7 @@ async def create_new_conversation(
             raise RuntimeError(err)
         new_conv = await ConversationManager.add_conversation_by_user_sub(user_sub,
                                                                         app_id=app_id,
-                                                                        is_debug=is_debug)
+                                                                        debug=debug)
         if not new_conv:
             err = "Create new conversation failed."
             raise RuntimeError(err)
@@ -109,8 +109,8 @@ async def get_conversation_list(user_sub: Annotated[str, Depends(get_user)]):  #
             title=new_conv.title,
             docCount=0,
             createdTime=datetime.fromtimestamp(new_conv.created_at, tz=pytz.timezone("Asia/Shanghai")).strftime("%Y-%m-%d %H:%M:%S"),
-            appId=conv.app_id if conv.app_id else "",
-            debug=conv.debug if conv.debug else False,
+            appId=new_conv.app_id if new_conv.app_id else "",
+            debug=new_conv.debug if new_conv.debug else False,
         ))
 
     return JSONResponse(status_code=status.HTTP_200_OK,
@@ -127,7 +127,7 @@ async def get_conversation_list(user_sub: Annotated[str, Depends(get_user)]):  #
 async def add_conversation(
     user_sub: Annotated[str, Depends(get_user)],
     appId: Optional[str] = None,  # noqa: N803
-    isDebug: Optional[bool] = None, # noqa: N803
+    debug: Optional[bool] = None, # noqa: N803
 ): 
     """手动创建新对话"""
     conversations = await ConversationManager.get_conversation_by_user_sub(user_sub)
@@ -136,9 +136,9 @@ async def add_conversation(
         app_id = appId if appId else ""
         if appId:
             conversations = []
-        is_debug = isDebug if isDebug is not None else False
+        debug = debug if debug is not None else False
         new_conv = await create_new_conversation(user_sub, conversations,
-                                                app_id=app_id, is_debug=is_debug)
+                                                app_id=app_id, debug=debug)
     except RuntimeError as e:
         return JSONResponse(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, content=ResponseData(
             code=status.HTTP_500_INTERNAL_SERVER_ERROR,
