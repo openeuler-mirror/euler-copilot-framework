@@ -3,7 +3,6 @@
 Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 """
 import json
-from textwrap import dedent
 
 from apps.common.queue import MessageQueue
 from apps.common.security import Security
@@ -44,10 +43,16 @@ async def plan_next_flow(user_sub: str, task_id: str, queue: MessageQueue, user_
     task = await TaskManager.get_task(task_id)
     # 获取当前用户的领域
     user_domain = await UserDomainManager.get_user_domain_by_user_sub_and_topk(user_sub, USER_TOP_DOMAINS_NUM)
-    current_record = dedent(f"""
-        Question: {task.record.content.question}
-        Answer: {task.record.content.answer}
-    """)
+    current_record = [
+        {
+            "role": "user",
+            "content": task.record.content.question,
+        },
+        {
+            "role": "assistant",
+            "content": task.record.content.answer,
+        },
+    ]
 
     records = await RecordManager.query_record_by_conversation_id(user_sub, task.record.conversation_id, HISTORY_QUESTIONS_NUM)
     last_n_questions = ""
