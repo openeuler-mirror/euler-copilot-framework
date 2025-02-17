@@ -75,6 +75,7 @@ class Conversation(BaseModel):
     tasks: list[str] = []
     unused_docs: list[str] = []
     record_groups: list[str] = []
+    debug : Optional[dict[str, Any]] = None
 
 
 class Document(BaseModel):

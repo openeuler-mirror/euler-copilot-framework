@@ -88,8 +88,8 @@ async def get_conversation_list(user_sub: Annotated[str, Depends(get_user)]):  #
             title=conv.title,
             docCount=await DocumentManager.get_doc_count(user_sub, conv.id),
             createdTime=datetime.fromtimestamp(conv.created_at, tz=pytz.timezone("Asia/Shanghai")).strftime("%Y-%m-%d %H:%M:%S"),
-            appId=conv.app_id,
-            isDebug=conv.is_debug,
+            appId=conv.app_id if conv.app_id else "",
+            debug=conv.debug if conv.debug else False,
         ) for conv in conversations
     ]
 
@@ -109,8 +109,8 @@ async def get_conversation_list(user_sub: Annotated[str, Depends(get_user)]):  #
             title=new_conv.title,
             docCount=0,
             createdTime=datetime.fromtimestamp(new_conv.created_at, tz=pytz.timezone("Asia/Shanghai")).strftime("%Y-%m-%d %H:%M:%S"),
-            appId=new_conv.app_id,
-            isDebug=new_conv.is_debug,
+            appId=conv.app_id if conv.app_id else "",
+            debug=conv.debug if conv.debug else False,
         ))
 
     return JSONResponse(status_code=status.HTTP_200_OK,
@@ -201,8 +201,8 @@ async def update_conversation(  # noqa: ANN201
                 title=conv.title,
                 docCount=await DocumentManager.get_doc_count(user_sub, conv.id),
                 createdTime=datetime.fromtimestamp(conv.created_at, tz=pytz.timezone("Asia/Shanghai")).strftime("%Y-%m-%d %H:%M:%S"),
-                appId=conv.app_id,
-                isDebug=conv.is_debug,
+                appId=conv.app_id if conv.app_id else "",
+                debug=conv.debug if conv.debug else False,
             ),
         ).model_dump(exclude_none=True, by_alias=True),
     )

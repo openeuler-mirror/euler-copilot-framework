@@ -114,7 +114,7 @@ class ConversationListItem(BaseModel):
     doc_count: int = Field(alias="docCount")
     created_time: str = Field(alias="createdTime")
     app_id: str = Field(alias="appId")
-    is_debug: bool = Field(alias="isDebug")
+    debug: bool = Field(alias="debug")
 
 
 class ConversationListMsg(BaseModel):
