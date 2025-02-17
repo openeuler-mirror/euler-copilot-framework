@@ -289,7 +289,7 @@ class GetAppListMsg(BaseModel):
     """GET /api/app Result数据结构"""
 
     page_number: int = Field(..., alias="currentPage", description="当前页码")
-    app_count: int = Field(..., alias="total", description="总页数")
+    app_count: int = Field(..., alias="totalApps", description="总应用数")
     applications: list[AppCenterCardItem] = Field(..., description="应用列表")
 
 
