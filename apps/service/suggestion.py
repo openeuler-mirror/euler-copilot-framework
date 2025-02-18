@@ -18,7 +18,7 @@ from apps.manager import (
     TaskManager,
     UserDomainManager,
 )
-from apps.scheduler.pool.pool import Pool
+# from apps.scheduler.pool.pool import Pool
 
 # 推荐问题条数
 MAX_RECOMMEND = 3
@@ -80,7 +80,7 @@ async def plan_next_flow(user_sub: str, task_id: str, queue: MessageQueue, app: 
     flow_id = task.flow_state.name
     app_id = task.flow_state.app_id
     # TODO: 推荐flow待完善
-    _, flow_data = Pool().get_flow(flow_id, app_id)
+    # _, flow_data = Pool().get_flow(flow_id, app_id)
     # if flow_data is None:
     #     err = "Flow数据不存在"
     #     raise ValueError(err)
@@ -116,17 +116,17 @@ async def plan_next_flow(user_sub: str, task_id: str, queue: MessageQueue, app: 
     #     return
 
     # 当前有next_flow
-    for i, next_flow in enumerate(flow_data.next_flow):
-        # 取前MAX_RECOMMEND个Flow，保持顺序
-        if i >= MAX_RECOMMEND:
-            break
+    # for i, next_flow in enumerate(flow_data.next_flow):
+    #     # 取前MAX_RECOMMEND个Flow，保持顺序
+    #     if i >= MAX_RECOMMEND:
+    #         break
 
-        if next_flow.plugin is not None:
-            next_flow_app_id = next_flow.plugin
-        else:
-              next_flow_app_id = app_id
+    #     if next_flow.plugin is not None:
+    #         next_flow_app_id = next_flow.plugin
+    #     else:
+    #           next_flow_app_id = app_id
 
-        flow_metadata, _ = next_flow.id, next_flow_app_id,
+    #     flow_metadata, _ = next_flow.id, next_flow_app_id,
         # flow_metadata, _ = Pool().get_flow(
         #     next_flow.id,
         #     next_flow_app_id,
