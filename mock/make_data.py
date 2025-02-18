@@ -276,7 +276,7 @@ async def insert_node_pool() -> None:
             },
         ),
         NodePool(
-            _id=str(uuid.uuid4()),  # 自动生成一个唯一的 ID
+            _id="343da7db-5da8-42ef-9b59-cc56df54d9aa",
             service_id="1137ab09-20ae-4278-8346-524d4ce81d2f",
             call_id="api",
             name="【API】获取任务简介",
@@ -339,7 +339,7 @@ async def insert_node_pool() -> None:
             },
         ),
         NodePool(
-            _id=str(uuid.uuid4()),  # 自动生成一个唯一的 ID
+            _id="8841e328-da5b-45c7-8839-5b8054a92de7",
             service_id="1137ab09-20ae-4278-8346-524d4ce81d2f",
             call_id="choice",
             name="【CHOICE】判断任务类型",
@@ -366,7 +366,7 @@ async def insert_node_pool() -> None:
             },
         ),
         NodePool(
-            _id=str(uuid.uuid4()),  # 自动生成一个唯一的 ID
+            _id="7377ad0d-f867-46fe-806a-d0c4535d2f1a",
             service_id="1137ab09-20ae-4278-8346-524d4ce81d2f",
             call_id="api",
             name="【API】获取CVE修复的结果",
@@ -433,7 +433,7 @@ async def insert_node_pool() -> None:
             },
         ),
         NodePool(
-            _id=str(uuid.uuid4()),  # 自动生成一个唯一的 ID
+            _id="3d94b288-a0df-4717-b75c-fc2c67e24294",
             service_id="1137ab09-20ae-4278-8346-524d4ce81d2f",
             call_id="api",
             name="【API】获取漏洞扫描结果",
@@ -508,7 +508,7 @@ async def insert_node_pool() -> None:
             },
         ),
         NodePool(
-            _id=str(uuid.uuid4()),  # 自动生成一个唯一的 ID
+            _id="1a8ddfb9-c894-4819-ab9b-88fcb5f14c10",
             service_id="1137ab09-20ae-4278-8346-524d4ce81d2f",
             call_id="llm",
             name="【LLM】生成报告",
