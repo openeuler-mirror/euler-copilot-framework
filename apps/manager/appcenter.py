@@ -327,8 +327,11 @@ class AppCenterManager:
                 reverse=True,
             )[:count]
             app_ids = [t[0] for t in usage_list]
-            apps = await app_collection.find(
-                {"_id": {"$in": app_ids}}, {"name": 1}).to_list(len(app_ids))
+            if not app_ids:
+                apps = []  # 如果 app_ids 为空，直接返回空列表
+            else:
+                # 查询 MongoDB，获取符合条件的应用
+                apps = await app_collection.find({"_id": {"$in": app_ids}}, {"name": 1}).to_list(len(app_ids))  # 传入 app_ids 的长度
             app_map = {str(a["_id"]): a.get("name", "") for a in apps}
             return RecentAppList(applications=[
                 RecentAppListItem(appId=app_id, name=app_map.get(app_id, ""))
