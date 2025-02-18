@@ -34,7 +34,7 @@ from apps.scheduler.scheduler.message import (
     push_init_message,
     push_rag_message,
 )
-# from apps.service.suggestion import plan_next_flow
+from apps.service.suggestion import plan_next_flow
 
 
 class Scheduler:
@@ -120,16 +120,16 @@ class Scheduler:
 
             # 生成推荐问题和事实提取
             # 如果需要生成推荐问题，则生成
-            # if need_recommend:
-                # routine_results = await asyncio.gather(
+            if need_recommend:
+                routine_results = await asyncio.gather(
                     # generate_facts(self._task_id, post_body.question),
-                    # plan_next_flow(user_sub, self._task_id, self._queue, post_body.app),
-                # )
+                    plan_next_flow(user_sub, self._task_id, self._queue, post_body.app),
+                )
             # else:
                 # routine_results = await asyncio.gather(generate_facts(self._task_id, post_body.question))
 
             # 保存事实信息
-            # self._facts = routine_results[0]
+            self._facts = routine_results[0]
 
             # 发送结束消息
             await self._queue.push_output(event_type=EventType.DONE, data={})
