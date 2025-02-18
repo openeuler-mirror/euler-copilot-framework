@@ -339,7 +339,7 @@ class AppCenterManager:
             ])
         except Exception as e:
             LOGGER.info(f"[AppCenterManager] Get recently used apps failed: {e}")
-        return []
+        return None
 
     @staticmethod
     async def delete_app(app_id: str, user_sub: str) -> bool:
