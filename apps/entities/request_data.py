@@ -28,6 +28,7 @@ class RequestData(BaseModel):
     files: list[str] = Field(default=[], description="文件列表")
     app: RequestDataApp = Field(default=None, description="应用")
     features: RequestDataFeatures = Field(description="消息功能设置")
+    debug: bool = Field(default=False, description="是否调试")
 
 
 class QuestionBlacklistRequest(BaseModel):
