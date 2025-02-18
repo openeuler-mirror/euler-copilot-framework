@@ -2,17 +2,19 @@
 
 Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 """
-from typing import Optional
+
+from typing import Any, Optional
 
 from pydantic import BaseModel, Field
 
 from apps.entities.appcenter import AppData
-from apps.entities.flow_topology import EdgeItem, FlowItem, NodeItem, PositionItem
+from apps.entities.flow_topology import FlowItem, PositionItem
 from apps.entities.task import RequestDataApp
 
 
 class MockRequestData(BaseModel):
     """POST /api/mock/chat的请求体"""
+
     app_id: str = Field(..., description="应用ID")
     flow_id: str = Field(..., description="流程ID")
     question: str = Field(..., description="问题")
@@ -77,6 +79,19 @@ class CreateAppRequest(AppData):
 
 class ModFavAppRequest(BaseModel):
     """PUT /api/app/{appId} 请求数据结构"""
+
+    favorited: bool = Field(..., description="是否收藏")
+
+
+class UpdateServiceRequest(BaseModel):
+    """POST /api/service 请求数据结构"""
+
+    service_id: Optional[str] = Field(None, alias="serviceId", description="服务ID（更新时传递）")
+    data: dict[str, Any] = Field(..., description="对应 YAML 内容的数据对象")
+
+
+class ModFavServiceRequest(BaseModel):
+    """PUT /api/service/{serviceId} 请求数据结构"""
 
     favorited: bool = Field(..., description="是否收藏")
 

@@ -2,6 +2,7 @@
 
 Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 """
+
 from typing import Any, Optional
 
 from pydantic import BaseModel, Field
@@ -23,7 +24,7 @@ class ResponseData(BaseModel):
 
     code: int
     message: str
-    result: dict[str, Any]
+    result: Any
 
 
 class _GetAuthKeyMsg(BaseModel):
@@ -318,43 +319,148 @@ class GetRecentAppListRsp(ResponseData):
     result: RecentAppList
 
 
+class ServiceCardItem(BaseModel):
+    """语义接口中心：服务卡片数据结构"""
+
+    service_id: str = Field(..., alias="serviceId", description="服务ID")
+    name: str = Field(..., description="服务名称")
+    description: str = Field(..., description="服务简介")
+    icon: str = Field(..., description="服务图标")
+    author: str = Field(..., description="服务作者")
+    favorited: bool = Field(..., description="是否已收藏")
+
+
+class ServiceApiData(BaseModel):
+    """语义接口中心：服务 API 接口属性数据结构"""
+
+    name: str = Field(..., description="接口名称")
+    path: str = Field(..., description="接口路径")
+    description: str = Field(..., description="接口描述")
+
+
+class BaseServiceOperationMsg(BaseModel):
+    """语义接口中心：基础服务操作Result数据结构"""
+
+    service_id: str = Field(..., alias="serviceId", description="服务ID")
+
+
+class GetServiceListMsg(BaseModel):
+    """GET /api/service Result数据结构"""
+
+    services: list[ServiceCardItem] = Field(..., description="解析后的服务列表")
+
+
+class GetServiceListRsp(ResponseData):
+    """GET /api/service 返回数据结构"""
+
+    result: GetServiceListMsg = Field(..., title="Result")
+
+
+class UpdateServiceMsg(BaseModel):
+    """语义接口中心：服务属性数据结构"""
+
+    service_id: str = Field(..., alias="serviceId", description="服务ID")
+    name: str = Field(..., description="服务名称")
+    apis: list[ServiceApiData] = Field(..., description="解析后的接口列表")
+
+
+class UpdateServiceRsp(ResponseData):
+    """POST /api/service 返回数据结构"""
+
+    result: UpdateServiceMsg = Field(..., title="Result")
+
+
+class GetServiceDetailMsg(BaseModel):
+    """GET /api/service/{serviceId} Result数据结构"""
+
+    service_id: str = Field(..., alias="serviceId", description="服务ID")
+    name: str = Field(..., description="服务名称")
+    apis: Optional[list[ServiceApiData]] = Field(default=None, description="解析后的接口列表")
+    data: Optional[dict[str, Any]] = Field(default=None, description="YAML 内容数据对象")
+
+
+class GetServiceDetailRsp(ResponseData):
+    """GET /api/service/{serviceId} 返回数据结构"""
+
+    result: GetServiceDetailMsg = Field(..., title="Result")
+
+
+class DeleteServiceRsp(ResponseData):
+    """DELETE /api/service/{serviceId} 返回数据结构"""
+
+    result: BaseServiceOperationMsg = Field(..., title="Result")
+
+
+class ModFavServiceMsg(BaseModel):
+    """PUT /api/service/{serviceId} Result数据结构"""
+
+    service_id: str = Field(..., alias="serviceId", description="服务ID")
+    favorited: bool = Field(..., description="是否已收藏")
+
+
+class ModFavServiceRsp(ResponseData):
+    """PUT /api/service/{serviceId} 返回数据结构"""
+
+    result: ModFavServiceMsg = Field(..., title="Result")
+
+
 class NodeServiceListMsg(BaseModel):
     """GET /api/flow/service result"""
-    services: list[NodeServiceItem] = Field(description="服务列表",default=[])
+
+    services: list[NodeServiceItem] = Field(description="服务列表", default=[])
+
+
 class NodeServiceListRsp(ResponseData):
     """GET /api/flow/service 返回数据结构"""
+
     result: NodeServiceListMsg
+
+
 class NodeMetaDataRsp(ResponseData):
     """GET /api/flow/service/node 返回数据结构"""
+
     result: NodeMetaDataItem
+
 
 class FlowStructureGetMsg(BaseModel):
     """GET /api/flow result"""
+
     flow: FlowItem = Field(default=FlowItem())
     focus_point: PositionItem = Field(default=PositionItem())
 
 
 class FlowStructureGetRsp(ResponseData):
     """GET /api/flow 返回数据结构"""
+
     result: FlowStructureGetMsg
+
 
 class PutFlowReq(BaseModel):
     """创建/修改流拓扑结构"""
+
     flow: FlowItem
     focus_point: PositionItem = Field(alias="focusPoint")
 
+
 class FlowStructurePutMsg(BaseModel):
     """PUT /api/flow result"""
+
     flow: FlowItem = Field(default=FlowItem())
+
+
 class FlowStructurePutRsp(ResponseData):
     """PUT /api/flow 返回数据结构"""
+
     result: FlowStructurePutMsg
+
 
 class FlowStructureDeleteMsg(BaseModel):
     """DELETE /api/flow/ result"""
+
     flow_id: str = Field(alias="flowId", default="")
 
 
 class FlowStructureDeleteRsp(ResponseData):
     """DELETE /api/flow/ 返回数据结构"""
+
     result: FlowStructureDeleteMsg
