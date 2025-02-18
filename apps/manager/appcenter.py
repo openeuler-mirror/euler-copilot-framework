@@ -48,35 +48,15 @@ class AppCenterManager:
         :return: 应用列表, 总应用数
         """
         try:
-            # 构建基础搜索条件
-            filters: dict[str, Any] = {}
-
-            if keyword and search_type != SearchType.AUTHOR:
-                # 如果有关键词且不是按作者搜索，则使用原有的过滤逻辑
-                filters = AppCenterManager._build_filters(
-                    {"published": True},
-                    search_type,
-                    keyword,
-                )
-            else:
-                # 修改为新的搜索条件：author=user_sub 或 published=True
-                filters = {
-                    "$or": [
-                        {"author": user_sub},
-                        {"published": True},
-                    ],
-                }
-
-                # 如果有关键词且是按作者搜索，额外添加关键词过滤
-                if keyword and search_type == SearchType.AUTHOR:
-                    filters["$and"] = [
-                        filters["$or"],
-                        {"author": {"$regex": keyword, "$options": "i"}},
-                    ]
-
+            # 搜索条件，仅显示已发布的应用
+            base_filter = {"published": True}
+            filters: dict[str, Any] = AppCenterManager._build_filters(
+                {"published": True},
+                search_type,
+                keyword,
+            ) if keyword else base_filter
             # 执行应用搜索
             apps, total_apps = await AppCenterManager._search_apps_by_filter(filters, page, page_size)
-
             # 构建返回的应用卡片列表
             return [
                 AppCenterCardItem(
