@@ -128,7 +128,7 @@ async def put_flow(
             message="用户没有权限访问该流",
             result=FlowStructurePutMsg(),
         ).model_dump(exclude_none=True, by_alias=True))
-    put_body.flow=await FlowService.remove_excess_structure_from_flow(put_body.flow)
+    # put_body.flow=await FlowService.remove_excess_structure_from_flow(put_body.flow)
     if topology_check:
         await FlowService.validate_flow_connectivity(put_body.flow)
     await FlowService.validate_flow_illegal(put_body.flow)
