@@ -1,0 +1,14 @@
+@startuml API 获取应用详情
+actor User
+participant "AppCenter Router" as Router
+participant "AppCenter Manager" as Manager
+database MongoDB
+
+User -> Router: GET /api/app/{appId}
+Router -> Manager: fetch_app_data_by_id()
+Manager -> MongoDB: find_one app
+MongoDB --> Manager: return app data
+Manager -> Manager: build app property
+Manager --> Router: return app details
+Router --> User: return response
+@enduml

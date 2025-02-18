@@ -29,6 +29,7 @@ from apps.routers import (
     health,
     knowledge,
     record,
+    mock
 )
 
 # from apps.scheduler.pool.loader import Loader
@@ -58,12 +59,15 @@ app.include_router(blacklist.router)
 app.include_router(document.router)
 app.include_router(knowledge.router)
 app.include_router(flow.router)
+app.include_router(mock.router)
 # 初始化后台定时任务
 scheduler = BackgroundScheduler()
 scheduler.start()
 scheduler.add_job(DeleteUserCron.delete_user, "cron", hour=3)
 
 # 包装Ray
+
+
 @serve.deployment(ray_actor_options={"num_gpus": 0})
 @serve.ingress(app)
 class FastAPIWrapper:

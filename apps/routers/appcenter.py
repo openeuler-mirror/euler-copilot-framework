@@ -5,7 +5,6 @@ Copyright (c) Huawei Technologies Co., Ltd. 2024-2025. All rights reserved.
 from typing import Annotated, Optional, Union
 
 from fastapi import APIRouter, Body, Depends, Path, Query, status
-from fastapi.requests import HTTPConnection
 from fastapi.responses import JSONResponse
 
 from apps.dependency.csrf import verify_csrf_token
@@ -75,7 +74,7 @@ async def get_applications(  # noqa: ANN201, PLR0913
         message="查询成功",
         result=GetAppListMsg(
             currentPage=page,
-            total=total_apps,
+            totalApps=total_apps,
             applications=app_cards,
         ),
     ).model_dump(exclude_none=True, by_alias=True))

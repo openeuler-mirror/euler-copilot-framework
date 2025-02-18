@@ -1,0 +1,15 @@
+@startuml API 发布应用
+actor User
+participant "AppCenter Router" as Router
+participant "AppCenter Manager" as Manager
+database MongoDB
+
+User -> Router: POST /api/app/{appId}
+Router -> Manager: fetch_app_data_by_id()
+MongoDB --> Manager: return app data
+Router -> Router: verify author
+Router -> Manager: publish_app()
+Manager -> MongoDB: update published status
+Manager --> Router: return result
+Router --> User: return response
+@enduml

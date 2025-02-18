@@ -122,7 +122,7 @@ class AppLink(BaseModel):
     """App的相关链接"""
 
     title: str = Field(description="链接标题")
-    url: HttpUrl = Field(..., description="链接地址")
+    url: str = Field(..., description="链接地址", pattern=r"^(https|http)://.*$")
 
 
 class Permission(BaseModel):
@@ -151,8 +151,10 @@ class ServiceApiSpec(BaseModel):
     path: str = Field(description="OpenAPI文件路径")
     hash: str = Field(description="OpenAPI文件的hash值")
 
+
 class FlowConfig(BaseModel):
     """Flow的配置信息 用于前期调试使用"""
+
     app_id: str
     flow_id: str
     flow_config: Flow

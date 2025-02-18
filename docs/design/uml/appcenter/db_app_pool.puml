@@ -1,0 +1,47 @@
+@startuml DB AppPool 数据模型
+class AppPool {
+  - id: str
+  - name: str  
+  - description: str
+  - author: str
+  - icon: str
+  - links: List[str]
+  - first_questions: List[str]
+  - history_len: int
+  - permission: Permission
+  - flows: List[Flow]
+  - favorites: List[str]
+  - published: bool
+  - created_at: datetime
+}
+
+class Permission {
+  - type: str
+  - users: List[str]
+}
+
+class AppData {
+  - app_id: str
+  - name: str
+  - description: str
+  - icon: str
+  - links: List[str]
+  - first_questions: List[str]
+  - history_len: int
+  - permission: Permission
+  - workflows: List[str]
+}
+
+class AppCenterCardItem {
+  - appId: str
+  - icon: str
+  - name: str
+  - description: str 
+  - author: str
+  - favorited: bool
+  - published: bool
+}
+
+AppPool --> Permission
+AppData --> Permission
+@enduml

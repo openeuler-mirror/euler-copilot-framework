@@ -11,6 +11,13 @@ from apps.entities.flow_topology import EdgeItem, FlowItem, NodeItem, PositionIt
 from apps.entities.task import RequestDataApp
 
 
+class MockRequestData(BaseModel):
+    """POST /api/mock/chat的请求体"""
+    app_id: str = Field(..., description="应用ID")
+    flow_id: str = Field(..., description="流程ID")
+    question: str = Field(..., description="问题")
+
+
 class RequestDataFeatures(BaseModel):
     """POST /api/chat的features字段数据"""
 
@@ -121,4 +128,3 @@ class PutFlowReq(BaseModel):
 
     flow: FlowItem
     focus_point: PositionItem = Field(alias="focusPoint")
-
