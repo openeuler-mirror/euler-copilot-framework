@@ -1,14 +1,14 @@
-"""flow Manager
+"""应用管理器
 
 Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 """
-
 from apps.constants import LOGGER
-from apps.models.mongo import MongoDB
 from apps.entities.enum_var import PermissionType
+from apps.models.mongo import MongoDB
 
 
 class AppManager:
+    """应用管理器"""
 
     @staticmethod
     async def validate_user_app_access(user_sub: str, app_id: str) -> bool:
@@ -28,10 +28,10 @@ class AppManager:
                     {
                         "$and": [
                             {"permission.type": PermissionType.PROTECTED.value},
-                            {"permission.users": user_sub}
-                        ]
-                    }
-                ]
+                            {"permission.users": user_sub},
+                        ],
+                    },
+                ],
             }
 
             result = await app_collection.find_one(query)
@@ -40,6 +40,7 @@ class AppManager:
             LOGGER.error(f"Validate user app access failed due to: {e}")
             return False
 
+    @staticmethod
     async def validate_app_belong_to_user(user_sub: str, app_id: str) -> bool:
         """验证用户对应用的属权
 
@@ -51,7 +52,7 @@ class AppManager:
             app_collection = MongoDB.get_collection("app")  # 获取应用集合'
             query = {
                 "_id": app_id,
-                "author": user_sub
+                "author": user_sub,
             }
 
             result = await app_collection.find_one(query)
