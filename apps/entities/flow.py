@@ -58,7 +58,7 @@ class FlowError(BaseModel):
 class Flow(BaseModel):
     """Flow（工作流）的数据格式"""
 
-    name: str = Field(description="Flow的名称")
+    name: str = Field(description="Flow的名称", min_length=1)
     description: str = Field(description="Flow的描述")
     on_error: FlowError = FlowError(use_llm=True)
     steps: list[Step] = Field(description="节点列表", default=[])

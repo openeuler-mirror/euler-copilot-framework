@@ -1,0 +1,102 @@
+{{- if .Values.databases.mongo.enabled -}}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mongo-db
+  namespace: {{ .Release.Namespace }}
+spec:
+  type: {{ default "ClusterIP" .Values.databases.mongo.service.type }}
+  selector:
+    app: mongo
+  ports:
+    - port: 27017
+      targetPort: 27017
+      nodePort: {{ default nil .Values.databases.mongo.service.nodePort }}
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mongo-deploy
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: mongo
+spec:
+  replicas: {{ default 1 .Values.globals.replicaCount }}
+  selector:
+    matchLabels:
+      app: mongo
+  template:
+    metadata:
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/mongo/mongo-config.yaml") . | sha256sum }}
+      labels:
+        app: mongo
+    spec:
+      automountServiceAccountToken: false
+      containers:
+        - name: mongo
+          image: {{ default "hub.oepkgs.net/neocopilot/mongo:7.0.16-x86" .Values.databases.mongo.image }}
+          imagePullPolicy: {{ default "IfNotPresent" .Values.globals.imagePullPolicy }}
+          command:
+            - bash
+            - -c
+            - |
+              if [ ! -f "/data/db/file.key" ]; then
+                  openssl rand -base64 756 > /data/db/file.key;
+              fi
+              chmod 400 /data/db/file.key;
+              chown 999:999 /data/db/file.key;
+              exec docker-entrypoint.sh $$@
+          args:
+            - "mongod"
+            - "--replSet"
+            - "rs0"
+            - "--bind_ip_all"
+            - "--keyFile"
+            - "/data/db/file.key"
+          ports:
+            - containerPort: 27017
+              protocol: TCP
+          livenessProbe:
+            exec:
+              command:
+                - bash
+                - /tmp/healthcheck.sh
+            failureThreshold: 5
+            initialDelaySeconds: 30
+            periodSeconds: 60
+          env:
+            - name: TZ
+              value: "Asia/Shanghai"
+            - name: MONGO_INITDB_ROOT_USERNAME
+              value: "euler_copilot"
+            - name: MONGO_INITDB_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: euler-copilot-database
+                  key: mongo-password
+            - name: MONGO_INITDB_DATABASE
+              value: euler_copilot
+          volumeMounts:
+            - mountPath: /data/db
+              name: mongo-data
+            - mountPath: /tmp/healthcheck.sh
+              name: mongo-init
+              subPath: healthcheck.sh
+          resources:
+            requests:
+              cpu: 0.25
+              memory: 256Mi
+            limits:
+              {{ toYaml .Values.databases.mongo.resourceLimits | nindent 14 }}
+      restartPolicy: Always
+      volumes:
+        - name: mongo-data
+          persistentVolumeClaim:
+            claimName: mongo-storage
+        - name: mongo-init
+          configMap:
+            name: mongo-config
+{{- end -}}

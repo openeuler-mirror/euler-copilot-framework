@@ -42,7 +42,7 @@ async def oidc_login(request: Request, code: str, redirect_index: Optional[str] 
     if redirect_index:
         response = RedirectResponse(redirect_index, status_code=status.HTTP_301_MOVED_PERMANENTLY)
     else:
-        response = RedirectResponse(config["WEB_FRONT_URL"], status_code=status.HTTP_301_MOVED_PERMANENTLY)
+        response = RedirectResponse("/", status_code=status.HTTP_301_MOVED_PERMANENTLY)
     try:
         token = await get_oidc_token(code)
         user_info = await get_oidc_user(token["access_token"], token["refresh_token"])
@@ -70,23 +70,15 @@ async def oidc_login(request: Request, code: str, redirect_index: Optional[str] 
 
     await UserManager.update_userinfo_by_user_sub(user_sub)
 
-    current_session = request.cookies["ECSESSION"]
     try:
+        current_session = request.cookies["ECSESSION"]
         await SessionManager.delete_session(current_session)
-        current_session = await SessionManager.create_session(user_host, extra_keys={
-            "user_sub": user_sub,
-        })
     except Exception as e:
         LOGGER.error(f"Change session failed: {e}")
-        data = Audit(
-            user_sub=user_sub,
-            http_method="get",
-            module="auth",
-            client_ip=user_host,
-            message="/api/auth/login: Change session failed.",
-        )
-        await AuditLogManager.add_audit_log(data)
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="User login failed.") from e
+
+    current_session = await SessionManager.create_session(user_host, extra_keys={
+        "user_sub": user_sub,
+    })
 
     new_csrf_token = await SessionManager.create_csrf_token(current_session)
     if config["COOKIE_MODE"] == "DEBUG":

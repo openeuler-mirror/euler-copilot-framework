@@ -1,0 +1,16 @@
+{{- if and .Values.databases.pgsql.enabled -}}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: pgsql-storage
+  namespace: {{ .Release.Namespace }}
+  annotations:
+    helm.sh/resource-policy: keep
+spec:
+  storageClassName: {{ default "local-path" .Values.globals.storageClass }}
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: {{ default "10Gi" .Values.storage.pgsql }}
+{{- end -}}

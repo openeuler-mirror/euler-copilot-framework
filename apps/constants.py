@@ -20,3 +20,10 @@ MAX_SCHEDULER_HISTORY_SIZE = 3
 CALL_DIR = "call"
 # 日志记录器
 LOGGER = logging.getLogger("ray")
+
+REASONING_BEGIN_TOKEN = [
+    "<think>",
+]
+REASONING_END_TOKEN = [
+    "</think>",
+]
