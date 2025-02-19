@@ -38,7 +38,7 @@ spec:
         fsGroup: 1001
       containers:
         - name: framework
-          image: {{ default "hub.oepkgs.net/neocopilot/euler-copilot-framework:0.9.3-x86" .Values.euler_copilot.framework.image }}
+          image: {{ default "hub.oepkgs.net/neocopilot/euler-copilot-framework:0.9.4-x86" .Values.euler_copilot.framework.image }}
           imagePullPolicy: {{ default "IfNotPresent" .Values.globals.imagePullPolicy }}
           ports:
             - containerPort: 8002
