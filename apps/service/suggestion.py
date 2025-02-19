@@ -19,8 +19,6 @@ from apps.manager import (
 )
 from apps.scheduler.pool.pool import Pool
 
-# 推荐问题条数
-MAX_RECOMMEND = 3
 # 用户领域条数
 USER_TOP_DOMAINS_NUM = 5
 # 历史问题条数
@@ -61,14 +59,15 @@ async def plan_next_flow(user_sub: str, task_id: str, queue: MessageQueue, user_
         last_n_questions += f"Question {i+1}: {data.question}\n"
 
     if task.flow_state is None:
+        questions = await Recommend().generate(
+            task_id=task_id,
+            history_questions=last_n_questions,
+            recent_question=current_record,
+            user_preference=user_domain,
+        )
+
         # 当前没有使用Flow，进行普通推荐
-        for _ in range(MAX_RECOMMEND):
-            question = await Recommend().generate(
-                task_id=task_id,
-                history_questions=last_n_questions,
-                recent_question=current_record,
-                user_preference=user_domain,
-            )
+        for question in questions:
             content = SuggestContent(
                 question=question,
                 plugin_id="",
@@ -93,33 +92,26 @@ async def plan_next_flow(user_sub: str, task_id: str, queue: MessageQueue, user_
             if plugin.plugin_id and plugin.plugin_id not in plugin_ids:
                 plugin_ids.append(plugin.plugin_id)
         result = Pool().get_k_flows(task.record.content.question, plugin_ids)
-        for i, flow in enumerate(result):
-            if i >= MAX_RECOMMEND:
-                break
-            # 改写问题
-            rewrite_question = await Recommend().generate(
+        # TODO：预测问题n选3，或者针对每个flow只预测1个问题
+        for flow in result:
+            questions = await Recommend().generate(
                 task_id=task_id,
                 action_description=flow.description,
                 history_questions=last_n_questions,
                 recent_question=current_record,
                 user_preference=str(user_domain),
             )
-
             content = SuggestContent(
                 plugin_id=plugin_id,
                 flow_id=flow_id,
                 flow_description=str(flow.description),
-                question=rewrite_question,
+                question=questions[0],
             )
             await queue.push_output(event_type=EventType.SUGGEST, data=content.model_dump(exclude_none=True, by_alias=True))
         return
 
     # 当前有next_flow
-    for i, next_flow in enumerate(flow_data.next_flow):
-        # 取前MAX_RECOMMEND个Flow，保持顺序
-        if i >= MAX_RECOMMEND:
-            break
-
+    for next_flow in flow_data.next_flow:
         if next_flow.plugin is not None:
             next_flow_plugin_id = next_flow.plugin
         else:
@@ -154,11 +146,12 @@ async def plan_next_flow(user_sub: str, task_id: str, queue: MessageQueue, user_
             recent_question=current_record,
             user_preference=str(user_domain),
         )
+
         content = SuggestContent(
             plugin_id=next_flow_plugin_id,
             flow_id=next_flow.id,
             flow_description=str(flow_metadata.description),
-            question=rewrite_question,
+            question=rewrite_question[0],
         )
         await queue.push_output(event_type=EventType.SUGGEST, data=content.model_dump(exclude_none=True, by_alias=True))
         continue

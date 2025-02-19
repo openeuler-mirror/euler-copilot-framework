@@ -12,7 +12,6 @@ from asyncer import asyncify
 from sglang.lang.chat_template import get_chat_template
 
 from apps.common.config import config
-from apps.constants import REASONING_BEGIN_TOKEN, REASONING_END_TOKEN
 from apps.scheduler.json_schema import build_regex_from_schema
 
 
