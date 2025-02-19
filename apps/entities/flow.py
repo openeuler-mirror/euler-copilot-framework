@@ -24,9 +24,9 @@ class Edge(BaseModel):
     """Flow中Edge的数据"""
 
     id: str = Field(description="边的ID")
-    edge_from: str = Field(description="边的来源节点ID", alias="from")
-    edge_to: str = Field(description="边的目标节点ID", alias="to")
-    edge_type: Optional[EdgeType] = Field(description="边的类型", alias="type")
+    edge_from: str = Field(description="边的来源节点ID")
+    edge_to: str = Field(description="边的目标节点ID")
+    edge_type: Optional[EdgeType] = Field(description="边的类型")
 
 
 class Step(BaseModel):
@@ -64,7 +64,7 @@ class Flow(BaseModel):
     steps: list[Step] = Field(description="节点列表", default=[])
     edges: list[Edge] = Field(description="边列表", default=[])
     next_flow: Optional[list[NextFlow]] = None
-
+    debug: bool = Field(description="是否经过调试", default=False)
 
 class MetadataBase(BaseModel):
     """Service或App的元数据"""
@@ -122,7 +122,7 @@ class AppLink(BaseModel):
     """App的相关链接"""
 
     title: str = Field(description="链接标题")
-    url: HttpUrl = Field(..., description="链接地址")
+    url: str = Field(..., description="链接地址", pattern=r"^(https|http)://.*$")
 
 
 class Permission(BaseModel):
@@ -151,8 +151,10 @@ class ServiceApiSpec(BaseModel):
     path: str = Field(description="OpenAPI文件路径")
     hash: str = Field(description="OpenAPI文件的hash值")
 
+
 class FlowConfig(BaseModel):
-        """Flow的配置信息 用于前期调试使用"""
-        app_id: str
-        flow_id: str
-        flow_config: Flow
+    """Flow的配置信息 用于前期调试使用"""
+
+    app_id: str
+    flow_id: str
+    flow_config: Flow

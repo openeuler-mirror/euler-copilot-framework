@@ -26,9 +26,9 @@ from apps.manager import (
     TaskManager,
     UserManager,
 )
-from apps.scheduler.executor import Executor
+# from apps.scheduler.executor import Executor
 from apps.scheduler.scheduler.context import generate_facts, get_context
-from apps.scheduler.scheduler.flow import choose_flow
+# from apps.scheduler.scheduler.flow import choose_flow
 from apps.scheduler.scheduler.message import (
     push_document_message,
     push_init_message,
@@ -99,7 +99,7 @@ class Scheduler:
             need_recommend = True
             # 如果是智能问答，直接执行
             if not user_selected_flow:
-                await push_init_message(self._task_id, self._queue, post_body, is_flow=False)
+                # await push_init_message(self._task_id, self._queue, post_body, is_flow=False)
                 await asyncio.sleep(0.1)
                 for doc in docs:
                     # 保存使用的文件ID
@@ -110,7 +110,7 @@ class Scheduler:
                 await push_rag_message(self._task_id, self._queue, user_sub, rag_data)
             else:
                 # 需要执行Flow
-                await push_init_message(self._task_id, self._queue, post_body, is_flow=True)
+                # await push_init_message(self._task_id, self._queue, post_body, is_flow=True)
                 # 组装上下文
                 background = ExecutorBackground(
                     conversation=context,
@@ -122,11 +122,11 @@ class Scheduler:
             # 如果需要生成推荐问题，则生成
             if need_recommend:
                 routine_results = await asyncio.gather(
-                    generate_facts(self._task_id, post_body.question),
-                    plan_next_flow(user_sub, self._task_id, self._queue, post_body.plugins),
+                    # generate_facts(self._task_id, post_body.question),
+                    plan_next_flow(user_sub, self._task_id, self._queue, post_body.app),
                 )
-            else:
-                routine_results = await asyncio.gather(generate_facts(self._task_id, post_body.question))
+            # else:
+                # routine_results = await asyncio.gather(generate_facts(self._task_id, post_body.question))
 
             # 保存事实信息
             self._facts = routine_results[0]
@@ -154,17 +154,17 @@ class Scheduler:
             question=post_body.question,
             task_id=self._task_id,
             session_id=session_id,
-            plugin_data=user_selected_flow,
+            app_data=user_selected_flow,
             background=background,
         )
 
         # 执行Executor
-        flow_exec = Executor()
-        await flow_exec.load_state(param)
-        # 开始运行
-        await flow_exec.run()
-        # 判断状态
-        return flow_exec.flow_state.status != StepStatus.PARAM
+        # flow_exec = Executor()
+        # await flow_exec.load_state(param)
+        # # 开始运行
+        # await flow_exec.run()
+        # # 判断状态
+        # return flow_exec.flow_state.status != StepStatus.PARAM
 
     async def save_state(self, user_sub: str, post_body: RequestData) -> None:
         """保存当前Executor、Task、Record等的数据"""

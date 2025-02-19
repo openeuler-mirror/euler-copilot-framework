@@ -32,4 +32,3 @@ async def verify_csrf_token(request: Request, response: Response) -> Optional[Re
         response.set_cookie("_csrf_tk", new_csrf_token, max_age=config["SESSION_TTL"] * 60,
                             secure=True, domain=config["DOMAIN"], samesite="strict")
     return response
-

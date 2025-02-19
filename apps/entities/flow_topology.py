@@ -15,7 +15,7 @@ class NodeMetaDataItem(BaseModel):
     type: str
     name: str
     description: str
-    parameters_template: Optional[dict[str, Any]] = Field(alias="parametersTemplate")
+    parameters: Optional[dict[str, Any]]
     editable: bool = Field(default=True)
     created_at: Optional[float] = Field(alias="createdAt")
 
@@ -41,16 +41,16 @@ class DependencyItem(BaseModel):
 class NodeItem(BaseModel):
     """请求/响应中的节点变量类"""
     node_id: str = Field(alias="nodeId",default="")
-    api_id: str = Field(alias="apiId",default="")
+    service_id: str = Field(alias="serviceId",default="")
+    node_meta_data_id: str = Field(alias="nodeMetaDataId",default="")
     name: str=Field(default="")
     type: str = Field(default=NodeType.NORMAL.value)
     description: str = Field(default='')
     enable: bool = Field(default=True)
-    parameters: Optional[dict[str, Any]]=None
+    parameters: dict[str, Any] = Field(default={})
     depedency: Optional[DependencyItem] = None
     position: PositionItem=Field(default=PositionItem())
     editable: bool = Field(default=True)
-
 
 class EdgeItem(BaseModel):
     """请求/响应中的边变量类"""
@@ -71,3 +71,4 @@ class FlowItem(BaseModel):
     nodes: list[NodeItem] = Field(default=[])
     edges: list[EdgeItem] = Field(default=[])
     created_at: Optional[float] = Field(alias="createdAt", default=0)
+    debug: bool = Field(default=False)

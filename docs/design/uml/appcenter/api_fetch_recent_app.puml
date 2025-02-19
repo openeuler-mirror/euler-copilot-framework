@@ -1,0 +1,16 @@
+@startuml API 获取最近使用的应用
+actor User
+participant "AppCenter Router" as Router
+participant "AppCenter Manager" as Manager
+database MongoDB
+
+User -> Router: GET /api/app/recent
+Router -> Manager: get_recently_used_apps()
+Manager -> MongoDB: find user data
+MongoDB --> Manager: return user data
+Manager -> MongoDB: find app data
+MongoDB --> Manager: return app data
+Manager -> Manager: sort by last_used time
+Manager --> Router: return recent apps
+Router --> User: return response
+@enduml

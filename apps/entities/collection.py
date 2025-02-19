@@ -71,10 +71,11 @@ class Conversation(BaseModel):
     title: str = NEW_CHAT
     created_at: float = Field(default_factory=lambda: round(datetime.now(tz=timezone.utc).timestamp(), 3))
     is_debug: bool = False
-    app_id: str
+    app_id: Optional[str] = Field(default="")
     tasks: list[str] = []
     unused_docs: list[str] = []
     record_groups: list[str] = []
+    debug : bool = Field(default=False)
 
 
 class Document(BaseModel):

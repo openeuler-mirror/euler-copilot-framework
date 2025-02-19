@@ -23,6 +23,7 @@ async def verify_user(request: HTTPConnection) -> None:
     session_id = request.cookies["ECSESSION"]
     if not await SessionManager.verify_user(session_id):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Authentication Error.")
+    # pass
 
 async def get_session(request: HTTPConnection) -> str:
     """验证Session是否已鉴权，并返回Session ID；未鉴权则抛出HTTP 401；参数级dependence
@@ -34,6 +35,7 @@ async def get_session(request: HTTPConnection) -> str:
     if not await SessionManager.verify_user(session_id):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Authentication Error.")
     return session_id
+    # return "test"
 
 async def get_user(request: HTTPConnection) -> str:
     """验证Session是否已鉴权；若已鉴权，查询对应的user_sub；若未鉴权，抛出HTTP 401；参数级dependence
@@ -46,7 +48,7 @@ async def get_user(request: HTTPConnection) -> str:
     if not user:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Authentication Error.")
     return user
-
+    # return "test"
 
 async def verify_api_key(api_key: str = Depends(oauth2_scheme)) -> None:
     """验证API Key是否有效；无效则抛出HTTP 401；接口级dependence

@@ -2,13 +2,22 @@
 
 Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 """
-from typing import Optional
+
+from typing import Any, Optional
 
 from pydantic import BaseModel, Field
 
 from apps.entities.appcenter import AppData
-from apps.entities.flow_topology import EdgeItem, FlowItem, NodeItem, PositionItem
+from apps.entities.flow_topology import FlowItem, PositionItem
 from apps.entities.task import RequestDataApp
+
+
+class MockRequestData(BaseModel):
+    """POST /api/mock/chat的请求体"""
+
+    app_id: str = Field(..., description="应用ID")
+    flow_id: str = Field(..., description="流程ID")
+    question: str = Field(..., description="问题")
 
 
 class RequestDataFeatures(BaseModel):
@@ -26,8 +35,9 @@ class RequestData(BaseModel):
     group_id: Optional[str] = Field(default=None, alias="groupId", description="群组ID")
     language: str = Field(default="zh", description="语言")
     files: list[str] = Field(default=[], description="文件列表")
-    app: list[RequestDataApp] = Field(default=[], description="应用列表")
+    app: RequestDataApp = Field(default=None, description="应用")
     features: RequestDataFeatures = Field(description="消息功能设置")
+    debug: bool = Field(default=False, description="是否调试")
 
 
 class QuestionBlacklistRequest(BaseModel):
@@ -69,6 +79,19 @@ class CreateAppRequest(AppData):
 
 class ModFavAppRequest(BaseModel):
     """PUT /api/app/{appId} 请求数据结构"""
+
+    favorited: bool = Field(..., description="是否收藏")
+
+
+class UpdateServiceRequest(BaseModel):
+    """POST /api/service 请求数据结构"""
+
+    service_id: Optional[str] = Field(None, alias="serviceId", description="服务ID（更新时传递）")
+    data: dict[str, Any] = Field(..., description="对应 YAML 内容的数据对象")
+
+
+class ModFavServiceRequest(BaseModel):
+    """PUT /api/service/{serviceId} 请求数据结构"""
 
     favorited: bool = Field(..., description="是否收藏")
 
@@ -120,4 +143,3 @@ class PutFlowReq(BaseModel):
 
     flow: FlowItem
     focus_point: PositionItem = Field(alias="focusPoint")
-
