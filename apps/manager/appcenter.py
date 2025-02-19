@@ -2,6 +2,7 @@
 
 Copyright (c) Huawei Technologies Co., Ltd. 2024-2025. All rights reserved.
 """
+
 import uuid
 from datetime import datetime, timezone
 from enum import Enum
@@ -50,11 +51,15 @@ class AppCenterManager:
         try:
             # 搜索条件，仅显示已发布的应用
             base_filter = {"published": True}
-            filters: dict[str, Any] = AppCenterManager._build_filters(
-                {"published": True},
-                search_type,
-                keyword,
-            ) if keyword else base_filter
+            filters: dict[str, Any] = (
+                AppCenterManager._build_filters(
+                    {"published": True},
+                    search_type,
+                    keyword,
+                )
+                if keyword
+                else base_filter
+            )
             # 执行应用搜索
             apps, total_apps = await AppCenterManager._search_apps_by_filter(filters, page, page_size)
             # 构建返回的应用卡片列表
@@ -95,12 +100,16 @@ class AppCenterManager:
         try:
             # 搜索条件
             base_filter = {"author": user_sub}
-            filters: dict[str, Any] = AppCenterManager._build_filters(
-                base_filter,
-                search_type,
-                keyword,
-            ) if keyword and search_type != SearchType.AUTHOR else base_filter
-            apps, total_apps= await AppCenterManager._search_apps_by_filter(filters, page, page_size)
+            filters: dict[str, Any] = (
+                AppCenterManager._build_filters(
+                    base_filter,
+                    search_type,
+                    keyword,
+                )
+                if keyword and search_type != SearchType.AUTHOR
+                else base_filter
+            )
+            apps, total_apps = await AppCenterManager._search_apps_by_filter(filters, page, page_size)
             return [
                 AppCenterCardItem(
                     appId=app.id,
@@ -141,11 +150,15 @@ class AppCenterManager:
                 "_id": {"$in": fav_app},
                 "published": True,
             }
-            filters: dict[str, Any] = AppCenterManager._build_filters(
-                base_filter,
-                search_type,
-                keyword,
-            ) if keyword else base_filter
+            filters: dict[str, Any] = (
+                AppCenterManager._build_filters(
+                    base_filter,
+                    search_type,
+                    keyword,
+                )
+                if keyword
+                else base_filter
+            )
             apps, total_apps = await AppCenterManager._search_apps_by_filter(filters, page, page_size)
             return [
                 AppCenterCardItem(
@@ -307,6 +320,30 @@ class AppCenterManager:
         return AppCenterManager.ModFavAppFlag.INTERNAL_ERROR
 
     @staticmethod
+    async def delete_app(app_id: str, user_sub: str) -> bool:
+        """删除应用
+
+        :param app_id: 应用唯一标识
+        :param user_sub: 用户唯一标识
+        :return: 删除是否成功
+        """
+        try:
+            async with MongoDB.get_session() as session, await session.start_transaction():
+                app_collection = MongoDB.get_collection("app")
+                await app_collection.delete_one({"_id": app_id}, session=session)
+                user_collection = MongoDB.get_collection("user")
+                await user_collection.update_one(
+                    {"_id": user_sub},
+                    {"$unset": {f"app_usage.{app_id}": ""}},
+                    session=session,
+                )
+                await session.commit_transaction()
+                return True
+        except Exception as e:
+            LOGGER.error(f"[AppCenterManager] Delete app failed: {e}")
+        return False
+
+    @staticmethod
     async def get_recently_used_apps(count: int, user_sub: str) -> Optional[RecentAppList]:
         """获取用户最近使用的应用列表
 
@@ -331,39 +368,14 @@ class AppCenterManager:
                 apps = []  # 如果 app_ids 为空，直接返回空列表
             else:
                 # 查询 MongoDB，获取符合条件的应用
-                apps = await app_collection.find({"_id": {"$in": app_ids}}, {"name": 1}).to_list(len(app_ids))  # 传入 app_ids 的长度
+                apps = await app_collection.find({"_id": {"$in": app_ids}}, {"name": 1}).to_list(len(app_ids))
             app_map = {str(a["_id"]): a.get("name", "") for a in apps}
-            return RecentAppList(applications=[
-                RecentAppListItem(appId=app_id, name=app_map.get(app_id, ""))
-                for app_id in app_ids
-            ])
+            return RecentAppList(
+                applications=[RecentAppListItem(appId=app_id, name=app_map.get(app_id, "")) for app_id in app_ids],
+            )
         except Exception as e:
             LOGGER.info(f"[AppCenterManager] Get recently used apps failed: {e}")
         return None
-
-    @staticmethod
-    async def delete_app(app_id: str, user_sub: str) -> bool:
-        """删除应用
-
-        :param app_id: 应用唯一标识
-        :param user_sub: 用户唯一标识
-        :return: 删除是否成功
-        """
-        try:
-            async with MongoDB.get_session() as session, await session.start_transaction():
-                app_collection = MongoDB.get_collection("app")
-                await app_collection.delete_one({"_id": app_id}, session=session)
-                user_collection = MongoDB.get_collection("user")
-                await user_collection.update_one(
-                    {"_id": user_sub},
-                    {"$unset": {f"app_usage.{app_id}": ""}},
-                    session=session,
-                )
-                await session.commit_transaction()
-                return True
-        except Exception as e:
-            LOGGER.error(f"[AppCenterManager] Delete app failed: {e}")
-        return False
 
     @staticmethod
     async def update_recent_app(user_sub: str, app_id: str) -> bool:
@@ -428,11 +440,13 @@ class AppCenterManager:
         try:
             app_collection = MongoDB.get_collection("app")
             total_apps = await app_collection.count_documents(search_conditions)
-            db_data = await app_collection.find(search_conditions) \
-                .sort("created_at", -1) \
-                .skip((page - 1) * page_size) \
-                .limit(page_size) \
+            db_data = (
+                await app_collection.find(search_conditions)
+                .sort("created_at", -1)
+                .skip((page - 1) * page_size)
+                .limit(page_size)
                 .to_list(length=page_size)
+            )
             apps = [AppPool.model_validate(doc) for doc in db_data]
             return apps, total_apps
         except Exception as e:

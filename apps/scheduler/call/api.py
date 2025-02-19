@@ -16,7 +16,9 @@ from apps.scheduler.call.core import CoreCall
 from apps.scheduler.slot.slot import Slot
 
 
-class _APIParams(BaseModel):
+class APIParams(BaseModel):
+    """API调用工具的参数"""
+
     full_url: str = Field(description="API接口的完整URL")
     method: Literal[
         "GET", "POST",
@@ -35,7 +37,7 @@ class _APIOutput(BaseModel):
     output: dict[str, Any] = Field(description="API调用工具的输出")
 
 
-class API(metaclass=CoreCall, param_cls=_APIParams, output_cls=_APIOutput):
+class API(metaclass=CoreCall, param_cls=APIParams, output_cls=_APIOutput):
     """API调用工具"""
 
     name: str = "api"
