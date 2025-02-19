@@ -158,7 +158,7 @@ def mock_data(question):
                     "flowId":flowId,
                     "stepId": "b7607efc-0dc7-4f7a-a2b2-dba60013b3b5",
                     "stepName": "【API】获取任务简介",
-                    "stepStatus": "error",
+                    "stepStatus": "success",
                 },
                 "content": {
                     "task_list":[
@@ -180,6 +180,64 @@ def mock_data(question):
                     "time": 0.5,
                 }
             },
+
+            { # 【CHOICE】判断任务类型
+                "event": "step.input",
+                "id": "0f9d3e6b-7845-44ab-b247-35c522d38f13",
+                "groupId":"8b9d3e6b-a892-4602-b247-35c522d38f13",
+                "conversationId": conversationId,
+                "taskId": "eb717bc7-3435-4172-82d1-6b69e62f3fd6",
+                "flow": {
+                    "appId": appId,
+                    "flowId":flowId,
+                    "stepId": "8841e328-da5b-45c7-8839-5b8054a92de7",
+                    "stepName": "【CHOICE】判断任务类型",
+                    "stepStatus": "running",
+                },
+                "content": {
+                    "choices": [
+                        {
+                            "branchId": "is_scan",
+                            "description": '任务类型为"CVE修复任务"',
+                            "propose": '当值为cve_scan时，任务类型为"CVE修复任务"，选择此分支',
+                            "variable_a": "{{input.task_list[0].task_type}}",
+                        },
+                        {
+                            "branchId": "is_fix",
+                            "description": '任务类型为"CVE修复任务"',
+                            "propose": '当值为cve_fix时，任务类型为"CVE修复任务"，选择此分支',
+                            "variable_a": "{{input.task_list[0].task_type}}",
+                        },
+                    ],
+                },
+                "metadata": {
+                    "inputTokens": 200,
+                    "outputTokens": 50,
+                    "time": 0.5,
+                }
+            },
+            { 
+                "event": "step.output",
+                "id": "0f9d3e6b-7845-44ab-b247-35c522d38f13",
+                "groupId":"8b9d3e6b-a892-4602-b247-35c522d38f13",
+                "conversationId": conversationId,
+                "taskId": "eb717bc7-3435-4172-82d1-6b69e62f3fd6",
+                "flow": {
+                    "appId": appId,
+                    "flowId":flowId,
+                    "stepId": "8841e328-da5b-45c7-8839-5b8054a92de7",
+                    "stepName": "【CHOICE】判断任务类型",
+                    "stepStatus": "error",
+                },
+                "content": {
+                },
+                "metadata": {
+                    "inputTokens": 200,
+                    "outputTokens": 50,
+                    "time": 0.5,
+                }
+            },
+
             { # flow结束
                 "event": "flow.stop",
                 "id": "0f9d3e6b-7845-44ab-b247-35c522d38f13",
@@ -189,23 +247,11 @@ def mock_data(question):
                 "flow": {
                     "appId": appId,
                     "flowId":flowId,
-                    "stepId": "b7607efc-0dc7-4f7a-a2b2-dba60013b3b5",
-                    "stepName": "【API】获取任务简介",
+                    "stepId": "8841e328-da5b-45c7-8839-5b8054a92de7",
+                    "stepName": "【CHOICE】判断任务类型",
                     "stepStatus": "error",
                 },
                 "content": {
-                    "task_list":[
-                        {
-                            "task_id":"eb717bc7-3435-4172-82d1-6b12e62f3fd6",
-                            "task_name":"A",
-                            "task_type":"cve_scan",
-                        },
-                        {
-                            "task_id":"eb717bc7-3435-4172-82d1-6b13e62f3fd6",
-                            "task_name":"B",
-                            "task_type":"cve_fix",
-                        },
-                    ]
                 },
                 "measure": {
                     "inputTokens": 200,
