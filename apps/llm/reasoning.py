@@ -10,7 +10,7 @@ from openai import AsyncOpenAI
 
 from apps.common.config import config
 from apps.common.singleton import Singleton
-from apps.constants import REASONING_BEGIN_TOKEN, REASONING_END_TOKEN
+from apps.constants import LOGGER, REASONING_BEGIN_TOKEN, REASONING_END_TOKEN
 from apps.manager.task import TaskManager
 
 
@@ -154,6 +154,8 @@ class ReasoningLLM(metaclass=Singleton):
             if not result_only:
                 yield reasoning_content
             yield result
+
+        LOGGER.info(f"推理LLM：{reasoning_content}\n\n{result}")
 
         output_tokens = self._calculate_token_length([{"role": "assistant", "content": result}], pure_text=True)
         await TaskManager.update_token_summary(task_id, input_tokens, output_tokens)
