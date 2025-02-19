@@ -36,11 +36,10 @@ class ServicePool(PoolBase):
     collection: service
     """
 
-    author: str
-    api: list[ServiceApiInfo] = Field(description="API信息列表", default=[])
-    permission: Permission = Field(description="用户与服务的权限关系", default=Permission())
-    favorites: list[str] = Field(description="收藏此应用的用户列表", default=[])
-    hashes: dict[str, str] = Field(description="关联文件的hash值；Service作为整体更新或删除", default={})
+    author: str = Field(description="作者的用户ID")
+    permission: Permission = Field(description="服务可见性配置", default=Permission())
+    favorites: list[str] = Field(description="收藏此服务的用户列表", default=[])
+    openapi_hash: str = Field(description="服务关联的 OpenAPI YAML 文件哈希")
 
 
 class CallPool(PoolBase):

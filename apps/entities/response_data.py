@@ -347,6 +347,8 @@ class BaseServiceOperationMsg(BaseModel):
 class GetServiceListMsg(BaseModel):
     """GET /api/service Result数据结构"""
 
+    current_page: int = Field(..., alias="currentPage", description="当前页码")
+    total_count: int = Field(..., alias="totalCount", description="总服务数")
     services: list[ServiceCardItem] = Field(..., description="解析后的服务列表")
 
 
