@@ -7,7 +7,10 @@ from typing import Any
 from anyio import Path
 
 from apps.common.config import config
-from apps.entities.vector import NodeVector, ServiceVector
+from apps.constants import LOGGER
+from apps.entities.flow import ServiceMetadata
+from apps.entities.pool import NodePool
+from apps.entities.vector import NodePoolVector, ServicePoolVector
 from apps.models.mongo import MongoDB
 from apps.models.postgres import PostgreSQL
 from apps.scheduler.pool.loader.metadata import MetadataLoader
@@ -21,17 +24,27 @@ class ServiceLoader:
 
 
     @classmethod
-    async def load(cls, service_dir: Path) -> None:
+    async def load_one(cls, service_dir: Path) -> None:
         """加载单个Service"""
         service_path = Path(config["SERVICE_DIR"]) / "service" / service_dir
         # 载入元数据
         metadata = await MetadataLoader.load(service_path / "metadata.yaml")
-        # 载入OpenAPI文档，获取Node列表
-        nodes = await OpenAPILoader.load_one(service_path / "openapi.yaml")
+        if not isinstance(metadata, ServiceMetadata):
+            err = f"元数据类型错误: {service_path / 'metadata.yaml'}"
+            LOGGER.error(err)
+            raise TypeError(err)
 
+        # 载入OpenAPI文档，获取Node列表
+        nodes = await OpenAPILoader.load_one(service_path / "openapi", metadata)
+
+
+
+    @classmethod
+    async def _update_db(cls, nodes: list[NodePool], metadata: ServiceMetadata) -> None:
+        """更新数据库"""
         # 向量化所有数据
         session = await PostgreSQL.get_session()
-        service_vec = ServiceVector(
+        service_vec = ServicePoolVector(
             _id=metadata.id,
             embedding=PostgreSQL.get_embedding([metadata.description]),
         )
@@ -43,17 +56,13 @@ class ServiceLoader:
 
         node_vecs = await PostgreSQL.get_embedding(node_descriptions)
         for i, data in enumerate(node_vecs):
-            node_vec = NodeVector(
+            node_vec = NodePoolVector(
                 _id=nodes[i].id,
                 embedding=data,
             )
             session.add(node_vec)
 
         await session.commit()
-
-
-
-
 
 
     @staticmethod
@@ -63,6 +72,6 @@ class ServiceLoader:
 
 
     @staticmethod
-    async def load_all(cls) -> dict[str, Any]:
-        """执行Service的加载"""
+    async def init() -> None:
+        """在初始化时加载所有Service"""
         pass

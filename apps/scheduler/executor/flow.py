@@ -8,7 +8,7 @@ from typing import Optional
 from apps.constants import LOGGER, MAX_SCHEDULER_HISTORY_SIZE
 from apps.entities.enum_var import StepStatus
 from apps.entities.flow import Step
-from apps.entities.app import (
+from apps.entities.scheduler import (
     SysCallVars,
     SysExecVars,
 )

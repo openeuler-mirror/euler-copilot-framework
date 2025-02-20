@@ -2,6 +2,8 @@
 
 Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 """
+from apps.scheduler.pool.check import FileChecker
+
 
 from apps.entities.flow_topology import DependencyItem, FlowItem, NodeItem, PositionItem
 

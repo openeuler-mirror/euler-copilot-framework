@@ -124,11 +124,11 @@ async def get_conversation_list(user_sub: Annotated[str, Depends(get_user)]):  #
 
 
 @router.post("", dependencies=[Depends(verify_csrf_token)], response_model=AddConversationRsp)
-async def add_conversation(
+async def add_conversation(  # noqa: ANN201
     user_sub: Annotated[str, Depends(get_user)],
-    appId: Optional[str] = None,  # noqa: N803
-    debug: Optional[bool] = None, # noqa: N803
-): 
+    appId: Optional[str] = None,
+    debug: Optional[bool] = None,
+):
     """手动创建新对话"""
     conversations = await ConversationManager.get_conversation_by_user_sub(user_sub)
     # 尝试创建新对话
@@ -162,7 +162,7 @@ async def add_conversation(
 @router.put("", response_model=UpdateConversationRsp, dependencies=[Depends(verify_csrf_token)])
 async def update_conversation(  # noqa: ANN201
     post_body: ModifyConversationData,
-    conversationId: Annotated[str, Query()],  # noqa: N803
+    conversationId: Annotated[str, Query()],
     user_sub: Annotated[str, Depends(get_user)],
 ):
     """更新特定Conversation的数据"""

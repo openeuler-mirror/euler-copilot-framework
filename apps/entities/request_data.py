@@ -14,6 +14,7 @@ from apps.entities.task import RequestDataApp
 
 class MockRequestData(BaseModel):
     """POST /api/mock/chat的请求体"""
+
     app_id: str = Field(default="", description="应用ID", alias="appId")
     flow_id: str = Field(default="", description="流程ID", alias="flowId")
     conversation_id : str = Field(..., description="会话ID", alias="conversationId")
@@ -31,11 +32,11 @@ class RequestData(BaseModel):
     """POST /api/chat 请求的总的数据结构"""
 
     question: str = Field(max_length=2000, description="用户输入")
-    conversation_id: str = Field(default=None, alias="conversationId", description="会话ID")
-    group_id: Optional[str] = Field(default=None, alias="groupId", description="群组ID")
+    conversation_id: str = Field(default=None, alias="conversationId", description="聊天ID")
+    group_id: Optional[str] = Field(default=None, alias="groupId", description="问答组ID")
     language: str = Field(default="zh", description="语言")
     files: list[str] = Field(default=[], description="文件列表")
-    app: RequestDataApp = Field(default=None, description="应用")
+    app: Optional[RequestDataApp] = Field(default=None, description="应用")
     features: RequestDataFeatures = Field(description="消息功能设置")
     debug: bool = Field(default=False, description="是否调试")
 

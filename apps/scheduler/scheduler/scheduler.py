@@ -15,10 +15,10 @@ from apps.entities.collection import (
     Record,
 )
 from apps.entities.enum_var import EventType, StepStatus
-from apps.entities.plugin import ExecutorBackground, SysExecVars
 from apps.entities.rag_data import RAGQueryReq
 from apps.entities.record import RecordDocument
 from apps.entities.request_data import RequestData
+from apps.entities.scheduler import ExecutorBackground, SysExecVars
 from apps.entities.task import RequestDataApp
 from apps.manager import (
     DocumentManager,
@@ -26,15 +26,16 @@ from apps.manager import (
     TaskManager,
     UserManager,
 )
+
 # from apps.scheduler.executor import Executor
 from apps.scheduler.scheduler.context import generate_facts, get_context
+
 # from apps.scheduler.scheduler.flow import choose_flow
 from apps.scheduler.scheduler.message import (
     push_document_message,
     push_init_message,
     push_rag_message,
 )
-from apps.service.suggestion import plan_next_flow
 
 
 class Scheduler:
@@ -70,11 +71,8 @@ class Scheduler:
 
     async def run(self, user_sub: str, session_id: str, post_body: RequestData) -> None:
         """运行调度器"""
-        # 捕获所有异常：出现问题就输出日志，并停止queue
         try:
             # 根据用户的请求，返回插件ID列表，选择Flow
-            # self._plugin_id, user_selected_flow = await choose_flow(self._task_id, post_body.question, post_body.apps)
-            user_selected_flow = None
             # 获取当前问答可供关联的文档
             docs, doc_ids = await self._get_docs(user_sub, post_body)
             # 获取上下文；最多20轮
@@ -90,7 +88,7 @@ class Scheduler:
                 question=post_body.question,
                 language=post_body.language,
                 document_ids=doc_ids,
-                kb_sn=None if user_info is None or not user_info.kb_id else user_info.kb_id,
+                kb_sn=None if not user_info.kb_id else user_info.kb_id,
                 history=context,
                 top_k=5,
             )
@@ -98,7 +96,7 @@ class Scheduler:
             # 状态位：是否需要生成推荐问题？
             need_recommend = True
             # 如果是智能问答，直接执行
-            if not user_selected_flow:
+            if not post_body.app or post_body.app.app_id == "":
                 # await push_init_message(self._task_id, self._queue, post_body, is_flow=False)
                 await asyncio.sleep(0.1)
                 for doc in docs:
@@ -116,20 +114,15 @@ class Scheduler:
                     conversation=context,
                     facts=facts,
                 )
-                need_recommend = await self.run_executor(session_id, post_body, background, user_selected_flow)
+                need_recommend = await self.run_executor(session_id, post_body, background, post_body.app)
 
             # 生成推荐问题和事实提取
             # 如果需要生成推荐问题，则生成
-            if need_recommend:
-                routine_results = await asyncio.gather(
-                    # generate_facts(self._task_id, post_body.question),
-                    plan_next_flow(user_sub, self._task_id, self._queue, post_body.app),
-                )
-            # else:
-                # routine_results = await asyncio.gather(generate_facts(self._task_id, post_body.question))
+            # routine_results = await asyncio.gather(generate_facts(self._task_id, post_body.question))
 
             # 保存事实信息
-            self._facts = routine_results[0]
+            # self._facts = routine_results[0]
+            self._facts = []
 
             # 发送结束消息
             await self._queue.push_output(event_type=EventType.DONE, data={})
@@ -202,9 +195,7 @@ class Scheduler:
             user_sub=user_sub,
             data=encrypt_data,
             key=encrypt_config,
-            # facts=self._facts,
-            #TODO:暂时不使用facts
-            facts=[],
+            facts=self._facts,
             metadata=task.record.metadata,
             created_at=task.record.created_at,
             flow=task.new_context,

@@ -4,7 +4,7 @@ Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 """
 from typing import Any, Optional
 
-from pydantic import BaseModel, Field, HttpUrl
+from pydantic import BaseModel, Field
 
 from apps.entities.enum_var import (
     EdgeType,
@@ -41,13 +41,6 @@ class Step(BaseModel):
     params: dict[str, Any] = Field(description="用户手动指定的Node参数", default={})
 
 
-class NextFlow(BaseModel):
-    """Flow中“下一步”的数据格式"""
-
-    flow_id: str
-    question: Optional[str] = None
-
-
 class FlowError(BaseModel):
     """Flow的错误处理节点"""
 
@@ -63,7 +56,6 @@ class Flow(BaseModel):
     on_error: FlowError = FlowError(use_llm=True)
     steps: list[Step] = Field(description="节点列表", default=[])
     edges: list[Edge] = Field(description="边列表", default=[])
-    next_flow: Optional[list[NextFlow]] = None
     debug: bool = Field(description="是否经过调试", default=False)
 
 class MetadataBase(BaseModel):

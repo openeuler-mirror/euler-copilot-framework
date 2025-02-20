@@ -12,11 +12,12 @@ from pydantic import BaseModel, Field
 class ReducedOpenAPIEndpoint(BaseModel):
     """精简后的OpenAPI文档中的单个API"""
 
+    id: Optional[str] = Field(default=None, description="API的Operation ID")
     uri: str = Field(..., description="API的URI")
     method: str = Field(..., description="API的请求方法")
     name: str = Field(..., description="API的自定义名称")
     description: str = Field(..., description="API的描述信息")
-    schema: dict = Field(..., description="API的JSON Schema")
+    spec: dict = Field(..., description="API的JSON Schema")
 
 
 class ReducedOpenAPISpec(BaseModel):
@@ -149,15 +150,16 @@ def reduce_openapi_spec(spec: dict) -> ReducedOpenAPISpec:
     # 只支持get, post, patch, put, delete API；强制去除ref；提取关键字段
     endpoints = [
         ReducedOpenAPIEndpoint(
+            id=docs.get("operationId", None),
             uri=route,
-            method=operation_name.upper(),
+            method=operation_name,
             name=docs.get("summary"),
             description=docs.get("description"),
-            schema=reduce_endpoint_docs(dereference_refs(docs, full_schema=spec)),
+            spec=reduce_endpoint_docs(dereference_refs(docs, full_schema=spec)),
         )
         for route, operation in spec["paths"].items()
         for operation_name, docs in operation.items()
-        if operation_name in ["get", "post", "patch", "put", "delete"]
+        if operation_name in ["get", "post", "patch", "put", "delete"] and (not hasattr(docs, "deprecated") or not docs.deprecated)
     ]
 
     return ReducedOpenAPISpec(

@@ -75,8 +75,7 @@ class MessageQueue:
                 history = tcb.flow_context[tcb.flow_state.step_id]
 
                 flow = MessageFlow(
-                    # TODO:appId 和 flowId 暂时使用flow_id
-                    appId=history.flow_id,
+                    appId=history.app_id,
                     flowId=history.flow_id,
                     stepId=history.step_id,
                     stepStatus=history.status,
