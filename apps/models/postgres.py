@@ -42,14 +42,29 @@ class PostgreSQL:
 
     @staticmethod
     async def get_embedding(text: list[str]) -> list[float]:
-        """访问Vectorize的Embedding API，获得向量化数据
+        """访问OpenAI兼容的Embedding API，获得向量化数据
 
         :param text: 待向量化文本（多条文本组成List）
         :return: 文本对应的向量（顺序与text一致，也为List）
         """
-        api = config["VECTORIZE_HOST"].rstrip("/") + "/embedding"
+        api = config["EMBEDDING_URL"]
+
+        if config["EMBEDDING_KEY"]:
+            headers = {
+                "Authorization": f"Bearer {config['EMBEDDING_KEY']}",
+            }
+        else:
+            headers = {}
+
+        headers["Content-Type"] = "application/json"
+        data = {
+            "encoding_format": "float",
+            "model": config["EMBEDDING_MODEL"],
+            "input": text,
+        }
 
         async with aiohttp.ClientSession() as session, session.post(
-            api, json={"texts": text}, timeout=30,
+            api, json=data, headers=headers, timeout=60,
         ) as response:
-            return await response.json()
+            json = await response.json()
+            return [item["embedding"] for item in json["data"]]
