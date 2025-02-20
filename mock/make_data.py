@@ -37,21 +37,18 @@ class Permission(BaseModel):
 
 
 class ServicePool(PoolBase):
-    author: str
-    api: list[ServiceApiInfo] = Field(description="API信息列表", default=[])
-    permissions: Optional[Permission] = Field(description="用户与服务的权限关系", default=None)
-    favorites: list[str] = Field(description="收藏此应用的用户列表", default=[])
-    hashes: dict[str, str] = Field(description="关联文件的hash值；Service作为整体更新或删除", default={})
+    """外部服务信息
+
+    collection: service
+    """
+
+    author: str = Field(description="作者的用户ID")
+    permission: Permission = Field(description="服务可见性配置", default=Permission())
+    favorites: list[str] = Field(description="收藏此服务的用户列表", default=[])
+    openapi_hash: str = Field(description="服务关联的 OpenAPI YAML 文件哈希")
+    openapi_spec: dict = Field(description="服务关联的 OpenAPI 文件内容")
 
 
-# MongoDB配置
-# config = {
-#     'MONGODB_USER': 'admin',
-#     'MONGODB_PWD': '123456',
-#     'MONGODB_HOST': '0.0.0.0',
-#     'MONGODB_PORT': '27021',
-#     'MONGODB_DATABASE': 'test_database'
-# }
 # MongoDB配置
 config = {
     "MONGODB_USER": "euler_copilot",
@@ -78,19 +75,16 @@ class MongoDB:
 
 async def insert_service_pool():
     # 示例数据
-    api_info_1 = ServiceApiInfo(filename="example_1.yaml", description="Example API 1", path="/api/example/3")
-    api_info_2 = ServiceApiInfo(filename="example_2.yaml", description="Example API 2", path="/api/example/2")
-    api_info_3 = ServiceApiInfo(filename="example_3.yaml", description="Example API 3", path="/api/example/1")
     sys_id = "6a08c845-abdc-45fb-853e-54a806437dab"
     service_pool_sys = ServicePool(
         _id=sys_id,
         name="系统",
         description="系统函数",
-        author="test",
-        api=[api_info_1, api_info_2, api_info_3],
-        permissions=Permission(type=PermissionType.PUBLIC, users=["user1", "user2"]),
-        favorites=["user1", "test"],
-        hashes={"file1": "hash1", "file2": "hash2"},
+        author="system",
+        permission=Permission(type=PermissionType.PUBLIC, users=[]),
+        favorites=[],
+        openapi_hash="hash1",
+        openapi_spec={},
     )
     aops_id = "1137ab09-20ae-4278-8346-524d4ce81d2f"
     service_pool_a_ops = ServicePool(
@@ -98,10 +92,10 @@ async def insert_service_pool():
         name="aops-apollo",
         description="a-ops下cve相关组件",
         author="test",
-        api=[api_info_1, api_info_2, api_info_3],
-        permissions=Permission(type=PermissionType.PUBLIC, users=["user1", "user2"]),
-        favorites=["user1"],
-        hashes={"file1": "hash1", "file2": "hash2"},
+        permission=Permission(type=PermissionType.PUBLIC, users=[]),
+        favorites=[],
+        openapi_hash="aops-apollo-hash",
+        openapi_spec={},
     )
     """插入ServicePool实例到MongoDB"""
     collection = MongoDB.get_collection("service")
@@ -110,12 +104,12 @@ async def insert_service_pool():
     try:
         result = collection.update_one(
             {"_id": service_pool_sys.id},  # 查找条件
-            {"$set": service_pool_sys.dict(by_alias=True)},  # 更新操作
+            {"$set": service_pool_sys.model_dump(by_alias=True)},  # 更新操作
             upsert=True,  # 如果不存在则插入新文档
         )
         result = collection.update_one(
             {"_id": service_pool_a_ops.id},  # 查找条件
-            {"$set": service_pool_a_ops.dict(by_alias=True)},  # 更新操作
+            {"$set": service_pool_a_ops.model_dump(by_alias=True)},  # 更新操作
             upsert=True,  # 如果不存在则插入新文档
         )
         print(f"Inserted document with id: {result.upserted_id}")
@@ -137,7 +131,7 @@ class NodePool(PoolBase):
     id: str = Field(description="Node的ID", default_factory=lambda: str(uuid.uuid4()), alias="_id")
     service_id: str = Field(description="Node所属的Service ID")
     call_id: str = Field(description="所使用的Call的ID")
-    fixed_params: dict[str, Any] = Field(description="Node的固定参数", default={})
+    api_path: Optional[str] = Field(description="Call的API路径", default=None)
     params_schema: dict[str, Any] = Field(description="Node的参数schema；只包含用户可以改变的参数", default={})
     output_schema: dict[str, Any] = Field(description="Node的输出schema；做输出的展示用", default={})
 
