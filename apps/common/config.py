@@ -17,8 +17,6 @@ class ConfigModel(BaseModel):
     # DEPLOY
     DEPLOY_MODE: str = Field(description="oidc 部署方式", default="online")
     COOKIE_MODE: str = Field(description="COOKIE SET 方式", default="domain")
-    # WEB
-    WEB_FRONT_URL: str = Field(description="web前端地址")
     # Redis
     REDIS_HOST: str = Field(description="Redis主机名")
     REDIS_PORT: int = Field(description="Redis端口号", default=6379)
@@ -38,14 +36,15 @@ class ConfigModel(BaseModel):
     SESSION_TTL: int = Field(description="用户需要刷新Token的间隔(min)", default=30)
     # Logging
     LOG: str = Field(description="日志记录模式")
-    # Vectorize
-    VECTORIZE_HOST: str = Field(description="Vectorize服务域名")
+    # Embedding
+    EMBEDDING_URL: str = Field(description="Embedding模型地址")
+    EMBEDDING_KEY: str = Field(description="Embedding模型API Key")
+    EMBEDDING_MODEL: str = Field(description="Embedding模型名称")
     # RAG
     RAG_HOST: str = Field(description="RAG服务域名")
     # FastAPI
     DOMAIN: str = Field(description="当前实例的域名")
     JWT_KEY: str = Field(description="JWT key", default=secrets.token_hex(16))
-    PICKLE_KEY: str = Field(description="Pickle Key", default=secrets.token_hex(16))
     # 风控
     DETECT_TYPE: Optional[str] = Field(description="敏感词检测系统类型", default=None)
     WORDS_CHECK: Optional[str] = Field(description="AutoGPT敏感词检测系统API URL", default=None)
@@ -72,17 +71,19 @@ class ConfigModel(BaseModel):
     HALF_KEY1: str = Field(description="Half key 1")
     HALF_KEY2: str = Field(description="Half key 2")
     HALF_KEY3: str = Field(description="Half key 3")
-    # OpenAI大模型
+    # OpenAI API
     LLM_KEY: Optional[str] = Field(description="OpenAI API 密钥", default=None)
     LLM_URL: Optional[str] = Field(description="OpenAI API URL地址", default=None)
     LLM_MODEL: Optional[str] = Field(description="OpenAI API 模型名", default=None)
-    # 参数猜解
+    LLM_MAX_TOKENS: int = Field(description="OpenAI API 最大Token数", default=8192)
+    LLM_TEMPERATURE: float = Field(description="OpenAI API 温度", default=0.7)
+    # 参数提取
     SCHEDULER_BACKEND: Optional[str] = Field(description="参数猜解后端", default=None)
     SCHEDULER_MODEL: Optional[str] = Field(description="参数猜解模型名", default=None)
     SCHEDULER_URL: Optional[str] = Field(description="参数猜解 URL地址", default=None)
     SCHEDULER_API_KEY: Optional[str] = Field(description="参数猜解 API密钥", default=None)
     SCHEDULER_MAX_TOKENS: int = Field(description="参数猜解最大Token数", default=8192)
-    SCHEDULER_TEMPERATURE: float = Field(description="参数猜解温度", default=0.07)
+    SCHEDULER_TEMPERATURE: float = Field(description="参数猜解温度", default=0.7)
     # 插件位置
     SERVICE_DIR: Optional[str] = Field(description="插件路径", default=None)
     # SQL接口路径

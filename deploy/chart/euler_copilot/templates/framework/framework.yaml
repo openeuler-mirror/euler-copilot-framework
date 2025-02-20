@@ -10,9 +10,13 @@ spec:
   selector:
     app: framework
   ports:
-    - port: 8002
+    - name: framework
+      port: 8002
       targetPort: 8002
       nodePort: {{ default nil .Values.euler_copilot.framework.service.nodePort }}
+    - name: framework-ray
+      port: 8265
+      targetPort: 8265
 
 ---
 apiVersion: apps/v1
@@ -43,6 +47,8 @@ spec:
           ports:
             - containerPort: 8002
               protocol: TCP
+            - containerPort: 8265
+              protocol: TCP
           livenessProbe:
             httpGet:
               path: /health_check
@@ -54,8 +60,8 @@ spec:
           env:
             - name: TZ
               value: "Asia/Shanghai"
-            - name: PROD
-              value: "enable"
+            # - name: PROD
+            #   value: "enable"
           volumeMounts:
             - mountPath: /euler-copilot-frame/config
               name: framework-shared

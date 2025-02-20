@@ -11,7 +11,7 @@ from jinja2 import BaseLoader, select_autoescape
 from jinja2.sandbox import SandboxedEnvironment
 from pydantic import BaseModel, Field
 
-from apps.entities.plugin import CallError, SysCallVars
+from apps.entities.scheduler import CallError, SysCallVars
 from apps.llm.reasoning import ReasoningLLM
 from apps.scheduler.call.core import CoreCall
 

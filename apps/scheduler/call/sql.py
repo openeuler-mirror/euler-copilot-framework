@@ -13,7 +13,7 @@ from sqlalchemy import text
 
 from apps.common.config import config
 from apps.constants import LOGGER
-from apps.entities.plugin import CallError, SysCallVars
+from apps.entities.scheduler import CallError, SysCallVars
 from apps.models.postgres import PostgreSQL
 from apps.scheduler.call.core import CoreCall
 

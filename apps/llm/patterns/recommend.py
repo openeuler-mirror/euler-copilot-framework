@@ -2,115 +2,99 @@
 
 Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 """
-from typing import Optional
+from typing import Any, ClassVar, Optional
 
 from apps.llm.patterns.core import CorePattern
+from apps.llm.patterns.json import Json
 from apps.llm.reasoning import ReasoningLLM
 
 
 class Recommend(CorePattern):
     """使用大模型进行推荐问题生成"""
 
-    system_prompt: str = r"""
-        你是智能助手，负责分析问答历史并预测用户问题。
-
-        **任务说明：**
-        - 根据背景信息、工具描述和用户倾向预测问题。
-
-        **信息说明：**
-        - [Empty]标识空信息，如“背景信息: [Empty]”表示当前无背景信息。
-        - 背景信息含最近1条完整问答信息及最多4条历史提问信息。
-
-        **要求：**
-        1. 用用户口吻生成问题。
-        2. 优先使用工具描述进行预测，特别是与背景或倾向无关时。
-        3. 工具描述为空时，依据背景和倾向预测。
-        4. 生成的应为疑问句或祈使句，时间限制为30字。
-        5. 避免输出非必要信息。
-        6. 新生成的问题不得与“已展示问题”或“用户历史提问”重复或相似。
-
-        **示例：**
-
-        EXAMPLE 1
-        ## 工具描述
-        调用API，查询天气数据
-
-        ## 背景信息
-        ### 用户历史提问
-        Question 1: 简单介绍杭州
-        Question 2: 杭州有哪些著名景点
-
-        ### 最近1轮问答
-        Question: 帮我查询今天的杭州天气数据
-        Answer: 杭州今天晴，气温20度，空气质量优。
-
-        ## 用户倾向
-        ['旅游', '美食']
-
-        ## 已展示问题
-        杭州有什么好吃的？
-
-        ## 预测问题
-        杭州西湖景区的门票价格是多少？
-        END OF EXAMPLE 1
-
-        EXAMPLE 2
-        ## 工具描述
-        [Empty]
-
-        ## 背景信息
-        ### 用户历史提问
-        [Empty]
-
-        ### 最近1轮问答
-        Question: 帮我查询上周的销售数据
-        Answer: 上周的销售数据如下：
-        星期一：1000
-        星期二：1200
-        星期三：1100
-        星期四：1300
-        星期五：1400
-
-        ## 用户倾向
-        ['销售', '数据分析']
-
-        ## 已展示问题
-        [Empty]
-
-        ## 预测问题
-        帮我分析上周的销售数据趋势
-        END OF EXAMPLE 2
-
-        Let's begin.
-    """
+    system_prompt: str = ""
     """系统提示词"""
 
     user_prompt: str = r"""
-        ## 工具描述
-        {action_description}
+        ## 目标：
+        根据上面的历史对话，结合给出的工具描述和用户倾向，生成三个预测问题。
 
-        ## 背景信息
-        ### 用户历史提问
+        ## 要求：
+        信息说明：
+        - [Empty]的含义是“空信息”，如“工具描述: [Empty]”表示当前未使用工具。请忽略信息为空的项，正常进行问题预测。
+        - 历史提问信息是用户发生在历史对话之前的提问，仅为背景参考作用。
+
+        生成时需要遵循的要求：
+        1. 从用户角度生成预测问题，数量必须为3个，必须为疑问句或祈使句，必须少于30字。
+        2. 预测问题应优先贴合工具描述，除非工具描述为空。
+        3. 预测问题必须精简，不得在问题中掺杂非必要信息，不得输出除问题以外的文字。
+        4. 请以如下格式输出：
+
+        ```json
+        {{
+            "predicted_questions": [
+                "预测问题1",
+                "预测问题2",
+                "预测问题3"
+            ]
+        }}
+        ```
+
+        ## 样例：
+        工具描述：调用API，查询天气数据
+
+        用户历史提问：
+        - 简单介绍杭州
+        - 杭州有哪些著名景点
+
+        用户倾向：
+        ['旅游', '美食']
+
+        生成的预测问题：
+        ```json
+        {{
+            "predicted_questions": [
+                "杭州西湖景区的门票价格是多少？",
+                "杭州有哪些著名景点？",
+                "杭州的天气怎么样？"
+            ]
+        }}
+        ```
+
+        ## 现在，进行问题生成：
+        工具描述：{action_description}
+
+        用户历史提问：
         {history_questions}
 
-        ### 最近1轮问答
-        {recent_question}
-
-        ## 用户倾向
+        用户倾向：
         {user_preference}
 
-        ## 已展示问题
-        {shown_questions}
-
-        ## 预测问题
+        生成的预测问题：
+        ```json
     """
     """用户提示词"""
+
+    slot_schema: ClassVar[dict[str, Any]] = {
+        "type": "object",
+        "properties": {
+            "predicted_questions": {
+                "type": "array",
+                "description": "推荐的问题列表",
+                "items": {
+                    "type": "string",
+                },
+            },
+        },
+        "required": ["predicted_questions"],
+    }
+    """最终输出的JSON Schema"""
 
     def __init__(self, system_prompt: Optional[str] = None, user_prompt: Optional[str] = None) -> None:
         """初始化推荐问题生成Prompt"""
         super().__init__(system_prompt, user_prompt)
 
-    async def generate(self, task_id: str, **kwargs) -> str:  # noqa: ANN003
+    async def generate(self, task_id: str, **kwargs) -> list[str]:  # noqa: ANN003
         """生成推荐问题"""
         if "action_description" not in kwargs or not kwargs["action_description"]:
             action_description = "[Empty]"
@@ -127,26 +111,25 @@ class Recommend(CorePattern):
         else:
             history_questions = kwargs["history_questions"]
 
-        if "shown_questions" not in kwargs or not kwargs["shown_questions"]:
-            shown_questions = "[Empty]"
-        else:
-            shown_questions = kwargs["shown_questions"]
-
         user_input = self.user_prompt.format(
             action_description=action_description,
             history_questions=history_questions,
-            recent_question=kwargs["recent_question"],
-            shown_questions=shown_questions,
             user_preference=user_preference,
         )
 
-        messages = [
+        messages = kwargs["recent_question"] + [
             {"role": "system", "content": self.system_prompt},
             {"role": "user", "content": user_input},
         ]
 
         result = ""
-        async for chunk in ReasoningLLM().call(task_id, messages, streaming=False, temperature=1.0):
+        async for chunk in ReasoningLLM().call(task_id, messages, streaming=False, temperature=0.7, result_only=True):
             result += chunk
+        messages += [{"role": "assistant", "content": result}]
 
-        return result
+        question_dict = await Json().generate(task_id, conversation=messages, spec=self.slot_schema)
+
+        if not question_dict or "predicted_questions" not in question_dict or not question_dict["predicted_questions"]:
+            return []
+
+        return question_dict["predicted_questions"]
