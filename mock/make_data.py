@@ -54,12 +54,13 @@ class ServicePool(PoolBase):
 # }
 # MongoDB配置
 config = {
-    "MONGODB_USER": "euler_copilot",
-    "MONGODB_PWD": "8URM%HtCHQPxKe$u",
-    "MONGODB_HOST": "10.43.208.180",
-    "MONGODB_PORT": "27017",
-    "MONGODB_DATABASE": "euler_copilot",
+    'MONGODB_USER': 'euler_copilot',
+    'MONGODB_PWD': 'ZYd0Z3SpcDifcgnt5EOK',
+    'MONGODB_HOST': '10.43.188.157',
+    'MONGODB_PORT': '27017',
+    'MONGODB_DATABASE': 'euler_copilot'
 }
+
 
 
 class MongoDB:
@@ -89,7 +90,7 @@ async def insert_service_pool():
         author="test",
         api=[api_info_1, api_info_2, api_info_3],
         permissions=Permission(type=PermissionType.PUBLIC, users=["user1", "user2"]),
-        favorites=["user1", "test"],
+        favorites=["user1", "test","42497","53580"],
         hashes={"file1": "hash1", "file2": "hash2"},
     )
     aops_id = "1137ab09-20ae-4278-8346-524d4ce81d2f"
@@ -100,7 +101,7 @@ async def insert_service_pool():
         author="test",
         api=[api_info_1, api_info_2, api_info_3],
         permissions=Permission(type=PermissionType.PUBLIC, users=["user1", "user2"]),
-        favorites=["user1"],
+        favorites=["user1","42497","53580","test"],
         hashes={"file1": "hash1", "file2": "hash2"},
     )
     """插入ServicePool实例到MongoDB"""
@@ -718,4 +719,4 @@ def query_all_target(tag: str):
 if __name__ == "__main__":
     asyncio.run(insert_service_pool())
     asyncio.run(insert_node_pool())
-    query_all_target("node")
+    query_all_target("service")

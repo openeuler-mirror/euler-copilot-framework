@@ -190,7 +190,7 @@ def mock_data(question):
                 "flow": {
                     "appId": appId,
                     "flowId":flowId,
-                    "stepId": "8841e328-da5b-45c7-8839-5b8054a92de7",
+                    "stepId": "d60a0fde-cd75-48ee-ba6c-b861b0a94f81",
                     "stepName": "【CHOICE】判断任务类型",
                     "stepStatus": "running",
                 },
@@ -225,7 +225,7 @@ def mock_data(question):
                 "flow": {
                     "appId": appId,
                     "flowId":flowId,
-                    "stepId": "8841e328-da5b-45c7-8839-5b8054a92de7",
+                    "stepId": "d60a0fde-cd75-48ee-ba6c-b861b0a94f81",
                     "stepName": "【CHOICE】判断任务类型",
                     "stepStatus": "error",
                 },
