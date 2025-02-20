@@ -4,6 +4,7 @@ Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 """
 import http
 import re
+from pathlib import Path
 from typing import Union
 
 import requests
@@ -41,7 +42,7 @@ class KeywordCheck:
 
     def __init__(self) -> None:
         """初始化关键词列表"""
-        with open(config["WORDS_LIST"], encoding="utf-8") as f:
+        with Path(config["WORDS_LIST"]).open("r", encoding="utf-8") as f:
             self.words_list = f.read().splitlines()
 
     def check(self, message: str) -> int:

@@ -7,7 +7,10 @@ from typing import Any, Optional
 from pydantic import BaseModel, Field
 
 from apps.entities.scheduler import CallError, SysCallVars
-from apps.manager import TaskManager, UserDomainManager
+from apps.manager import (
+    TaskManager,
+    UserDomainManager,
+)
 from apps.scheduler.call.core import CoreCall
 
 
@@ -55,4 +58,17 @@ class Suggestion(metaclass=CoreCall, param_cls=_SuggestInput, output_cls=_Sugges
         # 获取当前任务
         task = await TaskManager.get_task(sys_vars.task_id)
 
+        # 获取当前用户的画像
+        user_domain = await UserDomainManager.get_user_domain_by_user_sub_and_topk(sys_vars.user_sub, 5)
+
+        current_record = [
+            {
+                "role": "user",
+                "content": task.record.content.question,
+            },
+            {
+                "role": "assistant",
+                "content": task.record.content.answer,
+            },
+        ]
 

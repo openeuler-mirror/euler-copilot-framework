@@ -55,7 +55,7 @@ class ReasoningLLM(metaclass=Singleton):
 
         return messages
 
-    async def call(self, task_id: str, messages: list[dict[str, str]],  # noqa: C901, PLR0912
+    async def call(self, task_id: str, messages: list[dict[str, str]],  # noqa: C901
                    max_tokens: Optional[int] = None, temperature: Optional[float] = None,
                    *, streaming: bool = True, result_only: bool = True) -> AsyncGenerator[str, None]:
         """调用大模型，分为流式和非流式两种"""
