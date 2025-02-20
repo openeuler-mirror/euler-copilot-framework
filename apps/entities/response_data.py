@@ -17,6 +17,7 @@ from apps.entities.flow_topology import (
     PositionItem,
 )
 from apps.entities.record import RecordData
+from apps.entities.user import UserInfo
 
 
 class ResponseData(BaseModel):
@@ -464,3 +465,13 @@ class FlowStructureDeleteRsp(ResponseData):
     """DELETE /api/flow/ 返回数据结构"""
 
     result: FlowStructureDeleteMsg
+
+class UserGetMsp(BaseModel):
+    """GET /api/user result"""
+
+    user_info_list : list[UserInfo] = Field(alias="userInfoList", default=[])
+
+class UserGetRsp(ResponseData):
+    """GET /api/user 返回数据结构"""
+
+    result: UserGetMsp
