@@ -2,7 +2,6 @@
 
 Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 """
-import uuid
 from datetime import datetime, timezone
 from typing import Any, Optional
 
@@ -13,7 +12,7 @@ from apps.entities.flow import AppLink, Permission
 from apps.entities.flow_topology import PositionItem
 
 
-class PoolBase(BaseModel):
+class BaseData(BaseModel):
     """Pool的基础信息"""
 
     id: str = Field(alias="_id")
@@ -30,7 +29,7 @@ class ServiceApiInfo(BaseModel):
     path: str = Field(description="OpenAPI文件路径")
 
 
-class ServicePool(PoolBase):
+class ServicePool(BaseData):
     """外部服务信息
 
     collection: service
@@ -43,37 +42,42 @@ class ServicePool(PoolBase):
     openapi_spec: dict = Field(description="服务关联的 OpenAPI 文件内容")
 
 
-class CallPool(PoolBase):
+class CallPool(BaseData):
     """Call信息
 
     collection: call
+
+    路径的格式：
+        1. 系统Call的路径格式样例：“LLM”
+        2. Python Call的路径格式样例：“tune::call.tune.CheckSystem”
     """
 
-    id: str = Field(description="Call的ID", alias="_id")
     type: CallType = Field(description="Call的类型")
     path: str = Field(description="Call的路径")
 
 
-class NodePool(PoolBase):
-    """Node信息
+class Node(BaseData):
+    """Node合并后的信息（不存库）"""
+
+    service_id: Optional[str] = Field(description="Node所属的Service ID", default=None)
+    call_id: str = Field(description="所使用的Call的ID")
+    params_schema: dict[str, Any] = Field(description="Node的参数schema", default={})
+    output_schema: dict[str, Any] = Field(description="Node输出的完整Schema", default={})
+
+
+class NodePool(BaseData):
+    """Node合并前的信息（作为附带信息的指针）
 
     collection: node
-    注：
-        1. 基类Call的ID，即meta_call，可以为None，表示该Node是系统Node
-        2. 路径的格式：
-            1. 系统Node的路径格式样例：“LLM”
-            2. Python Node的路径格式样例：“tune::call.tune.CheckSystem”
     """
 
-    id: str = Field(description="Node的ID", default_factory=lambda: str(uuid.uuid4()), alias="_id")
-    service_id: str = Field(description="Node所属的Service ID")
+    service_id: Optional[str] = Field(description="Node所属的Service ID", default=None)
     call_id: str = Field(description="所使用的Call的ID")
-    api_path: Optional[str] = Field(description="Call的API路径", default=None)
-    params_schema: dict[str, Any] = Field(description="Node的参数schema；只包含用户可以改变的参数", default={})
-    output_schema: dict[str, Any] = Field(description="Node的输出schema；做输出的展示用", default={})
+    path: str = Field(description="Node的路径")
+    known_params: dict[str, Any] = Field(description="已知的用于Call部分的参数", default={})
 
 
-class AppFlow(PoolBase):
+class AppFlow(BaseData):
     """Flow的元数据；会被存储在App下面"""
 
     enabled: bool = Field(description="是否启用", default=True)
@@ -82,7 +86,7 @@ class AppFlow(PoolBase):
         description="Flow的视觉焦点", default=PositionItem(x=0, y=0))
 
 
-class AppPool(PoolBase):
+class AppPool(BaseData):
     """应用信息
 
     collection: app

@@ -117,7 +117,7 @@ async def insert_service_pool():
         print(f"An error occurred while inserting the document: {e}")
 
 
-class NodePool(PoolBase):
+class Node(PoolBase):
     """Node信息
 
     collection: node
@@ -140,7 +140,7 @@ async def insert_node_pool() -> None:
     collection = MongoDB.get_collection("node")
     result = collection.delete_many({})  # 清空集合中的所有文档（仅用于演示）
     node_pools = [
-        NodePool(
+        Node(
             _id=str(uuid.uuid4()),  # 自动生成一个唯一的 ID
             service_id="6a08c845-abdc-45fb-853e-54a806437dab",  # 使用 "test" 作为 service_id
             call_id="knowledge_base",  # 随机生成一个 call_id
@@ -155,7 +155,7 @@ async def insert_node_pool() -> None:
             },
             output_schema={"content": {"type": "string", "description": "回答"}},
         ),
-        NodePool(
+        Node(
             _id=str(uuid.uuid4()),  # 自动生成一个唯一的 ID
             service_id="6a08c845-abdc-45fb-853e-54a806437dab",  # 使用 "test" 作为 service_id
             call_id="LLM",  # 随机生成一个 call_id
@@ -171,7 +171,7 @@ async def insert_node_pool() -> None:
             },
             output_schema={"content": {}},
         ),
-        NodePool(
+        Node(
             _id=str(uuid.uuid4()),  # 自动生成一个唯一的 ID
             service_id="6a08c845-abdc-45fb-853e-54a806437dab",  # 使用 "test" 作为 service_id
             call_id="choice",  # 随机生成一个 call_id
@@ -201,7 +201,7 @@ async def insert_node_pool() -> None:
                 },
             },
         ),
-        NodePool(
+        Node(
             _id=str(uuid.uuid4()),  # 自动生成一个唯一的 ID
             service_id="6a08c845-abdc-45fb-853e-54a806437dab",  # 使用 "test" 作为 service_id
             call_id="choice",  # 随机生成一个 call_id
@@ -224,7 +224,7 @@ async def insert_node_pool() -> None:
             },
             output_schema={},
         ),
-        NodePool(
+        Node(
             _id=str(uuid.uuid4()),  # 自动生成一个唯一的 ID
             service_id="6a08c845-abdc-45fb-853e-54a806437dab",  # 使用 "test" 作为 service_id
             call_id="loop_begin",  # 随机生成一个 call_id
@@ -233,7 +233,7 @@ async def insert_node_pool() -> None:
             params_schema={"operation_exp": {}},
             output_schema={},
         ),
-        NodePool(
+        Node(
             _id=str(uuid.uuid4()),  # 自动生成一个唯一的 ID
             service_id="6a08c845-abdc-45fb-853e-54a806437dab",  # 使用 "test" 作为 service_id
             call_id="loop_begin",  # 随机生成一个 call_id
@@ -242,7 +242,7 @@ async def insert_node_pool() -> None:
             params_schema={"operation_exp": {}},
             output_schema={},
         ),
-        NodePool(
+        Node(
             _id=str(uuid.uuid4()),  # 自动生成一个唯一的 ID
             service_id="6a08c845-abdc-45fb-853e-54a806437dab",  # 使用 "test" 作为 service_id
             call_id="template_exchange",  # 随机生成一个 call_id
@@ -269,7 +269,7 @@ async def insert_node_pool() -> None:
                 },
             },
         ),
-        NodePool(
+        Node(
             _id="343da7db-5da8-42ef-9b59-cc56df54d9aa",
             service_id="1137ab09-20ae-4278-8346-524d4ce81d2f",
             call_id="api",
@@ -332,7 +332,7 @@ async def insert_node_pool() -> None:
                 },
             },
         ),
-        NodePool(
+        Node(
             _id="8841e328-da5b-45c7-8839-5b8054a92de7",
             service_id="1137ab09-20ae-4278-8346-524d4ce81d2f",
             call_id="choice",
@@ -359,7 +359,7 @@ async def insert_node_pool() -> None:
                 "properties": {},
             },
         ),
-        NodePool(
+        Node(
             _id="7377ad0d-f867-46fe-806a-d0c4535d2f1a",
             service_id="1137ab09-20ae-4278-8346-524d4ce81d2f",
             call_id="api",
@@ -426,7 +426,7 @@ async def insert_node_pool() -> None:
                 },
             },
         ),
-        NodePool(
+        Node(
             _id="3d94b288-a0df-4717-b75c-fc2c67e24294",
             service_id="1137ab09-20ae-4278-8346-524d4ce81d2f",
             call_id="api",
@@ -501,7 +501,7 @@ async def insert_node_pool() -> None:
                 "required": ["status_code", "data"],
             },
         ),
-        NodePool(
+        Node(
             _id="1a8ddfb9-c894-4819-ab9b-88fcb5f14c10",
             service_id="1137ab09-20ae-4278-8346-524d4ce81d2f",
             call_id="llm",

@@ -9,7 +9,7 @@ from sqlalchemy.ext.declarative import declarative_base
 Base = declarative_base()
 
 
-class AppVector(Base):
+class AppPoolVector(Base):
     """App向量信息"""
 
     __tablename__ = "app_vector"
@@ -17,7 +17,7 @@ class AppVector(Base):
     embedding = Column(Vector(1024), nullable=False)
 
 
-class ServiceVector(Base):
+class ServicePoolVector(Base):
     """Service向量信息"""
 
     __tablename__ = "service_vector"
@@ -25,7 +25,7 @@ class ServiceVector(Base):
     embedding = Column(Vector(1024), nullable=False)
 
 
-class NodeVector(Base):
+class NodePoolVector(Base):
     """Node向量信息"""
 
     __tablename__ = "node_vector"

@@ -24,8 +24,9 @@ class APIParams(BaseModel):
         "get", "post", "put", "delete", "patch",
     ] = Field(description="API接口的HTTP Method")
     timeout: int = Field(description="工具超时时间", default=300)
-    input_data: dict[str, Any] = Field(description="固定数据", default={})
+    body_override: dict[str, Any] = Field(description="固定数据", default={})
     auth: dict[str, Any] = Field(description="API鉴权信息", default={})
+    input_schema: dict[str, Any] = Field(description="API请求体的JSON Schema", default={})
     service_id: Optional[str] = Field(description="服务ID")
 
 
@@ -46,7 +47,6 @@ class API(metaclass=CoreCall, param_cls=APIParams, output_cls=_APIOutput):
 
     def init(self, syscall_vars: SysCallVars, **kwargs) -> None:  # noqa: ANN003
         """初始化API调用工具"""
-        if len(self.)
         if kwargs["method"] == "POST":
             if "requestBody" in self._spec[2]:
                 self.slot_schema, self._data_type = self._check_data_type(self._spec[2]["requestBody"]["content"])

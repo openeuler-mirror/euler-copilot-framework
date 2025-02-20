@@ -9,12 +9,20 @@ from pymongo import ASCENDING
 from apps.constants import LOGGER
 from apps.entities.enum_var import PermissionType
 from apps.entities.flow import Edge, Flow, FlowConfig, Step, StepPos
-from apps.entities.flow_topology import EdgeItem, FlowItem, NodeItem, NodeMetaDataItem, NodeServiceItem, PositionItem
+from apps.entities.flow_topology import (
+    EdgeItem,
+    FlowItem,
+    NodeItem,
+    NodeMetaDataItem,
+    NodeServiceItem,
+    PositionItem,
+)
 from apps.entities.pool import AppFlow
 from apps.models.mongo import MongoDB
 
 
 class FlowManager:
+    """Flow相关操作"""
 
     @staticmethod
     async def validate_user_node_meta_data_access(user_sub: str, node_meta_data_id: str) -> bool:
