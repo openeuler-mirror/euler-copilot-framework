@@ -1,4 +1,6 @@
 #!/bin/bash
+
+
 set -eo pipefail
 
 RED='\033[31m'
@@ -9,7 +11,6 @@ NC='\033[0m'
 
 SCRIPTS_DIR=/home/euler-copilot-framework/deploy/scripts/8-install-EulerCopilot
 CHART_DIR=/home//euler-copilot-framework/deploy/chart
-
 
 create_namespace() {
     echo -e "${BLUE}==> 检查命名空间 euler-copilot...${NC}"
@@ -53,26 +54,22 @@ delete_pvcs() {
     echo -e "${GREEN}资源清理完成${NC}"
 }
 
-
-# 获取用户输入参数
 get_user_input() {
-    echo -e "${BLUE}请输入 Authhub的域名配置：${NC}"
-    echo
-
-    read -p "Authhub的前端域名: " authhub_domain
-    if ! [[ "${authhub_domain}" =~ ^([a-zA-Z0-9-]+\.)*[a-zA-Z0-9-]+\.[a-zA-Z]{2,}$ ]]; then
-        echo -e "${RED}错误：输入的AuthHub域名格式不正确${NC}"
-        exit 1
-    fi
+    echo -e "${BLUE}请输入 Authhub 的域名配置（直接回车使用默认值 authhub.eulercopilot.local）：${NC}"
+    read -p "Authhub 的前端域名: " authhub_domain
 
     if [[ -z "$authhub_domain" ]]; then
-        echo -e "${RED}错误：所有输入字段都不能为空${NC}"
-        exit 1
+        authhub_domain="authhub.eulercopilot.local"
+        echo -e "${GREEN}使用默认域名：${authhub_domain}${NC}"
+    else
+        if ! [[ "${authhub_domain}" =~ ^([a-zA-Z0-9-]+\.)*[a-zA-Z0-9-]+\.[a-zA-Z]{2,}$ ]]; then
+            echo -e "${RED}错误：输入的AuthHub域名格式不正确${NC}"
+            exit 1
+        fi
+        echo -e "${GREEN}输入域名：${authhub_domain}${NC}"
     fi
 }
 
-
-# 修改YAML配置文件的方法
 modify_yaml() {
     echo -e "${BLUE}开始修改YAML配置文件...${NC}"
     python "${SCRIPTS_DIR}/modify_eulercopilot_yaml.py" \
@@ -86,7 +83,6 @@ modify_yaml() {
     fi
     echo -e "${GREEN}YAML文件修改成功！${NC}"
 }
-
 
 helm_install() {
     echo -e "${BLUE}==> 进入部署目录...${NC}"
@@ -103,15 +99,14 @@ helm_install() {
     }
 }
 
-# 检查Pod状态
 check_pods_status() {
     echo -e "${BLUE}==> 等待初始化就绪（30秒）...${NC}"
-    sleep 30  # 初始等待时间
+    sleep 30
 
     local timeout=300
     local start_time=$(date +%s)
 
-    echo -e "${BLUE}开始监控Pod状态（总超时时间300秒）...${NC}"
+    echo -e "${BLUE}开始监控Authhub Pod状态（总超时时间300秒）...${NC}"
 
     while true; do
         local current_time=$(date +%s)
@@ -119,16 +114,16 @@ check_pods_status() {
 
         if [ $elapsed -gt $timeout ]; then
             echo -e "${RED}错误：部署超时！${NC}"
-            kubectl get pods -n euler-copilot
+            kubectl get pods -n euler-copilot --selector=app.kubernetes.io/instance=authhub
             return 1
         fi
 
-        # 检查所有Pod状态
-        local not_running=$(kubectl get pods -n euler-copilot -o jsonpath='{range .items[*]}{.metadata.name} {.status.phase}{"\n"}{end}' | grep -v "Running")
+        # 检查所有属于authhub的Pod状态
+        local not_running=$(kubectl get pods -n euler-copilot --selector=app.kubernetes.io/instance=authhub -o jsonpath='{range .items[*]}{.metadata.name} {.status.phase}{"\n"}{end}' | grep -v "Running")
 
         if [ -z "$not_running" ]; then
-            echo -e "${GREEN}所有Pod已正常运行！${NC}"
-            kubectl get pods -n euler-copilot
+            echo -e "${GREEN}所有Authhub Pod已正常运行！${NC}"
+            kubectl get pods -n euler-copilot --selector=app.kubernetes.io/instance=authhub
             return 0
         else
             echo "等待Pod就绪（已等待 ${elapsed} 秒）..."
@@ -139,7 +134,6 @@ check_pods_status() {
     done
 }
 
-# 主执行流程
 main() {
     create_namespace
     delete_pvcs
@@ -150,9 +144,10 @@ main() {
 
     echo -e "\n${GREEN}========================="
     echo "Authhub 部署完成！"
+    echo -e "Authhub登录地址为: https://${authhub_domain}"
+    echo -e "默认账号密码: administrator/changeme"
     echo -e "=========================${NC}"
 }
 
-# 异常处理
 trap 'echo -e "${RED}操作被中断！${NC}"; exit 1' INT
 main "$@"
