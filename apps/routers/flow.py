@@ -34,6 +34,7 @@ async def get_services(
 ):
     """获取用户可访问的节点元数据所在服务的信息"""
     services = await FlowManager.get_service_by_user_id(user_sub)
+    print(services)
     if services is None:
         return NodeServiceListRsp(
             code=status.HTTP_404_NOT_FOUND,
