@@ -10,7 +10,7 @@ from fastapi import status
 from pydantic import BaseModel, Field
 
 from apps.constants import LOGGER
-from apps.entities.plugin import CallError, SysCallVars
+from apps.entities.scheduler import CallError, SysCallVars
 from apps.manager.token import TokenManager
 from apps.scheduler.call.core import CoreCall
 from apps.scheduler.slot.slot import Slot
@@ -21,7 +21,7 @@ class APIParams(BaseModel):
 
     full_url: str = Field(description="API接口的完整URL")
     method: Literal[
-        "GET", "POST",
+        "get", "post", "put", "delete", "patch",
     ] = Field(description="API接口的HTTP Method")
     timeout: int = Field(description="工具超时时间", default=300)
     input_data: dict[str, Any] = Field(description="固定数据", default={})
@@ -46,15 +46,7 @@ class API(metaclass=CoreCall, param_cls=APIParams, output_cls=_APIOutput):
 
     def init(self, syscall_vars: SysCallVars, **kwargs) -> None:  # noqa: ANN003
         """初始化API调用工具"""
-        # 从spec中找出该接口对应的spec
-        for item in full_spec.endpoints:
-            name, _, _ = item
-            if name == self.params.endpoint:
-                self._spec = item
-        if not hasattr(self, "_spec"):
-            err = "[API] Endpoint not found."
-            raise ValueError(err)
-
+        if len(self.)
         if kwargs["method"] == "POST":
             if "requestBody" in self._spec[2]:
                 self.slot_schema, self._data_type = self._check_data_type(self._spec[2]["requestBody"]["content"])
@@ -80,23 +72,6 @@ class API(metaclass=CoreCall, param_cls=APIParams, output_cls=_APIOutput):
 
 
     @staticmethod
-    def _process_response_schema(response_data: str, response_schema: dict[str, Any]) -> str:
-        """对API返回值进行逐个字段处理"""
-        # 工具执行报错，此时为错误信息，不予处理
-        try:
-            response_dict = json.loads(response_data)
-        except Exception:
-            return response_data
-
-        # openapi里没有HTTP 200对应的Schema，不予处理
-        if not response_schema:
-            return response_data
-
-        slot = Slot(response_schema)
-        return json.dumps(slot.process_json(response_dict), ensure_ascii=False)
-
-
-    @staticmethod
     def parameters_to_spec(raw_schema: list[dict[str, Any]]) -> dict[str, Any]:
         """将OpenAPI中GET接口List形式的请求体Spec转换为JSON Schema"""
         schema = {
@@ -116,7 +91,7 @@ class API(metaclass=CoreCall, param_cls=APIParams, output_cls=_APIOutput):
 
     async def _make_api_call(self, data: Optional[dict], files: aiohttp.FormData):  # noqa: ANN202, C901
         # 获取必要参数
-        params: _APIParams = getattr(self, "_params")
+        params: APIParams = getattr(self, "_params")
         syscall_vars: SysCallVars = getattr(self, "_syscall_vars")
 
         """调用API"""
@@ -148,18 +123,19 @@ class API(metaclass=CoreCall, param_cls=APIParams, output_cls=_APIOutput):
                 )
                 req_header.update({"access-token": token})
 
-        if params.method == "GET":
+        if params.method in ["get", "delete"]:
             req_params.update(data)
-            return self._session.get(params.full_url, params=req_params, headers=req_header, cookies=req_cookie,
+            return self._session.request(params.method, params.full_url, params=req_params, headers=req_header, cookies=req_cookie,
                                     timeout=params.timeout)
-        if params.method == "POST":
+
+        if params.method in ["post", "put", "patch"]:
             if self._data_type == "form":
                 form_data = files
                 for key, val in data.items():
                     form_data.add_field(key, val)
-                return self._session.post(params.full_url, data=form_data, headers=req_header, cookies=req_cookie,
+                return self._session.request(params.method, params.full_url, data=form_data, headers=req_header, cookies=req_cookie,
                                          timeout=params.timeout)
-            return self._session.post(params.full_url, json=data, headers=req_header, cookies=req_cookie,
+            return self._session.request(params.method, params.full_url, json=data, headers=req_header, cookies=req_cookie,
                                      timeout=params.timeout)
 
         err = "Method not implemented."
@@ -180,7 +156,7 @@ class API(metaclass=CoreCall, param_cls=APIParams, output_cls=_APIOutput):
 
     async def _call_api(self, slot_data: Optional[dict[str, Any]] = None) -> _APIOutput:
         # 获取必要参数
-        params: _APIParams = getattr(self, "_params")
+        params: APIParams = getattr(self, "_params")
         LOGGER.info(f"调用接口{params.full_url}，请求数据为{slot_data}")
 
         session_context = await self._make_api_call(slot_data, aiohttp.FormData())
@@ -202,18 +178,30 @@ class API(metaclass=CoreCall, param_cls=APIParams, output_cls=_APIOutput):
             response_schema = {}
         LOGGER.info(f"调用接口{params.full_url}, 结果为 {response_data}")
 
+        # 组装message
+        message = f"""You called the HTTP API "{params.full_url}", which is used to "{self._spec[2]['summary']}"."""
         # 如果没有返回结果
         if response_data is None:
             return _APIOutput(
                 http_code=response_status,
                 output={},
-                message=f"调用接口{params.full_url}，作用为但返回值为空。",
+                message=message + "But the API returned an empty response.",
             )
 
-        response_data = self._process_response_schema(response_data, response_schema)
+        # 如果返回值是JSON
+        try:
+            response_dict = json.loads(response_data)
+        except Exception as e:
+            err = f"返回值不是JSON：{e!s}"
+            LOGGER.error(err)
+
+        # openapi里存在有HTTP 200对应的Schema，则进行处理
+        if response_schema:
+            slot = Slot(response_schema)
+            response_data = json.dumps(slot.process_json(response_dict), ensure_ascii=False)
+
         return _APIOutput(
             http_code=response_status,
             output=json.loads(response_data),
-            message=f"""调用API从外部数据源获取了数据。API和数据源的描述为：{usage}""",
+            message=message + """The API returned some data, and is shown in the "output" field below.""",
         )
-

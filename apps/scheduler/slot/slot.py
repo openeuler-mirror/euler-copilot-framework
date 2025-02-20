@@ -14,7 +14,6 @@ from jsonschema.protocols import Validator
 from jsonschema.validators import extend
 
 from apps.constants import LOGGER
-from apps.entities.plugin import CallResult
 from apps.llm.patterns.json import Json
 from apps.scheduler.slot.parser import (
     SlotConstParser,
@@ -115,8 +114,16 @@ class Slot:
 
         if "type" in spec_data:
             if spec_data["type"] == "array" and isinstance(json_value, list):
+                # 若Schema不标准，则不进行处理
+                if "items" not in spec_data:
+                    return json_value
+                # Schema标准
                 return [Slot._process_json_value(item, spec_data["items"]) for item in json_value]
             if spec_data["type"] == "object" and isinstance(json_value, dict):
+                # 若Schema不标准，则不进行处理
+                if "properties" not in spec_data:
+                    return json_value
+                # Schema标准
                 processed_dict = {}
                 for key, val in json_value.items():
                     if key not in spec_data["properties"]:
@@ -252,7 +259,7 @@ class Slot:
 
 
     @staticmethod
-    async def _llm_generate(task_id: str, question: str, thought: str, previous_output: Optional[CallResult], remaining_schema: dict[str, Any]) -> dict[str, Any]:
+    async def llm_param_gen(task_id: str, question: str, thought: str, previous_output: Optional[dict[str, Any]], remaining_schema: dict[str, Any]) -> dict[str, Any]:
         """使用LLM生成JSON参数"""
         # 组装工具消息
         conversation = [
@@ -262,7 +269,7 @@ class Slot:
 
         if previous_output is not None:
             tool_str = f"""I used a tool to get extra information from other sources. \
-                The output of the tool is "{previous_output.message}", with data `{json.dumps(previous_output.output, ensure_ascii=False)}`.
+                The output data of the tool is `{previous_output}`.
                 The schema of the output is `{json.dumps(previous_output.output_schema, ensure_ascii=False)}`, which contains description of the output.
                 """
 
@@ -282,7 +289,7 @@ class Slot:
         remaining_slot = self.check_json(result_json)
         # 如果还有未填充的部分，则尝试使用LLM生成
         if remaining_slot:
-            generated_slot = await Slot._llm_generate(
+            generated_slot = await Slot.llm_param_gen(
                 llm_params["task_id"],
                 llm_params["question"],
                 llm_params["thought"],

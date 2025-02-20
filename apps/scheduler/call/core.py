@@ -7,7 +7,7 @@ from typing import Any
 
 from pydantic import BaseModel
 
-from apps.entities.plugin import SysCallVars
+from apps.entities.scheduler import SysCallVars
 
 
 class CoreCall(type):

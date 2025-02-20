@@ -150,7 +150,7 @@ def reduce_openapi_spec(spec: dict) -> ReducedOpenAPISpec:
     endpoints = [
         ReducedOpenAPIEndpoint(
             uri=route,
-            method=operation_name.upper(),
+            method=operation_name,
             name=docs.get("summary"),
             description=docs.get("description"),
             schema=reduce_endpoint_docs(dereference_refs(docs, full_schema=spec)),

@@ -15,46 +15,41 @@ from apps.llm.reasoning import ReasoningLLM
 class Select(CorePattern):
     """通过投票选择最佳答案"""
 
-    system_prompt: str = r"""
-        Your task is: select the best option from the list of available options. The option should be able to answer \
-        the question and be inferred from the context and the output.
-
-        EXAMPLE
-        Question: 使用天气API，查询明天杭州的天气信息
-
-        Context: 人类首先询问了杭州有什么美食，之后询问了杭州有什么知名旅游景点。
-
-        Output: `{}`
-
-        The available options are:
-        - API: 请求特定API，获得返回的JSON数据
-        - SQL: 查询数据库，获得数据库表中的数据
-
-        Let's think step by step. API tools can retrieve external data through the use of APIs, and weather \
-        information may be stored in external data. As the user instructions explicitly mentioned the use of the weather API, \
-        the API tool should be prioritized. SQL tools are used to retrieve information from databases. Given the variable \
-        and dynamic nature of weather data, it is unlikely to be stored in a database. Therefore, the priority of \
-        SQL tools is relatively low. The best option seems to be "API: request a specific API, get the \
-        returned JSON data".
-        END OF EXAMPLE
-
-        Let's begin.
-    """
+    system_prompt: str = r""
     """系统提示词"""
 
     user_prompt: str = r"""
-        Question: {question}
+        根据历史对话（包括工具调用结果）和用户问题，从给出的选项列表中，选出最符合要求的那一项。
+        在输出之前，请先思考，并使用“<think>”标签给出思考过程。
 
-        Context: {background}
+        ==样例==
+        用户问题: 使用天气API，查询明天杭州的天气信息
 
-        Output: `{data}`
+        选项列表：
+        - [API] 请求特定API，获得返回的JSON数据
+        - [SQL] 查询数据库，获得数据库表中的数据
 
-        The available options are:
+        <think>
+        API 工具可以通过 API 来获取外部数据，而天气信息可能就存储在外部数据中，由于用户说明中明确提到了天气 API 的使用，因此应该优先使用 API 工具。\
+        SQL 工具用于从数据库中获取信息，考虑到天气数据的可变性和动态性，不太可能存储在数据库中，因此 SQL 工具的优先级相对较低，\
+        最佳选择似乎是“API：请求特定 API，获取返回的 JSON 数据”。
+        </think>
+
+        最符合要求的选项是：
+        API
+        ==结束样例==
+
+        用户问题: {question}
+
+        选项列表：
         {choice_list}
 
-        Let's think step by step.
+        思考：
+        <think>
+        让我们一步一步思考。
     """
     """用户提示词"""
+
 
     slot_schema: ClassVar[dict[str, Any]] = {
         "type": "object",
@@ -78,8 +73,8 @@ class Select(CorePattern):
         choices_prompt = ""
         choice_str_list = []
         for choice in choices:
-            choices_prompt += "- {}: {}\n".format(choice["branch"], choice["description"])
-            choice_str_list.append(choice["branch"])
+            choices_prompt += "- {}: {}\n".format(choice["name"], choice["description"])
+            choice_str_list.append(choice["name"])
         return choices_prompt, choice_str_list
 
     async def _generate_single_attempt(self, task_id: str, user_input: str, choice_list: list[str]) -> str:

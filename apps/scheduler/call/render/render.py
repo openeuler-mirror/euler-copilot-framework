@@ -8,7 +8,7 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
-from apps.entities.plugin import CallError, SysCallVars
+from apps.entities.scheduler import CallError, SysCallVars
 from apps.scheduler.call.core import CoreCall
 from apps.scheduler.call.render.style import RenderStyle
 
