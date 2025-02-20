@@ -1,7 +1,6 @@
 #!/bin/bash
 
 
-
 # 颜色定义
 RED='\e[31m'
 GREEN='\e[32m'
@@ -9,8 +8,8 @@ YELLOW='\e[33m'
 BLUE='\e[34m'
 NC='\e[0m' # 恢复默认颜色
 
-SCRIPTS_DIR=/home/euler-copilot-framework_openeuler/deploy/scripts/8-install-EulerCopilot
-CHART_DIR=/home//euler-copilot-framework_openeuler/deploy/chart
+SCRIPTS_DIR=/home/euler-copilot-framework/deploy/scripts/8-install-EulerCopilot
+CHART_DIR=/home//euler-copilot-framework/deploy/chart
 PLUGINS_DIR="/home/eulercopilot/sematics"
 
 get_eth0_ip() {
@@ -43,28 +42,6 @@ get_eth0_ip() {
 
     echo -e "${GREEN}使用网络接口：${interface}，IP 地址：${host}${NC}"
 }
-
-
-## 获取 eth0 IP 地址
-#get_eth0_ip() {
-#    echo -e "${BLUE}获取网络接口 IP 地址...${NC}"
-#    local timeout=20
-#    local start_time=$(date +%s)
-#
-#    while [ $(( $(date +%s) - start_time )) -lt $timeout ]; do
-#        interface=$(ip -o link show | awk '/state UP/ {print $2}' | cut -d':' -f1 | head -1)
-#        [[ -n "$interface" ]] && break || sleep 1
-#    done
-#
-#    if [[ -z "$interface" ]]; then
-#        echo -e "${RED}错误：未找到可用网络接口${NC}"
-#        exit 1
-#    fi
-#
-#    host=$(ip addr show $interface | grep -w inet | awk '{print $2}' | cut -d'/' -f1)
-#
-#    echo -e "${GREEN}使用网络接口：${interface}，IP 地址：${host}${NC}"
-#}
 
 # 获取用户输入参数
 get_user_input() {
@@ -131,7 +108,7 @@ modify_yaml() {
       --set "models.answer.name=deepseek-llm-7b-chat" \
       --set "models.answer.ctx_length=8192" \
       --set "models.answer.max_tokens=2048" \
-      --set "models.embedding.url=http://$host:11434/embeddings" \
+      --set "models.embedding.url=http://$host:11434" \
       --set "models.embedding.key=sk-123456" \
       --set "models.embedding.name=bge-m3" \
       --set "login.type=authhub" \
