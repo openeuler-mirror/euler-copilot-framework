@@ -4,7 +4,7 @@ Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 """
 import uuid
 from datetime import datetime, timezone
-from typing import Any
+from typing import Any, Optional
 
 from pydantic import BaseModel, Field
 
@@ -40,6 +40,7 @@ class ServicePool(PoolBase):
     permission: Permission = Field(description="服务可见性配置", default=Permission())
     favorites: list[str] = Field(description="收藏此服务的用户列表", default=[])
     openapi_hash: str = Field(description="服务关联的 OpenAPI YAML 文件哈希")
+    openapi_spec: dict = Field(description="服务关联的 OpenAPI 文件内容")
 
 
 class CallPool(PoolBase):
@@ -67,6 +68,7 @@ class NodePool(PoolBase):
     id: str = Field(description="Node的ID", default_factory=lambda: str(uuid.uuid4()), alias="_id")
     service_id: str = Field(description="Node所属的Service ID")
     call_id: str = Field(description="所使用的Call的ID")
+    api_path: Optional[str] = Field(description="Call的API路径", default=None)
     params_schema: dict[str, Any] = Field(description="Node的参数schema；只包含用户可以改变的参数", default={})
     output_schema: dict[str, Any] = Field(description="Node的输出schema；做输出的展示用", default={})
 
