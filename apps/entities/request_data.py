@@ -14,10 +14,10 @@ from apps.entities.task import RequestDataApp
 
 class MockRequestData(BaseModel):
     """POST /api/mock/chat的请求体"""
-
-    app_id: str = Field(..., description="应用ID")
-    flow_id: str = Field(..., description="流程ID")
-    question: str = Field(..., description="问题")
+    app_id: str = Field(default="", description="应用ID", alias="appId")
+    flow_id: str = Field(default="", description="流程ID", alias="flowId")
+    conversation_id : str = Field(..., description="会话ID", alias="conversationId")
+    question: str = Field(..., description="问题", alias="question")
 
 
 class RequestDataFeatures(BaseModel):
