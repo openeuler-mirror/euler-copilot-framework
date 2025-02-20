@@ -123,7 +123,7 @@ class AppCenterManager:
                 for app in apps
             ], total_apps
         except Exception as e:
-            LOGGER.info(f"[AppCenterManager] Get app list by user failed: {e}")
+            LOGGER.error(f"[AppCenterManager] Get app list by user failed: {e}")
         return [], -1
 
     @staticmethod
@@ -173,7 +173,7 @@ class AppCenterManager:
                 for app in apps
             ], total_apps
         except Exception as e:
-            LOGGER.info(f"[AppCenterManager] Get favorite app list failed: {e}")
+            LOGGER.error(f"[AppCenterManager] Get favorite app list failed: {e}")
         return [], -1
 
     @staticmethod
@@ -191,7 +191,7 @@ class AppCenterManager:
                 return None
             return AppPool.model_validate(db_data)
         except Exception as e:
-            LOGGER.info(f"[AppCenterManager] Get app metadata by app_id failed: {e}")
+            LOGGER.error(f"[AppCenterManager] Get app metadata by app_id failed: {e}")
         return None
 
     @staticmethod
@@ -296,11 +296,7 @@ class AppCenterManager:
             app_data = AppPool.model_validate(db_data)
             already_favorited = user_sub in app_data.favorites
 
-            # 只能收藏未收藏的
-            if favorited and already_favorited:
-                return AppCenterManager.ModFavAppFlag.BAD_REQUEST
-            # 只能取消已收藏的
-            if not favorited and not already_favorited:
+            if favorited == already_favorited:
                 return AppCenterManager.ModFavAppFlag.BAD_REQUEST
 
             if favorited:

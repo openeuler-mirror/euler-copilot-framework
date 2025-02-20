@@ -2,6 +2,7 @@
 
 Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 """
+
 from __future__ import annotations
 
 import ray
@@ -30,6 +31,7 @@ from apps.routers import (
     knowledge,
     mock,
     record,
+    service,
 )
 
 # from apps.scheduler.pool.loader import Loader
@@ -50,6 +52,7 @@ app.include_router(conversation.router)
 app.include_router(auth.router)
 app.include_router(api_key.router)
 app.include_router(appcenter.router)
+app.include_router(service.router)
 app.include_router(comment.router)
 app.include_router(record.router)
 app.include_router(health.router)

@@ -52,7 +52,7 @@ async def get_applications(  # noqa: PLR0913
             status_code=status.HTTP_400_BAD_REQUEST,
             content=ResponseData(
                 code=status.HTTP_400_BAD_REQUEST,
-                message="createdByMe 和 favorited 不能同时生效",
+                message="INVALID_PARAMETER",
                 result={},
             ).model_dump(exclude_none=True, by_alias=True),
         )
@@ -75,7 +75,7 @@ async def get_applications(  # noqa: PLR0913
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             content=ResponseData(
                 code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                message="查询失败",
+                message="ERROR",
                 result={},
             ).model_dump(exclude_none=True, by_alias=True),
         )
@@ -83,7 +83,7 @@ async def get_applications(  # noqa: PLR0913
         status_code=status.HTTP_200_OK,
         content=GetAppListRsp(
             code=status.HTTP_200_OK,
-            message="查询成功",
+            message="OK",
             result=GetAppListMsg(
                 currentPage=page,
                 totalApps=total_apps,
@@ -108,7 +108,7 @@ async def create_or_update_application(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 content=ResponseData(
                     code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                    message="更新失败",
+                    message="ERROR",
                     result={},
                 ).model_dump(exclude_none=True, by_alias=True),
             )
@@ -116,7 +116,7 @@ async def create_or_update_application(
             status_code=status.HTTP_200_OK,
             content=BaseAppOperationRsp(
                 code=status.HTTP_200_OK,
-                message="更新成功",
+                message="OK",
                 result=BaseAppOperationMsg(appId=app_id),
             ).model_dump(exclude_none=True, by_alias=True),
         )
@@ -127,7 +127,7 @@ async def create_or_update_application(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             content=ResponseData(
                 code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                message="创建失败",
+                message="ERROR",
                 result={},
             ).model_dump(exclude_none=True, by_alias=True),
         )
@@ -135,7 +135,7 @@ async def create_or_update_application(
         status_code=status.HTTP_200_OK,
         content=BaseAppOperationRsp(
             code=status.HTTP_200_OK,
-            message="创建成功",
+            message="OK",
             result=BaseAppOperationMsg(appId=app_id),
         ).model_dump(exclude_none=True, by_alias=True),
     )
@@ -153,7 +153,7 @@ async def get_recently_used_applications(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             content=ResponseData(
                 code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                message="查询失败",
+                message="ERROR",
                 result={},
             ).model_dump(exclude_none=True, by_alias=True),
         )
@@ -161,7 +161,7 @@ async def get_recently_used_applications(
         status_code=status.HTTP_200_OK,
         content=GetRecentAppListRsp(
             code=status.HTTP_200_OK,
-            message="查询成功",
+            message="OK",
             result=recent_apps,
         ).model_dump(exclude_none=True, by_alias=True),
     )
@@ -178,7 +178,7 @@ async def get_application(
             status_code=status.HTTP_404_NOT_FOUND,
             content=ResponseData(
                 code=status.HTTP_404_NOT_FOUND,
-                message="找不到应用",
+                message="INVALID_APP_ID",
                 result={},
             ).model_dump(exclude_none=True, by_alias=True),
         )
@@ -187,7 +187,7 @@ async def get_application(
         status_code=status.HTTP_200_OK,
         content=GetAppPropertyRsp(
             code=status.HTTP_200_OK,
-            message="查询成功",
+            message="OK",
             result=GetAppPropertyMsg(
                 appId=app_data.id,
                 published=app_data.published,
@@ -223,7 +223,7 @@ async def delete_application(
             status_code=status.HTTP_400_BAD_REQUEST,
             content=ResponseData(
                 code=status.HTTP_400_BAD_REQUEST,
-                message="查询失败",
+                message="INVALID_PARAMETER",
                 result={},
             ).model_dump(exclude_none=True, by_alias=True),
         )
@@ -233,7 +233,7 @@ async def delete_application(
             status_code=status.HTTP_403_FORBIDDEN,
             content=ResponseData(
                 code=status.HTTP_403_FORBIDDEN,
-                message="无权删除他人创建的应用",
+                message="UNAUTHORIZED",
                 result={},
             ).model_dump(exclude_none=True, by_alias=True),
         )
@@ -244,7 +244,7 @@ async def delete_application(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 content=ResponseData(
                     code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                    message=f"删除应用下属工作流 {flow.id} 失败",
+                    message="ERROR",
                     result={},
                 ).model_dump(exclude_none=True, by_alias=True),
             )
@@ -254,7 +254,7 @@ async def delete_application(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             content=ResponseData(
                 code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                message="删除失败",
+                message="ERROR",
                 result={},
             ).model_dump(exclude_none=True, by_alias=True),
         )
@@ -262,7 +262,7 @@ async def delete_application(
         status_code=status.HTTP_200_OK,
         content=BaseAppOperationRsp(
             code=status.HTTP_200_OK,
-            message="删除成功",
+            message="OK",
             result=BaseAppOperationMsg(appId=app_id),
         ).model_dump(exclude_none=True, by_alias=True),
     )
@@ -280,7 +280,7 @@ async def publish_application(
             status_code=status.HTTP_400_BAD_REQUEST,
             content=ResponseData(
                 code=status.HTTP_400_BAD_REQUEST,
-                message="查询失败",
+                message="INVALID_PARAMETER",
                 result={},
             ).model_dump(exclude_none=True, by_alias=True),
         )
@@ -290,7 +290,7 @@ async def publish_application(
             status_code=status.HTTP_403_FORBIDDEN,
             content=ResponseData(
                 code=status.HTTP_403_FORBIDDEN,
-                message="无权发布他人创建的应用",
+                message="UNAUTHORIZED",
                 result={},
             ).model_dump(exclude_none=True, by_alias=True),
         )
@@ -300,7 +300,7 @@ async def publish_application(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             content=ResponseData(
                 code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                message="发布失败",
+                message="ERROR",
                 result={},
             ).model_dump(exclude_none=True, by_alias=True),
         )
@@ -308,7 +308,7 @@ async def publish_application(
         status_code=status.HTTP_200_OK,
         content=BaseAppOperationRsp(
             code=status.HTTP_200_OK,
-            message="发布成功",
+            message="OK",
             result=BaseAppOperationMsg(appId=app_id),
         ).model_dump(exclude_none=True, by_alias=True),
     )
@@ -327,7 +327,7 @@ async def modify_favorite_application(
             status_code=status.HTTP_404_NOT_FOUND,
             content=ResponseData(
                 code=status.HTTP_404_NOT_FOUND,
-                message="找不到应用",
+                message="INVALID_APP_ID",
                 result={},
             ).model_dump(exclude_none=True, by_alias=True),
         )
@@ -336,7 +336,7 @@ async def modify_favorite_application(
             status_code=status.HTTP_400_BAD_REQUEST,
             content=ResponseData(
                 code=status.HTTP_400_BAD_REQUEST,
-                message="不可重复操作",
+                message="INVALID_PARAMETER",
                 result={},
             ).model_dump(exclude_none=True, by_alias=True),
         )
@@ -345,7 +345,7 @@ async def modify_favorite_application(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             content=ResponseData(
                 code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                message="操作失败",
+                message="ERROR",
                 result={},
             ).model_dump(exclude_none=True, by_alias=True),
         )
@@ -353,7 +353,7 @@ async def modify_favorite_application(
         status_code=status.HTTP_200_OK,
         content=ModFavAppRsp(
             code=status.HTTP_200_OK,
-            message="操作成功",
+            message="OK",
             result=ModFavAppMsg(
                 appId=app_id,
                 favorited=request.favorited,
