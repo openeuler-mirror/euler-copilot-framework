@@ -117,7 +117,7 @@ async def get_service_list(  # noqa: PLR0913
 
 
 @router.post("", response_model=UpdateServiceRsp, dependencies=[Depends(verify_csrf_token)])
-async def update_service(
+async def update_service(  # noqa: PLR0911
     user_sub: Annotated[str, Depends(get_user)],
     data: Annotated[UpdateServiceRequest, Body(..., description="上传 YAML 文本对应数据对象")],
 ) -> JSONResponse:
@@ -125,6 +125,15 @@ async def update_service(
     if not data.service_id:
         try:
             service_id = await ServiceCenterManager.create_service(user_sub, data.data)
+        except ValueError as e:
+            return JSONResponse(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                content=ResponseData(
+                    code=status.HTTP_400_BAD_REQUEST,
+                    message=str(e),
+                    result={},
+                ).model_dump(exclude_none=True, by_alias=True),
+            )
         except Exception as e:
             LOGGER.error(f"[ServiceCenter] Create service failed: {e}")
             return JSONResponse(
@@ -138,7 +147,16 @@ async def update_service(
     else:
         try:
             service_id = await ServiceCenterManager.update_service(user_sub, data.service_id, data.data)
-        except ValueError:
+        except ValueError as e:
+            if str(e).startswith("Endpoint error"):
+                return JSONResponse(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    content=ResponseData(
+                        code=status.HTTP_400_BAD_REQUEST,
+                        message=str(e),
+                        result={},
+                    ).model_dump(exclude_none=True, by_alias=True),
+                )
             return JSONResponse(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 content=ResponseData(
