@@ -113,9 +113,9 @@ class ServiceCenterManager:
                     _id=str(uuid.uuid4()),
                     service_id=service_id,
                     name=endpoint.name,
-                    api_path=f"{endpoint.method} {endpoint.uri}",
                     description=endpoint.description,
                     call_id="api",
+                    path="test path",
                 ).model_dump(),
             )
         yaml_hash = "hash"  # TODO: 计算 OpenAPI YAML 文件的哈希值
@@ -162,9 +162,9 @@ class ServiceCenterManager:
                     _id=str(uuid.uuid4()),
                     service_id=service_id,
                     name=endpoint.name,
-                    api_path=f"{endpoint.method} {endpoint.uri}",
                     description=endpoint.description,
                     call_id="api",
+                    path="test path",
                 ).model_dump(),
             )
         yaml_hash = "hash"  # TODO: 计算 OpenAPI YAML 文件的哈希值
@@ -205,7 +205,7 @@ class ServiceCenterManager:
             api_list.extend(
                 ServiceApiData(
                     name=node.name,
-                    path=node.api_path or "",
+                    path="test path",
                     description=node.description,
                 ),
             )
