@@ -199,10 +199,10 @@ class ServiceCenterManager:
         # 根据 service_id 获取 API 列表
         node_collection = MongoDB.get_collection("node")
         db_nodes = await node_collection.find({"service_id": service_id}).to_list()
-        api_list = []
+        api_list: list[ServiceApiData] = []
         for db_node in db_nodes:
             node = NodePool.model_validate(db_node)
-            api_list.extend(
+            api_list.append(
                 ServiceApiData(
                     name=node.name,
                     path="test path",
