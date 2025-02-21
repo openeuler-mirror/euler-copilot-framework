@@ -51,11 +51,11 @@ class ServicePool(PoolBase):
 
 # MongoDB配置
 config = {
-    'MONGODB_USER': 'euler_copilot',
-    'MONGODB_PWD': 'ZYd0Z3SpcDifcgnt5EOK',
-    'MONGODB_HOST': '10.43.188.157',
-    'MONGODB_PORT': '27017',
-    'MONGODB_DATABASE': 'euler_copilot'
+    'MONGODB_USER': '',
+    'MONGODB_PWD': '',
+    'MONGODB_HOST': '',
+    'MONGODB_PORT': '',
+    'MONGODB_DATABASE': ''
 }
 
 
