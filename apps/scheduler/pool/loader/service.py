@@ -24,9 +24,9 @@ class ServiceLoader:
 
 
     @classmethod
-    async def load_one(cls, service_dir: Path) -> None:
+    async def load_one(cls, service_id: str) -> None:
         """加载单个Service"""
-        service_path = Path(config["SERVICE_DIR"]) / "service" / service_dir
+        service_path = Path(config["SEMANTICS_DIR"]) / "service" / service_id
         # 载入元数据
         metadata = await MetadataLoader.load(service_path / "metadata.yaml")
         if not isinstance(metadata, ServiceMetadata):
@@ -57,7 +57,7 @@ class ServiceLoader:
         node_vecs = await PostgreSQL.get_embedding(node_descriptions)
         for i, data in enumerate(node_vecs):
             node_vec = NodePoolVector(
-                _id=nodes[i].id,
+                id=nodes[i].id,
                 embedding=data,
             )
             session.add(node_vec)

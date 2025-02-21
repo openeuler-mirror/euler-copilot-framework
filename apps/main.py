@@ -33,8 +33,7 @@ from apps.routers import (
     record,
     service,
 )
-
-# from apps.scheduler.pool.loader import Loader
+from apps.scheduler.pool.pool import Pool
 
 # 定义FastAPI app
 app = FastAPI(docs_url=None, redoc_url=None)
@@ -69,8 +68,6 @@ scheduler.start()
 scheduler.add_job(DeleteUserCron.delete_user, "cron", hour=3)
 
 # 包装Ray
-
-
 @serve.deployment(ray_actor_options={"num_gpus": 0})
 @serve.ingress(app)
 class FastAPIWrapper:
@@ -79,10 +76,16 @@ class FastAPIWrapper:
 
 # 运行
 if __name__ == "__main__":
-    # 初始化
-    WordsCheck.init()
-    # Loader.init()
-    # 启动Ray
+    # 初始化Ray
     ray.init(dashboard_host="0.0.0.0", num_cpus=4)  # noqa: S104
+
+    # 初始化必要资源
+    WordsCheck.init()
+
+    pool_actor = Pool.remote()
+    ray.get(pool_actor.init.remote()) # type: ignore[]
+    ray.kill(pool_actor)
+
+    # 启动FastAPI
     serve.start(http_options=HTTPOptions(host="0.0.0.0", port=8002))  # noqa: S104
     serve.run(FastAPIWrapper.bind(), blocking=True)

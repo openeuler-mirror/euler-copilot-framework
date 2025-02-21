@@ -37,6 +37,8 @@ class PostgreSQL:
     @classmethod
     async def get_session(cls) -> AsyncSession:
         """获取异步会话"""
+        if not cls._is_inited:
+            await cls.init()
         return async_sessionmaker(cls._engine, class_=AsyncSession, expire_on_commit=False)()
 
 
