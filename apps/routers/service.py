@@ -130,7 +130,7 @@ async def update_service(  # noqa: PLR0911
                 status_code=status.HTTP_400_BAD_REQUEST,
                 content=ResponseData(
                     code=status.HTTP_400_BAD_REQUEST,
-                    message=e.args[0],
+                    message=str(e),
                     result={},
                 ).model_dump(exclude_none=True, by_alias=True),
             )
@@ -148,12 +148,12 @@ async def update_service(  # noqa: PLR0911
         try:
             service_id = await ServiceCenterManager.update_service(user_sub, data.service_id, data.data)
         except ValueError as e:
-            if e.args[0].startswith("Endpoint error"):
+            if str(e).startswith("Endpoint error"):
                 return JSONResponse(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     content=ResponseData(
                         code=status.HTTP_400_BAD_REQUEST,
-                        message=e.args[0],
+                        message=str(e),
                         result={},
                     ).model_dump(exclude_none=True, by_alias=True),
                 )
