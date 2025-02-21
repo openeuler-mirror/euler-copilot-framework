@@ -22,6 +22,7 @@ def mock_data(question):
     conversationId="eccb08c3-0621-4602-a4d2-4eaada892557"
     appId="68dd3d90-6a97-4da0-aa62-d38a81c7d2f5"
     flowId="966c7964-e1c1-4bd8-9333-ed099cf25908"
+    stepIds = ["node1","b7607efc-0dc7-4f7a-a2b2-dba60013b3b5","d60a0fde-cd75-48ee-ba6c-b861b0a94f81"]
     messages =  [{
                     "event": "init",
                     "id": "0f9d3e6b-7845-44ab-b247-35c522d38f13",
@@ -51,7 +52,7 @@ def mock_data(question):
                 "flow": {
                     "appId": appId,
                     "flowId": flowId,
-                    "stepId": "eccb08c3-a892-4602-b247-35c522d38f13",
+                    "stepId": stepIds[0],
                     "stepStatus": "pending",
                 },
                 "content": {
@@ -76,7 +77,7 @@ def mock_data(question):
                 "flow": {
                     "appId": appId,
                     "flowId":flowId,
-                    "stepId": "node1",
+                    "stepId": stepIds[0],
                     "stepName": "开始",
                     "stepStatus": "running",
                 },
@@ -97,7 +98,7 @@ def mock_data(question):
                 "flow": {
                     "appId": appId,
                     "flowId":flowId,
-                    "stepId": "node1",
+                    "stepId": stepIds[0],
                     "stepName": "开始",
                     "stepStatus": "success",
                 },
@@ -118,7 +119,7 @@ def mock_data(question):
                 "flow": {
                     "appId": appId,
                     "flowId":flowId,
-                    "stepId": "b7607efc-0dc7-4f7a-a2b2-dba60013b3b5",
+                    "stepId": stepIds[1],
                     "stepName": "【API】获取任务简介",
                     "stepStatus": "running",
                 },
@@ -156,7 +157,7 @@ def mock_data(question):
                 "flow": {
                     "appId": appId,
                     "flowId":flowId,
-                    "stepId": "b7607efc-0dc7-4f7a-a2b2-dba60013b3b5",
+                    "stepId": stepIds[1],
                     "stepName": "【API】获取任务简介",
                     "stepStatus": "success",
                 },
@@ -190,7 +191,7 @@ def mock_data(question):
                 "flow": {
                     "appId": appId,
                     "flowId":flowId,
-                    "stepId": "8841e328-da5b-45c7-8839-5b8054a92de7",
+                    "stepId": stepIds[2],
                     "stepName": "【CHOICE】判断任务类型",
                     "stepStatus": "running",
                 },
@@ -225,7 +226,7 @@ def mock_data(question):
                 "flow": {
                     "appId": appId,
                     "flowId":flowId,
-                    "stepId": "8841e328-da5b-45c7-8839-5b8054a92de7",
+                    "stepId": stepIds[2],
                     "stepName": "【CHOICE】判断任务类型",
                     "stepStatus": "error",
                 },
@@ -247,7 +248,7 @@ def mock_data(question):
                 "flow": {
                     "appId": appId,
                     "flowId":flowId,
-                    "stepId": "8841e328-da5b-45c7-8839-5b8054a92de7",
+                    "stepId": stepIds[2],
                     "stepName": "【CHOICE】判断任务类型",
                     "stepStatus": "error",
                 },
@@ -301,7 +302,7 @@ def mock_data(question):
                 "conversationId": conversationId,
                 "taskId": "eb717bc7-3435-4172-82d1-6b69e62f3fd6",
                 "content": {
-                    "text": "语句"
+                    "text": "语句\n"
                 },
                 "metadata": {
                     "inputTokens": 200,
@@ -309,7 +310,81 @@ def mock_data(question):
                     "time": 0.5
                 }
             },
-
+            {
+                    "event": "text.add",
+                    "id": "0f9d3e6b-7845-44ab-b247-35c522d38f13-1",
+                    "groupId": "8b9d3e6b-a892-4602-b247-35c522d38f13",
+                    "conversationId": conversationId,
+                    "taskId": "eb717bc7-3435-4172-82d1-6b69e62f3fd6",
+                    "content": {
+                        "text": "| Header1 | Header2 | Header3 |\n|---------|---------|---------|\n| Row1Col1| Row1Col2| Row1Col3|\n"
+                    },
+                    "metadata": {
+                        "inputTokens": 200,
+                        "outputTokens": 50,
+                        "time": 0.5
+                    }
+                },
+                {
+                    "event": "text.add",
+                    "id": "0f9d3e6b-7845-44ab-b247-35c522d38f13-2",
+                    "groupId": "8b9d3e6b-a892-4602-b247-35c522d38f13",
+                    "conversationId": conversationId,
+                    "taskId": "eb717bc7-3435-4172-82d1-6b69e62f3fd6",
+                    "content": {
+                        "text": "| Row2Col1| Row2Col2| Row2Col3|\n"
+                    },
+                    "metadata": {
+                        "inputTokens": 200,
+                        "outputTokens": 50,
+                        "time": 0.5
+                    }
+                },
+                {
+                    "event": "text.add",
+                    "id": "0f9d3e6b-7845-44ab-b247-35c522d38f13-3",
+                    "groupId": "8b9d3e6b-a892-4602-b247-35c522d38f13",
+                    "conversationId": "conversationId",
+                    "taskId": "eb717bc7-3435-4172-82d1-6b69e62f3fd6",
+                    "content": {
+                        "text": "| Row3Col1| Row3Col2| Row3Col3|\n"
+                    },
+                    "metadata": {
+                        "inputTokens": 200,
+                        "outputTokens": 50,
+                        "time": 0.5
+                    }
+                },
+                {
+                    "event": "text.add",
+                    "id": "0f9d3e6b-7845-44ab-b247-35c522d38f13-4",
+                    "groupId": "8b9d3e6b-a892-4602-b247-35c522d38f13",
+                    "conversationId": conversationId,
+                    "taskId": "eb717bc7-3435-4172-82d1-6b69e62f3fd6",
+                    "content": {
+                        "text": "| Row4Col1| Row4Col2| Row4Col3|\n"
+                    },
+                    "metadata": {
+                        "inputTokens": 200,
+                        "outputTokens": 50,
+                        "time": 0.5
+                    }
+                },
+                {
+                    "event": "text.add",
+                    "id": "0f9d3e6b-7845-44ab-b247-35c522d38f13-5",
+                    "groupId": "8b9d3e6b-a892-4602-b247-35c522d38f13",
+                    "conversationId": conversationId,
+                    "taskId": "eb717bc7-3435-4172-82d1-6b69e62f3fd6",
+                    "content": {
+                        "text": "| Row5Col1| Row5Col2| Row5Col3|\n"
+                    },
+                    "metadata": {
+                        "inputTokens": 200,
+                        "outputTokens": 50,
+                        "time": 0.5
+                    }
+                },
             {
                 "event": "text.stop",
                 "id": "0f9d3e6b-7845-44ab-b247-35c522d38f13",
@@ -331,7 +406,7 @@ def mock_data(question):
     import random
     for message in messages:
         if message['event']=='step.output':
-            t=random.uniform(1, 1.5)
+            t=random.uniform(3, 5.5)
             time.sleep(t)
             message['time_cost']=t
         elif message['event']=='text.add':

@@ -45,7 +45,7 @@ class Executor:
             raise ValueError(err)
 
         # 加载Flow信息
-        flow, flow_data = Pool().get_flow(sysexec_vars.plugin_data.flow_id, sysexec_vars.plugin_data.plugin_id)
+        flow, flow_data = Pool().get_flow(sysexec_vars.app_data.flow_id, sysexec_vars.app_data.app_id)
         # Flow不合法，拒绝执行
         if flow is None or flow_data is None:
             err = "Flow不合法！"
@@ -73,10 +73,10 @@ class Executor:
                 name=str(flow.name),
                 description=str(flow.description),
                 status=StepStatus.RUNNING,
-                plugin_id=str(sysexec_vars.plugin_data.plugin_id),
+                app_id=str(sysexec_vars.app_data.app_id),
                 step_id="start",
                 thought="",
-                slot_data=sysexec_vars.plugin_data.params,
+                slot_data=sysexec_vars.app_data.params,
             )
         # 是否结束运行
         self._stop = False
@@ -114,7 +114,7 @@ class Executor:
             )
 
         # 从Pool中获取对应的Call
-        call_data, call_cls = Pool().get_call(call_type, self.flow_state.plugin_id)
+        call_data, call_cls = Pool().get_call(call_type, self.flow_state.app_id)
         if call_data is None or call_cls is None:
             err = f"[FlowExecutor] 尝试执行工具{call_type}时发生错误：找不到该工具。\n{traceback.format_exc()}"
             LOGGER.error(err)
@@ -137,7 +137,7 @@ class Executor:
             task_id=self._vars.task_id,
             session_id=self._vars.session_id,
             extra={
-                "plugin_id": self.flow_state.plugin_id,
+                "app_id": self.flow_state.app_id,
                 "flow_id": self.flow_state.name,
             },
             history=history,
@@ -172,7 +172,7 @@ class Executor:
             # 处理参数
             remaining_schema, slot_data = await slot_processor.process(
                 self.flow_state.slot_data,
-                self._vars.plugin_data.params,
+                self._vars.app_data.params,
                 {
                     "task_id": self._vars.task_id,
                     "question": self._vars.question,

@@ -51,12 +51,13 @@ class ServicePool(PoolBase):
 
 # MongoDB配置
 config = {
-    "MONGODB_USER": "euler_copilot",
-    "MONGODB_PWD": "8URM%HtCHQPxKe$u",
-    "MONGODB_HOST": "10.43.208.180",
-    "MONGODB_PORT": "27017",
-    "MONGODB_DATABASE": "euler_copilot",
+    'MONGODB_USER': '',
+    'MONGODB_PWD': '',
+    'MONGODB_HOST': '',
+    'MONGODB_PORT': '',
+    'MONGODB_DATABASE': ''
 }
+
 
 
 class MongoDB:
@@ -712,4 +713,4 @@ def query_all_target(tag: str):
 if __name__ == "__main__":
     asyncio.run(insert_service_pool())
     asyncio.run(insert_node_pool())
-    query_all_target("node")
+    query_all_target("service")

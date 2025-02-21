@@ -119,7 +119,6 @@ class FlowManager:
                 },
             ]
             query = {"$or": match_conditions}
-
             service_records_cursor = service_collection.find(
                 query,
                 sort=[("created_at", ASCENDING)],
