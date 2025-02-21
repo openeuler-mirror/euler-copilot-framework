@@ -2,12 +2,12 @@
 
 Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 """
+from hashlib import sha256
 from pathlib import Path
 
 from apps.common.config import config
 from apps.entities.enum_var import MetadataType
 from apps.models.mongo import MongoDB
-from apps.scheduler.pool.util import get_long_hash
 
 
 class FileChecker:
@@ -16,7 +16,7 @@ class FileChecker:
     def __init__(self) -> None:
         """初始化文件检查器"""
         self._hashes = {}
-        self._dir_path = Path(config["SERVICE_DIR"])
+        self._dir_path = Path(config["SEMANTICS_DIR"])
 
 
     def check_one(self, path: Path) -> None:
@@ -30,7 +30,7 @@ class FileChecker:
 
         for file in path.iterdir():
             if file.is_file():
-                self._hashes[str(file.relative_to(self._dir_path))] = get_long_hash(file.read_bytes())
+                self._hashes[str(file.relative_to(self._dir_path))] = sha256(file.read_bytes()).hexdigest()
             elif file.is_dir():
                 self.check_one(file)
 
@@ -46,10 +46,10 @@ class FileChecker:
         """生成更新列表和删除列表"""
         if check_type == MetadataType.APP:
             collection = MongoDB.get_collection("app")
-            self._dir_path = Path(config["SERVICE_DIR"]) / "app"
+            self._dir_path = Path(config["SEMANTICS_DIR"]) / "app"
         elif check_type == MetadataType.SERVICE:
             collection = MongoDB.get_collection("service")
-            self._dir_path = Path(config["SERVICE_DIR"]) / "service"
+            self._dir_path = Path(config["SEMANTICS_DIR"]) / "service"
 
         changed_list = []
         deleted_list = []

@@ -73,8 +73,8 @@ class NodePool(BaseData):
 
     service_id: Optional[str] = Field(description="Node所属的Service ID", default=None)
     call_id: str = Field(description="所使用的Call的ID")
-    path: str = Field(description="Node的路径")
-    known_params: dict[str, Any] = Field(description="已知的用于Call部分的参数", default={})
+    path: Optional[str] = Field(description="Node的路径", default=None)
+    known_params: Optional[dict[str, Any]] = Field(description="已知的用于Call部分的参数", default=None)
 
 
 class AppFlow(BaseData):

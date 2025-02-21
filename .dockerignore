@@ -7,3 +7,6 @@ Dockerfile
 *.bak
 .gitignore
 .git/
+deploy/
+docs/
+.DS_Store

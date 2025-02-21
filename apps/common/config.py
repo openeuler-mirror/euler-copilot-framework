@@ -85,7 +85,7 @@ class ConfigModel(BaseModel):
     SCHEDULER_MAX_TOKENS: int = Field(description="参数猜解最大Token数", default=8192)
     SCHEDULER_TEMPERATURE: float = Field(description="参数猜解温度", default=0.7)
     # 插件位置
-    SERVICE_DIR: Optional[str] = Field(description="插件路径", default=None)
+    SEMANTICS_DIR: Optional[str] = Field(description="语义配置路径", default=None)
     # SQL接口路径
     SQL_URL: str = Field(description="Chat2DB接口路径")
 

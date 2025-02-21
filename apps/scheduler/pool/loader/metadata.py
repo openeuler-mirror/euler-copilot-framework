@@ -20,8 +20,8 @@ class MetadataLoader:
     """元数据加载器"""
 
     @classmethod
-    async def load(cls, file_path: Path) -> Union[AppMetadata, ServiceMetadata]:
-        """加载【单个】元数据"""
+    async def load_one(cls, file_path: Path) -> Union[AppMetadata, ServiceMetadata]:
+        """加载单个元数据"""
         # 检查yaml格式
         try:
             metadata_dict = yaml.safe_load(await file_path.read_text())
@@ -51,8 +51,8 @@ class MetadataLoader:
 
 
     @classmethod
-    async def save(cls, metadata_type: MetadataType, metadata: dict[str, Any], resource_id: str) -> None:
-        """保存【单个】元数据"""
+    async def save_one(cls, metadata_type: MetadataType, metadata: dict[str, Any], resource_id: str) -> None:
+        """保存单个元数据"""
         class_dict = {
             MetadataType.APP: AppMetadata,
             MetadataType.SERVICE: ServiceMetadata,
@@ -60,9 +60,9 @@ class MetadataLoader:
 
         # 检查资源路径
         if metadata_type == MetadataType.APP:
-            resource_path = Path(config["SERVICE_DIR"]) / "app" / resource_id / "metadata.yaml"
+            resource_path = Path(config["SEMANTICS_DIR"]) / "app" / resource_id / "metadata.yaml"
         elif metadata_type == MetadataType.SERVICE:
-            resource_path = Path(config["SERVICE_DIR"]) / "service" / resource_id / "metadata.yaml"
+            resource_path = Path(config["SEMANTICS_DIR"]) / "service" / resource_id / "metadata.yaml"
 
         # 保存元数据
         try:
