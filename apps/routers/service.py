@@ -125,7 +125,7 @@ async def update_service(  # noqa: PLR0911
     if not data.service_id:
         try:
             service_id = await ServiceCenterManager.create_service(user_sub, data.data)
-        except ValueError as e:
+        except ValueError as e:  # OpenAPI YAML 接口字段不完整
             return JSONResponse(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 content=ResponseData(
@@ -148,7 +148,7 @@ async def update_service(  # noqa: PLR0911
         try:
             service_id = await ServiceCenterManager.update_service(user_sub, data.service_id, data.data)
         except ValueError as e:
-            if str(e).startswith("Endpoint error"):
+            if str(e).startswith("Endpoint error"):  # OpenAPI YAML 接口字段不完整
                 return JSONResponse(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     content=ResponseData(
