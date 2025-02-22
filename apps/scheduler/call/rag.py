@@ -2,7 +2,7 @@
 
 Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 """
-from typing import Any, List, Optional
+from typing import Any, Optional
 
 from pydantic import BaseModel, Field
 
@@ -20,13 +20,13 @@ class _RAGParams(BaseModel):
 
     knowledge_base: str = Field(description="知识库的id")
     top_k: int = Field(description="返回的答案数量(经过整合以及上下文关联)", default=5)
-    methods: Optional[List[str]] = Field(description="rag检索方法")
+    methods: Optional[list[str]] = Field(description="rag检索方法")
 
 
 class _RAGOutput(BaseModel):
     """RAG工具的输出"""
 
-    message: List[str] = Field(description="RAG工具的输出")
+    message: list[str] = Field(description="RAG工具的输出")
 
 
 class RAG(metaclass=CoreCall, param_cls=_RAGParams, output_cls=_RAGOutput):
