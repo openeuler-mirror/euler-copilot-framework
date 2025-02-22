@@ -206,9 +206,9 @@ async def get_service_detail(
             name, data = await ServiceCenterManager.get_service_data(user_sub, service_id)
         except ValueError:
             return JSONResponse(
-                status_code=status.HTTP_404_NOT_FOUND,
+                status_code=status.HTTP_400_BAD_REQUEST,
                 content=ResponseData(
-                    code=status.HTTP_404_NOT_FOUND,
+                    code=status.HTTP_400_BAD_REQUEST,
                     message="INVALID_SERVICE_ID",
                     result={},
                 ).model_dump(exclude_none=True, by_alias=True),
@@ -229,9 +229,9 @@ async def get_service_detail(
             name, apis = await ServiceCenterManager.get_service_apis(service_id)
         except ValueError:
             return JSONResponse(
-                status_code=status.HTTP_404_NOT_FOUND,
+                status_code=status.HTTP_400_BAD_REQUEST,
                 content=ResponseData(
-                    code=status.HTTP_404_NOT_FOUND,
+                    code=status.HTTP_400_BAD_REQUEST,
                     message="INVALID_SERVICE_ID",
                     result={},
                 ).model_dump(exclude_none=True, by_alias=True),
@@ -261,9 +261,9 @@ async def delete_service(
         await ServiceCenterManager.delete_service(user_sub, service_id)
     except ValueError:
         return JSONResponse(
-            status_code=status.HTTP_404_NOT_FOUND,
+            status_code=status.HTTP_400_BAD_REQUEST,
             content=ResponseData(
-                code=status.HTTP_404_NOT_FOUND,
+                code=status.HTTP_400_BAD_REQUEST,
                 message="INVALID_SERVICE_ID",
                 result={},
             ).model_dump(exclude_none=True, by_alias=True),
@@ -303,9 +303,9 @@ async def modify_favorite_service(
             )
     except ValueError:
         return JSONResponse(
-            status_code=status.HTTP_404_NOT_FOUND,
+            status_code=status.HTTP_400_BAD_REQUEST,
             content=ResponseData(
-                code=status.HTTP_404_NOT_FOUND,
+                code=status.HTTP_400_BAD_REQUEST,
                 message="INVALID_SERVICE_ID",
                 result={},
             ).model_dump(exclude_none=True, by_alias=True),
