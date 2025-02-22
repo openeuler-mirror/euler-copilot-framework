@@ -2,9 +2,12 @@
 
 Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 """
-from pathlib import Path
+from typing import Any
+
+from anyio import Path
 
 from apps.common.config import config
+from apps.entities.flow import MetadataType
 from apps.scheduler.pool.loader.metadata import MetadataLoader
 
 
@@ -12,13 +15,13 @@ class AppLoader:
     """应用加载器"""
 
     @classmethod
-    def load(cls, app_dir: str) -> None:
+    async def load(cls, app_dir: str) -> None:
         """从文件系统中加载应用
 
         :param app_dir: 应用目录
         """
-        path = Path(config["SERVICE_DIR"]) / app_dir
-        metadata = MetadataLoader.load(path / "metadata.yaml")
+        path = Path(config["SEMANTICS_DIR"]) / app_dir
+        metadata = await MetadataLoader.load(path / "metadata.yaml")
 
 
     @classmethod

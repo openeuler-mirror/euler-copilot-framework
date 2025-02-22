@@ -62,6 +62,7 @@ class OpenAPILoader:
 
         return nodes
 
+
     @classmethod
     async def load_one(cls, yaml_folder: Path, service_metadata: ServiceMetadata) -> list[NodePool]:
         """加载单个OpenAPI文档，可以直接指定路径"""
@@ -75,3 +76,9 @@ class OpenAPILoader:
 
         service_id = yaml_folder.parent.name
         return cls._process_spec(service_id, spec, service_metadata)
+
+
+    @classmethod
+    async def save_one(cls, nodes: list[NodePool]) -> None:
+        """保存单个OpenAPI文档"""
+        pass

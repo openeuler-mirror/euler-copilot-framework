@@ -113,10 +113,10 @@ class ServiceCenterManager:
                     _id=str(uuid.uuid4()),
                     service_id=service_id,
                     name=endpoint.name,
-                    api_path=f"{endpoint.method} {endpoint.uri}",
                     description=endpoint.description,
                     call_id="api",
-                ).model_dump(),
+                    path="test path",
+                ).model_dump(exclude_none=True, by_alias=True),
             )
         yaml_hash = "hash"  # TODO: 计算 OpenAPI YAML 文件的哈希值
         # 存入数据库
@@ -129,7 +129,7 @@ class ServiceCenterManager:
             openapi_spec=data,
         )
         service_collection = MongoDB.get_collection("service")
-        await service_collection.insert_one(service_pool.model_dump())
+        await service_collection.insert_one(service_pool.model_dump(exclude_none=True, by_alias=True))
         # 返回服务ID
         return service_id
 
@@ -162,10 +162,10 @@ class ServiceCenterManager:
                     _id=str(uuid.uuid4()),
                     service_id=service_id,
                     name=endpoint.name,
-                    api_path=f"{endpoint.method} {endpoint.uri}",
                     description=endpoint.description,
                     call_id="api",
-                ).model_dump(),
+                    path="test path",
+                ).model_dump(exclude_none=True, by_alias=True),
             )
         yaml_hash = "hash"  # TODO: 计算 OpenAPI YAML 文件的哈希值
         # 更新数据库
@@ -179,7 +179,7 @@ class ServiceCenterManager:
         )
         await service_collection.update_one(
             {"_id": service_id},
-            {"$set": service_pool.model_dump()},
+            {"$set": service_pool.model_dump(exclude_none=True, by_alias=True)},
         )
         # 返回服务ID
         return service_id
@@ -199,13 +199,13 @@ class ServiceCenterManager:
         # 根据 service_id 获取 API 列表
         node_collection = MongoDB.get_collection("node")
         db_nodes = await node_collection.find({"service_id": service_id}).to_list()
-        api_list = []
+        api_list: list[ServiceApiData] = []
         for db_node in db_nodes:
             node = NodePool.model_validate(db_node)
-            api_list.extend(
+            api_list.append(
                 ServiceApiData(
                     name=node.name,
-                    path=node.api_path or "",
+                    path="test path",
                     description=node.description,
                 ),
             )
@@ -276,7 +276,7 @@ class ServiceCenterManager:
             service_pool_store.favorites.remove(user_sub)
         await service_collection.update_one(
             {"_id": service_id},
-            {"$set": service_pool_store.model_dump()},
+            {"$set": service_pool_store.model_dump(exclude_none=True, by_alias=True)},
         )
         return True
 

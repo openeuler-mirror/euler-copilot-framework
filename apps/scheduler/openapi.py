@@ -2,6 +2,7 @@
 
 Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 """
+
 from collections.abc import Sequence
 from copy import deepcopy
 from typing import Any, Optional
@@ -32,10 +33,7 @@ def _retrieve_ref(path: str, schema: dict) -> dict:
     """从OpenAPI文档中找到$ref对应的schema"""
     components = path.split("/")
     if components[0] != "#":
-        msg = (
-            "ref paths are expected to be URI fragments, meaning they should start "
-            "with #."
-        )
+        msg = "ref paths are expected to be URI fragments, meaning they should start with #."
         raise ValueError(msg)
     out = schema
     for component in components[1:]:
@@ -69,30 +67,25 @@ def _dereference_refs_helper(
                     continue
                 processed_refs.add(v)
                 ref = _retrieve_ref(v, full_schema)
-                full_ref = _dereference_refs_helper(
-                    ref, full_schema, skip_keys, processed_refs,
-                )
+                full_ref = _dereference_refs_helper(ref, full_schema, skip_keys, processed_refs)
                 processed_refs.remove(v)
                 return full_ref
             elif isinstance(v, (list, dict)):
-                obj_out[k] = _dereference_refs_helper(
-                    v, full_schema, skip_keys, processed_refs,
-                )
+                obj_out[k] = _dereference_refs_helper(v, full_schema, skip_keys, processed_refs)
             else:
                 obj_out[k] = v
         return obj_out
 
     if isinstance(obj, list):
-        return [
-            _dereference_refs_helper(el, full_schema, skip_keys, processed_refs)
-            for el in obj
-        ]
+        return [_dereference_refs_helper(el, full_schema, skip_keys, processed_refs) for el in obj]
 
     return obj
 
 
 def _infer_skip_keys(
-    obj: Any, full_schema: dict, processed_refs: Optional[set[str]] = None,  # noqa: ANN401
+    obj: Any,
+    full_schema: dict,
+    processed_refs: Optional[set[str]] = None,
 ) -> list[str]:
     """推断需要跳过的OpenAPI文档中的键"""
     if processed_refs is None:
@@ -133,11 +126,7 @@ def reduce_endpoint_docs(docs: dict) -> dict:
     if docs.get("description"):
         out["description"] = docs.get("description")
     if docs.get("parameters"):
-        out["parameters"] = [
-            parameter
-            for parameter in docs.get("parameters", [])
-            if parameter.get("required")
-        ]
+        out["parameters"] = [parameter for parameter in docs.get("parameters", []) if parameter.get("required")]
     if "200" in docs["responses"]:
         out["responses"] = docs["responses"]["200"]
     if docs.get("requestBody"):
@@ -148,19 +137,31 @@ def reduce_endpoint_docs(docs: dict) -> dict:
 def reduce_openapi_spec(spec: dict) -> ReducedOpenAPISpec:
     """解析和处理OpenAPI文档"""
     # 只支持get, post, patch, put, delete API；强制去除ref；提取关键字段
-    endpoints = [
-        ReducedOpenAPIEndpoint(
-            id=docs.get("operationId", None),
-            uri=route,
-            method=operation_name,
-            name=docs.get("summary"),
-            description=docs.get("description"),
-            spec=reduce_endpoint_docs(dereference_refs(docs, full_schema=spec)),
-        )
-        for route, operation in spec["paths"].items()
-        for operation_name, docs in operation.items()
-        if operation_name in ["get", "post", "patch", "put", "delete"] and (not hasattr(docs, "deprecated") or not docs.deprecated)
-    ]
+    endpoints = []
+    for route, operation in spec["paths"].items():
+        for operation_name, docs in operation.items():
+            if operation_name in ["get", "post", "patch", "put", "delete"] and (
+                not hasattr(docs, "deprecated") or not docs.deprecated
+            ):
+                name = docs.get("summary")
+                description = docs.get("description")
+                missing_fields = []
+                if not name:
+                    missing_fields.append("summary")
+                if not description:
+                    missing_fields.append("description")
+                if missing_fields:
+                    msg = f'Endpoint error at "{operation_name.upper()} {route}": missing {", ".join(missing_fields)}.'
+                    raise ValueError(msg)
+                endpoint = ReducedOpenAPIEndpoint(
+                    id=docs.get("operationId", None),
+                    uri=route,
+                    method=operation_name,
+                    name=name,
+                    description=description,
+                    spec=reduce_endpoint_docs(dereference_refs(docs, full_schema=spec)),
+                )
+                endpoints.append(endpoint)
 
     return ReducedOpenAPISpec(
         id=spec["info"]["title"],
