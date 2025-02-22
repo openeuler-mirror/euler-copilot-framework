@@ -92,6 +92,39 @@ function install_helm {
     return 0
 }
 
+
+function set_kubeconfig() {
+    if ! grep -Fxq "export KUBECONFIG=/etc/rancher/k3s/k3s.yaml" /root/.bashrc; then
+        echo "export KUBECONFIG=/etc/rancher/k3s/k3s.yaml" >> /root/.bashrc
+        echo -e "\033[32m[Success] KUBECONFIG 环境变量已设置完成\033[0m"
+    else
+        echo -e "[Info] KUBECONFIG 已设置, 跳过环境变量步骤"
+    fi
+
+    source /root/.bashrc
+}
+
+function check_k3s_status() {
+
+    local STATUS=$(systemctl is-active k3s)
+
+    if [ "$STATUS" = "active" ]; then
+        echo -e "[Info] k3s 服务当前处于运行状态(active)。"
+    else
+        echo -e "[Info] k3s 服务当前不是运行状态(active)，它的状态是: $STATUS。尝试启动服务..."
+        # 尝试启动k3s服务
+        systemctl start k3s.service
+
+        # 再次检查服务状态
+        STATUS=$(systemctl is-active k3s.service)
+        if [ "$STATUS" = "active" ]; then
+            echo -e "[Info] k3s 服务已成功启动并正在运行。"
+        else
+            echo -e "\033[31m[Error] 无法启动 k3s 服务，请检查日志或配置\033。"
+        fi
+    fi
+}
+
 function main {
     check_user
     check_arch || exit 1
@@ -112,6 +145,8 @@ function main {
     else
         echo -e "[Info] Helm 已经安装，跳过安装步骤"
     fi
+    check_k3s_status
+    set_kubeconfig
 
     echo -e "\n\033[32m=== 全部工具安装完成 ===\033[0m"
     echo -e "K3s 版本：$(k3s --version | head -n1)"
