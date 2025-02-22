@@ -7,7 +7,7 @@ import ray
 from apps.entities.enum_var import MetadataType
 from apps.entities.flow_topology import FlowItem
 from apps.scheduler.pool.check import FileChecker
-from apps.scheduler.pool.loader import CallLoader
+from apps.scheduler.pool.loader import CallLoader, ServiceLoader
 
 
 @ray.remote
@@ -22,6 +22,14 @@ class Pool:
         # 加载Services
         checker = FileChecker()
         changed_service, deleted_service = await checker.diff(MetadataType.SERVICE)
+        service_loader = ServiceLoader()
+        for service in changed_service:
+            # 重载变化的Service
+            await service_loader.load(service)
+        for service in deleted_service:
+            # 删除消失的Service
+            await service_loader.delete(service)
+
         # 加载App
         changed_app, deleted_app = await checker.diff(MetadataType.APP)
 

@@ -13,11 +13,8 @@ import apps.scheduler.call as system_call
 from apps.common.config import config
 from apps.constants import CALL_DIR, LOGGER
 from apps.entities.enum_var import CallType
-from apps.entities.pool import (
-    CallPool,
-    NodePool,
-)
-from apps.entities.vector import NodePoolVector
+from apps.entities.pool import CallPool
+from apps.entities.vector import CallPoolVector
 from apps.models.mongo import MongoDB
 from apps.models.postgres import PostgreSQL
 
@@ -50,10 +47,9 @@ class CallLoader:
         return flag
 
 
-    async def _load_system_call(self) -> tuple[list[CallPool], list[NodePool]]:
+    async def _load_system_call(self) -> list[CallPool]:
         """加载系统Call"""
         call_metadata = []
-        node_metadata = []
 
         # 检查合法性
         for call_id in system_call.__all__:
@@ -69,26 +65,16 @@ class CallLoader:
                     type=CallType.SYSTEM,
                     name=call_cls.name,
                     description=call_cls.description,
-                    path=f"apps.scheduler.call.{call_id}",
+                    path=f"python::apps.scheduler.call::{call_id}",
                 ),
             )
 
-            node_metadata.append(
-                NodePool(
-                    _id=call_id,
-                    call_id=call_id,
-                    name=call_cls.name,
-                    description=call_cls.description,
-                ),
-            )
-
-        return call_metadata, node_metadata
+        return call_metadata
 
 
-    async def _load_single_call_dir(self, call_name: str) -> tuple[list[CallPool], list[NodePool]]:
+    async def _load_single_call_dir(self, call_name: str) -> list[CallPool]:
         """加载单个Call package"""
         call_metadata = []
-        node_metadata = []
 
         call_dir = Path(config["SEMANTICS_DIR"]) / CALL_DIR / call_name
         if not (call_dir / "__init__.py").exists():
@@ -135,25 +121,16 @@ class CallLoader:
                     type=CallType.PYTHON,
                     name=call_cls.name,
                     description=call_cls.description,
-                    path=f"call.{call_name}.{call_id}",
-                ),
-            )
-            node_metadata.append(
-                NodePool(
-                    _id=cls_hash,
-                    call_id=cls_hash,
-                    name=call_cls.name,
-                    description=call_cls.description,
+                    path=f"python::call.{call_name}::{call_id}",
                 ),
             )
 
-        return call_metadata, node_metadata
+        return call_metadata
 
-    async def _load_all_user_call(self) -> tuple[list[CallPool], list[NodePool]]:
+    async def _load_all_user_call(self) -> list[CallPool]:
         """加载Python Call"""
         call_dir = Path(config["SEMANTICS_DIR"]) / CALL_DIR
         call_metadata = []
-        node_metadata = []
 
         # 载入父包
         try:
@@ -172,46 +149,39 @@ class CallLoader:
                 continue
             # 载入包
             try:
-                call_metadata, node_metadata = await self._load_single_call_dir(call_file.name)
-                call_metadata.extend(call_metadata)
-                node_metadata.extend(node_metadata)
-
+                call_metadata.extend(await self._load_single_call_dir(call_file.name))
             except Exception as e:
                 err = f"载入模块{call_file}失败：{e}，跳过载入。"
                 LOGGER.info(msg=err)
                 continue
 
-        return call_metadata, node_metadata
+        return call_metadata
 
 
     # TODO: 动态卸载
 
 
     # 更新数据库
-    async def _update_db(self, call_metadata: list[CallPool], node_metadata: list[NodePool]) -> None:
-        """更新数据库；call和node下标一致"""
+    async def _update_db(self, call_metadata: list[CallPool]) -> None:
+        """更新数据库"""
         # 更新MongoDB
         call_collection = MongoDB.get_collection("call")
-        node_collection = MongoDB.get_collection("node")
+        call_descriptions = []
         try:
-            for call, node in zip(call_metadata, node_metadata):
+            for call in call_metadata:
                 await call_collection.update_one({"_id": call.id}, {"$set": call.model_dump(exclude_none=True, by_alias=True)}, upsert=True)
-                await node_collection.update_one({"_id": node.id}, {"$set": node.model_dump(exclude_none=True, by_alias=True)}, upsert=True)
+                call_descriptions += [call.description]
         except Exception as e:
             err = f"更新MongoDB失败：{e}"
             LOGGER.error(msg=err)
             raise RuntimeError(err) from e
 
         # 进行向量化，更新PostgreSQL
-        node_descriptions = []
-        for node in node_metadata:
-            node_descriptions += [node.description]
-
         session = await PostgreSQL.get_session()
-        node_vecs = await PostgreSQL.get_embedding(node_descriptions)
-        for i, data in enumerate(node_vecs):
-            insert_stmt = insert(NodePoolVector).values(
-                id=node_metadata[i].id,
+        call_vecs = await PostgreSQL.get_embedding(call_descriptions)
+        for i, data in enumerate(call_vecs):
+            insert_stmt = insert(CallPoolVector).values(
+                id=call_metadata[i].id,
                 embedding=data,
             ).on_conflict_do_update(
                 index_elements=["id"],
@@ -225,41 +195,37 @@ class CallLoader:
         """初始化Call信息"""
         # 清空collection
         call_collection = MongoDB.get_collection("call")
-        node_collection = MongoDB.get_collection("node")
         try:
             await call_collection.delete_many({})
-            await node_collection.delete_many({})
         except Exception as e:
-            LOGGER.error(msg=f"Call和Node的collection清空失败：{e}")
+            LOGGER.error(msg=f"Call的collection清空失败：{e}")
 
         # 载入所有已知的Call信息
         try:
-            sys_call_metadata, sys_node_metadata = await self._load_system_call()
+            sys_call_metadata = await self._load_system_call()
         except Exception as e:
             err = f"载入系统Call信息失败：{e}；停止运行。"
             LOGGER.error(msg=err)
             raise RuntimeError(err) from e
 
         try:
-            user_call_metadata, user_node_metadata = await self._load_all_user_call()
+            user_call_metadata = await self._load_all_user_call()
         except Exception as e:
             err = f"载入用户Call信息失败：{e}；只可使用基本功能。"
             LOGGER.error(msg=err)
             user_call_metadata = []
-            user_node_metadata = []
 
         # 合并Call元数据
         call_metadata = sys_call_metadata + user_call_metadata
-        node_metadata = sys_node_metadata + user_node_metadata
 
         # 更新数据库
-        await self._update_db(call_metadata, node_metadata)
+        await self._update_db(call_metadata)
 
 
     async def load_one(self, call_name: str) -> None:
         """加载单个Call"""
         try:
-            call_metadata, node_metadata = await self._load_single_call_dir(call_name)
+            call_metadata = await self._load_single_call_dir(call_name)
         except Exception as e:
             err = f"载入Call信息失败：{e}。"
             LOGGER.error(msg=err)
@@ -267,18 +233,4 @@ class CallLoader:
 
         # 有数据时更新数据库
         if call_metadata:
-            await self._update_db(call_metadata, node_metadata)
-
-
-    async def get(self) -> list[CallPool]:
-        """获取当前已知的所有Python Call元数据"""
-        call_collection = MongoDB.get_collection("call")
-        result: list[CallPool] = []
-        try:
-            cursor = call_collection.find({})
-            async for item in cursor:
-                result.extend([CallPool.model_validate(item)])
-        except Exception as e:
-            LOGGER.error(msg=f"获取Call元数据失败：{e}")
-
-        return result
+            await self._update_db(call_metadata)

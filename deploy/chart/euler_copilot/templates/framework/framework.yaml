@@ -67,7 +67,7 @@ spec:
               name: framework-shared
             - mountPath: /tmp
               name: framework-tmp-volume
-            - mountPath: /euler-copilot-frame/apps/plugin
+            - mountPath: /euler-copilot-frame/apps/semantics
               name: framework-semantics-vl
           securityContext:
             readOnlyRootFilesystem: {{ default false .Values.euler_copilot.framework.readOnly }}
