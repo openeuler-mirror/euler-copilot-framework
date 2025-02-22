@@ -182,7 +182,7 @@ async def get_application(
                 result={},
             ).model_dump(exclude_none=True, by_alias=True),
         )
-    workflows = [{"id": flow.id, "name": flow.name} for flow in app_data.flows]
+    workflows = [{"id": flow.id, "name": flow.name, "debug":flow.debug} for flow in app_data.flows]
     return JSONResponse(
         status_code=status.HTTP_200_OK,
         content=GetAppPropertyRsp(
