@@ -2,8 +2,11 @@
 
 Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 """
+import json
 import traceback
 from typing import Optional
+
+from untruncate_json import untrunc
 
 from apps.constants import LOGGER, MAX_SCHEDULER_HISTORY_SIZE
 from apps.entities.enum import StepStatus
@@ -249,7 +252,7 @@ class Executor:
         tool_info = {
             "name": call_name,
             "description": call_description,
-            "output": call_result.output,
+            "output": untrunc.complete(json.dumps(call_result.output)[:6144]),
         }
         # 更新背景
         self.flow_state.thought = await ExecutorThought().generate(

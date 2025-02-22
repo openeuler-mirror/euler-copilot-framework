@@ -6,9 +6,6 @@ import json
 from textwrap import dedent
 from typing import Any, Optional
 
-from untruncate_json import untrunc
-
-from apps.constants import MAX_API_RESPONSE_LENGTH
 from apps.entities.plugin import CallResult
 from apps.scheduler.slot.slot import Slot
 
@@ -79,11 +76,6 @@ class APISanitizer:
                 output_schema={},
                 message=f"调用接口{url}成功，但返回值为空。",
             )
-
-        if len(response_data) > MAX_API_RESPONSE_LENGTH:
-            response_data = response_data[:MAX_API_RESPONSE_LENGTH]
-            response_data = response_data[:response_data.rfind(",") - 1]
-            response_data = untrunc.complete(response_data)
 
         response_data = APISanitizer._process_response_schema(response_data, response_schema)
 

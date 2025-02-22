@@ -27,7 +27,7 @@ def _get_embedding(text: list[str]) -> list[np.ndarray]:
     :param text: 待向量化文本（多条文本组成List）
     :return: 文本对应的向量（顺序与text一致，也为List）
     """
-    api = config["EMBEDDING_URL"].rstrip("/") + "/embedding"
+    api = config["EMBEDDING_URL"].rstrip("/") + "/embeddings"
 
     headers = {
         "Authorization": f"Bearer {config['EMBEDDING_KEY']}",
