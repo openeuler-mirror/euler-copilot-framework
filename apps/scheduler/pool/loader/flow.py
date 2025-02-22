@@ -21,20 +21,20 @@ async def search_step_type(node_id: str) -> str:
     node_doc = await node_collection.find_one({"_id": node_id})
     if not node_doc:
         LOGGER.error(f"Node {node_id} not found")
-        return None
+        return ""
     call_id = node_doc.get("call_id")
     if not call_id:
         LOGGER.error(f"Node {node_id} has no associated call_id")
-        return None
+        return ""
     # 查询 Call 集合获取 node_type
     call_doc = await call_collection.find_one({"_id": call_id})
     if not call_doc:
         LOGGER.error(f"No call found with call_id: {call_id}")
-        return None
+        return ""
     node_type = call_doc.get("type")
     if not node_type:
         LOGGER.error(f"Call {call_id} has no associated node_type")
-        return None
+        return ""
     return node_type
 
 class FlowLoader:
@@ -90,8 +90,30 @@ class FlowLoader:
         if not flow_path.exists():
             flow_path.touch()
         #输出到文件
+        flow_dict ={}
+        flow_dict["name"]=flow.name
+        flow_dict["description"]=flow.description
+        flow_dict["on_error"]=flow.on_error.dict()
+        flow_dict["steps"]=[]
+        for step in flow.steps:
+            flow_dict["steps"].append({
+                "name":step.name,
+                "description":step.description,
+                "node":step.node,
+                "params":step.params,
+                "pos":step.pos.dict(),
+            })
+        flow_dict["edges"]=[]
+        for edge in flow.edges:
+            flow_dict["edges"].append({
+                "id":edge.id,
+                "from":edge.edge_from,
+                "to":edge.edge_to,
+                "type":edge.edge_type.value,
+            })
+
         with open(flow_path, "w", encoding="utf-8") as f:
-            yaml.dump(flow.dict(), f, allow_unicode=True)
+            yaml.dump(flow_dict, f, allow_unicode=True, sort_keys=False)
 
 
 
