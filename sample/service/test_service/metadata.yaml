@@ -1,8 +1,5 @@
 # 元数据种类
 type: service
-
-# 服务的ID
-id: test_service
 # 服务的名称（展示用）
 name: 测试服务
 # 服务的描述（展示用）

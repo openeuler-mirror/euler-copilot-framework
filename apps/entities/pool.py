@@ -47,9 +47,8 @@ class CallPool(BaseData):
 
     collection: call
 
-    路径的格式：
-        1. 系统Call的路径格式样例：“LLM”
-        2. Python Call的路径格式样例：“tune::call.tune.CheckSystem”
+    “path”的格式如下：
+    1. Python代码会被导入成包，路径格式为`python::<package_name>::<call_name>`，用于查找Call的包路径和类路径
     """
 
     type: CallType = Field(description="Call的类型")
@@ -69,12 +68,19 @@ class NodePool(BaseData):
     """Node合并前的信息（作为附带信息的指针）
 
     collection: node
+
+    annotation为Node的路径，指示Node的类型、来源等
+    annotation的格式如下：
+    1. 无路径（如对应的Call等）：为None
+    2. 从openapi中获取：`openapi::<file_name>`
     """
 
     service_id: Optional[str] = Field(description="Node所属的Service ID", default=None)
     call_id: str = Field(description="所使用的Call的ID")
-    path: Optional[str] = Field(description="Node的路径", default=None)
-    known_params: Optional[dict[str, Any]] = Field(description="已知的用于Call部分的参数", default=None)
+    annotation: Optional[str] = Field(description="Node的注释", default=None)
+    known_params: Optional[dict[str, Any]] = Field(description="已知的用于Call部分的参数，独立于输入和输出之外", default=None)
+    override_input: Optional[dict[str, Any]] = Field(description="Node的输入Schema；用于描述Call的参数中特定的字段", default=None)
+    override_output: Optional[dict[str, Any]] = Field(description="Node的输出Schema；用于描述Call的输出中特定的字段", default=None)
 
 
 class AppFlow(BaseData):

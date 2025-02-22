@@ -84,7 +84,7 @@ class ReasoningLLM(metaclass=Singleton):
         result = ""
 
         is_first_chunk = True
-        is_reasoning = True
+        is_reasoning = False
         reasoning_type = ""
 
         async for chunk in stream:

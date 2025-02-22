@@ -3,26 +3,30 @@
 Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 """
 import uuid
+from typing import Any
 
+import ray
 import yaml
 from anyio import Path
 
 from apps.constants import LOGGER
+from apps.entities.enum_var import ContentType, HTTPMethod
 from apps.entities.flow import ServiceMetadata
 from apps.entities.pool import NodePool
 from apps.scheduler.openapi import (
+    ReducedOpenAPIEndpoint,
     ReducedOpenAPISpec,
     reduce_openapi_spec,
 )
 
 
+@ray.remote
 class OpenAPILoader:
     """OpenAPI文档载入器"""
 
-    @classmethod
-    async def _read_yaml(cls, yaml_path: Path) -> ReducedOpenAPISpec:
+    async def _read_yaml(self, yaml_path: Path) -> ReducedOpenAPISpec:
         """从本地磁盘加载OpenAPI文档"""
-        if not yaml_path.exists():
+        if not await yaml_path.exists():
             msg = f"File not found: {yaml_path}"
             raise FileNotFoundError(msg)
 
@@ -33,52 +37,131 @@ class OpenAPILoader:
         return reduce_openapi_spec(spec)
 
 
-    @classmethod
-    def _process_spec(cls, service_id: str, spec: ReducedOpenAPISpec, service_metadata: ServiceMetadata) -> list[NodePool]:
+    def parameters_to_spec(self, raw_schema: list[dict[str, Any]]) -> dict[str, Any]:
+        """将OpenAPI中GET接口List形式的请求体Spec转换为JSON Schema"""
+        schema = {
+            "type": "object",
+            "required": [],
+            "properties": {},
+        }
+        for item in raw_schema:
+            if item["required"]:
+                schema["required"].append(item["name"])
+            schema["properties"][item["name"]] = {}
+            schema["properties"][item["name"]]["description"] = item["description"]
+            for key, val in item["schema"].items():
+                schema["properties"][item["name"]][key] = val
+        return schema
+
+
+    async def _get_api_data(self, spec: ReducedOpenAPIEndpoint, service_metadata: ServiceMetadata) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]]:
+        """从OpenAPI文档中获取API数据"""
+        try:
+            method = HTTPMethod[spec.method.upper()]
+        except KeyError as e:
+            err = f"HTTP方法{spec.method}不支持。"
+            LOGGER.error(msg=err)
+            raise RuntimeError(err) from e
+
+        url = service_metadata.api.server.rstrip("/") + spec.uri
+
+        if method in (HTTPMethod.POST, HTTPMethod.PUT, HTTPMethod.PATCH):
+            body_spec = spec.spec["requestBody"]["content"]
+
+            # 从body_spec中找到第一个支持的content type
+            content_type = next(
+                (ct for ct in ContentType if ct.value in body_spec),
+                None,
+            )
+
+            if content_type is None:
+                err = f"接口{spec.name}的Content-Type不支持"
+                LOGGER.error(msg=err)
+                raise RuntimeError(err)
+
+        input_schema = {
+            "type": "object",
+            "properties": {
+                "url_parameters": {
+                    "type": "object",
+                    "properties": {},
+                    "required": [],
+                },
+                "post_body": {
+                    "type": "object",
+                    "properties": {},
+                    "required": [],
+                },
+            },
+            "required": ["url_parameters", "post_body"],
+        }
+
+        try:
+            input_schema["properties"]["url_parameters"] = self.parameters_to_spec(spec.spec["parameters"])
+        except KeyError:
+            err = f"接口{spec.name}不存在URL参数定义"
+            LOGGER.error(msg=err)
+
+        try:
+            input_schema["properties"]["post_body"] = spec.spec["requestBody"]["content"][content_type]["schema"]
+        except KeyError:
+            err = f"接口{spec.name}不存在请求体定义"
+            LOGGER.error(msg=err)
+
+        try:
+            output_schema = spec.spec["responses"]["200"]["content"]["application/json"]["schema"]
+        except KeyError:
+            err = f"接口{spec.name}不存在响应体定义"
+            LOGGER.error(msg=err)
+            output_schema = {
+                "type": "object",
+                "properties": {},
+                "required": [],
+            }
+
+        known_params = {
+            "url": url,
+            "method": method,
+            "content_type": content_type,
+        }
+
+        return input_schema, output_schema, known_params
+
+
+    async def _process_spec(self, service_id: str, yaml_filename: str, spec: ReducedOpenAPISpec, service_metadata: ServiceMetadata) -> list[NodePool]:
         """将OpenAPI文档拆解为Node"""
         nodes = []
         for api_endpoint in spec.endpoints:
-            # 判断用户是否手动设置了ID
-            node_id = api_endpoint.id if api_endpoint.id else str(uuid.uuid4())
-
             # 组装新的NodePool item
             node = NodePool(
-                _id=node_id,
+                _id=str(uuid.uuid4()),
                 name=api_endpoint.name,
-                # 此处固定Call的ID是“API”
+                # 此处固定Call的ID是"API"
                 call_id="API",
                 description=api_endpoint.description,
                 service_id=service_id,
-                path="",
+                annotation=f"openapi::{yaml_filename}",
             )
 
             # 合并参数
-            node.known_params = {
-                "method": api_endpoint.method,
-                "full_url": service_metadata.api.server + api_endpoint.uri,
-            }
-
+            node.override_input, node.override_output, node.known_params = await self._get_api_data(api_endpoint, service_metadata)
             nodes.append(node)
-
         return nodes
 
 
-    @classmethod
-    async def load_one(cls, yaml_folder: Path, service_metadata: ServiceMetadata) -> list[NodePool]:
+    async def load_one(self, service_id: str, yaml_path: Path, service_metadata: ServiceMetadata) -> list[NodePool]:
         """加载单个OpenAPI文档，可以直接指定路径"""
-        async for yaml_path in yaml_folder.rglob("*.yaml"):
-            try:
-                spec = await cls._read_yaml(yaml_path)
-            except Exception as e:
-                err = f"加载OpenAPI文档{yaml_path}失败：{e}"
-                LOGGER.error(msg=err)
-                continue
+        try:
+            spec = await self._read_yaml(yaml_path)
+        except Exception as e:
+            err = f"加载OpenAPI文档{yaml_path}失败：{e}"
+            LOGGER.error(msg=err)
+            raise RuntimeError(err) from e
 
-        service_id = yaml_folder.parent.name
-        return cls._process_spec(service_id, spec, service_metadata)
+        yaml_filename = yaml_path.name
+        return await self._process_spec(service_id, yaml_filename, spec, service_metadata)
 
 
-    @classmethod
-    async def save_one(cls, nodes: list[NodePool]) -> None:
+    async def save_one(self, nodes: list[NodePool]) -> None:
         """保存单个OpenAPI文档"""
         pass

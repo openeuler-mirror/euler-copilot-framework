@@ -8,7 +8,7 @@ import yaml
 from anyio import Path
 
 from apps.common.config import config
-from apps.constants import LOGGER
+from apps.constants import APP_DIR, LOGGER, SERVICE_DIR
 from apps.entities.enum_var import MetadataType
 from apps.entities.flow import (
     AppMetadata,
@@ -19,8 +19,7 @@ from apps.entities.flow import (
 class MetadataLoader:
     """元数据加载器"""
 
-    @classmethod
-    async def load_one(cls, file_path: Path) -> Union[AppMetadata, ServiceMetadata]:
+    async def load_one(self, file_path: Path) -> Union[AppMetadata, ServiceMetadata]:
         """加载单个元数据"""
         # 检查yaml格式
         try:
@@ -31,27 +30,32 @@ class MetadataLoader:
             LOGGER.error(err)
             raise RuntimeError(err) from e
 
-        if metadata_type not in MetadataType:
+        # 尝试匹配格式
+        if metadata_type == MetadataType.APP.value:
+            try:
+                app_id = file_path.parent.name
+                metadata = AppMetadata(_id=app_id, **metadata_dict)
+            except Exception as e:
+                err = f"App metadata.yaml格式错误: {e}"
+                LOGGER.error(err)
+                raise RuntimeError(err) from e
+        elif metadata_type == MetadataType.SERVICE.value:
+            try:
+                service_id = file_path.parent.name
+                metadata = ServiceMetadata(_id=service_id, **metadata_dict)
+            except Exception as e:
+                err = f"Service metadata.yaml格式错误: {e}"
+                LOGGER.error(err)
+                raise RuntimeError(err) from e
+        else:
             err = f"metadata.yaml类型错误: {metadata_type}"
             LOGGER.error(err)
             raise RuntimeError(err)
 
-        # 尝试匹配格式
-        try:
-            if metadata_type == MetadataType.APP:
-                metadata = AppMetadata(**metadata_dict)
-            elif metadata_type == MetadataType.SERVICE:
-                metadata = ServiceMetadata(**metadata_dict)
-        except Exception as e:
-            err = f"metadata.yaml格式错误: {e}"
-            LOGGER.error(err)
-            raise RuntimeError(err) from e
-
         return metadata
 
 
-    @classmethod
-    async def save_one(cls, metadata_type: MetadataType, metadata: dict[str, Any], resource_id: str) -> None:
+    async def save_one(self, metadata_type: MetadataType, metadata: dict[str, Any], resource_id: str) -> None:
         """保存单个元数据"""
         class_dict = {
             MetadataType.APP: AppMetadata,
@@ -59,10 +63,10 @@ class MetadataLoader:
         }
 
         # 检查资源路径
-        if metadata_type == MetadataType.APP:
-            resource_path = Path(config["SEMANTICS_DIR"]) / "app" / resource_id / "metadata.yaml"
-        elif metadata_type == MetadataType.SERVICE:
-            resource_path = Path(config["SEMANTICS_DIR"]) / "service" / resource_id / "metadata.yaml"
+        if metadata_type == MetadataType.APP.value:
+            resource_path = Path(config["SEMANTICS_DIR"]) / APP_DIR / resource_id / "metadata.yaml"
+        elif metadata_type == MetadataType.SERVICE.value:
+            resource_path = Path(config["SEMANTICS_DIR"]) / SERVICE_DIR / resource_id / "metadata.yaml"
 
         # 保存元数据
         try:

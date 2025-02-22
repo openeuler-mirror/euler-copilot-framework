@@ -25,6 +25,14 @@ class ServicePoolVector(Base):
     embedding = Column(Vector(1024), nullable=False)
 
 
+class CallPoolVector(Base):
+    """Call向量信息"""
+
+    __tablename__ = "call_vector"
+    id = Column(String(length=100), primary_key=True, nullable=False, unique=True)
+    embedding = Column(Vector(1024), nullable=False)
+
+
 class NodePoolVector(Base):
     """Node向量信息"""
 
