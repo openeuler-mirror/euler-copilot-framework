@@ -38,7 +38,7 @@ class ServicePool(BaseData):
     author: str = Field(description="作者的用户ID")
     permission: Permission = Field(description="服务可见性配置", default=Permission())
     favorites: list[str] = Field(description="收藏此服务的用户列表", default=[])
-    openapi_hash: str = Field(description="服务关联的 OpenAPI YAML 文件哈希")
+    hashes: dict[str, str] = Field(description="服务关联的 OpenAPI YAML 和元数据文件哈希")
     openapi_spec: dict = Field(description="服务关联的 OpenAPI 文件内容")
 
 
@@ -100,7 +100,7 @@ class AppPool(BaseData):
 
     author: str = Field(description="作者的用户ID")
     type: str = Field(description="应用类型", default="default")
-    icon: str = Field(description="应用图标")
+    icon: str = Field(description="应用图标", default="")
     published: bool = Field(description="是否发布", default=False)
     links: list[AppLink] = Field(description="相关链接", default=[])
     first_questions: list[str] = Field(description="推荐问题", default=[])

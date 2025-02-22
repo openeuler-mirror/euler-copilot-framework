@@ -63,7 +63,8 @@ class MetadataBase(BaseModel):
     """Service或App的元数据"""
 
     type: MetadataType = Field(description="元数据类型")
-    id: str = Field(alias="_id", description="元数据ID")
+    id: str = Field(description="元数据ID")
+    icon: str = Field(description="图标", default="")
     name: str = Field(description="元数据名称")
     description: str = Field(description="元数据描述")
     version: str = Field(description="元数据版本")

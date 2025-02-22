@@ -102,7 +102,7 @@ async def create_or_update_application(
     app_id = request.app_id
     if app_id:
         # 更新应用
-        confirm = await AppCenterManager.update_app(app_id, request)
+        confirm = await AppCenterManager.update_app(user_sub, app_id, request)
         if not confirm:
             return JSONResponse(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

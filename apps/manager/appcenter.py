@@ -14,10 +14,11 @@ from apps.constants import LOGGER
 from apps.entities.appcenter import AppCenterCardItem, AppData
 from apps.entities.collection import User
 from apps.entities.enum_var import SearchType
-from apps.entities.flow import Permission
+from apps.entities.flow import AppMetadata, MetadataType, Permission
 from apps.entities.pool import AppPool
 from apps.entities.response_data import RecentAppList, RecentAppListItem
 from apps.models.mongo import MongoDB
+from apps.scheduler.pool.loader.app import AppLoader
 
 
 class AppCenterManager:
@@ -217,7 +218,25 @@ class AppCenterManager:
                 users=data.permission.users or [],
             ),
         )
+        metadata = AppMetadata(
+            type=MetadataType.APP,
+            id=app_id,
+            icon=data.icon,
+            name=data.name,
+            description=data.description,
+            version="1.0.0",
+            author=user_sub,
+            links=data.links,
+            first_questions=data.first_questions,
+            history_len=data.history_len,
+            permission=Permission(
+                type=data.permission.type,
+                users=data.permission.users or [],
+            ),
+        )
         try:
+            app_hashes = await AppLoader.save_one(MetadataType.APP, metadata.model_dump(), app_id)
+            app.hashes = app_hashes
             app_collection = MongoDB.get_collection("app")
             await app_collection.insert_one(jsonable_encoder(app))
             return app_id
@@ -226,18 +245,35 @@ class AppCenterManager:
         return None
 
     @staticmethod
-    async def update_app(app_id: str, data: AppData) -> bool:
+    async def update_app(user_sub: str, app_id: str, data: AppData) -> bool:
         """更新应用
 
         :param app_id: 应用唯一标识
         :param data: 应用数据
         :return: 是否成功
         """
+        metadata = AppMetadata(
+            type=MetadataType.APP,
+            id=app_id,
+            icon=data.icon,
+            name=data.name,
+            description=data.description,
+            version="1.0.0",
+            author=user_sub,
+            links=data.links,
+            first_questions=data.first_questions,
+            history_len=data.history_len,
+            permission=Permission(
+                type=data.permission.type,
+                users=data.permission.users or [],
+            ),
+        )
         try:
             app_collection = MongoDB.get_collection("app")
             app_data = AppPool.model_validate(await app_collection.find_one({"_id": app_id}))
             if not app_data:
                 return False
+            app_hashes = await AppLoader.save_one(MetadataType.APP, metadata.model_dump(), app_id)
             # 如果工作流ID列表不一致，则需要取消发布状态
             published_false_needed = {flow.id for flow in app_data.flows} != set(data.workflows)
             update_data = {
@@ -251,6 +287,7 @@ class AppCenterManager:
                     type=data.permission.type,
                     users=data.permission.users or [],
                 ),
+                "hashes": app_hashes,
             }
             if published_false_needed:
                 update_data["published"] = False

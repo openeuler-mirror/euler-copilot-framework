@@ -2,7 +2,7 @@
 
 Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 """
-from typing import Any, Union
+from typing import Any, Optional, Union
 
 import yaml
 from anyio import Path
@@ -19,7 +19,7 @@ from apps.entities.flow import (
 class MetadataLoader:
     """元数据加载器"""
 
-    async def load_one(self, file_path: Path) -> Union[AppMetadata, ServiceMetadata]:
+    async def load_one(self, file_path: Path) -> Optional[Union[AppMetadata, ServiceMetadata]]:
         """加载单个元数据"""
         # 检查yaml格式
         try:
@@ -34,7 +34,7 @@ class MetadataLoader:
         if metadata_type == MetadataType.APP.value:
             try:
                 app_id = file_path.parent.name
-                metadata = AppMetadata(_id=app_id, **metadata_dict)
+                metadata = AppMetadata(id=app_id, **metadata_dict)
             except Exception as e:
                 err = f"App metadata.yaml格式错误: {e}"
                 LOGGER.error(err)
@@ -42,7 +42,7 @@ class MetadataLoader:
         elif metadata_type == MetadataType.SERVICE.value:
             try:
                 service_id = file_path.parent.name
-                metadata = ServiceMetadata(_id=service_id, **metadata_dict)
+                metadata = ServiceMetadata(id=service_id, **metadata_dict)
             except Exception as e:
                 err = f"Service metadata.yaml格式错误: {e}"
                 LOGGER.error(err)
@@ -67,6 +67,10 @@ class MetadataLoader:
             resource_path = Path(config["SEMANTICS_DIR"]) / APP_DIR / resource_id / "metadata.yaml"
         elif metadata_type == MetadataType.SERVICE.value:
             resource_path = Path(config["SEMANTICS_DIR"]) / SERVICE_DIR / resource_id / "metadata.yaml"
+        else:
+            err = f"metadata_type类型错误: {metadata_type}"
+            LOGGER.error(err)
+            raise RuntimeError(err)
 
         # 保存元数据
         if isinstance(metadata, dict):
