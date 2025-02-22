@@ -46,6 +46,7 @@ async def chat(
 
     return JSONResponse(status_code=status.HTTP_200_OK, content=UserGetRsp(
         code=status.HTTP_200_OK,
-        message="节点元数据详细信息获取成功",
+        message="用户数据详细信息获取成功",
         result=UserGetMsp(userInfoList=user_info_list),
     ).model_dump(exclude_none=True, by_alias=True))
+
