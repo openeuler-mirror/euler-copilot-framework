@@ -9,8 +9,8 @@ YELLOW='\033[33m'
 BLUE='\033[34m'
 NC='\033[0m'
 
-SCRIPTS_DIR=/home/euler-copilot-framework/deploy/scripts/8-install-EulerCopilot
-CHART_DIR=/home//euler-copilot-framework/deploy/chart
+DEPLOY_DIR="/home/euler-copilot-framework/deploy"
+
 
 create_namespace() {
     echo -e "${BLUE}==> 检查命名空间 euler-copilot...${NC}"
@@ -72,9 +72,9 @@ get_user_input() {
 
 modify_yaml() {
     echo -e "${BLUE}开始修改YAML配置文件...${NC}"
-    python "${SCRIPTS_DIR}/modify_eulercopilot_yaml.py" \
-      "${CHART_DIR}/authhub/values.yaml" \
-      "${CHART_DIR}/authhub/values.yaml" \
+    python3 "${DEPLOY_DIR}/scripts/9-other-script/modify_eulercopilot_yaml.py" \
+      "${DEPLOY_DIR}/chart/authhub/values.yaml" \
+      "${DEPLOY_DIR}/chart/authhub/values.yaml" \
       --set "domain.authhub=${authhub_domain}"
 
     if [ $? -ne 0 ]; then
@@ -86,11 +86,11 @@ modify_yaml() {
 
 helm_install() {
     echo -e "${BLUE}==> 进入部署目录...${NC}"
-    [ ! -d "${CHART_DIR}" ] && {
-        echo -e "${RED}错误：部署目录不存在 ${CHART_DIR} ${NC}"
+    [ ! -d "${DEPLOY_DIR}/chart" ] && {
+        echo -e "${RED}错误：部署目录不存在 ${DEPLOY_DIR}/chart ${NC}"
         return 1
     }
-    cd "${CHART_DIR}"
+    cd "${DEPLOY_DIR}/chart"
 
     echo -e "${BLUE}正在安装 authhub...${NC}"
     helm install authhub -n euler-copilot ./authhub || {

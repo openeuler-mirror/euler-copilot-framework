@@ -10,8 +10,7 @@ YELLOW='\e[33m'
 BLUE='\e[34m'
 NC='\e[0m' # 恢复默认颜色
 
-SCRIPTS_DIR=/home/euler-copilot-framework/deploy/scripts/8-install-EulerCopilot
-CHART_DIR=/home/euler-copilot-framework/deploy/chart
+DEPLOY_DIR="/home/euler-copilot-framework/deploy"
 PLUGINS_DIR="/home/eulercopilot/semantics"
 
 get_eth0_ip() {
@@ -45,21 +44,34 @@ get_eth0_ip() {
     echo -e "${GREEN}使用网络接口：${interface}，IP 地址：${host}${NC}"
 }
 
-get_user_input() {
-    echo -e "${BLUE}请输入 OAuth 客户端配置：${NC}"
-    read -p "Client ID: " client_id
-    read -s -p "Client Secret: " client_secret
-
-    echo
-
-    # 检查必填字段
-    if [[ -z "$client_id" || -z "$client_secret" ]]; then
-        echo -e "${RED}错误：Client Secret 存在空行，请重新输入${NC}"
-        read -s -p "Client Secret: " client_secret
-        echo
-        echo -e "${GREEN}Client Secret 已正确输入${NC}"
+get_client_info() {
+    # 调用Python脚本并捕获输出
+    output=$(python3 ${DEPLOY_DIR}/scripts/9-other-script/get_client_id_and_secret.py 2>&1)
+    
+    # 检查执行结果
+    if [ $? -ne 0 ]; then
+        echo "Error occurred:"
+        echo "$output"
+        exit 1
     fi
+    
+    # 解析输出结果
+    client_id=$(echo "$output" | grep "client_id: " | awk '{print $2}')
+    client_secret=$(echo "$output" | grep "client_secret: " | awk '{print $2}')
+    
+    # 验证结果
+    if [ -z "$client_id" ] || [ -z "$client_secret" ]; then
+        echo "Failed to get credentials"
+        exit 1
+    fi
+    
+    echo "=============================="
+    echo "Client ID:     $client_id"
+    echo "Client Secret: $client_secret"
+    echo "=============================="
+}
 
+get_user_input() {
     # 处理Copilot域名
     echo -e "${BLUE}请输入 EulerCopilot 域名（直接回车使用默认值 www.eulercopilot.local）：${NC}"
     read -p "EulerCopilot 的前端域名: " eulercopilot_domain
@@ -128,9 +140,11 @@ check_and_delete_existing_deployment() {
 # 修改YAML配置文件的方法
 modify_yaml() {
     echo -e "${BLUE}开始修改YAML配置文件...${NC}"
-    python "${SCRIPTS_DIR}/modify_eulercopilot_yaml.py" \
-      "${CHART_DIR}/euler_copilot/values.yaml" \
-      "${CHART_DIR}/euler_copilot/values.yaml" \
+    python3 "${DEPLOY_DIR}/scripts/9-other-script/modify_eulercopilot_yaml.py" \
+      "${DEPLOY_DIR}/chart/euler_copilot/values.yaml" \
+      "${DEPLOY_DIR}/chart/euler_copilot/values.yaml" \
+      --set "framework.login.oidc.client_id=$client_id" \
+      --set "framework.login.oidc.client_secret=$client_secret" \
       --set "models.answer.url=http://$host:11434" \
       --set "models.answer.key=sk-123456" \
       --set "models.answer.name=deepseek-llm-7b-chat" \
@@ -154,8 +168,8 @@ modify_yaml() {
 # 进入Chart目录的方法
 enter_chart_directory() {
     echo -e "${BLUE}进入Chart目录...${NC}"
-    cd "${CHART_DIR}" || {
-        echo -e "${RED}错误：无法进入Chart目录 ${CHART_DIR}${NC}"
+    cd "${DEPLOY_DIR}/chart/" || {
+        echo -e "${RED}错误：无法进入Chart目录 ${DEPLOY_DIR}/chart/${NC}"
         exit 1
     }
 }
@@ -216,6 +230,7 @@ check_pods_status() {
 # 主函数执行各个步骤
 main() {
     get_eth0_ip
+    get_client_info
     get_user_input
     check_directories
     check_and_delete_existing_deployment
@@ -237,7 +252,7 @@ main() {
     echo -e "${YELLOW}EulerCopilot访问地址：\thttps://${eulercopilot_domain}${NC}"
     echo -e "${YELLOW}AuthHub管理地址：\thttps://${authhub_domain}${NC}"
     echo -e "${YELLOW}插件目录：\t\t${PLUGINS_DIR}${NC}"
-    echo -e "${YELLOW}Chart目录：\t${CHART_DIR}${NC}"
+    echo -e "${YELLOW}Chart目录：\t${DEPLOY_DIR}/chart/${NC}"
     echo
     echo -e "${BLUE}温馨提示："
     echo -e "${BLUE}1. 请确保域名已正确解析到集群Ingress地址${NC}"
