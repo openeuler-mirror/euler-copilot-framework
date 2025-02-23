@@ -89,7 +89,7 @@ class AppFlow(BaseData):
     path: str = Field(description="Flow的路径")
     focus_point: PositionItem = Field(
         description="Flow的视觉焦点", default=PositionItem(x=0, y=0))
-
+    debug: bool = Field(description="调试是否成功", default=False)
 
 class AppPool(BaseData):
     """应用信息

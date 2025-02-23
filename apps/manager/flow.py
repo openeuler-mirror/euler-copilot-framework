@@ -19,6 +19,7 @@ from apps.entities.flow_topology import (
 )
 from apps.entities.pool import AppFlow
 from apps.models.mongo import MongoDB
+from apps.scheduler.pool.loader.flow import FlowLoader
 
 
 class FlowManager:
@@ -205,11 +206,8 @@ class FlowManager:
             return None
         try:
             if flow_record:
-                flow_config_collection = MongoDB.get_collection("flow_config")
-                flow_config_record = await flow_config_collection.find_one({"app_id": app_id, "flow_id": flow_id})
-                if flow_config_record  is None or not flow_config_record.get("flow_config"):
-                    return None
-                flow_config = flow_config_record["flow_config"]
+                flow_config= await FlowLoader.load(app_id, flow_id)
+                flow_config = flow_config.dict()
                 if not flow_config:
                     LOGGER.error(
                         "Get flow config by app_id and flow_id failed")
@@ -267,7 +265,7 @@ class FlowManager:
 
     @staticmethod
     async def put_flow_by_app_and_flow_id(
-            app_id: str, flow_id: str, flow_item: FlowItem, focus_point: PositionItem) -> Optional[str]:
+            app_id: str, flow_id: str, flow_item: FlowItem, focus_point: PositionItem) -> Optional[FlowItem]:
         """存储/更新flow的数据库数据和配置文件
 
         :param app_id: 应用的id
@@ -326,17 +324,8 @@ class FlowManager:
                     edge_type=edge_item.type
                 )
                 flow_config.edges.append(edge_config)
-            flow_config = FlowConfig(app_id=app_id, flow_id=flow_id, flow_config=flow_config)
-            try:
-                flow_config_collection = MongoDB.get_collection("flow_config")
-                await flow_config_collection.update_one(
-                    {"app_id": app_id, "flow_id": flow_id},
-                    {"$set": flow_config.dict()},
-                    upsert=True,  # 如果没有找到匹配的文档，则插入新文档
-                )
-            except Exception as e:
-                LOGGER.error(f"Error updating flow config due to: {e}")
-                return None
+            await FlowLoader.save(app_id, flow_id, flow_config)
+            flow_config = await FlowLoader.load(app_id, flow_id)
             if flow_record:
                 app_collection = MongoDB.get_collection("app")
                 result = await app_collection.find_one_and_update(
@@ -387,11 +376,7 @@ class FlowManager:
         :return: 流的id
         """
         try:
-            flow_config_collection = MongoDB.get_collection("flow_config")
-            result = await flow_config_collection.delete_one({"app_id": app_id, "flow_id": flow_id})
-            if result.deleted_count == 0:
-                LOGGER.error("Delete flow config failed")
-                return None
+            result = await FlowLoader.delete(app_id, flow_id)
             app_pool_collection = MongoDB.get_collection("app")  # 获取集合
 
             result = await app_pool_collection.find_one_and_update(
