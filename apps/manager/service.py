@@ -6,14 +6,18 @@ Copyright (c) Huawei Technologies Co., Ltd. 2024-2025. All rights reserved.
 import uuid
 from typing import Any, Optional
 
+import yaml
+from anyio import Path
 from jsonschema import ValidationError, validate
 
+from apps.common.config import config
 from apps.constants import LOGGER
 from apps.entities.enum_var import SearchType
+from apps.entities.flow import ServiceApiConfig, ServiceMetadata
 from apps.entities.pool import NodePool, ServicePool
 from apps.entities.response_data import ServiceApiData, ServiceCardItem
 from apps.models.mongo import MongoDB
-from apps.scheduler.openapi import reduce_openapi_spec
+from apps.scheduler.pool.loader.service import ServiceLoader
 
 
 class ServiceCenterManager:
@@ -103,33 +107,16 @@ class ServiceCenterManager:
         service_id = str(uuid.uuid4())
         # 校验 OpenAPI 规范的 JSON Schema
         ServiceCenterManager._validate_service_data(data)
-        # 更新 Node 信息
-        node_collection = MongoDB.get_collection("node")
-        await node_collection.delete_many({"service_id": service_id})
-        openapi_spec_data = reduce_openapi_spec(data)
-        for endpoint in openapi_spec_data.endpoints:
-            await node_collection.insert_one(
-                NodePool(
-                    _id=str(uuid.uuid4()),
-                    service_id=service_id,
-                    name=endpoint.name,
-                    description=endpoint.description,
-                    call_id="api",
-                    path="test path",
-                ).model_dump(exclude_none=True, by_alias=True),
-            )
-        yaml_hash = "hash"  # TODO: 计算 OpenAPI YAML 文件的哈希值
         # 存入数据库
-        service_pool = ServicePool(
-            _id=service_id,
-            author=user_sub,
+        service_metadata = ServiceMetadata(
+            id=service_id,
             name=data["info"]["title"],
             description=data["info"]["description"],
-            openapi_hash=yaml_hash,
-            openapi_spec=data,
+            version=data["info"]["version"],
+            author=user_sub,
+            api=ServiceApiConfig(server=data["servers"][0]["url"]),
         )
-        service_collection = MongoDB.get_collection("service")
-        await service_collection.insert_one(service_pool.model_dump(exclude_none=True, by_alias=True))
+        await ServiceLoader().save(service_id, service_metadata, data)
         # 返回服务ID
         return service_id
 
@@ -152,35 +139,16 @@ class ServiceCenterManager:
             raise ValueError(msg)
         # 校验 OpenAPI 规范的 JSON Schema
         ServiceCenterManager._validate_service_data(data)
-        # 更新 Node 信息
-        node_collection = MongoDB.get_collection("node")
-        await node_collection.delete_many({"service_id": service_id})
-        openapi_spec_data = reduce_openapi_spec(data)
-        for endpoint in openapi_spec_data.endpoints:
-            await node_collection.insert_one(
-                NodePool(
-                    _id=str(uuid.uuid4()),
-                    service_id=service_id,
-                    name=endpoint.name,
-                    description=endpoint.description,
-                    call_id="api",
-                    path="test path",
-                ).model_dump(exclude_none=True, by_alias=True),
-            )
-        yaml_hash = "hash"  # TODO: 计算 OpenAPI YAML 文件的哈希值
-        # 更新数据库
-        service_pool = ServicePool(
-            _id=service_id,
-            author=user_sub,
+        # 存入数据库
+        service_metadata = ServiceMetadata(
+            id=service_id,
             name=data["info"]["title"],
             description=data["info"]["description"],
-            openapi_hash=yaml_hash,
-            openapi_spec=data,
+            version=data["info"]["version"],
+            author=user_sub,
+            api=ServiceApiConfig(server=data["servers"][0]["url"]),
         )
-        await service_collection.update_one(
-            {"_id": service_id},
-            {"$set": service_pool.model_dump(exclude_none=True, by_alias=True)},
-        )
+        await ServiceLoader().save(service_id, service_metadata, data)
         # 返回服务ID
         return service_id
 
@@ -227,7 +195,10 @@ class ServiceCenterManager:
         if service_pool_store.author != user_sub:
             msg = "Permission denied"
             raise ValueError(msg)
-        return service_pool_store.name, service_pool_store.openapi_spec
+        service_path = Path(config["SEMANTICS_DIR"]) / "service" / service_id / "openapi" / "api.yaml"
+        async with await Path(service_path).open() as f:
+            service_data = yaml.safe_load(await f.read())
+        return service_pool_store.name, service_data
 
     @staticmethod
     async def delete_service(
@@ -327,9 +298,19 @@ class ServiceCenterManager:
                     },
                     "required": ["title", "version", "description"],
                 },
+                "servers": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "url": {"type": "string"},
+                        },
+                        "required": ["url"],
+                    },
+                },
                 "paths": {"type": "object"},
             },
-            "required": ["openapi", "info", "paths"],
+            "required": ["openapi", "info", "servers", "paths"],
         }
         try:
             validate(instance=data, schema=openapi_schema)

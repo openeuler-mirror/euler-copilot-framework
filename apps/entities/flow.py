@@ -59,11 +59,19 @@ class Flow(BaseModel):
     debug: bool = Field(description="是否经过调试", default=False)
 
 
+class Permission(BaseModel):
+    """权限配置"""
+
+    type: PermissionType = Field(description="权限类型", default=PermissionType.PRIVATE)
+    users: list[str] = Field(description="可访问的用户列表", default=[])
+
+
 class MetadataBase(BaseModel):
     """Service或App的元数据"""
 
     type: MetadataType = Field(description="元数据类型")
-    id: str = Field(alias="_id", description="元数据ID")
+    id: str = Field(description="元数据ID")
+    icon: str = Field(description="图标", default="")
     name: str = Field(description="元数据名称")
     description: str = Field(description="元数据描述")
     version: str = Field(description="元数据版本")
@@ -110,6 +118,7 @@ class ServiceMetadata(MetadataBase):
 
     type: MetadataType = MetadataType.SERVICE
     api: ServiceApiConfig = Field(description="API配置")
+    permission: Optional[Permission] = Field(description="服务权限配置", default=None)
 
 
 class AppLink(BaseModel):
@@ -117,13 +126,6 @@ class AppLink(BaseModel):
 
     title: str = Field(description="链接标题")
     url: str = Field(..., description="链接地址", pattern=r"^(https|http)://.*$")
-
-
-class Permission(BaseModel):
-    """App的权限配置"""
-
-    type: PermissionType = Field(description="权限类型", default=PermissionType.PRIVATE)
-    users: list[str] = Field(description="可访问的用户列表", default=[])
 
 
 class AppMetadata(MetadataBase):
