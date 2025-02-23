@@ -2,6 +2,7 @@
 
 Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 """
+
 from datetime import datetime, timezone
 from typing import Any, Optional
 
@@ -77,9 +78,18 @@ class NodePool(BaseData):
     service_id: Optional[str] = Field(description="Node所属的Service ID", default=None)
     call_id: str = Field(description="所使用的Call的ID")
     annotation: Optional[str] = Field(description="Node的注释", default=None)
-    known_params: Optional[dict[str, Any]] = Field(description="已知的用于Call部分的参数，独立于输入和输出之外", default=None)
-    override_input: Optional[dict[str, Any]] = Field(description="Node的输入Schema；用于描述Call的参数中特定的字段", default=None)
-    override_output: Optional[dict[str, Any]] = Field(description="Node的输出Schema；用于描述Call的输出中特定的字段", default=None)
+    known_params: Optional[dict[str, Any]] = Field(
+        description="已知的用于Call部分的参数，独立于输入和输出之外",
+        default=None,
+    )
+    override_input: Optional[dict[str, Any]] = Field(
+        description="Node的输入Schema；用于描述Call的参数中特定的字段",
+        default=None,
+    )
+    override_output: Optional[dict[str, Any]] = Field(
+        description="Node的输出Schema；用于描述Call的输出中特定的字段",
+        default=None,
+    )
 
 
 class AppFlow(BaseData):
@@ -87,9 +97,9 @@ class AppFlow(BaseData):
 
     enabled: bool = Field(description="是否启用", default=True)
     path: str = Field(description="Flow的路径")
-    focus_point: PositionItem = Field(
-        description="Flow的视觉焦点", default=PositionItem(x=0, y=0))
+    focus_point: PositionItem = Field(description="Flow的视觉焦点", default=PositionItem(x=0, y=0))
     debug: bool = Field(description="调试是否成功", default=False)
+
 
 class AppPool(BaseData):
     """应用信息

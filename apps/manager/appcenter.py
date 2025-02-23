@@ -8,8 +8,6 @@ from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, Optional
 
-from fastapi.encoders import jsonable_encoder
-
 from apps.constants import LOGGER
 from apps.entities.appcenter import AppCenterCardItem, AppData
 from apps.entities.collection import User
@@ -204,20 +202,6 @@ class AppCenterManager:
         :return: 应用ID
         """
         app_id = str(uuid.uuid4())
-        app = AppPool(
-            _id=app_id,
-            name=data.name,
-            description=data.description,
-            author=user_sub,
-            icon=data.icon,
-            links=data.links,
-            first_questions=data.first_questions,
-            history_len=data.history_len,
-            permission=Permission(
-                type=data.permission.type,
-                users=data.permission.users or [],
-            ),
-        )
         metadata = AppMetadata(
             type=MetadataType.APP,
             id=app_id,
@@ -235,10 +219,7 @@ class AppCenterManager:
             ),
         )
         try:
-            app_hashes = await AppLoader.save(MetadataType.APP, metadata.model_dump(), app_id)
-            app.hashes = app_hashes
-            app_collection = MongoDB.get_collection("app")
-            await app_collection.insert_one(jsonable_encoder(app))
+            await AppLoader.save(MetadataType.APP, metadata, app_id)
             return app_id
         except Exception as e:
             LOGGER.error(f"[AppCenterManager] Create app failed: {e}")
@@ -273,25 +254,10 @@ class AppCenterManager:
             app_data = AppPool.model_validate(await app_collection.find_one({"_id": app_id}))
             if not app_data:
                 return False
-            app_hashes = await AppLoader.save(MetadataType.APP, metadata.model_dump(), app_id)
+            await AppLoader.save(MetadataType.APP, metadata, app_id)
             # 如果工作流ID列表不一致，则需要取消发布状态
-            published_false_needed = {flow.id for flow in app_data.flows} != set(data.workflows)
-            update_data = {
-                "name": data.name,
-                "description": data.description,
-                "icon": data.icon,
-                "links": data.links,
-                "first_questions": data.first_questions,
-                "history_len": data.history_len,
-                "permission": Permission(
-                    type=data.permission.type,
-                    users=data.permission.users or [],
-                ),
-                "hashes": app_hashes,
-            }
-            if published_false_needed:
-                update_data["published"] = False
-            await app_collection.update_one({"_id": app_id}, {"$set": jsonable_encoder(update_data)})
+            if {flow.id for flow in app_data.flows} != set(data.workflows):
+                await app_collection.update_one({"_id": app_id}, {"$set": {"published": False}})
             return True
         except Exception as e:
             LOGGER.error(f"[AppCenterManager] Update app failed: {e}")

@@ -2,16 +2,21 @@
 
 Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 """
-from hashlib import sha256
-from typing import Any
+
+import pathlib
 
 from anyio import Path
+from fastapi.encoders import jsonable_encoder
+from sqlalchemy.dialects.postgresql import insert
 
 from apps.common.config import config
 from apps.constants import APP_DIR
-from apps.entities.flow import AppMetadata, MetadataType
+from apps.entities.flow import AppMetadata, MetadataType, Permission
 from apps.entities.pool import AppPool
+from apps.entities.vector import AppPoolVector
 from apps.models.mongo import MongoDB
+from apps.models.postgres import PostgreSQL
+from apps.scheduler.pool.check import FileChecker
 from apps.scheduler.pool.loader.metadata import MetadataLoader
 
 
@@ -31,8 +36,28 @@ class AppLoader:
         if not isinstance(metadata, AppMetadata):
             err = f"元数据类型错误: {metadata_path}"
             raise TypeError(err)
-        metadata_hash = sha256(await metadata_path.read_bytes()).hexdigest()
-        hashes = { str(metadata_path.relative_to(cls._dir_path)): metadata_hash }
+        await cls._update_db(metadata)
+
+    @classmethod
+    async def save(
+        cls,
+        metadata_type: MetadataType,
+        metadata: AppMetadata,
+        app_id: str,
+    ) -> None:
+        """保存应用
+
+        :param metadata_type: 元数据类型
+        :param metadata: 元数据
+        :param app_id: 应用 ID
+        """
+        await MetadataLoader().save_one(metadata_type, metadata, app_id)
+        await cls._update_db(metadata)
+
+    @classmethod
+    async def _update_db(cls, metadata: AppMetadata) -> None:
+        """更新数据库"""
+        hashes = FileChecker().check_one(pathlib.Path(str(cls._dir_path)) / APP_DIR / metadata.id)
         app_collection = MongoDB.get_collection("app")
         app_pool = AppPool(
             _id=metadata.id,
@@ -40,29 +65,38 @@ class AppLoader:
             name=metadata.name,
             description=metadata.description,
             author=metadata.author,
+            links=metadata.links,
+            first_questions=metadata.first_questions,
             history_len=metadata.history_len,
+            permission=metadata.permission if metadata.permission else Permission(),
             hashes=hashes,
         )
         if not await app_collection.find_one({"_id": metadata.id}):
-            await app_collection.insert_one(app_pool.model_dump(exclude_none=True, by_alias=True))
+            await app_collection.insert_one(jsonable_encoder(app_pool))
         else:
             await app_collection.update_one(
                 {"_id": metadata.id},
-                {"$set": app_pool.model_dump(exclude_none=True, by_alias=True)},
+                {"$set": {
+                    "icon": metadata.icon,
+                    "name": metadata.name,
+                    "description": metadata.description,
+                    "author": metadata.author,
+                    "links": metadata.links,
+                    "first_questions": metadata.first_questions,
+                    "history_len": metadata.history_len,
+                    "permission": metadata.permission if metadata.permission else Permission(),
+                    "hashes": hashes,
+                }},
             )
-
-
-    @classmethod
-    async def save(cls, metadata_type: MetadataType, metadata: dict[str, Any], app_id: str) -> dict[str, str]:
-        """保存应用
-
-        :param metadata_type: 元数据类型
-        :param metadata: 元数据
-        :param app_id: 应用 ID
-
-        :return: 文件路径和哈希值
-        """
-        await MetadataLoader().save_one(metadata_type, metadata, app_id)
-        metadata_path = cls._dir_path / APP_DIR / app_id / "metadata.yaml"
-        metadata_hash = sha256(await metadata_path.read_bytes()).hexdigest()
-        return { str(metadata_path.relative_to(cls._dir_path)): metadata_hash }
+        # 向量化所有数据并保存
+        session = await PostgreSQL.get_session()
+        service_embedding = await PostgreSQL.get_embedding([metadata.description])
+        insert_stmt = insert(AppPoolVector).values(
+            id=metadata.id,
+            embedding=service_embedding[0],
+        ).on_conflict_do_update(
+            index_elements=["id"],
+            set_={"embedding": service_embedding[0]},
+        )
+        await session.execute(insert_stmt)
+        await session.commit()
