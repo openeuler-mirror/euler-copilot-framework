@@ -10,10 +10,9 @@ from jsonschema import TypeChecker
 
 from apps.constants import LOGGER
 from apps.entities.enum_var import SlotType
-from apps.scheduler.slot.parser.core import SlotParser
 
 
-class SlotTimestampParser(SlotParser):
+class SlotTimestampParser:
     """时间戳解析器"""
 
     type: SlotType = SlotType.TYPE
@@ -31,7 +30,7 @@ class SlotTimestampParser(SlotParser):
 
 
     @classmethod
-    def type_validate(cls, _checker: TypeChecker, instance: Any) -> bool:  # noqa: ANN401
+    def type_validate(cls, _checker: TypeChecker, instance: Any) -> bool:
         """生成type的验证器
 
         若没有对应的处理逻辑则返回True

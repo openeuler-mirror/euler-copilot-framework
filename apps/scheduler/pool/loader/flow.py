@@ -5,7 +5,9 @@ Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 import asyncio
 from pathlib import Path
 
+import aiofiles
 import yaml
+from anyio import Path
 
 from apps.common.config import config
 from apps.constants import LOGGER
@@ -44,8 +46,8 @@ class FlowLoader:
     async def load(cls, app_id: str, flow_id: str) -> Flow:
         """从文件系统中加载【单个】工作流"""
         flow_path = Path(config["SERVICE_DIR"]) / "app" / app_id / "flow" / f"{flow_id}.yaml"
-        with flow_path.open(encoding="utf-8") as f:
-            flow_yaml = yaml.safe_load(f)
+        async with aiofiles.open(flow_path, mode='r', encoding="utf-8") as f:
+            flow_yaml = yaml.safe_load(await f.read())
 
         if "name" not in flow_yaml:
             err = f"工作流名称不能为空：{flow_path!s}"
@@ -84,50 +86,52 @@ class FlowLoader:
             return None
         return flow
 
-
     @classmethod
     async def save(cls, app_id: str, flow_id: str, flow: Flow) -> None:
         """保存工作流"""
         flow_path = Path(config["SERVICE_DIR"]) / "app" / app_id / "flow" / f"{flow_id}.yaml"
-        if not flow_path.parent.exists():
-            flow_path.parent.mkdir(parents=True)
-        if not flow_path.exists():
-            flow_path.touch()
-        #输出到文件
-        flow_dict ={}
-        flow_dict["name"]=flow.name
-        flow_dict["description"]=flow.description
-        flow_dict["on_error"]=flow.on_error.dict()
-        flow_dict["steps"]=[]
-        for step in flow.steps:
-            flow_dict["steps"].append({
-                "id":step.id,
-                "name":step.name,
-                "description":step.description,
-                "node":step.node,
-                "params":step.params,
-                "pos":step.pos.dict(),
-            })
-        flow_dict["edges"]=[]
-        for edge in flow.edges:
-            flow_dict["edges"].append({
-                "id":edge.id,
-                "from":edge.edge_from,
-                "to":edge.edge_to,
-                "type":edge.edge_type.value,
-            })
+        if not await flow_path.parent.exists():
+            await flow_path.parent.mkdir(parents=True)
+        if not await flow_path.exists():
+            await flow_path.touch()
 
-        with open(flow_path, "w", encoding="utf-8") as f:
-            yaml.dump(flow_dict, f, allow_unicode=True, sort_keys=False)
+        flow_dict = {
+            "name": flow.name,
+            "description": flow.description,
+            "on_error": flow.on_error.dict(),
+            "steps": [
+                {
+                    "id": step.id,
+                    "name": step.name,
+                    "description": step.description,
+                    "node": step.node,
+                    "params": step.params,
+                    "pos": step.pos.dict(),
+                }
+                for step in flow.steps
+            ],
+            "edges": [
+                {
+                    "id": edge.id,
+                    "from": edge.edge_from,
+                    "to": edge.edge_to,
+                    "type": edge.edge_type.value,
+                }
+                for edge in flow.edges
+            ]
+        }
+
+        async with aiofiles.open(flow_path, mode='w', encoding="utf-8") as f:
+            await f.write(yaml.dump(flow_dict, allow_unicode=True, sort_keys=False))
 
     @classmethod
     async def delete(cls, app_id: str, flow_id: str) -> bool:
         """删除指定工作流文件"""
         flow_path = Path(config["SERVICE_DIR"]) / "app" / app_id / "flow" / f"{flow_id}.yaml"
         # 确保目标为文件且存在
-        if flow_path.is_file():
+        if await flow_path.is_file():
             try:
-                flow_path.unlink()
+                await flow_path.unlink()
                 LOGGER.info(f"Successfully deleted flow file: {flow_path}")
                 return True
             except OSError as e:

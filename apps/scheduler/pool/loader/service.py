@@ -24,7 +24,7 @@ class ServiceLoader:
     _collection = MongoDB.get_collection("service")
 
 
-    async def load(self, service_id: str) -> None:
+    async def load(self, service_id: str, hashes: dict[str, str]) -> None:
         """加载单个Service"""
         service_path = Path(config["SEMANTICS_DIR"]) / "service" / service_id
         # 载入元数据
@@ -33,6 +33,7 @@ class ServiceLoader:
             err = f"元数据类型错误: {service_path / 'metadata.yaml'}"
             LOGGER.error(err)
             raise TypeError(err)
+        metadata.hashes = hashes
 
         # 载入OpenAPI文档，获取Node列表
         openapi_loader = OpenAPILoader.remote()
@@ -89,10 +90,10 @@ class ServiceLoader:
 
 
     async def save(self, service_id: str, metadata: ServiceMetadata) -> None:
-        """在文件系统上保存Service"""
+        """在文件系统上保存Service，并更新数据库"""
         pass
 
 
     async def delete(self, service_id: str) -> None:
-        """删除Service"""
+        """删除Service，并更新数据库"""
         pass
