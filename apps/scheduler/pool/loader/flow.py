@@ -71,10 +71,8 @@ class FlowLoader:
                     LOGGER.error(f"Invalid edge type: {edge['type']}")
 
         for step in flow_yaml["steps"]:
-            if step["id"] == "node1":
-                step["type"] = "start"
-            elif step["id"] == "node2":
-                step["type"] = "end"
+            if step["id"] in ["start", "end"]:
+                step["type"] = step["id"]
             else:
                 step["type"] = await search_step_type(step["node"])
 
