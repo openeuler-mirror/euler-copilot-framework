@@ -18,7 +18,6 @@ from apps.models.mongo import MongoDB
 
 async def search_step_type(node_id: str) -> str:
     node_collection = MongoDB.get_collection("node")
-    call_collection = MongoDB.get_collection("call")
     # 查询 Node 集合获取对应的 call_id
     node_doc = await node_collection.find_one({"_id": node_id})
     if not node_doc:
@@ -28,16 +27,7 @@ async def search_step_type(node_id: str) -> str:
     if not call_id:
         LOGGER.error(f"Node {node_id} has no associated call_id")
         return ""
-    # 查询 Call 集合获取 node_type
-    call_doc = await call_collection.find_one({"_id": call_id})
-    if not call_doc:
-        LOGGER.error(f"No call found with call_id: {call_id}")
-        return ""
-    node_type = call_doc.get("type")
-    if not node_type:
-        LOGGER.error(f"Call {call_id} has no associated node_type")
-        return ""
-    return node_type
+    return call_id
 
 class FlowLoader:
     """工作流加载器"""
@@ -71,8 +61,8 @@ class FlowLoader:
                     LOGGER.error(f"Invalid edge type: {edge['type']}")
 
         for step in flow_yaml["steps"]:
-            if step["id"] in ["start", "end"]:
-                step["type"] = step["id"]
+            if step["node"] in ["start", "end"]:
+                step["type"] = step["node"]
             else:
                 step["type"] = await search_step_type(step["node"])
 
