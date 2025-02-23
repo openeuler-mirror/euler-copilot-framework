@@ -69,7 +69,12 @@ class FlowLoader:
                     LOGGER.error(f"Invalid edge type: {edge['type']}")
 
         for step in flow_yaml["steps"]:
-            step["type"] = await search_step_type(step["node"])
+            if step["id"] == "node1":
+                step["type"] = "start"
+            elif step["id"] == "node2":
+                step["type"] = "end"
+            else:
+                step["type"] = await search_step_type(step["node"])
 
         try:
             # 检查Flow格式，并转换为Flow对象
@@ -77,7 +82,6 @@ class FlowLoader:
         except Exception as e:
             LOGGER.error(f"Invalid flow format: {e}")
             return None
-
         return flow
 
 
@@ -97,6 +101,7 @@ class FlowLoader:
         flow_dict["steps"]=[]
         for step in flow.steps:
             flow_dict["steps"].append({
+                "id":step.id,
                 "name":step.name,
                 "description":step.description,
                 "node":step.node,
@@ -114,3 +119,20 @@ class FlowLoader:
 
         with open(flow_path, "w", encoding="utf-8") as f:
             yaml.dump(flow_dict, f, allow_unicode=True, sort_keys=False)
+
+    @classmethod
+    async def delete(cls, app_id: str, flow_id: str) -> bool:
+        """删除指定工作流文件"""
+        flow_path = Path(config["SERVICE_DIR"]) / "app" / app_id / "flow" / f"{flow_id}.yaml"
+        # 确保目标为文件且存在
+        if flow_path.is_file():
+            try:
+                flow_path.unlink()
+                LOGGER.info(f"Successfully deleted flow file: {flow_path}")
+                return True
+            except OSError as e:
+                LOGGER.error(f"Failed to delete flow file {flow_path}: {e}")
+                return False
+        else:
+            LOGGER.warning(f"Flow file does not exist or is not a file: {flow_path}")
+            return False
