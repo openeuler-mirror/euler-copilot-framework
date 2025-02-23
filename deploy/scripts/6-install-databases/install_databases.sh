@@ -7,6 +7,9 @@ YELLOW='\033[33m'
 BLUE='\033[34m'
 NC='\033[0m'
 
+
+chart_dir="/home/euler-copilot-framework/deploy/chart"
+
 create_namespace() {
     echo -e "${BLUE}==> 检查命名空间 euler-copilot...${NC}"
     if ! kubectl get namespace euler-copilot &> /dev/null; then
@@ -56,13 +59,12 @@ delete_pvcs() {
 }
 
 helm_install() {
-    local target_dir="/home/euler-copilot-framework/deploy/chart"
     echo -e "${BLUE}==> 进入部署目录...${NC}"
-    [ ! -d "$target_dir" ] && {
-        echo -e "${RED}错误：部署目录不存在 $target_dir${NC}"
+    [ ! -d "$chart_dir" ] && {
+        echo -e "${RED}错误：部署目录不存在 $chart_dir${NC}"
         return 1
     }
-    cd "$target_dir"
+    cd "$chart_dir"
 
     echo -e "${BLUE}正在安装 databases...${NC}"
     helm install databases -n euler-copilot ./databases || {
