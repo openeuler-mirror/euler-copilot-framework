@@ -114,11 +114,3 @@ class FlowLoader:
 
         with open(flow_path, "w", encoding="utf-8") as f:
             yaml.dump(flow_dict, f, allow_unicode=True, sort_keys=False)
-
-
-
-if __name__ == "__main__":
-    # 测试代码
-    Loader=FlowLoader()
-    flow = asyncio.run(Loader.load("1","1"))
-    asyncio.run(Loader.save("1","2",flow))
