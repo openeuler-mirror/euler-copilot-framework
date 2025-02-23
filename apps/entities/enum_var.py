@@ -107,6 +107,8 @@ class PermissionType(str, Enum):
     PROTECTED = "protected"
     PUBLIC = "public"
     PRIVATE = "private"
+
+
 class SearchType(str, Enum):
     """搜索类型"""
 
@@ -114,3 +116,21 @@ class SearchType(str, Enum):
     NAME = "name"
     DESCRIPTION = "description"
     AUTHOR = "author"
+
+
+class HTTPMethod(str, Enum):
+    """HTTP方法"""
+
+    GET = "get"
+    POST = "post"
+    PUT = "put"
+    DELETE = "delete"
+    PATCH = "patch"
+
+
+class ContentType(str, Enum):
+    """Content-Type"""
+
+    JSON = "application/json"
+    FORM_URLENCODED = "application/x-www-form-urlencoded"
+    MULTIPART_FORM_DATA = "multipart/form-data"

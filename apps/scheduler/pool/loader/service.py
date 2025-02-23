@@ -2,9 +2,10 @@
 
 Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 """
-from typing import Any
+import asyncio
 
 from anyio import Path
+from sqlalchemy.dialects.postgresql import insert
 
 from apps.common.config import config
 from apps.constants import LOGGER
@@ -23,32 +24,51 @@ class ServiceLoader:
     _collection = MongoDB.get_collection("service")
 
 
-    @classmethod
-    async def load_one(cls, service_id: str) -> None:
+    async def load(self, service_id: str) -> None:
         """加载单个Service"""
         service_path = Path(config["SEMANTICS_DIR"]) / "service" / service_id
         # 载入元数据
-        metadata = await MetadataLoader.load(service_path / "metadata.yaml")
+        metadata = await MetadataLoader().load_one(service_path / "metadata.yaml")
         if not isinstance(metadata, ServiceMetadata):
             err = f"元数据类型错误: {service_path / 'metadata.yaml'}"
             LOGGER.error(err)
             raise TypeError(err)
 
         # 载入OpenAPI文档，获取Node列表
-        nodes = await OpenAPILoader.load_one(service_path / "openapi", metadata)
-
+        openapi_loader = OpenAPILoader.remote()
+        nodes = [openapi_loader.load_one.remote(service_id, yaml_path, metadata) # type: ignore[arg-type]
+                async for yaml_path in (service_path / "openapi").rglob("*.yaml")]
+        nodes = (await asyncio.gather(*nodes))[0]
+        # 更新数据库
+        await self._update_db(nodes, metadata)
 
 
     @classmethod
     async def _update_db(cls, nodes: list[NodePool], metadata: ServiceMetadata) -> None:
         """更新数据库"""
-        # 向量化所有数据
+        # 更新MongoDB
+        service_collection = MongoDB.get_collection("service")
+        node_collection = MongoDB.get_collection("node")
+        try:
+            await service_collection.update_one({"_id": metadata.id}, {"$set": metadata.model_dump(exclude_none=True, by_alias=True)}, upsert=True)
+            for node in nodes:
+                await node_collection.update_one({"_id": node.id}, {"$set": node.model_dump(exclude_none=True, by_alias=True)}, upsert=True)
+        except Exception as e:
+            err = f"更新MongoDB失败：{e}"
+            LOGGER.error(err)
+            raise RuntimeError(err) from e
+
+        # 向量化所有数据并保存
         session = await PostgreSQL.get_session()
-        service_vec = ServicePoolVector(
-            _id=metadata.id,
-            embedding=PostgreSQL.get_embedding([metadata.description]),
+        service_embedding = await PostgreSQL.get_embedding([metadata.description])
+        insert_stmt = insert(ServicePoolVector).values(
+            id=metadata.id,
+            embedding=service_embedding[0],
+        ).on_conflict_do_update(
+            index_elements=["id"],
+            set_={"embedding": service_embedding[0]},
         )
-        session.add(service_vec)
+        await session.execute(insert_stmt)
 
         node_descriptions = []
         for node in nodes:
@@ -56,22 +76,23 @@ class ServiceLoader:
 
         node_vecs = await PostgreSQL.get_embedding(node_descriptions)
         for i, data in enumerate(node_vecs):
-            node_vec = NodePoolVector(
+            insert_stmt = insert(NodePoolVector).values(
                 id=nodes[i].id,
                 embedding=data,
+            ).on_conflict_do_update(
+                index_elements=["id"],
+                set_={"embedding": data},
             )
-            session.add(node_vec)
+            await session.execute(insert_stmt)
 
         await session.commit()
 
 
-    @staticmethod
-    async def save(cls) -> dict[str, Any]:
-        """加载所有Service"""
+    async def save(self, service_id: str, metadata: ServiceMetadata) -> None:
+        """在文件系统上保存Service"""
         pass
 
 
-    @staticmethod
-    async def init() -> None:
-        """在初始化时加载所有Service"""
+    async def delete(self, service_id: str) -> None:
+        """删除Service"""
         pass

@@ -43,7 +43,7 @@ class PostgreSQL:
 
 
     @staticmethod
-    async def get_embedding(text: list[str]) -> list[float]:
+    async def get_embedding(text: list[str]) -> list[list[float]]:
         """访问OpenAI兼容的Embedding API，获得向量化数据
 
         :param text: 待向量化文本（多条文本组成List）

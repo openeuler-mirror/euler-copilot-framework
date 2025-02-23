@@ -22,8 +22,8 @@ class CoreCall(type):
         if "description" not in attrs:
             err = f"类{cls_name}中不存在属性description"
             raise AttributeError(err)
-        if "call" not in attrs or not callable(attrs["call"]):
-            err = f"类{cls_name}中不存在属性call"
+        if "__call__" not in attrs or not callable(attrs["__call__"]):
+            err = f"类{cls_name}中不存在属性__call__"
             raise AttributeError(err)
 
     @staticmethod
