@@ -2,8 +2,13 @@
 
 Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 """
+from pathlib import Path
+from typing import Optional
+
 import ray
 
+from apps.common.config import config
+from apps.constants import LOGGER, SERVICE_DIR
 from apps.entities.enum_var import MetadataType
 from apps.entities.flow_topology import FlowItem
 from apps.scheduler.pool.check import FileChecker
@@ -19,13 +24,16 @@ class Pool:
         # 加载Call
         await CallLoader().load()
 
-        # 加载Services
+        # 检查文件变动
         checker = FileChecker()
         changed_service, deleted_service = await checker.diff(MetadataType.SERVICE)
+        LOGGER.info(f"11111, checker.hashes: {checker.hashes}, changed_service: {changed_service}, deleted_service: {deleted_service}")
+
+        # 处理Service
         service_loader = ServiceLoader()
         for service in changed_service:
             # 重载变化的Service
-            await service_loader.load(service)
+            await service_loader.load(service, checker.hashes[Path(SERVICE_DIR + "/" + service).as_posix()])
         for service in deleted_service:
             # 删除消失的Service
             await service_loader.delete(service)
@@ -39,5 +47,11 @@ class Pool:
         pass
 
 
-    def get_flow(self, app_id: str, flow_id: str) -> FlowItem:
+    def get_flow_metadata(self, app_id: str) -> Optional[FlowItem]:
+        """从数据库中获取全部Flow的元数据"""
+        pass
+
+
+    def get_flow(self, app_id: str, flow_id: str) -> Optional[FlowItem]:
+        """从数据库中获取单个Flow的全部数据"""
         pass
