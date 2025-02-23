@@ -235,7 +235,7 @@ class AppCenterManager:
             ),
         )
         try:
-            app_hashes = await AppLoader.save_one(MetadataType.APP, metadata.model_dump(), app_id)
+            app_hashes = await AppLoader.save(MetadataType.APP, metadata.model_dump(), app_id)
             app.hashes = app_hashes
             app_collection = MongoDB.get_collection("app")
             await app_collection.insert_one(jsonable_encoder(app))
@@ -273,7 +273,7 @@ class AppCenterManager:
             app_data = AppPool.model_validate(await app_collection.find_one({"_id": app_id}))
             if not app_data:
                 return False
-            app_hashes = await AppLoader.save_one(MetadataType.APP, metadata.model_dump(), app_id)
+            app_hashes = await AppLoader.save(MetadataType.APP, metadata.model_dump(), app_id)
             # 如果工作流ID列表不一致，则需要取消发布状态
             published_false_needed = {flow.id for flow in app_data.flows} != set(data.workflows)
             update_data = {

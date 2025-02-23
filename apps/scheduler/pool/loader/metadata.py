@@ -2,6 +2,7 @@
 
 Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 """
+
 from typing import Any, Optional, Union
 
 import yaml
@@ -54,8 +55,12 @@ class MetadataLoader:
 
         return metadata
 
-
-    async def save_one(self, metadata_type: MetadataType, metadata: Union[dict[str, Any], AppMetadata, ServiceMetadata], resource_id: str) -> None:
+    async def save_one(
+        self,
+        metadata_type: MetadataType,
+        metadata: Union[dict[str, Any], AppMetadata, ServiceMetadata],
+        resource_id: str,
+    ) -> None:
         """保存单个元数据"""
         class_dict = {
             MetadataType.APP: AppMetadata,

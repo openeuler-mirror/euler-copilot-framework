@@ -3,6 +3,7 @@
 Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 """
 import asyncio
+import uuid
 
 from anyio import Path
 from sqlalchemy.dialects.postgresql import insert
@@ -14,6 +15,7 @@ from apps.entities.pool import NodePool
 from apps.entities.vector import NodePoolVector, ServicePoolVector
 from apps.models.mongo import MongoDB
 from apps.models.postgres import PostgreSQL
+from apps.scheduler.openapi import reduce_openapi_spec
 from apps.scheduler.pool.loader.metadata import MetadataLoader
 from apps.scheduler.pool.loader.openapi import OpenAPILoader
 
@@ -51,7 +53,14 @@ class ServiceLoader:
         service_collection = MongoDB.get_collection("service")
         node_collection = MongoDB.get_collection("node")
         try:
-            await service_collection.update_one({"_id": metadata.id}, {"$set": metadata.model_dump(exclude_none=True, by_alias=True)}, upsert=True)
+            # 部分映射 ServiceMetadata 到 ServicePool, 忽略其他字段
+            await service_collection.update_one({"_id": metadata.id}, {"$set": {
+                "name": metadata.name,
+                "description": metadata.description,
+                "author": metadata.author,
+                "permission": metadata.permission,
+                "hashes": metadata.hashes,
+            }}, upsert=True)
             for node in nodes:
                 await node_collection.update_one({"_id": node.id}, {"$set": node.model_dump(exclude_none=True, by_alias=True)}, upsert=True)
         except Exception as e:
@@ -89,9 +98,20 @@ class ServiceLoader:
         await session.commit()
 
 
-    async def save(self, service_id: str, metadata: ServiceMetadata) -> None:
+    async def save(self, service_id: str, metadata: ServiceMetadata, data: dict) -> None:
         """在文件系统上保存Service，并更新数据库"""
-        pass
+        # 读取 Node 信息
+        openapi_spec_data = reduce_openapi_spec(data)
+        nodes: list[NodePool] = []
+        for endpoint in openapi_spec_data.endpoints:
+            node_data = NodePool(
+                _id=str(uuid.uuid4()),
+                service_id=service_id,
+                name=endpoint.name,
+                description=endpoint.description,
+                call_id="api",
+            )
+            nodes.append(node_data)
 
 
     async def delete(self, service_id: str) -> None:

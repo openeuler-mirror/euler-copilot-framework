@@ -204,12 +204,12 @@ async def get_service_detail(
     if edit:
         try:
             name, data = await ServiceCenterManager.get_service_data(user_sub, service_id)
-        except ValueError:
+        except ValueError as e:
             return JSONResponse(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 content=ResponseData(
                     code=status.HTTP_400_BAD_REQUEST,
-                    message="INVALID_SERVICE_ID",
+                    message=str(e),
                     result={},
                 ).model_dump(exclude_none=True, by_alias=True),
             )
@@ -259,12 +259,12 @@ async def delete_service(
     """删除服务"""
     try:
         await ServiceCenterManager.delete_service(user_sub, service_id)
-    except ValueError:
+    except ValueError as e:
         return JSONResponse(
             status_code=status.HTTP_400_BAD_REQUEST,
             content=ResponseData(
                 code=status.HTTP_400_BAD_REQUEST,
-                message="INVALID_SERVICE_ID",
+                message=str(e),
                 result={},
             ).model_dump(exclude_none=True, by_alias=True),
         )

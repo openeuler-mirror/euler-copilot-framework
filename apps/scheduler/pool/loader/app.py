@@ -8,6 +8,7 @@ from typing import Any
 from anyio import Path
 
 from apps.common.config import config
+from apps.constants import APP_DIR
 from apps.entities.flow import AppMetadata, MetadataType
 from apps.entities.pool import AppPool
 from apps.models.mongo import MongoDB
@@ -20,12 +21,12 @@ class AppLoader:
     _dir_path = Path(config["SEMANTICS_DIR"])
 
     @classmethod
-    async def load_one(cls, app_id: str) -> None:
+    async def load(cls, app_id: str) -> None:
         """从文件系统中加载应用
 
         :param app_id: 应用 ID
         """
-        metadata_path = cls._dir_path / "app" / app_id / "metadata.yaml"
+        metadata_path = cls._dir_path / APP_DIR / app_id / "metadata.yaml"
         metadata = await MetadataLoader().load_one(metadata_path)
         if not isinstance(metadata, AppMetadata):
             err = f"元数据类型错误: {metadata_path}"
@@ -52,7 +53,7 @@ class AppLoader:
 
 
     @classmethod
-    async def save_one(cls, metadata_type: MetadataType, metadata: dict[str, Any], app_id: str) -> dict[str, str]:
+    async def save(cls, metadata_type: MetadataType, metadata: dict[str, Any], app_id: str) -> dict[str, str]:
         """保存应用
 
         :param metadata_type: 元数据类型
@@ -62,6 +63,6 @@ class AppLoader:
         :return: 文件路径和哈希值
         """
         await MetadataLoader().save_one(metadata_type, metadata, app_id)
-        metadata_path = cls._dir_path / "app" / app_id / "metadata.yaml"
+        metadata_path = cls._dir_path / APP_DIR / app_id / "metadata.yaml"
         metadata_hash = sha256(await metadata_path.read_bytes()).hexdigest()
         return { str(metadata_path.relative_to(cls._dir_path)): metadata_hash }

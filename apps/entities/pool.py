@@ -39,7 +39,6 @@ class ServicePool(BaseData):
     permission: Permission = Field(description="服务可见性配置", default=Permission())
     favorites: list[str] = Field(description="收藏此服务的用户列表", default=[])
     hashes: dict[str, str] = Field(description="服务关联的 OpenAPI YAML 和元数据文件哈希")
-    openapi_spec: dict = Field(description="服务关联的 OpenAPI 文件内容")
 
 
 class CallPool(BaseData):
