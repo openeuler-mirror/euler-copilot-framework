@@ -17,14 +17,6 @@ from apps.llm.patterns.executor import ExecutorResult
 from apps.manager.task import TaskManager
 
 
-async def _calculate_step_order(flow: Flow, step_name: str) -> str:
-    """计算步骤序号"""
-    for i, step in enumerate(flow.steps.keys()):
-        if step == step_name:
-            return f"{i + 1}/{len(flow.steps)}"
-    return f"{len(flow.steps) + 1}/{len(flow.steps)}"
-
-
 async def push_step_input(task_id: str, queue: MessageQueue, state: ExecutorState, flow: Flow) -> None:
     """推送步骤输入"""
     # 获取Task
@@ -40,9 +32,7 @@ async def push_step_input(task_id: str, queue: MessageQueue, state: ExecutorStat
     flow_history = FlowHistory(
         task_id=task_id,
         flow_id=state.name,
-        plugin_id=state.plugin_id,
         step_id=state.step_id,
-        step_order=await _calculate_step_order(flow, state.step_id),
         status=state.status,
         input_data=state.slot_data,
         output_data={},

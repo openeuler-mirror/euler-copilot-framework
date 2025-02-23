@@ -55,7 +55,7 @@ class MetadataLoader:
         return metadata
 
 
-    async def save_one(self, metadata_type: MetadataType, metadata: dict[str, Any], resource_id: str) -> None:
+    async def save_one(self, metadata_type: MetadataType, metadata: Union[dict[str, Any], AppMetadata, ServiceMetadata], resource_id: str) -> None:
         """保存单个元数据"""
         class_dict = {
             MetadataType.APP: AppMetadata,
@@ -69,13 +69,17 @@ class MetadataLoader:
             resource_path = Path(config["SEMANTICS_DIR"]) / SERVICE_DIR / resource_id / "metadata.yaml"
 
         # 保存元数据
-        try:
-            metadata_class: type[Union[AppMetadata, ServiceMetadata]] = class_dict[metadata_type]
-            data = metadata_class(**metadata)
-        except Exception as e:
-            err = f"metadata.yaml格式错误: {e}"
-            LOGGER.error(err)
-            raise RuntimeError(err) from e
+        if isinstance(metadata, dict):
+            try:
+                # 检查类型匹配
+                metadata_class: type[Union[AppMetadata, ServiceMetadata]] = class_dict[metadata_type]
+                data = metadata_class(**metadata)
+            except Exception as e:
+                err = f"metadata.yaml格式错误: {e}"
+                LOGGER.error(err)
+                raise RuntimeError(err) from e
+        else:
+            data = metadata
 
-        yaml_data = data.model_dump(by_alias=True, exclude_none=True)
-        await resource_path.write_text(yaml.safe_dump(yaml_data))
+        yaml_data = yaml.safe_dump(data.model_dump(by_alias=True, exclude_none=True))
+        await resource_path.write_text(yaml_data)

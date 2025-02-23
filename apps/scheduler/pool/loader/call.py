@@ -159,10 +159,18 @@ class CallLoader:
 
 
     # TODO: 动态卸载
+    async def _delete_one(self, call_name: str) -> None:
+        """删除单个Call"""
+        pass
+
+
+    async def _delete_from_db(self, call_name: str) -> None:
+        """从数据库中删除单个Call"""
+        pass
 
 
     # 更新数据库
-    async def _update_db(self, call_metadata: list[CallPool]) -> None:
+    async def _add_to_db(self, call_metadata: list[CallPool]) -> None:
         """更新数据库"""
         # 更新MongoDB
         call_collection = MongoDB.get_collection("call")
@@ -219,7 +227,7 @@ class CallLoader:
         call_metadata = sys_call_metadata + user_call_metadata
 
         # 更新数据库
-        await self._update_db(call_metadata)
+        await self._add_to_db(call_metadata)
 
 
     async def load_one(self, call_name: str) -> None:
@@ -233,4 +241,4 @@ class CallLoader:
 
         # 有数据时更新数据库
         if call_metadata:
-            await self._update_db(call_metadata)
+            await self._add_to_db(call_metadata)

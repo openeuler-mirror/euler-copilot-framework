@@ -13,7 +13,6 @@ from pydantic import BaseModel, Field
 class ReducedOpenAPIEndpoint(BaseModel):
     """精简后的OpenAPI文档中的单个API"""
 
-    id: Optional[str] = Field(default=None, description="API的Operation ID")
     uri: str = Field(..., description="API的URI")
     method: str = Field(..., description="API的请求方法")
     name: str = Field(..., description="API的自定义名称")
@@ -48,11 +47,11 @@ def _retrieve_ref(path: str, schema: dict) -> dict:
 
 
 def _dereference_refs_helper(
-    obj: Any,  # noqa: ANN401
+    obj: Any,
     full_schema: dict[str, Any],
     skip_keys: Sequence[str],
     processed_refs: Optional[set[str]] = None,
-) -> Any:  # noqa: ANN401
+) -> Any:
     """递归地将OpenAPI中的$ref替换为实际的schema"""
     if processed_refs is None:
         processed_refs = set()
@@ -154,7 +153,6 @@ def reduce_openapi_spec(spec: dict) -> ReducedOpenAPISpec:
                     msg = f'Endpoint error at "{operation_name.upper()} {route}": missing {", ".join(missing_fields)}.'
                     raise ValueError(msg)
                 endpoint = ReducedOpenAPIEndpoint(
-                    id=docs.get("operationId", None),
                     uri=route,
                     method=operation_name,
                     name=name,

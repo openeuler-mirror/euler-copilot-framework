@@ -92,7 +92,7 @@ class Slot:
 
 
     @staticmethod
-    def _process_json_value(json_value: Any, spec_data: dict[str, Any]) -> Any:  # noqa: ANN401, C901, PLR0911, PLR0912
+    def _process_json_value(json_value: Any, spec_data: dict[str, Any]) -> Any:  # noqa: C901, PLR0911, PLR0912
         """使用递归的方式对JSON返回值进行处理
 
         :param json_value: 返回值中的字段
@@ -270,7 +270,7 @@ class Slot:
         if previous_output is not None:
             tool_str = f"""I used a tool to get extra information from other sources. \
                 The output data of the tool is `{previous_output}`.
-                The schema of the output is `{json.dumps(previous_output.output_schema, ensure_ascii=False)}`, which contains description of the output.
+                The schema of the output is `{json.dumps(previous_output["output_schema"], ensure_ascii=False)}`, which contains description of the output.
                 """
 
             conversation.append({"role": "tool", "content": tool_str})

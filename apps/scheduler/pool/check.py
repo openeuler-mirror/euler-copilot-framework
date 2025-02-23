@@ -4,6 +4,7 @@ Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 """
 from hashlib import sha256
 from pathlib import Path
+from typing import Optional
 
 from apps.common.config import config
 from apps.constants import APP_DIR, LOGGER, SERVICE_DIR
@@ -16,12 +17,13 @@ class FileChecker:
 
     def __init__(self) -> None:
         """初始化文件检查器"""
-        self._hashes = {}
+        self.hashes = {}
         self._dir_path = Path(config["SEMANTICS_DIR"])
 
 
-    def check_one(self, path: Path) -> None:
+    def check_one(self, path: Path) -> dict[str, str]:
         """检查单个App/Service文件是否有变动"""
+        hashes = {}
         if not path.exists():
             err = FileNotFoundError(f"File {path} not found")
             raise err
@@ -31,16 +33,20 @@ class FileChecker:
 
         for file in path.iterdir():
             if file.is_file():
-                self._hashes[str(file.relative_to(self._dir_path))] = sha256(file.read_bytes()).hexdigest()
+                relative_path = file.relative_to(self._resource_path)
+                hashes[relative_path.as_posix()] = sha256(file.read_bytes()).hexdigest()
             elif file.is_dir():
-                self.check_one(file)
+                hashes.update(self.check_one(file))
+
+        return hashes
 
 
-    def diff_one(self, path: Path, previous_hashes: dict[str, str]) -> bool:
+    def diff_one(self, path: Path, previous_hashes: Optional[dict[str, str]] = None) -> bool:
         """检查文件是否发生变化"""
-        self._hashes = {}
-        self.check_one(path)
-        return self._hashes != previous_hashes
+        self._resource_path = path
+        path_diff = self._resource_path.relative_to(config["SEMANTICS_DIR"])
+        self.hashes[path_diff.as_posix()] = self.check_one(path)
+        return self.hashes[path_diff.as_posix()] != previous_hashes
 
 
     async def diff(self, check_type: MetadataType) -> tuple[list[str], list[str]]:
@@ -70,13 +76,15 @@ class FileChecker:
                 deleted_list.append(list_item["_id"])
                 continue
             # 判断是否发生变化
-            if "hashes" not in list_item or self.diff_one(self._dir_path / list_item["_id"], list_item["hashes"]):
+            if self.diff_one(self._dir_path / list_item["_id"], list_item.get("hashes", None)):
                 changed_list.append(list_item["_id"])
 
         # 遍历目录
         for service_folder in self._dir_path.iterdir():
             # 判断是否新增？
-            if service_folder.name not in items:
+            if (service_folder.name not in items and
+                service_folder.name not in deleted_list and
+                service_folder.name not in changed_list):
                 changed_list += [service_folder.name]
 
         return changed_list, deleted_list
