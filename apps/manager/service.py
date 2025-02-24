@@ -11,7 +11,7 @@ from anyio import Path
 from jsonschema import ValidationError, validate
 
 from apps.common.config import config
-from apps.constants import LOGGER
+from apps.constants import LOGGER, SERVICE_DIR
 from apps.entities.enum_var import SearchType
 from apps.entities.flow import ServiceApiConfig, ServiceMetadata
 from apps.entities.pool import NodePool, ServicePool
@@ -116,7 +116,9 @@ class ServiceCenterManager:
             author=user_sub,
             api=ServiceApiConfig(server=data["servers"][0]["url"]),
         )
-        await ServiceLoader().save(service_id, service_metadata, data)
+        service_loader = ServiceLoader.remote()
+        await service_loader.save.remote(service_id, service_metadata, data)  # type: ignore[attr-type]
+        ray.kill(service_loader)
         # 返回服务ID
         return service_id
 
@@ -148,7 +150,9 @@ class ServiceCenterManager:
             author=user_sub,
             api=ServiceApiConfig(server=data["servers"][0]["url"]),
         )
-        await ServiceLoader().save(service_id, service_metadata, data)
+        service_loader = ServiceLoader.remote()
+        await service_loader.save.remote(service_id, service_metadata, data)  # type: ignore[attr-type]
+        ray.kill(service_loader)
         # 返回服务ID
         return service_id
 
@@ -195,7 +199,7 @@ class ServiceCenterManager:
         if service_pool_store.author != user_sub:
             msg = "Permission denied"
             raise ValueError(msg)
-        service_path = Path(config["SEMANTICS_DIR"]) / "service" / service_id / "openapi" / "api.yaml"
+        service_path = Path(config["SEMANTICS_DIR"]) / SERVICE_DIR / service_id / "openapi" / "api.yaml"
         async with await Path(service_path).open() as f:
             service_data = yaml.safe_load(await f.read())
         return service_pool_store.name, service_data
@@ -217,10 +221,9 @@ class ServiceCenterManager:
             msg = "Permission denied"
             raise ValueError(msg)
         # 删除服务
-        await service_collection.delete_one({"_id": service_id})
-        # 删除 Node 信息
-        node_collection = MongoDB.get_collection("node")
-        await node_collection.delete_many({"service_id": service_id})
+        service_loader = ServiceLoader.remote()
+        await service_loader.delete.remote(service_id)  # type: ignore[attr-type]
+        ray.kill(service_loader)
         return True
 
     @staticmethod

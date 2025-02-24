@@ -8,6 +8,8 @@ from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, Optional
 
+import ray
+
 from apps.constants import LOGGER
 from apps.entities.appcenter import AppCenterCardItem, AppData
 from apps.entities.collection import User
@@ -219,7 +221,9 @@ class AppCenterManager:
             ),
         )
         try:
-            await AppLoader.save(MetadataType.APP, metadata, app_id)
+            app_loader = AppLoader.remote()
+            await app_loader.save.remote(metadata, app_id)  # type: ignore[attr-type]
+            ray.kill(app_loader)
             return app_id
         except Exception as e:
             LOGGER.error(f"[AppCenterManager] Create app failed: {e}")
@@ -254,7 +258,9 @@ class AppCenterManager:
             app_data = AppPool.model_validate(await app_collection.find_one({"_id": app_id}))
             if not app_data:
                 return False
-            await AppLoader.save(MetadataType.APP, metadata, app_id)
+            app_loader = AppLoader.remote()
+            await app_loader.save.remote(metadata, app_id)  # type: ignore[attr-type]
+            ray.kill(app_loader)
             # 如果工作流ID列表不一致，则需要取消发布状态
             if {flow.id for flow in app_data.flows} != set(data.workflows):
                 await app_collection.update_one({"_id": app_id}, {"$set": {"published": False}})
@@ -327,17 +333,21 @@ class AppCenterManager:
         :return: 删除是否成功
         """
         try:
-            async with MongoDB.get_session() as session, await session.start_transaction():
-                app_collection = MongoDB.get_collection("app")
-                await app_collection.delete_one({"_id": app_id}, session=session)
-                user_collection = MongoDB.get_collection("user")
-                await user_collection.update_one(
-                    {"_id": user_sub},
-                    {"$unset": {f"app_usage.{app_id}": ""}},
-                    session=session,
-                )
-                await session.commit_transaction()
-                return True
+            app_collection = MongoDB.get_collection("app")
+            app_data = AppPool.model_validate(await app_collection.find_one({"_id": app_id}))
+            if not app_data:
+                return False
+            if app_data.author != user_sub:
+                return False
+            app_loader = AppLoader.remote()
+            await app_loader.delete.remote(app_id)  # type: ignore[attr-type]
+            ray.kill(app_loader)
+            user_collection = MongoDB.get_collection("user")
+            await user_collection.update_one(
+                {"_id": user_sub},
+                {"$unset": {f"app_usage.{app_id}": ""}},
+            )
+            return True
         except Exception as e:
             LOGGER.error(f"[AppCenterManager] Delete app failed: {e}")
         return False

@@ -4,7 +4,6 @@ Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 """
 
 import asyncio
-import uuid
 
 import ray
 from anyio import Path
@@ -18,8 +17,7 @@ from apps.entities.pool import NodePool
 from apps.entities.vector import NodePoolVector, ServicePoolVector
 from apps.models.mongo import MongoDB
 from apps.models.postgres import PostgreSQL
-from apps.scheduler.openapi import reduce_openapi_spec
-from apps.scheduler.pool.loader.metadata import MetadataLoader
+from apps.scheduler.pool.loader.metadata import MetadataLoader, MetadataType
 from apps.scheduler.pool.loader.openapi import OpenAPILoader
 
 
@@ -49,6 +47,45 @@ class ServiceLoader:
         nodes = [NodePool(**node.model_dump(exclude_none=True, by_alias=True)) for node in nodes]
         await self._update_db(nodes, metadata)
 
+    async def save(self, service_id: str, metadata: ServiceMetadata, data: dict) -> None:
+        """在文件系统上保存Service，并更新数据库"""
+        service_path = Path(config["SEMANTICS_DIR"]) / "service" / service_id
+        # 保存元数据
+        await MetadataLoader().save_one(MetadataType.SERVICE, metadata, service_id)
+        # 保存 OpenAPI 文档
+        openapi_loader = OpenAPILoader.remote()
+        await openapi_loader.save_one.remote(data)  # type: ignore[arg-type]
+        # 读取 Node 信息
+        nodes = [
+            openapi_loader.load_one.remote(service_id, yaml_path, metadata)  # type: ignore[arg-type]
+            async for yaml_path in (service_path / "openapi").rglob("*.yaml")
+        ]
+        nodes = (await asyncio.gather(*nodes))[0]
+        ray.kill(openapi_loader)
+        # 更新数据库
+        await self._update_db(nodes, metadata)
+
+    async def delete(self, service_id: str) -> None:
+        """删除Service，并更新数据库"""
+        service_collection = MongoDB.get_collection("service")
+        node_collection = MongoDB.get_collection("node")
+        try:
+            await service_collection.delete_one({"_id": service_id})
+            await node_collection.delete_many({"service_id": service_id})
+        except Exception as e:
+            err = f"删除Service失败：{e}"
+            LOGGER.error(err)
+
+        session = await PostgreSQL.get_session()
+        try:
+            await session.execute(delete(ServicePoolVector).where(ServicePoolVector.id == service_id))
+            await session.execute(delete(NodePoolVector).where(NodePoolVector.id == service_id))
+            await session.commit()
+        except Exception as e:
+            err = f"删除数据库失败：{e}"
+            LOGGER.error(err)
+
+        await session.aclose()
 
     async def _update_db(self, nodes: list[NodePool], metadata: ServiceMetadata) -> None:
         """更新数据库"""
@@ -117,42 +154,4 @@ class ServiceLoader:
             await session.execute(insert_stmt)
 
         await session.commit()
-        await session.aclose()
-
-    async def save(self, service_id: str, metadata: ServiceMetadata, data: dict) -> None:
-        """在文件系统上保存Service，并更新数据库"""
-        # 读取 Node 信息
-        openapi_spec_data = reduce_openapi_spec(data)
-        nodes: list[NodePool] = []
-        for endpoint in openapi_spec_data.endpoints:
-            node_data = NodePool(
-                _id=str(uuid.uuid4()),
-                service_id=service_id,
-                name=endpoint.name,
-                description=endpoint.description,
-                call_id="api",
-            )
-            nodes.append(node_data)
-        await self._update_db(nodes, metadata)
-
-    async def delete(self, service_id: str) -> None:
-        """删除Service，并更新数据库"""
-        service_collection = MongoDB.get_collection("service")
-        node_collection = MongoDB.get_collection("node")
-        try:
-            await service_collection.delete_one({"_id": service_id})
-            await node_collection.delete_many({"service_id": service_id})
-        except Exception as e:
-            err = f"删除Service失败：{e}"
-            LOGGER.error(err)
-
-        session = await PostgreSQL.get_session()
-        try:
-            await session.execute(delete(ServicePoolVector).where(ServicePoolVector.id == service_id))
-            await session.execute(delete(NodePoolVector).where(NodePoolVector.id == service_id))
-            await session.commit()
-        except Exception as e:
-            err = f"删除数据库失败：{e}"
-            LOGGER.error(err)
-
         await session.aclose()
