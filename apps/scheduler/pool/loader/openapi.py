@@ -4,7 +4,6 @@ Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 """
 import uuid
 from typing import Any
-
 import ray
 import yaml
 from anyio import Path
