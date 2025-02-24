@@ -24,8 +24,8 @@ class Edge(BaseModel):
     """Flow中Edge的数据"""
 
     id: str = Field(description="边的ID")
-    edge_from: str = Field(description="边的来源节点ID")
-    edge_to: str = Field(description="边的目标节点ID")
+    edge_from: str = Field(description="边的来源节点ID", alias="from")
+    edge_to: str = Field(description="边的目标节点ID", alias="to")
     edge_type: Optional[EdgeType] = Field(description="边的类型",default = EdgeType.NORMAL)
 
 
@@ -53,7 +53,7 @@ class Flow(BaseModel):
     name: str = Field(description="Flow的名称", min_length=1)
     description: str = Field(description="Flow的描述 ")
     on_error: FlowError = FlowError(use_llm=True)
-    steps: dict[str,Step] = Field(description="节点列表", default={})
+    steps: dict[str, Step] = Field(description="节点列表", default={})
     edges: list[Edge] = Field(description="边列表", default=[])
     debug: bool = Field(description="是否经过调试", default=False)
 

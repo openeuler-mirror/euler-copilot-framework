@@ -20,6 +20,7 @@ class Select(CorePattern):
             <instruction>
                 根据历史对话（包括工具调用结果）和用户问题，从给出的选项列表中，选出最符合要求的那一项。
                 在输出之前，请先思考，并使用“<think>”标签给出思考过程。
+                结果需要使用JSON格式输出，输出格式为：{ "choice": "选项名称" }
             </instruction>
 
             <example>
@@ -32,14 +33,14 @@ class Select(CorePattern):
                     </options>
                 </input>
 
-                <think>
+                <reasoning>
                     API 工具可以通过 API 来获取外部数据，而天气信息可能就存储在外部数据中，由于用户说明中明确提到了天气 API 的使用，因此应该优先使用 API 工具。\
                     SQL 工具用于从数据库中获取信息，考虑到天气数据的可变性和动态性，不太可能存储在数据库中，因此 SQL 工具的优先级相对较低，\
                     最佳选择似乎是“API：请求特定 API，获取返回的 JSON 数据”。
-                </think>
+                </reasoning>
 
                 <output>
-                    API
+                    { "choice": "API" }
                 </output>
             </example>
         </instructions>
@@ -54,7 +55,7 @@ class Select(CorePattern):
             </options>
         </input>
 
-        <think>
+        <reasoning>
           让我们一步一步思考。
     """
     """用户提示词"""

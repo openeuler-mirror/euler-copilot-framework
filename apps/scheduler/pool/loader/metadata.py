@@ -7,6 +7,7 @@ from typing import Any, Optional, Union
 
 import yaml
 from anyio import Path
+from fastapi.encoders import jsonable_encoder
 
 from apps.common.config import config
 from apps.constants import APP_DIR, LOGGER, SERVICE_DIR
@@ -25,9 +26,11 @@ class MetadataLoader:
         # 检查yaml格式
         try:
             metadata_dict = yaml.safe_load(await file_path.read_text())
-            # 忽略hashes字段，手动指定无效
+            # 忽略hashes和id字段，手动指定无效
             if "hashes" in metadata_dict:
                 metadata_dict.pop("hashes")
+            if "id" in metadata_dict:
+                metadata_dict.pop("id")
             # 提取metadata的类型
             metadata_type = metadata_dict["type"]
         except Exception as e:
@@ -94,5 +97,5 @@ class MetadataLoader:
         else:
             data = metadata
 
-        yaml_data = yaml.safe_dump(data.model_dump(by_alias=True, exclude_none=True))
+        yaml_data = yaml.safe_dump(jsonable_encoder(data))
         await resource_path.write_text(yaml_data)

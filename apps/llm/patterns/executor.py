@@ -15,16 +15,33 @@ class ExecutorThought(CorePattern):
     """通过大模型生成Executor的思考内容"""
 
     user_prompt: str = r"""
-        你是一个可以使用工具的智能助手。请简明扼要地总结工具的使用过程，提供你的见解，并给出下一步的行动。
+        <instructions>
+            <instruction>
+                你是一个可以使用工具的智能助手。
+                在回答用户的问题时，你为了获取更多的信息，使用了一个工具。
+                请简明扼要地总结工具的使用过程，提供你的见解，并给出下一步的行动。
 
-        你之前使用了一个名为"{tool_name}"的工具，该工具的功能是"{tool_description}"。\
-        工具生成的输出是：`{tool_output}`（其中"message"是自然语言内容，"output"是结构化数据）。
+                注意：
+                工具的相关信息在<tool></tool>标签中给出。
+                为了使你更好的理解发生了什么，你之前的思考过程在<thought></thought>标签中给出。
+                输出时请不要包含XML标签，请精准、简明。
+            </instruction>
+        </instructions>
 
-        你之前的思考是：
-        {last_thought}
+        <tool>
+            <name>{tool_name}</name>
+            <description>{tool_description}</description>
+                <output>{tool_output}</output>
+        </tool>
 
-        你当前需要解决的问题是：
-        {user_question}
+        <thought>
+            {last_thought}
+        </thought>
+
+        <question>
+            你当前需要解决的问题是：
+            {user_question}
+        </question>
 
         请综合以上信息，再次一步一步地进行思考，并给出见解和行动：
     """
@@ -64,9 +81,6 @@ class ExecutorThought(CorePattern):
 
 class ExecutorBackground(CorePattern):
     """使用大模型进行生成Executor初始背景"""
-
-    system_prompt: str = r""
-    """系统提示词"""
 
     user_prompt: str = r"""
         根据对话上文，结合给定的AI助手思考过程，生成一个完整的背景总结。这个总结将用于后续对话的上下文理解。
