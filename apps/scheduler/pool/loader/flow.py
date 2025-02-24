@@ -29,6 +29,19 @@ async def search_step_type(node_id: str) -> str:
         return ""
     return call_id
 
+async def search_step_name(node_id: str) -> str:
+    node_collection = MongoDB.get_collection("node")
+    # 查询 Node 集合获取对应的 call_id
+    node_doc = await node_collection.find_one({"_id": node_id})
+    if not node_doc:
+        LOGGER.error(f"Node {node_id} not found")
+        return ""
+    call_id = node_doc.get("name")
+    if not call_id:
+        LOGGER.error(f"Node {node_id} has no associated call_id")
+        return ""
+    return call_id
+
 class FlowLoader:
     """工作流加载器"""
 
@@ -63,8 +76,10 @@ class FlowLoader:
         for step in flow_yaml["steps"]:
             if step["node"] in ["start", "end"]:
                 step["type"] = step["node"]
+                step["name"] = step["node"]
             else:
                 step["type"] = await search_step_type(step["node"])
+                step["name"] = await search_step_name(step["node"])
 
         try:
             # 检查Flow格式，并转换为Flow对象
