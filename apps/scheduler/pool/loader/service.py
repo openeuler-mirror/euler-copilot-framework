@@ -2,19 +2,19 @@
 
 Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 """
-
 import asyncio
 import pathlib
 
 import ray
 from anyio import Path
+from fastapi.encoders import jsonable_encoder
 from sqlalchemy import delete
 from sqlalchemy.dialects.postgresql import insert
 
 from apps.common.config import config
 from apps.constants import LOGGER
-from apps.entities.flow import ServiceMetadata
-from apps.entities.pool import NodePool
+from apps.entities.flow import Permission, ServiceMetadata
+from apps.entities.pool import NodePool, ServicePool
 from apps.entities.vector import NodePoolVector, ServicePoolVector
 from apps.models.mongo import MongoDB
 from apps.models.postgres import PostgreSQL
@@ -33,7 +33,7 @@ class ServiceLoader:
         # 载入元数据
         metadata = await MetadataLoader().load_one(service_path / "metadata.yaml")
         if not isinstance(metadata, ServiceMetadata):
-            err = f"元数据类型错误: {service_path / 'metadata.yaml'}"
+            err = f"[ServiceLoader] 元数据类型错误: {service_path / 'metadata.yaml'}"
             LOGGER.error(err)
             raise TypeError(err)
         metadata.hashes = hashes
@@ -49,18 +49,21 @@ class ServiceLoader:
         nodes = [NodePool(**node.model_dump(exclude_none=True, by_alias=True)) for node in nodes]
         await self._update_db(nodes, metadata)
 
+
     async def save(self, service_id: str, metadata: ServiceMetadata, data: dict) -> None:
         """在文件系统上保存Service，并更新数据库"""
         service_path = pathlib.Path(config["SEMANTICS_DIR"]) / "service" / service_id
+        openapi_path = service_path / "openapi"/"api.yaml"
         # 保存元数据
         await MetadataLoader().save_one(MetadataType.SERVICE, metadata, service_id)
         # 保存 OpenAPI 文档
         openapi_loader = OpenAPILoader.remote()
-        await openapi_loader.save_one.remote(data)  # type: ignore[arg-type]
+        await openapi_loader.save_one.remote(openapi_path, data)  # type: ignore[arg-type]
         ray.kill(openapi_loader)
         # 重新载入
         hashes = FileChecker().check_one(service_path)
         await self.load(service_id, hashes)
+
 
     async def delete(self, service_id: str) -> None:
         """删除Service，并更新数据库"""
@@ -70,7 +73,7 @@ class ServiceLoader:
             await service_collection.delete_one({"_id": service_id})
             await node_collection.delete_many({"service_id": service_id})
         except Exception as e:
-            err = f"删除Service失败：{e}"
+            err = f"[ServiceLoader] 删除Service失败：{e}"
             LOGGER.error(err)
 
         session = await PostgreSQL.get_session()
@@ -79,39 +82,56 @@ class ServiceLoader:
             await session.execute(delete(NodePoolVector).where(NodePoolVector.id == service_id))
             await session.commit()
         except Exception as e:
-            err = f"删除数据库失败：{e}"
+            err = f"[ServiceLoader] 删除数据库失败：{e}"
             LOGGER.error(err)
 
         await session.aclose()
 
     async def _update_db(self, nodes: list[NodePool], metadata: ServiceMetadata) -> None:
         """更新数据库"""
+        if not metadata.hashes:
+            LOGGER.warning(f"[ServiceLoader] 服务 {metadata.id} 的哈希值为空")
+            # 重新计算哈希值
+            metadata.hashes = FileChecker().check_one(pathlib.Path(config["SEMANTICS_DIR"]) / "service" / metadata.id)
         # 更新MongoDB
         service_collection = MongoDB.get_collection("service")
         node_collection = MongoDB.get_collection("node")
         try:
-            # 部分映射 ServiceMetadata 到 ServicePool, 忽略其他字段
-            await service_collection.update_one(
-                {"_id": metadata.id},
-                {
-                    "$set": {
-                        "name": metadata.name,
-                        "description": metadata.description,
-                        "author": metadata.author,
-                        "permission": metadata.permission,
-                        "hashes": metadata.hashes,
-                    },
-                },
-                upsert=True,
-            )
-            for node in nodes:
-                await node_collection.update_one(
-                    {"_id": node.id},
-                    {"$set": node.model_dump(exclude_none=True, by_alias=True)},
-                    upsert=True,
+            # 先删除旧的节点
+            await node_collection.delete_many({"service_id": metadata.id})
+            # 插入或更新 Service
+            if not await service_collection.find_one({"_id": metadata.id}):
+                # 创建服务时需写入完整数据结构，自动初始化创建时间、收藏列表和权限
+                await service_collection.insert_one(
+                    jsonable_encoder(
+                        ServicePool(
+                            _id=metadata.id,
+                            name=metadata.name,
+                            description=metadata.description,
+                            author=metadata.author,
+                            permission=metadata.permission if metadata.permission else Permission(),
+                            hashes=metadata.hashes,
+                        ),
+                    ),
                 )
+            else:
+                # 更新服务数据：部分映射 ServiceMetadata 到 ServicePool，其他字段不更新
+                await service_collection.update_one(
+                    {"_id": metadata.id},
+                    {
+                        "$set": {
+                            "name": metadata.name,
+                            "description": metadata.description,
+                            "author": metadata.author,
+                            "permission": metadata.permission if metadata.permission else Permission(),
+                            "hashes": metadata.hashes,
+                        },
+                    },
+                )
+            for node in nodes:
+                await node_collection.insert_one(jsonable_encoder(node))
         except Exception as e:
-            err = f"更新MongoDB失败：{e}"
+            err = f"[ServiceLoader] 更新 MongoDB 失败：{e}"
             LOGGER.error(err)
             raise RuntimeError(err) from e
 

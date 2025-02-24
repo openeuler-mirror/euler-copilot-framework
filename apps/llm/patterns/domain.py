@@ -29,16 +29,14 @@ class Domain(CorePattern):
             </conversation>
 
             <output>
-              {
+              {{
                 "keywords": ["北京", "天气"]
-              }
+              }}
             </output>
           </example>
         </instructions>
 
-        <conversation>
-          {conversation}
-        </conversation>
+        {conversation}
         <output>
     """
     """用户提示词"""
@@ -63,7 +61,7 @@ class Domain(CorePattern):
     async def generate(self, task_id: str, **kwargs) -> list[str]:  # noqa: ANN003
         """从问答中提取领域信息"""
         messages = [
-            {"role": "system", "content": ""},
+            {"role": "system", "content": self.system_prompt},
             {"role": "user", "content": self.user_prompt.format(conversation=kwargs["conversation"])},
         ]
 

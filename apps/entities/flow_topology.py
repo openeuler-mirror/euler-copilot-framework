@@ -73,9 +73,9 @@ class EdgeItem(BaseModel):
 class FlowItem(BaseModel):
     """请求/响应中的流变量类"""
 
-    flow_id: Optional[str] = Field(alias="flowId", default="flow id")
-    name: str = Field(default="flow name")
-    description: str = Field(default="flow description")
+    flow_id: Optional[str] = Field(alias="flowId", default="工作流ID")
+    name: str = Field(default="工作流名称")
+    description: str = Field(default="工作流描述")
     enable: bool = Field(default=True)
     editable: bool = Field(default=True)
     nodes: list[NodeItem] = Field(default=[])

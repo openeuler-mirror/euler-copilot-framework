@@ -152,9 +152,13 @@ class MessageQueue:
             await asyncio.sleep(self._heartbeat_interval)
 
             # 查看是否已清空REL
-            group_info = await client.xinfo_groups(self._stream_name)
-            if group_info[0]["pending"]:
-                continue
+            try:
+                group_info = await client.xinfo_groups(self._stream_name)
+                if group_info[0]["pending"]:
+                    continue
+            except Exception as e:
+                LOGGER.error(f"[Queue] Redis流已结束： {e}")
+                break
 
             # 添加心跳消息，得到ID
             await client.xadd(self._stream_name, {"data": heartbeat_msg})
