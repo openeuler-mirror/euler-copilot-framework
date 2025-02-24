@@ -88,8 +88,6 @@ class ConfigModel(BaseModel):
     SEMANTICS_DIR: Optional[str] = Field(description="语义配置路径", default=None)
     # SQL接口路径
     SQL_URL: str = Field(description="Chat2DB接口路径")
-    # 应用流本地存储路径
-    SERVICE_DIR: Optional[str] = Field(description="应用流本地存储路径", default=None)
 
 
 class Config:

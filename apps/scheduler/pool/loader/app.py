@@ -12,13 +12,14 @@ from sqlalchemy import delete
 from sqlalchemy.dialects.postgresql import insert
 
 from apps.common.config import config
-from apps.constants import APP_DIR, LOGGER
+from apps.constants import APP_DIR, FLOW_DIR, LOGGER
 from apps.entities.flow import AppMetadata, MetadataType, Permission
 from apps.entities.pool import AppPool
 from apps.entities.vector import AppPoolVector
 from apps.models.mongo import MongoDB
 from apps.models.postgres import PostgreSQL
 from apps.scheduler.pool.check import FileChecker
+from apps.scheduler.pool.loader.flow import FlowLoader
 from apps.scheduler.pool.loader.metadata import MetadataLoader
 
 
@@ -31,12 +32,30 @@ class AppLoader:
 
         :param app_id: 应用 ID
         """
-        metadata_path = Path(config["SEMANTICS_DIR"]) / APP_DIR / app_id / "metadata.yaml"
+        app_path = Path(config["SEMANTICS_DIR"]) / APP_DIR / app_id
+        metadata_path = app_path / "metadata.yaml"
         metadata = await MetadataLoader().load_one(metadata_path)
+        if not metadata:
+            err = f"元数据不存在: {metadata_path}"
+            LOGGER.error(err)
+            raise ValueError(err)
+        metadata.hashes = hashes
+
         if not isinstance(metadata, AppMetadata):
             err = f"[AppLoader] 元数据类型错误: {metadata_path}"
+            LOGGER.error(err)
             raise TypeError(err)
-        metadata.hashes = hashes
+
+        # 加载工作流
+        flow_path = app_path / FLOW_DIR
+        flow_loader = FlowLoader()
+
+        flows = []
+        async for flow_file in flow_path.rglob("*.yaml"):
+            flow = await flow_loader.load(flow_file)
+            if flow:
+                flows.append(flow)
+
         await self._update_db(metadata)
 
     async def save(self, metadata: AppMetadata, app_id: str) -> None:
@@ -45,7 +64,12 @@ class AppLoader:
         :param metadata: 应用元数据
         :param app_id: 应用 ID
         """
+        # 创建文件夹
+        app_path = Path(config["SEMANTICS_DIR"]) / APP_DIR / app_id
+        await app_path.mkdir(parents=True, exist_ok=True)
+        # 保存元数据
         await MetadataLoader().save_one(MetadataType.APP, metadata, app_id)
+        # 保存工作流
         await self._update_db(metadata)
 
     async def delete(self, app_id: str) -> None:

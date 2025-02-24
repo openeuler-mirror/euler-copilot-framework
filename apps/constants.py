@@ -22,6 +22,8 @@ CALL_DIR = "call"
 SERVICE_DIR = "service"
 # 语义接口目录中应用子目录
 APP_DIR = "app"
+# 语义接口目录中工作流子目录
+FLOW_DIR = "flow"
 # 日志记录器
 LOGGER = logging.getLogger("ray")
 

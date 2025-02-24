@@ -15,6 +15,13 @@ on_error:
 
 # 各个节点定义
 steps:
+  start:
+    node: none
+    name: 开始
+    description: 开始工作流
+    pos: # 节点在画布上的位置
+      x: 100
+      y: 100
   query_data:  # 节点的Pool ID
     node: api
     name: 查询数据    # 节点名称
@@ -102,13 +109,20 @@ steps:
         - flow_id: flow_01
           question: 这是固定的推荐问题
         - flow_id: flow_02
+  end:
+    node: none
+    name: 结束
+    description: 结束工作流
+    pos: # 节点在画布上的位置
+      x: 600
+      y: 100
 
 # 各个边定义
 # 格式：边ID: 来源节点名称 --> 目标节点名称
 # 若来源节点有多个输出分支，则使用“节点名称.分支名称”表示
 edges:
   - id: edge_00
-    from: <BEGIN>
+    from: start
     to: query_data
     type: normal  # 边的类型，可不填
   - id: edge_01
@@ -122,7 +136,7 @@ edges:
     to: format_output
   - id: edge_04
     from: gen_reply
-    to: <END>
+    to: end
   - id: edge_05
     from: format_output
-    to: <END>
+    to: end

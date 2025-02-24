@@ -2,7 +2,7 @@
 
 Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 """
-
+import json
 from typing import Any, Optional, Union
 
 import yaml
@@ -26,9 +26,11 @@ class MetadataLoader:
         # 检查yaml格式
         try:
             metadata_dict = yaml.safe_load(await file_path.read_text())
-            # 忽略hashes字段，手动指定无效
+            # 忽略hashes和id字段，手动指定无效
             if "hashes" in metadata_dict:
                 metadata_dict.pop("hashes")
+            if "id" in metadata_dict:
+                metadata_dict.pop("id")
             # 提取metadata的类型
             metadata_type = metadata_dict["type"]
         except Exception as e:

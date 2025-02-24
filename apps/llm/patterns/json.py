@@ -79,7 +79,7 @@ class Json(CorePattern):
 
 
     @staticmethod
-    def _remove_null_params(input_val: Any) -> Any:  # noqa: ANN401
+    def _remove_null_params(input_val: Any) -> Any:
         """递归地移除输入数据中的空值参数。
 
         :param input_val: 输入的数据，可以是字典、列表或其他类型。
