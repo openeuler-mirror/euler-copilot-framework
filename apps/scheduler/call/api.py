@@ -128,11 +128,6 @@ class API(metaclass=CoreCall, param_cls=APIParams, output_cls=_APIOutput):
             response_status = response.status
             response_data = await response.text()
 
-        # 返回值只支持JSON的情况
-        if "responses" in self._spec[2]:
-            response_schema = self._spec[2]["responses"]["content"]["application/json"]["schema"]
-        else:
-            response_schema = {}
         LOGGER.info(f"调用接口{params.url}, 结果为 {response_data}")
 
         # 组装message
