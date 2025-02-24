@@ -32,7 +32,6 @@ class Edge(BaseModel):
 class Step(BaseModel):
     """Flow中Step的数据"""
 
-    id: str = Field(description="Step的ID")
     node: str = Field(description="Step的Node ID")
     type: str = Field(description="Step的类型")
     name: str = Field(description="Step的名称")
@@ -52,9 +51,9 @@ class Flow(BaseModel):
     """Flow（工作流）的数据格式"""
 
     name: str = Field(description="Flow的名称", min_length=1)
-    description: str = Field(description="Flow的描述")
+    description: str = Field(description="Flow的描述 ")
     on_error: FlowError = FlowError(use_llm=True)
-    steps: list[Step] = Field(description="节点列表", default=[])
+    steps: dict[str,Step] = Field(description="节点列表", default={})
     edges: list[Edge] = Field(description="边列表", default=[])
     debug: bool = Field(description="是否经过调试", default=False)
 
