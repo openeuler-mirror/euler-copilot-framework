@@ -54,8 +54,10 @@ class ServiceLoader:
         """在文件系统上保存Service，并更新数据库"""
         service_path = pathlib.Path(config["SEMANTICS_DIR"]) / "service" / service_id
         # 创建文件夹
-        service_path.mkdir(parents=True, exist_ok=True)
-        (service_path / "openapi").mkdir(parents=True, exist_ok=True)
+        if not service_path.exists():
+            service_path.mkdir(parents=True, exist_ok=True)
+        if not (service_path / "openapi").exists():
+            (service_path / "openapi").mkdir(parents=True, exist_ok=True)
         openapi_path = service_path / "openapi" / "api.yaml"
         # 保存元数据
         await MetadataLoader().save_one(MetadataType.SERVICE, metadata, service_id)
