@@ -13,6 +13,7 @@ from ray import serve
 from ray.serve.config import HTTPOptions
 
 from apps.common.config import config
+from apps.common.task import Task
 from apps.common.wordscheck import WordsCheck
 from apps.cron.delete_user import DeleteUserCron
 from apps.dependency.session import VerifySessionMiddleware
@@ -80,11 +81,11 @@ if __name__ == "__main__":
     ray.init(dashboard_host="0.0.0.0", num_cpus=4)  # noqa: S104
 
     # 初始化必要资源
-    WordsCheck.init()
-
-    pool_actor = Pool.remote()
-    ray.get(pool_actor.init.remote()) # type: ignore[]
-    ray.kill(pool_actor)
+    words_check = WordsCheck.options(name="words_check").remote()
+    ray.get(words_check.init.remote())  # type: ignore[attr-type]
+    task = Task.options(name="task").remote()
+    pool_actor = Pool.options(name="pool").remote()
+    ray.get(pool_actor.init.remote())   # type: ignore[attr-type]
 
     # 启动FastAPI
     serve.start(http_options=HTTPOptions(host="0.0.0.0", port=8002))  # noqa: S104

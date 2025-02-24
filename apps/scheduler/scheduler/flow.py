@@ -2,12 +2,14 @@
 
 Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 """
+import asyncio
 from typing import Optional
+
+import ray
 
 from apps.entities.flow import Flow
 from apps.entities.task import RequestDataApp
 from apps.llm.patterns import Select
-from apps.scheduler.pool.pool import Pool
 
 
 class PredifinedRAGFlow(Flow):
@@ -20,19 +22,30 @@ class PredifinedRAGFlow(Flow):
 class FlowChooser:
     """Flow选择器"""
 
-    def __init__(self, task_id: str, question: str, user_selected: Optional[RequestDataApp] = None):
+    def __init__(self, task_id: str, question: str, user_selected: Optional[RequestDataApp] = None) -> None:
         """初始化Flow选择器"""
         self._task_id = task_id
         self._question = question
         self._user_selected = user_selected
 
 
-    def get_top_flow(self) -> str:
+    async def get_top_flow(self) -> str:
         """获取Top1 Flow"""
-        pass
+        pool = ray.get_actor("pool")
+        # 获取所选应用的所有Flow
+        if not self._user_selected or not self._user_selected.app_id:
+            return "KnowledgeBase"
+
+        flow_list = await asyncio.gather(pool.get_flow_list.remote(self._user_selected.app_id))[0]
+        if not flow_list:
+            return "KnowledgeBase"
+
+        top_flow = await Select.generate()
+        return top_flow
 
 
-    def choose_flow(self) -> Optional[RequestDataApp]:
+
+    async def choose_flow(self) -> Optional[RequestDataApp]:
         """依据用户的输入和选择，构造对应的Flow。
 
         - 当用户没有选择任何app时，直接进行智能问答
@@ -44,7 +57,7 @@ class FlowChooser:
         if self._user_selected.flow_id:
             return self._user_selected
 
-        top_flow = self.get_top_flow()
+        top_flow = await self.get_top_flow()
         if top_flow == "KnowledgeBase":
             return None
 

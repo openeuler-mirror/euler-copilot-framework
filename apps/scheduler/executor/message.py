@@ -2,6 +2,10 @@
 
 Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 """
+from typing import Any
+
+import ray
+
 from apps.common.queue import MessageQueue
 from apps.entities.enum_var import EventType, FlowOutputType, StepStatus
 from apps.entities.flow import Flow
@@ -12,15 +16,15 @@ from apps.entities.message import (
     StepOutputContent,
     TextAddContent,
 )
-from apps.entities.task import ExecutorState, FlowHistory
-from apps.llm.patterns.executor import ExecutorResult
-from apps.manager.task import TaskManager
+from apps.entities.task import ExecutorState, FlowHistory, TaskBlock
+from apps.llm.patterns.executor import FinalThought
 
 
 async def push_step_input(task_id: str, queue: MessageQueue, state: ExecutorState, flow: Flow) -> None:
     """推送步骤输入"""
     # 获取Task
-    task = await TaskManager.get_task(task_id)
+    task_actor = ray.get_actor("task")
+    task = await task_actor.get_task.remote(task_id)
 
     if not task.flow_state:
         err = "当前Record不存在Flow信息！"
@@ -40,7 +44,7 @@ async def push_step_input(task_id: str, queue: MessageQueue, state: ExecutorStat
     task.new_context.append(flow_history.id)
     task.flow_context[state.step_id] = flow_history
     # 保存Task到TaskMap
-    await TaskManager.set_task(task_id, task)
+    await task.set_task.remote(task_id, task)
 
     # 组装消息
     if state.status == StepStatus.ERROR:
@@ -61,10 +65,11 @@ async def push_step_input(task_id: str, queue: MessageQueue, state: ExecutorStat
     await queue.push_output(event_type=EventType.STEP_INPUT, data=content.model_dump(exclude_none=True, by_alias=True))
 
 
-async def push_step_output(task_id: str, queue: MessageQueue, state: ExecutorState, flow: Flow, output: CallResult) -> None:
+async def push_step_output(task_id: str, queue: MessageQueue, state: ExecutorState, flow: Flow, output: dict[str, Any]) -> None:
     """推送步骤输出"""
     # 获取Task
-    task = await TaskManager.get_task(task_id)
+    task_actor = ray.get_actor("task")
+    task = await task_actor.get_task.remote(task_id)
 
     if not task.flow_state:
         err = "当前Record不存在Flow信息！"
@@ -74,16 +79,16 @@ async def push_step_output(task_id: str, queue: MessageQueue, state: ExecutorSta
     task.flow_state = state
 
     # 更新FlowContext
-    task.flow_context[state.step_id].output_data = output.model_dump(exclude_none=True, by_alias=True) if output else {}
+    task.flow_context[state.step_id].output_data = output
     task.flow_context[state.step_id].status = state.status
     # 保存Task到TaskMap
-    await TaskManager.set_task(task_id, task)
+    await task.set_task.remote(task_id, task)
 
     # 组装消息；只保留message和output
     content = StepOutputContent(
         callType=flow.steps[state.step_id].call_type,
-        message=output.message if output else "",
-        output=output.output if output else {},
+        message=output["message"] if output and "message" in output else "",
+        output=output["output"] if output and "output" in output else {},
     )
     await queue.push_output(event_type=EventType.STEP_OUTPUT, data=content.model_dump(exclude_none=True, by_alias=True))
 
@@ -91,11 +96,13 @@ async def push_step_output(task_id: str, queue: MessageQueue, state: ExecutorSta
 async def push_flow_start(task_id: str, queue: MessageQueue, state: ExecutorState, question: str) -> None:
     """推送Flow开始"""
     # 获取Task
-    task = await TaskManager.get_task(task_id)
+    task_actor = ray.get_actor("task")
+    task = await task_actor.get_task.remote(task_id)
+
     # 设置state
     task.flow_state = state
     # 保存Task到TaskMap
-    await TaskManager.set_task(task_id, task)
+    await task.set_task.remote(task_id, task)
 
     # 组装消息
     content = FlowStartContent(
@@ -109,9 +116,11 @@ async def push_flow_start(task_id: str, queue: MessageQueue, state: ExecutorStat
 async def push_flow_stop(task_id: str, queue: MessageQueue, state: ExecutorState, flow: Flow, question: str) -> None:
     """推送Flow结束"""
     # 获取Task
-    task = await TaskManager.get_task(task_id)
+    task_actor = ray.get_actor("task")
+    task = await task_actor.get_task.remote(task_id)
+
     task.flow_state = state
-    await TaskManager.set_task(task_id, task)
+    await task.set_task.remote(task_id, task)
 
     # 准备必要数据
     call_type = flow.steps[state.step_id].call_type
@@ -140,7 +149,7 @@ async def push_flow_stop(task_id: str, queue: MessageQueue, state: ExecutorState
         "final_output": content,
     }
     full_text = ""
-    async for chunk in ExecutorResult().generate(task_id, **params):
+    async for chunk in FinalThought().generate(task_id, **params):
         if not chunk:
             continue
         await queue.push_output(
@@ -155,4 +164,5 @@ async def push_flow_stop(task_id: str, queue: MessageQueue, state: ExecutorState
     # 更新Thought
     task.record.content.answer = full_text
     task.flow_state = state
-    await TaskManager.set_task(task_id, task)
+
+    await task.set_task.remote(task_id, task)

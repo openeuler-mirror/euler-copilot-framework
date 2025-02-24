@@ -8,10 +8,8 @@ import asyncer
 
 from apps.constants import LOGGER
 from apps.entities.collection import Audit
-from apps.manager import (
-    AuditLogManager,
-    UserManager,
-)
+from apps.manager.audit_log import AuditLogManager
+from apps.manager.user import UserManager
 from apps.models.mongo import MongoDB
 from apps.service.knowledge_base import KnowledgeBaseService
 

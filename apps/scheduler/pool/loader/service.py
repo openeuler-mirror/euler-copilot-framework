@@ -5,7 +5,9 @@ Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 import asyncio
 import uuid
 
+import ray
 from anyio import Path
+from sqlalchemy import delete
 from sqlalchemy.dialects.postgresql import insert
 
 from apps.common.config import config
@@ -20,11 +22,9 @@ from apps.scheduler.pool.loader.metadata import MetadataLoader
 from apps.scheduler.pool.loader.openapi import OpenAPILoader
 
 
+@ray.remote
 class ServiceLoader:
     """Service 加载器"""
-
-    _collection = MongoDB.get_collection("service")
-
 
     async def load(self, service_id: str, hashes: dict[str, str]) -> None:
         """加载单个Service"""
@@ -46,8 +46,7 @@ class ServiceLoader:
         await self._update_db(nodes, metadata)
 
 
-    @classmethod
-    async def _update_db(cls, nodes: list[NodePool], metadata: ServiceMetadata) -> None:
+    async def _update_db(self, nodes: list[NodePool], metadata: ServiceMetadata) -> None:
         """更新数据库"""
         # 更新MongoDB
         service_collection = MongoDB.get_collection("service")
@@ -96,7 +95,7 @@ class ServiceLoader:
             await session.execute(insert_stmt)
 
         await session.commit()
-
+        await session.aclose()
 
     async def save(self, service_id: str, metadata: ServiceMetadata, data: dict) -> None:
         """在文件系统上保存Service，并更新数据库"""
@@ -116,4 +115,22 @@ class ServiceLoader:
 
     async def delete(self, service_id: str) -> None:
         """删除Service，并更新数据库"""
-        pass
+        service_collection = MongoDB.get_collection("service")
+        node_collection = MongoDB.get_collection("node")
+        try:
+            await service_collection.delete_one({"_id": service_id})
+            await node_collection.delete_many({"service_id": service_id})
+        except Exception as e:
+            err = f"删除Service失败：{e}"
+            LOGGER.error(err)
+
+        session = await PostgreSQL.get_session()
+        try:
+            await session.execute(delete(ServicePoolVector).where(ServicePoolVector.id == service_id))
+            await session.execute(delete(NodePoolVector).where(NodePoolVector.id == service_id))
+            await session.commit()
+        except Exception as e:
+            err = f"删除数据库失败：{e}"
+            LOGGER.error(err)
+
+        await session.aclose()
