@@ -2,8 +2,10 @@
 
 Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 """
+
 import uuid
 from typing import Any
+
 import ray
 import yaml
 from anyio import Path
@@ -52,8 +54,10 @@ class OpenAPILoader:
         return schema
 
     async def _get_api_data(
-            self, spec: ReducedOpenAPIEndpoint, service_metadata: ServiceMetadata) -> tuple[
-            APINodeInput, APINodeOutput, dict[str, Any]]:
+        self,
+        spec: ReducedOpenAPIEndpoint,
+        service_metadata: ServiceMetadata,
+    ) -> tuple[APINodeInput, APINodeOutput, dict[str, Any]]:
         """从OpenAPI文档中获取API数据"""
         try:
             method = HTTPMethod[spec.method.upper()]
@@ -80,8 +84,12 @@ class OpenAPILoader:
 
         try:
             inp = APINodeInput(
-                param_schema=await self.parameters_to_spec(spec.spec["parameters"]) if "parameters" in spec.spec else None,
-                body_schema=spec.spec["requestBody"]["content"][content_type]["schema"] if "requestBody" in spec.spec else None,
+                param_schema=await self.parameters_to_spec(spec.spec["parameters"])
+                if "parameters" in spec.spec
+                else None,
+                body_schema=spec.spec["requestBody"]["content"][content_type]["schema"]
+                if "requestBody" in spec.spec
+                else None,
             )
         except KeyError:
             err = f"接口{spec.name}请求体定义错误"
@@ -104,8 +112,13 @@ class OpenAPILoader:
 
         return inp, out, known_params
 
-    async def _process_spec(self, service_id: str, yaml_filename: str, spec: ReducedOpenAPISpec,
-                            service_metadata: ServiceMetadata) -> list[APINode]:
+    async def _process_spec(
+        self,
+        service_id: str,
+        yaml_filename: str,
+        spec: ReducedOpenAPISpec,
+        service_metadata: ServiceMetadata,
+    ) -> list[APINode]:
         """将OpenAPI文档拆解为Node"""
         nodes = []
         for api_endpoint in spec.endpoints:
@@ -121,7 +134,10 @@ class OpenAPILoader:
             )
 
             # 合并参数
-            node.override_input, node.override_output, node.known_params = await self._get_api_data(api_endpoint, service_metadata)
+            node.override_input, node.override_output, node.known_params = await self._get_api_data(
+                api_endpoint,
+                service_metadata,
+            )
             nodes.append(node)
         return nodes
 
