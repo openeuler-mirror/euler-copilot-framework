@@ -174,7 +174,7 @@ class Scheduler:
                     if history.id == history_id:
                         history_data.append(history)
                         break
-            await TaskManager.create_flows(history_data)
+            await Task.create_flows(history_data)
 
         # 修改metadata里面时间为实际运行时间
         task.record.metadata.time = round(datetime.now(timezone.utc).timestamp() - task.record.metadata.time, 2)

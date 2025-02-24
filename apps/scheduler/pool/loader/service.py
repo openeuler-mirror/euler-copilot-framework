@@ -49,6 +49,7 @@ class ServiceLoader:
         nodes = [NodePool(**node.model_dump(exclude_none=True, by_alias=True)) for node in nodes]
         await self._update_db(nodes, metadata)
 
+
     async def _update_db(self, nodes: list[NodePool], metadata: ServiceMetadata) -> None:
         """更新数据库"""
         # 更新MongoDB
