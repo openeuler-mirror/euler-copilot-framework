@@ -7,6 +7,7 @@ from typing import Any, Optional, Union
 
 import yaml
 from anyio import Path
+from fastapi.encoders import jsonable_encoder
 
 from apps.common.config import config
 from apps.constants import APP_DIR, LOGGER, SERVICE_DIR
@@ -94,5 +95,5 @@ class MetadataLoader:
         else:
             data = metadata
 
-        yaml_data = yaml.safe_dump(data.model_dump(by_alias=True, exclude_none=True))
+        yaml_data = yaml.safe_dump(jsonable_encoder(data))
         await resource_path.write_text(yaml_data)
