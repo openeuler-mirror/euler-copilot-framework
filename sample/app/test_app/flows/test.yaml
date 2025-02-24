@@ -15,7 +15,7 @@ on_error:
 
 # 各个节点定义
 steps:
-  - id: query_data  # 节点的Pool ID
+  query_data:  # 节点的Pool ID
     node: api
     name: 查询数据    # 节点名称
     description: 从API中查询测试数据 # 节点描述
@@ -24,7 +24,7 @@ steps:
       y: 100
     params:  # 节点的参数
       endpoint: GET /api/test  # API Endpoint名称
-  - id: check_data
+  check_data:
     node: choice
     name: 判断数据
     description: 判断工具的返回值是否包含有效数据
@@ -38,7 +38,7 @@ steps:
           description: 返回值存在有效数据   # 选项说明，满足就会选择此项
         - branch: invalid
           description: 返回值不存在有效数据
-  - id: gen_reply
+  gen_reply:
     node: llm
     name: 生成回复
     description: 使用大模型生成回复
@@ -62,7 +62,7 @@ steps:
         测试数据：{{ storage[-1].output.result.machines[0].data }}
 
         使用自然语言解释这一信息，并展示为Markdown列表。
-  - id: format_output
+  format_output:
     node: convert
     name: 格式化输出
     description: 按照特定格式输出
@@ -89,7 +89,7 @@ steps:
           "time": extras.time,
           "machines": [x for x.id in storage[-1].output.result.machines]
         }
-  - id: gen_suggest
+  gen_suggest:
     node: suggest
     name: 问题推荐
     description: 推荐问题

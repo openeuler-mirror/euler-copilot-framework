@@ -43,6 +43,7 @@ class ServiceLoader:
                 async for yaml_path in (service_path / "openapi").rglob("*.yaml")]
         nodes = (await asyncio.gather(*nodes))[0]
         # 更新数据库
+        nodes = [NodePool(**node.model_dump(exclude_none=True, by_alias=True)) for node in nodes]
         await self._update_db(nodes, metadata)
 
 

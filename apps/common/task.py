@@ -137,7 +137,7 @@ class Task:
             err = f"Task {task_id} not found"
             raise ValueError(err)
 
-        await task_collection.update_one({"_id": task_id}, {"$set": task.model_dump(by_alias=True)}, upsert=True)
+        await task_collection.update_one({"_id": task_id}, {"$set": task.model_dump(by_alias=True, exclude_none=True)}, upsert=True)
 
         # 从task_map中删除任务块，释放内存
         del self._task_map[task_id]

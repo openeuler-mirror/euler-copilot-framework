@@ -1,11 +1,9 @@
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, status
-from fastapi.responses import JSONResponse, StreamingResponse
+from fastapi import APIRouter, Depends, status
+from fastapi.responses import JSONResponse
 
-from apps.common.queue import MessageQueue
-from apps.common.wordscheck import WordsCheck
 from apps.constants import LOGGER
 from apps.dependency import (
     get_session,
@@ -13,13 +11,9 @@ from apps.dependency import (
     verify_csrf_token,
     verify_user,
 )
-from apps.entities.request_data import RequestData
-from apps.entities.response_data import ResponseData, UserGetMsp, UserGetRsp
+from apps.entities.response_data import UserGetMsp, UserGetRsp
 from apps.entities.user import UserInfo
-from apps.manager.appcenter import AppCenterManager
 from apps.manager.user import UserManager
-from apps.scheduler.scheduler import Scheduler
-from apps.service.activity import Activity
 
 router = APIRouter(
     prefix="/api/user",
