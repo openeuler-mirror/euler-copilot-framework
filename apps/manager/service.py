@@ -8,11 +8,12 @@ from typing import Any, Optional
 import ray
 import yaml
 from anyio import Path
-from jsonschema import ValidationError, validate
+from jsonschema import ValidationError
 
 from apps.common.config import config
 from apps.constants import LOGGER, SERVICE_DIR
 from apps.entities.enum_var import SearchType
+from apps.entities.file_type import OpenAPI
 from apps.entities.flow import ServiceApiConfig, ServiceMetadata
 from apps.entities.pool import NodePool, ServicePool
 from apps.entities.response_data import ServiceApiData, ServiceCardItem
@@ -288,35 +289,8 @@ class ServiceCenterManager:
             msg = "Service data is empty"
             raise ValueError(msg)
         # 校验 OpenAPI 规范的 JSON Schema
-        openapi_schema = {
-            "type": "object",
-            "properties": {
-                "openapi": {"type": "string"},
-                "info": {
-                    "type": "object",
-                    "properties": {
-                        "title": {"type": "string"},
-                        "version": {"type": "string"},
-                        "description": {"type": "string"},
-                    },
-                    "required": ["title", "version", "description"],
-                },
-                "servers": {
-                    "type": "array",
-                    "items": {
-                        "type": "object",
-                        "properties": {
-                            "url": {"type": "string"},
-                        },
-                        "required": ["url"],
-                    },
-                },
-                "paths": {"type": "object"},
-            },
-            "required": ["openapi", "info", "servers", "paths"],
-        }
         try:
-            validate(instance=data, schema=openapi_schema)
+            OpenAPI.model_validate(data)
         except ValidationError as e:
             msg = f"Data does not conform to OpenAPI standard: {e.message}"
             raise ValueError(msg) from e
