@@ -140,7 +140,7 @@ async def put_flow(
             message="用户没有权限访问该流",
             result=FlowStructurePutMsg(),
         ).model_dump(exclude_none=True, by_alias=True))
-    # put_body.flow=await FlowService.remove_excess_structure_from_flow(put_body.flow)
+    put_body.flow=await FlowService.remove_excess_structure_from_flow(put_body.flow)
     if topology_check:
         await FlowService.validate_flow_connectivity(put_body.flow)
     await FlowService.validate_flow_illegal(put_body.flow)
@@ -151,7 +151,7 @@ async def put_flow(
             message="应用下流更新失败",
             result=FlowStructurePutMsg(),
         ).model_dump(exclude_none=True, by_alias=True))
-    flow, _ = await FlowManager.get_flow_by_app_and_flow_id(app_id, flow_id)
+    flow=await FlowManager.get_flow_by_app_and_flow_id(app_id, flow_id)
     if flow is None:
         return JSONResponse(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, content=FlowStructurePutRsp(
             code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -161,7 +161,7 @@ async def put_flow(
     return JSONResponse(status_code=status.HTTP_200_OK, content=FlowStructurePutRsp(
         code=status.HTTP_200_OK,
         message="应用下流更新成功",
-        result=FlowStructurePutMsg(flow=flow)
+        result=FlowStructurePutMsg(flow=flow[0])
     ).model_dump(exclude_none=True, by_alias=True))
 
 

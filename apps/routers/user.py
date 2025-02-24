@@ -4,9 +4,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, status
 from fastapi.responses import JSONResponse
 
-from apps.constants import LOGGER
 from apps.dependency import (
-    get_session,
     get_user,
     verify_csrf_token,
     verify_user,
@@ -23,7 +21,6 @@ router = APIRouter(
 @router.get("", dependencies=[Depends(verify_csrf_token), Depends(verify_user)])
 async def chat(
     user_sub: Annotated[str, Depends(get_user)],
-    session_id: Annotated[str, Depends(get_session)],
 ) -> JSONResponse:
     """查询所有用户接口"""
     user_list = await UserManager.get_all_user_sub()

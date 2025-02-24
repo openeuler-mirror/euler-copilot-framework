@@ -15,6 +15,7 @@ from apps.entities.flow import Flow
 from apps.models.mongo import MongoDB
 
 
+# TODO:修改成公共函数
 async def search_step_type(node_id: str) -> str:
     """获取node的基础类型"""
     node_collection = MongoDB.get_collection("node")
@@ -32,7 +33,7 @@ async def search_step_type(node_id: str) -> str:
 async def search_step_name(node_id: str) -> str:
     """获取node的名称"""
     node_collection = MongoDB.get_collection("node")
-    # 查询 Node 集合获取对应的 call_id
+    # 查询 Node 集合获取对应的 name
     node_doc = await node_collection.find_one({"_id": node_id})
     if not node_doc:
         LOGGER.error(f"Node {node_id} not found")
@@ -56,11 +57,13 @@ class FlowLoader:
 
         if "name" not in flow_yaml:
             err = f"工作流名称不能为空：{flow_path!s}"
-            raise ValueError(err)
+            LOGGER.error(err)
+            return None
 
         if "::" in flow_id:
             err = f"工作流名称包含非法字符：{flow_path!s}"
-            raise ValueError(err)
+            LOGGER.error(err)
+            return None
 
         for edge in flow_yaml["edges"]:
             # 把from变成edge_from,to改成edge_to，type改成edge_type
@@ -75,14 +78,13 @@ class FlowLoader:
                 except KeyError as e:
                     LOGGER.error(f"Invalid edge type: {edge['type']}")
 
-        for step in flow_yaml["steps"]:
+        for key, step in flow_yaml["steps"].items():
             if step["node"] in ["start", "end"]:
                 step["type"] = step["node"]
-                step["name"] = step["node"]
+                step["name"] = "开始" if step["node"] == "start" else "结束"
             else:
                 step["type"] = await search_step_type(step["node"])
                 step["name"] = await search_step_name(step["node"])
-
         try:
             # 检查Flow格式，并转换为Flow对象
             flow = Flow.model_validate(flow_yaml)
@@ -104,17 +106,16 @@ class FlowLoader:
             "name": flow.name,
             "description": flow.description,
             "on_error": flow.on_error.dict(),
-            "steps": [
-                {
-                    "id": step.id,
+            "steps": {
+                id: {
                     "name": step.name,
                     "description": step.description,
                     "node": step.node,
                     "params": step.params,
                     "pos": step.pos.dict(),
                 }
-                for step in flow.steps
-            ],
+                for id, step in flow.steps.items()
+            },
             "edges": [
                 {
                     "id": edge.id,
