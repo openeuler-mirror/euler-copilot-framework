@@ -121,4 +121,4 @@ spec:
   {{- else if eq $arch "x86_64" -}}empty-x86
   {{- else -}}empty
   {{- end -}}
-{{- end -}
+{{- end -}}

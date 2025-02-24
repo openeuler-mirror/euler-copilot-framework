@@ -116,4 +116,4 @@ spec:
   {{- else if eq $arch "x86_64" -}}7.0.16-x86
   {{- else -}}7.0.16
   {{- end -}}
-{{- end -}
+{{- end -}}
