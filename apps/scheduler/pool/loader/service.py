@@ -2,7 +2,6 @@
 
 Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 """
-
 import asyncio
 import pathlib
 
@@ -52,11 +51,12 @@ class ServiceLoader:
     async def save(self, service_id: str, metadata: ServiceMetadata, data: dict) -> None:
         """在文件系统上保存Service，并更新数据库"""
         service_path = pathlib.Path(config["SEMANTICS_DIR"]) / "service" / service_id
+        openapi_path = service_path / "openapi"/"api.yaml"
         # 保存元数据
         await MetadataLoader().save_one(MetadataType.SERVICE, metadata, service_id)
         # 保存 OpenAPI 文档
         openapi_loader = OpenAPILoader.remote()
-        await openapi_loader.save_one.remote(data)  # type: ignore[arg-type]
+        await openapi_loader.save_one.remote(openapi_path, data)  # type: ignore[arg-type]
         ray.kill(openapi_loader)
         # 重新载入
         hashes = FileChecker().check_one(service_path)
