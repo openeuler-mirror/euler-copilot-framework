@@ -191,7 +191,6 @@ class FlowManager:
                 {"_id": app_id, "flows._id": flow_id},
                 {"flows.$": 1},  # 只返回 flows 数组中符合条件的第一个元素
             )
-
             # 获取结果列表，并限制长度为1，因为我们只期待一个结果
             app_records = await cursor.to_list(length=1)
             if len(app_records) == 0:
@@ -222,11 +221,10 @@ class FlowManager:
                     nodes=[],
                     edges=[],
                     createdAt=flow_record["created_at"],
-                    debug=flow_config["debug"],
                 )
-                for node_config in flow_config["steps"]:
+                for node_id, node_config in flow_config["steps"].items():
                     node_item = NodeItem(
-                        nodeId=node_config["id"],
+                        nodeId=node_id,
                         nodeMetaDataId=node_config["node"],
                         name=node_config["name"],
                         description=node_config["description"],
@@ -297,13 +295,12 @@ class FlowManager:
             flow_config = Flow(
                 name=flow_item.name,
                 description=flow_item.description,
-                steps=[],
+                steps={},
                 edges=[],
                 debug=False,
             )
             for node_item in flow_item.nodes:
-                edge_config = Step(
-                    id=node_item.node_id,
+                flow_config.steps[node_item.node_id] = Step(
                     type=node_item.type,
                     node=node_item.node_meta_data_id,
                     name=node_item.name,
@@ -312,7 +309,6 @@ class FlowManager:
                                 y=node_item.position.y),
                     params=node_item.parameters,
                 )
-                flow_config.steps.append(edge_config)
             for edge_item in flow_item.edges:
                 edge_from = edge_item.source_node
                 if edge_item.branch_id:
@@ -395,3 +391,20 @@ class FlowManager:
             LOGGER.error(
                 f"Delete flow by app_id and flow_id failed due to: {e}")
             return None
+
+    @staticmethod
+    async def updata_flow_debug_by_app_and_flow_id(app_id: str, flow_id: str, debug: bool)-> bool:
+        try:
+            app_pool_collection = MongoDB.get_collection("app")
+            result = await app_pool_collection.find_one_and_update(
+                {"_id": app_id},
+                {"$set": {"flows.$[flow].debug": debug}},
+                array_filters=[{"flow._id": flow_id}]  # 使用关键字参数 array_filters
+            )
+            if result is None:
+                LOGGER.error("Update flow debug from app pool failed")
+                return False
+            return True
+        except Exception as e:
+            LOGGER.error(f'Update flow debug from app pool failed: {e}')
+            return False
