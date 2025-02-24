@@ -2,6 +2,9 @@
 
 Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 """
+
+import pathlib
+
 import ray
 from anyio import Path
 from fastapi.encoders import jsonable_encoder
@@ -15,6 +18,7 @@ from apps.entities.pool import AppPool
 from apps.entities.vector import AppPoolVector
 from apps.models.mongo import MongoDB
 from apps.models.postgres import PostgreSQL
+from apps.scheduler.pool.check import FileChecker
 from apps.scheduler.pool.loader.flow import FlowLoader
 from apps.scheduler.pool.loader.metadata import MetadataLoader
 
@@ -38,7 +42,7 @@ class AppLoader:
         metadata.hashes = hashes
 
         if not isinstance(metadata, AppMetadata):
-            err = f"元数据类型错误: {metadata_path}"
+            err = f"[AppLoader] 元数据类型错误: {metadata_path}"
             LOGGER.error(err)
             raise TypeError(err)
 
@@ -54,21 +58,19 @@ class AppLoader:
 
         await self._update_db(metadata)
 
-
     async def save(self, metadata: AppMetadata, app_id: str) -> None:
         """保存应用
 
         :param metadata: 应用元数据
         :param app_id: 应用 ID
         """
-        #创建文件夹
+        # 创建文件夹
         app_path = Path(config["SEMANTICS_DIR"]) / APP_DIR / app_id
         await app_path.mkdir(parents=True, exist_ok=True)
-        #保存元数据
+        # 保存元数据
         await MetadataLoader().save_one(MetadataType.APP, metadata, app_id)
-        #保存工作流
+        # 保存工作流
         await self._update_db(metadata)
-
 
     async def delete(self, app_id: str) -> None:
         """删除App，并更新数据库
@@ -91,7 +93,6 @@ class AppLoader:
             LOGGER.error(err)
 
         await session.aclose()
-
 
     async def _update_db(self, metadata: AppMetadata) -> None:
         """更新数据库"""
