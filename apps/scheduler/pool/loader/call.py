@@ -197,6 +197,7 @@ class CallLoader:
             )
             await session.execute(insert_stmt)
         await session.commit()
+        await session.aclose()
 
 
     async def load(self) -> None:

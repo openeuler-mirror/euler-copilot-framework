@@ -2,14 +2,16 @@
 
 Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 """
+import ray
+
 from apps.common.security import Security
 from apps.entities.collection import RecordContent
 from apps.entities.request_data import RequestData
 from apps.llm.patterns.facts import Facts
-from apps.manager import RecordManager, TaskManager
+from apps.manager.record import RecordManager
 
 
-async def get_context(user_sub: str, post_body: RequestData, n: int) -> tuple[list[dict[str, str]], list[str]]:
+async def get_context(user_sub: str, post_body: RequestData, n: int) -> tuple[str, list[str]]:
     """获取当前问答的上下文信息
 
     注意：这里的n要比用户选择的多，因为要考虑事实信息和历史问题
@@ -23,23 +25,29 @@ async def get_context(user_sub: str, post_body: RequestData, n: int) -> tuple[li
     facts = []
     for record in records:
         facts.extend(record.facts)
+
     # 组装问答
-    messages = []
+    messages = "<conversation>"
     for record in records:
         record_data = RecordContent.model_validate_json(Security.decrypt(record.data, record.key))
 
-        messages = [
-            {"role": "user", "content": record_data.question},
-            {"role": "assistant", "content": record_data.answer},
-            *messages,
-        ]
+        messages += f"""
+            <user>
+                {record_data.question}
+            </user>
+            <assistant>
+                {record_data.answer}
+            </assistant>
+        """
+    messages += "</conversation>"
 
     return messages, facts
 
 
 async def generate_facts(task_id: str, question: str) -> list[str]:
     """生成Facts"""
-    task = await TaskManager.get_task(task_id)
+    task_pool = ray.get_actor("task")
+    task = await task_pool.get_task.remote(task_id)
     if not task:
         err = "Task not found"
         raise ValueError(err)

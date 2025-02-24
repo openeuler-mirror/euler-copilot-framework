@@ -14,6 +14,7 @@ jsonnet-binary==0.17.0
 jsonschema==4.23.0
 jieba==0.42.1
 httpx==0.27.2
+memray==1.15.0
 minio==7.2.11
 ollama==0.4.4
 openai==1.57.0

@@ -2,20 +2,32 @@
 
 Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 """
-from fastapi import APIRouter, Depends, status, Query, Body
-from fastapi.responses import JSONResponse
 from typing import Annotated, Optional
 
+from fastapi import APIRouter, Body, Depends, Query, status
+from fastapi.responses import JSONResponse
+
+from apps.dependency import get_user
 from apps.dependency.csrf import verify_csrf_token
 from apps.dependency.user import verify_user
-from apps.dependency import get_user
 from apps.entities.flow_topology import NodeItem
 from apps.entities.request_data import PutFlowReq
-from apps.entities.response_data import NodeServiceListRsp, NodeServiceListMsg, NodeMetaDataRsp, FlowStructureGetRsp, \
-    FlowStructureGetMsg, FlowStructurePutRsp, FlowStructurePutMsg, FlowStructureDeleteRsp, FlowStructureDeleteMsg, ResponseData
-from apps.manager.flow import FlowManager
+from apps.entities.response_data import (
+    FlowStructureDeleteMsg,
+    FlowStructureDeleteRsp,
+    FlowStructureGetMsg,
+    FlowStructureGetRsp,
+    FlowStructurePutMsg,
+    FlowStructurePutRsp,
+    NodeMetaDataRsp,
+    NodeServiceListMsg,
+    NodeServiceListRsp,
+    ResponseData,
+)
 from apps.manager.application import AppManager
+from apps.manager.flow import FlowManager
 from apps.utils.flow import FlowService
+
 router = APIRouter(
     prefix="/api/flow",
     tags=["flow"],
@@ -30,7 +42,7 @@ router = APIRouter(
     status.HTTP_404_NOT_FOUND: {"model": ResponseData},
 })
 async def get_services(
-    user_sub: Annotated[str, Depends(get_user)]
+    user_sub: Annotated[str, Depends(get_user)],
 ):
     """获取用户可访问的节点元数据所在服务的信息"""
     services = await FlowManager.get_service_by_user_id(user_sub)
@@ -54,7 +66,7 @@ async def get_services(
 })
 async def get_node_metadatas(
     user_sub: Annotated[str, Depends(get_user)],
-    node_metadata_id: int = Query(..., alias="NodeMetadataId")
+    node_metadata_id: Annotated[str, Query(alias="NodeMetadataId")],
 ):
     """获取节点元数据的详细信息"""
     if not await FlowManager.validate_user_node_meta_data_access(user_sub, node_metadata_id):

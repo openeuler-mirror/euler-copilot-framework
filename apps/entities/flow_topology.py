@@ -28,6 +28,8 @@ class NodeServiceItem(BaseModel):
     type: str = Field(..., description="服务类型")
     node_meta_datas: list[NodeMetaDataItem] = Field(alias="nodeMetaDatas", default=[])
     created_at: str = Field(..., alias="createdAt", description="创建时间")
+
+
 class PositionItem(BaseModel):
     """请求/响应中的前端相对位置变量类"""
 
@@ -56,6 +58,7 @@ class NodeItem(BaseModel):
     depedency: Optional[DependencyItem] = None
     position: PositionItem=Field(default=PositionItem())
     editable: bool = Field(default=True)
+
 
 class EdgeItem(BaseModel):
     """请求/响应中的边变量类"""

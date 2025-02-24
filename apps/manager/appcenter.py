@@ -8,16 +8,15 @@ from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, Optional
 
-from fastapi.encoders import jsonable_encoder
-
 from apps.constants import LOGGER
 from apps.entities.appcenter import AppCenterCardItem, AppData
 from apps.entities.collection import User
 from apps.entities.enum_var import SearchType
-from apps.entities.flow import Permission
+from apps.entities.flow import AppMetadata, MetadataType, Permission
 from apps.entities.pool import AppPool
 from apps.entities.response_data import RecentAppList, RecentAppListItem
 from apps.models.mongo import MongoDB
+from apps.scheduler.pool.loader.app import AppLoader
 
 
 class AppCenterManager:
@@ -203,12 +202,45 @@ class AppCenterManager:
         :return: 应用ID
         """
         app_id = str(uuid.uuid4())
-        app = AppPool(
-            _id=app_id,
+        metadata = AppMetadata(
+            type=MetadataType.APP,
+            id=app_id,
+            icon=data.icon,
             name=data.name,
             description=data.description,
+            version="1.0.0",
             author=user_sub,
+            links=data.links,
+            first_questions=data.first_questions,
+            history_len=data.history_len,
+            permission=Permission(
+                type=data.permission.type,
+                users=data.permission.users or [],
+            ),
+        )
+        try:
+            await AppLoader.save(MetadataType.APP, metadata, app_id)
+            return app_id
+        except Exception as e:
+            LOGGER.error(f"[AppCenterManager] Create app failed: {e}")
+        return None
+
+    @staticmethod
+    async def update_app(user_sub: str, app_id: str, data: AppData) -> bool:
+        """更新应用
+
+        :param app_id: 应用唯一标识
+        :param data: 应用数据
+        :return: 是否成功
+        """
+        metadata = AppMetadata(
+            type=MetadataType.APP,
+            id=app_id,
             icon=data.icon,
+            name=data.name,
+            description=data.description,
+            version="1.0.0",
+            author=user_sub,
             links=data.links,
             first_questions=data.first_questions,
             history_len=data.history_len,
@@ -219,42 +251,13 @@ class AppCenterManager:
         )
         try:
             app_collection = MongoDB.get_collection("app")
-            await app_collection.insert_one(jsonable_encoder(app))
-            return app_id
-        except Exception as e:
-            LOGGER.error(f"[AppCenterManager] Create app failed: {e}")
-        return None
-
-    @staticmethod
-    async def update_app(app_id: str, data: AppData) -> bool:
-        """更新应用
-
-        :param app_id: 应用唯一标识
-        :param data: 应用数据
-        :return: 是否成功
-        """
-        try:
-            app_collection = MongoDB.get_collection("app")
             app_data = AppPool.model_validate(await app_collection.find_one({"_id": app_id}))
             if not app_data:
                 return False
+            await AppLoader.save(MetadataType.APP, metadata, app_id)
             # 如果工作流ID列表不一致，则需要取消发布状态
-            published_false_needed = {flow.id for flow in app_data.flows} != set(data.workflows)
-            update_data = {
-                "name": data.name,
-                "description": data.description,
-                "icon": data.icon,
-                "links": data.links,
-                "first_questions": data.first_questions,
-                "history_len": data.history_len,
-                "permission": Permission(
-                    type=data.permission.type,
-                    users=data.permission.users or [],
-                ),
-            }
-            if published_false_needed:
-                update_data["published"] = False
-            await app_collection.update_one({"_id": app_id}, {"$set": jsonable_encoder(update_data)})
+            if {flow.id for flow in app_data.flows} != set(data.workflows):
+                await app_collection.update_one({"_id": app_id}, {"$set": {"published": False}})
             return True
         except Exception as e:
             LOGGER.error(f"[AppCenterManager] Update app failed: {e}")

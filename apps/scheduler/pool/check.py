@@ -72,19 +72,22 @@ class FileChecker:
         # 遍历列表
         for list_item in items:
             # 判断是否存在？
-            if not (self._dir_path / list_item["_id"]).exists():
+            if not Path(self._dir_path / list_item["_id"]).exists():
                 deleted_list.append(list_item["_id"])
                 continue
             # 判断是否发生变化
-            if self.diff_one(self._dir_path / list_item["_id"], list_item.get("hashes", None)):
+            if self.diff_one(Path(self._dir_path / list_item["_id"]), list_item.get("hashes", None)):
                 changed_list.append(list_item["_id"])
 
         # 遍历目录
+        item_names = [item["_id"] for item in items]
         for service_folder in self._dir_path.iterdir():
             # 判断是否新增？
-            if (service_folder.name not in items and
+            if (service_folder.name not in item_names and
                 service_folder.name not in deleted_list and
                 service_folder.name not in changed_list):
                 changed_list += [service_folder.name]
+                # 触发一次hash计算
+                self.diff_one(service_folder)
 
         return changed_list, deleted_list

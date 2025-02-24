@@ -14,9 +14,6 @@ from apps.llm.reasoning import ReasoningLLM
 class ExecutorThought(CorePattern):
     """通过大模型生成Executor的思考内容"""
 
-    system_prompt: str = ""
-    """系统提示词"""
-
     user_prompt: str = r"""
         你是一个可以使用工具的智能助手。请简明扼要地总结工具的使用过程，提供你的见解，并给出下一步的行动。
 
@@ -126,11 +123,8 @@ class ExecutorBackground(CorePattern):
         return result
 
 
-class ExecutorResult(CorePattern):
+class FinalThought(CorePattern):
     """使用大模型生成Executor的最终结果"""
-
-    system_prompt: str = ""
-    """系统提示词"""
 
     user_prompt: str = r"""
         你是AI智能助手，请回答用户的问题并满足以下要求：

@@ -17,35 +17,35 @@ from apps.entities.scheduler import SysCallVars
 from apps.scheduler.call.core import CoreCall
 
 
-class _ReformatParam(BaseModel):
-    """校验Reformat Call需要的额外参数"""
+class _ConvertParam(BaseModel):
+    """校验Convert Call需要的额外参数"""
 
     text: Optional[str] = Field(description="对生成的文字信息进行格式化，没有则不改动；jinja2语法", default=None)
     data: Optional[str] = Field(description="对生成的原始数据（JSON）进行格式化，没有则不改动；jsonnet语法", default=None)
 
 
-class _ReformatOutput(BaseModel):
-    """定义Reformat工具的输出"""
+class _ConvertOutput(BaseModel):
+    """定义Convert工具的输出"""
 
     message: str = Field(description="格式化后的文字信息")
     output: dict = Field(description="格式化后的结果")
 
 
-class Reformat(metaclass=CoreCall, param_cls=_ReformatParam, output_cls=_ReformatOutput):
-    """Reformat 工具，用于对生成的文字信息和原始数据进行格式化"""
+class Convert(metaclass=CoreCall, param_cls=_ConvertParam, output_cls=_ConvertOutput):
+    """Convert 工具，用于对生成的文字信息和原始数据进行格式化"""
 
-    name: str = "reformat"
+    name: str = "convert"
     description: str = "从上一步的工具的原始JSON返回结果中，提取特定字段的信息。"
 
 
-    async def __call__(self, _slot_data: dict[str, Any]) -> _ReformatOutput:
-        """调用Reformat工具
+    async def __call__(self, _slot_data: dict[str, Any]) -> _ConvertOutput:
+        """调用Convert工具
 
         :param _slot_data: 经用户确认后的参数（目前未使用）
         :return: 提取出的字段
         """
         # 获取必要参数
-        params: _ReformatParam = getattr(self, "_params")
+        params: _ConvertParam = getattr(self, "_params")
         syscall_vars: SysCallVars = getattr(self, "_syscall_vars")
         last_output = syscall_vars.history[-1].output_data
         # 判断用户是否给了值
@@ -76,7 +76,7 @@ class Reformat(metaclass=CoreCall, param_cls=_ReformatParam, output_cls=_Reforma
             """)
             result_data = json.loads(_jsonnet.evaluate_snippet(data_template, params.data), ensure_ascii=False)
 
-        return _ReformatOutput(
+        return _ConvertOutput(
             message=result_message,
             output=result_data,
         )

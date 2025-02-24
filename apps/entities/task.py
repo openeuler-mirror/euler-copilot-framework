@@ -62,7 +62,7 @@ class RequestDataApp(BaseModel):
     params: dict[str, Any] = Field(description="插件参数")
 
 
-class Task(BaseModel):
+class TaskData(BaseModel):
     """任务信息
 
     Collection: task

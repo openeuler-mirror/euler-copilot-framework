@@ -2,8 +2,7 @@
 
 Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 """
-import asyncio
-from pathlib import Path
+from typing import Optional
 
 import aiofiles
 import yaml
@@ -18,6 +17,7 @@ from apps.models.mongo import MongoDB
 
 # TODO:修改成公共函数
 async def search_step_type(node_id: str) -> str:
+    """获取node的基础类型"""
     node_collection = MongoDB.get_collection("node")
     # 查询 Node 集合获取对应的 call_id
     node_doc = await node_collection.find_one({"_id": node_id})
@@ -31,6 +31,7 @@ async def search_step_type(node_id: str) -> str:
     return call_id
 
 async def search_step_name(node_id: str) -> str:
+    """获取node的名称"""
     node_collection = MongoDB.get_collection("node")
     # 查询 Node 集合获取对应的 name
     node_doc = await node_collection.find_one({"_id": node_id})
@@ -43,14 +44,15 @@ async def search_step_name(node_id: str) -> str:
         return ""
     return call_id
 
+
 class FlowLoader:
     """工作流加载器"""
 
     @classmethod
-    async def load(cls, app_id: str, flow_id: str) -> Flow:
+    async def load(cls, app_id: str, flow_id: str) -> Optional[Flow]:
         """从文件系统中加载【单个】工作流"""
         flow_path = Path(config["SERVICE_DIR"]) / "app" / app_id / "flow" / f"{flow_id}.yaml"
-        async with aiofiles.open(flow_path, mode='r', encoding="utf-8") as f:
+        async with aiofiles.open(flow_path, encoding="utf-8") as f:
             flow_yaml = yaml.safe_load(await f.read())
 
         if "name" not in flow_yaml:
@@ -119,13 +121,13 @@ class FlowLoader:
                     "id": edge.id,
                     "from": edge.edge_from,
                     "to": edge.edge_to,
-                    "type": edge.edge_type.value,
+                    "type": edge.edge_type.value if edge.edge_type else None,
                 }
                 for edge in flow.edges
-            ]
+            ],
         }
 
-        async with aiofiles.open(flow_path, mode='w', encoding="utf-8") as f:
+        async with aiofiles.open(flow_path, mode="w", encoding="utf-8") as f:
             await f.write(yaml.dump(flow_dict, allow_unicode=True, sort_keys=False))
 
     @classmethod

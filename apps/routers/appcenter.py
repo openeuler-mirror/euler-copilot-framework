@@ -102,7 +102,7 @@ async def create_or_update_application(
     app_id = request.app_id
     if app_id:
         # 更新应用
-        confirm = await AppCenterManager.update_app(app_id, request)
+        confirm = await AppCenterManager.update_app(user_sub, app_id, request)
         if not confirm:
             return JSONResponse(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -175,9 +175,9 @@ async def get_application(
     app_data = await AppCenterManager.fetch_app_data_by_id(app_id)
     if not app_data:
         return JSONResponse(
-            status_code=status.HTTP_404_NOT_FOUND,
+            status_code=status.HTTP_400_BAD_REQUEST,
             content=ResponseData(
-                code=status.HTTP_404_NOT_FOUND,
+                code=status.HTTP_400_BAD_REQUEST,
                 message="INVALID_APP_ID",
                 result={},
             ).model_dump(exclude_none=True, by_alias=True),
@@ -324,9 +324,9 @@ async def modify_favorite_application(
     flag = await AppCenterManager.modify_favorite_app(app_id, user_sub, favorited=request.favorited)
     if flag == AppCenterManager.ModFavAppFlag.NOT_FOUND:
         return JSONResponse(
-            status_code=status.HTTP_404_NOT_FOUND,
+            status_code=status.HTTP_400_BAD_REQUEST,
             content=ResponseData(
-                code=status.HTTP_404_NOT_FOUND,
+                code=status.HTTP_400_BAD_REQUEST,
                 message="INVALID_APP_ID",
                 result={},
             ).model_dump(exclude_none=True, by_alias=True),

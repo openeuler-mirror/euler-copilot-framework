@@ -4,13 +4,11 @@ Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 """
 from typing import Any, Optional
 
+import ray
 from pydantic import BaseModel, Field
 
 from apps.entities.scheduler import CallError, SysCallVars
-from apps.manager import (
-    TaskManager,
-    UserDomainManager,
-)
+from apps.manager.user_domain import UserDomainManager
 from apps.scheduler.call.core import CoreCall
 
 
@@ -56,7 +54,7 @@ class Suggestion(metaclass=CoreCall, param_cls=_SuggestInput, output_cls=_Sugges
         params: _SuggestInput = getattr(self, "_params")
 
         # 获取当前任务
-        task = await TaskManager.get_task(sys_vars.task_id)
+        task = await Task.get_task(sys_vars.task_id)
 
         # 获取当前用户的画像
         user_domain = await UserDomainManager.get_user_domain_by_user_sub_and_topk(sys_vars.user_sub, 5)

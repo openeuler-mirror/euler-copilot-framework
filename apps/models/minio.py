@@ -24,7 +24,7 @@ class MinioClient:
             cls.client.make_bucket(bucket_name)
 
     @classmethod
-    def upload_file(cls, **kwargs: Any) -> None:  # noqa: ANN401
+    def upload_file(cls, **kwargs: Any) -> None:
         """上传文件"""
         cls.client.put_object(**kwargs)
 

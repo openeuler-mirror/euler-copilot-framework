@@ -27,13 +27,11 @@ from apps.entities.response_data import (
     ResponseData,
     UpdateConversationRsp,
 )
-from apps.manager import (
-    AuditLogManager,
-    ConversationManager,
-    DocumentManager,
-    RecordManager,
-)
 from apps.manager.application import AppManager
+from apps.manager.audit_log import AuditLogManager
+from apps.manager.conversation import ConversationManager
+from apps.manager.document import DocumentManager
+from apps.manager.record import RecordManager
 
 router = APIRouter(
     prefix="/api/conversation",

@@ -7,6 +7,8 @@ import traceback
 from datetime import datetime, timezone
 from typing import Union
 
+import ray
+
 from apps.common.queue import MessageQueue
 from apps.common.security import Security
 from apps.constants import LOGGER
@@ -20,14 +22,10 @@ from apps.entities.record import RecordDocument
 from apps.entities.request_data import RequestData
 from apps.entities.scheduler import ExecutorBackground, SysExecVars
 from apps.entities.task import RequestDataApp
-from apps.manager import (
-    DocumentManager,
-    RecordManager,
-    TaskManager,
-    UserManager,
-)
-
-# from apps.scheduler.executor import Executor
+from apps.manager.document import DocumentManager
+from apps.manager.record import RecordManager
+from apps.manager.user import UserManager
+from apps.scheduler.executor import Executor
 from apps.scheduler.scheduler.context import generate_facts, get_context
 
 # from apps.scheduler.scheduler.flow import choose_flow
@@ -89,7 +87,6 @@ class Scheduler:
                 language=post_body.language,
                 document_ids=doc_ids,
                 kb_sn=None if not user_info.kb_id else user_info.kb_id,
-                history=context,
                 top_k=5,
             )
 
@@ -97,7 +94,7 @@ class Scheduler:
             need_recommend = True
             # 如果是智能问答，直接执行
             if not post_body.app or post_body.app.app_id == "":
-                # await push_init_message(self._task_id, self._queue, post_body, is_flow=False)
+                await push_init_message(self._task_id, self._queue, post_body, is_flow=False)
                 await asyncio.sleep(0.1)
                 for doc in docs:
                     # 保存使用的文件ID
@@ -108,13 +105,12 @@ class Scheduler:
                 await push_rag_message(self._task_id, self._queue, user_sub, rag_data)
             else:
                 # 需要执行Flow
-                # await push_init_message(self._task_id, self._queue, post_body, is_flow=True)
+                await push_init_message(self._task_id, self._queue, post_body, is_flow=True)
                 # 组装上下文
                 background = ExecutorBackground(
                     conversation=context,
                     facts=facts,
                 )
-                need_recommend = await self.run_executor(session_id, post_body, background, post_body.app)
 
             # 生成推荐问题和事实提取
             # 如果需要生成推荐问题，则生成
@@ -136,7 +132,7 @@ class Scheduler:
     async def run_executor(self, session_id: str, post_body: RequestData, background: ExecutorBackground, user_selected_flow: RequestDataApp) -> bool:
         """构造FlowExecutor，并执行所选择的流"""
         # 获取当前Task
-        task = await TaskManager.get_task(self._task_id)
+        task = await Task.get_task(self._task_id)
         if not task:
             err = "[Scheduler] Task error."
             raise ValueError(err)
@@ -162,7 +158,8 @@ class Scheduler:
     async def save_state(self, user_sub: str, post_body: RequestData) -> None:
         """保存当前Executor、Task、Record等的数据"""
         # 获取当前Task
-        task = await TaskManager.get_task(self._task_id)
+        task_pool = ray.get_actor("task")
+        task = await task_pool.get_task.remote(self._task_id)
         if not task:
             err = "Task not found"
             raise ValueError(err)
@@ -184,7 +181,7 @@ class Scheduler:
                     if history.id == history_id:
                         history_data.append(history)
                         break
-            await TaskManager.create_flows(history_data)
+            await Task.create_flows(history_data)
 
         # 修改metadata里面时间为实际运行时间
         task.record.metadata.time = round(datetime.now(timezone.utc).timestamp() - task.record.metadata.time, 2)

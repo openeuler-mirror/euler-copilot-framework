@@ -5,6 +5,7 @@ from collections.abc import AsyncGenerator
 from datetime import datetime, timezone
 from typing import Any
 
+import ray
 from redis.exceptions import ResponseError
 
 from apps.constants import LOGGER
@@ -16,7 +17,6 @@ from apps.entities.message import (
     MessageMetadata,
 )
 from apps.entities.task import TaskBlock
-from apps.manager.task import TaskManager
 from apps.models.redis import RedisConnectionPool
 
 
@@ -50,7 +50,8 @@ class MessageQueue:
             await client.publish(self._stream_name, "[DONE]")
             return
 
-        tcb: TaskBlock = await TaskManager.get_task(self._task_id)
+        task = ray.get_actor("task")
+        tcb: TaskBlock = await task.get_task.remote(self._task_id)
 
         # 计算创建Task到现在的时间
         used_time = round((datetime.now(timezone.utc).timestamp() - tcb.record.metadata.time), 2)
