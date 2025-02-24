@@ -116,8 +116,8 @@ spec:
 {{- end -}}
 
 {{- define "minio.imageTag" -}}
-  {{- $arch := .Values.globals.arch | default "x86_64" -}}
-  {{- if eq $arch "aarch64" -}}empty-arm
+  {{- $arch := .Values.globals.arch | default "x86_64" | replace "aarch64" "arm64" -}}
+  {{- if eq $arch "arm64" -}}empty-arm
   {{- else if eq $arch "x86_64" -}}empty-x86
   {{- else -}}empty
   {{- end -}}

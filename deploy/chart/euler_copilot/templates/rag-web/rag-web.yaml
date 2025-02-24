@@ -108,11 +108,10 @@ spec:
 {{- end -}}
 
 {{- define "data_chain_web.imageTag" -}}
-  {{- $arch := .Values.globals.arch | default "x86_64" -}}
-  {{- if eq $arch "aarch64" -}}0.9.4-arm
+  {{- $arch := .Values.globals.arch | default "x86_64" | replace "aarch64" "arm64" -}}
+  {{- if eq $arch "arm64" -}}0.9.4-arm
   {{- else if eq $arch "x86_64" -}}0.9.4-x86
   {{- else -}}0.9.4
   {{- end -}}
 {{- end -}}
-
 

@@ -98,8 +98,8 @@ spec:
 {{- end -}}
 
 {{- define "mysql.imageTag" -}}
-  {{- $arch := .Values.globals.arch | default "x86_64" -}}
-  {{- if eq $arch "aarch64" -}}8-arm
+  {{- $arch := .Values.globals.arch | default "x86_64" | replace "aarch64" "arm64" -}}
+  {{- if eq $arch "arm64" -}}8-arm
   {{- else if eq $arch "x86_64" -}}8-x86
   {{- else -}}8
   {{- end -}}

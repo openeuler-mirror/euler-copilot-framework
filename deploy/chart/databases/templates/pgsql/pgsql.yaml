@@ -93,8 +93,8 @@ spec:
 {{- end -}}
 
 {{- define "pgsql.imageTag" -}}
-  {{- $arch := .Values.globals.arch | default "x86_64" -}}
-  {{- if eq $arch "aarch64" -}}pg16-arm
+  {{- $arch := .Values.globals.arch | default "x86_64" | replace "aarch64" "arm64" -}}
+  {{- if eq $arch "arm64" -}}pg16-arm
   {{- else if eq $arch "x86_64" -}}pg16-x86
   {{- else -}}pg16
   {{- end -}}
