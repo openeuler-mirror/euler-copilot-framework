@@ -1,5 +1,8 @@
 # 全局设置
 globals:
+  # 节点架构：默认是x86_64
+  # 节点设置：["x86_64", "aarch64"]
+  arch:
   # 部署副本数，默认为1
   replicaCount:
   # 镜像拉取策略，默认为IfNotPresent
@@ -25,8 +28,8 @@ databases:
   minio:
     # [必填] 是否部署MinIO实例
     enabled: true
-    # 镜像设置：默认为hub.oepkgs.net/neocopilot/minio:empty
-    # 镜像版本：["empty", "empty-arm"]
+    # 镜像设置：默认为hub.oepkgs.net/neocopilot/minio:empty-x86
+    # 镜像版本：["empty-x86", "empty-arm"]
     image:
     # 性能限制设置
     resourceLimits: {}
@@ -61,8 +64,8 @@ databases:
   redis:
     # [必填] 是否部署Redis实例
     enabled: true
-    # 镜像设置，默认为hub.oepkgs.net/neocopilot/redis:7.4-alpine
-    # 镜像版本: ["7.4-alpine", "7.4-alpine-arm"]
+    # 镜像设置，默认为hub.oepkgs.net/neocopilot/redis:7.4-alpine-x86
+    # 镜像版本: ["7.4-alpine-x86", "7.4-alpine-arm"]
     image:
     # 性能限制设置
     resourceLimits: {}
@@ -75,8 +78,8 @@ databases:
   pgsql:
     # [必填] 是否部署PostgreSQL实例
     enabled: true
-    # 镜像设置，默认为hub.oepkgs.net/neocopilot/pgsql-empty:pg16
-    # 镜像版本： ["pg16", "pg16-arm"]
+    # 镜像设置，默认为hub.oepkgs.net/neocopilot/pgsql-empty:pg16-x86
+    # 镜像版本： ["pg16-x86", "pg16-arm"]
     image:
     # 性能限制设置
     resourceLimits: {}

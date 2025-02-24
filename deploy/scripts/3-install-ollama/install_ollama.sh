@@ -79,22 +79,50 @@ install_ollama() {
 manage_service() {
     echo -e "${BLUE}步骤4/4：配置Ollama服务...${RESET}"
     local service_file="/etc/systemd/system/ollama.service"
-    
-    if [ ! -f "$service_file" ]; then
-        echo -e "${RED}[错误] Ollama服务文件不存在：$service_file${RESET}" >&2
-        exit 1
-    fi
+    local service_content="[Unit]
+Description=Ollama Service
+After=network-online.target
 
-    if ! grep -q "OLLAMA_HOST=0.0.0.0:11434" "$service_file"; then
-        echo -e "${CYAN}[操作] 配置服务监听地址...${RESET}"
-        if ! sed -i '/^\[Service\]/a Environment="OLLAMA_HOST=0.0.0.0:11434"' "$service_file"; then
-            echo -e "${RED}[错误] 服务文件修改失败${RESET}" >&2
+[Service]
+Environment=\"OLLAMA_HOST=0.0.0.0:11434\"
+ExecStart=/usr/local/bin/ollama serve
+User=ollama
+Group=ollama
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=default.target"
+
+    # 如果服务文件不存在则创建
+    if [ ! -f "$service_file" ]; then
+        echo -e "${CYAN}[操作] 创建Ollama服务文件...${RESET}"
+        if ! echo "$service_content" | tee "$service_file" >/dev/null; then
+            echo -e "${RED}[错误] 服务文件创建失败${RESET}" >&2
             exit 1
         fi
-        systemctl daemon-reload
-        echo -e "${GREEN}[信息] 服务配置已更新${RESET}"
+        echo -e "${GREEN}[信息] 服务文件已创建${RESET}"
+    else
+        # 检查并添加环境变量（如果不存在）
+        if ! grep -q "OLLAMA_HOST=0.0.0.0:11434" "$service_file"; then
+            echo -e "${CYAN}[操作] 添加监听地址配置...${RESET}"
+            if ! sed -i '/^\[Service\]/a Environment="OLLAMA_HOST=0.0.0.0:11434"' "$service_file"; then
+                echo -e "${RED}[错误] 服务文件修改失败${RESET}" >&2
+                exit 1
+            fi
+        fi
     fi
 
+    # 创建系统用户（如果不存在）
+    if ! id -u ollama &>/dev/null; then
+        echo -e "${CYAN}[操作] 创建ollama系统用户...${RESET}"
+        useradd -r -s /bin/false ollama
+    fi
+
+    # 重新加载服务配置
+    systemctl daemon-reload
+
+    # 服务管理逻辑
     if systemctl is-active --quiet ollama; then
         echo -e "${CYAN}[操作] 重启服务应用配置...${RESET}"
         systemctl restart ollama
@@ -102,7 +130,7 @@ manage_service() {
         echo -e "${CYAN}[操作] 启动Ollama服务...${RESET}"
         systemctl enable --now ollama
     fi
-    
+
     echo -e "${YELLOW}[状态] 等待服务初始化...${RESET}"
     sleep 10
 }

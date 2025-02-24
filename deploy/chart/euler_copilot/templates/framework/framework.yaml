@@ -33,12 +33,21 @@ spec:
       labels:
         app: framework
     spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: kubernetes.io/arch
+                operator: In
+                values:
+                - {{ .Values.globals.arch | default "x86_64" | replace "aarch64" "arm64" | quote }}
       automountServiceAccountToken: false
       securityContext:
         fsGroup: 1001
       containers:
         - name: framework
-          image: {{ default "hub.oepkgs.net/neocopilot/euler-copilot-framework:0.9.4-x86" .Values.euler_copilot.framework.image }}
+          image: {{ .Values.euler_copilot.framework.image | default (printf "hub.oepkgs.net/neocopilot/euler-copiloy-framework:%s" (include "euler-copilot-framework.imageTag" .)) }}
           imagePullPolicy: {{ default "IfNotPresent" .Values.globals.imagePullPolicy }}
           ports:
             - containerPort: 8002
@@ -80,7 +89,7 @@ spec:
               {{ toYaml .Values.euler_copilot.framework.resourceLimits | nindent 14 }}
       initContainers:
         - name: framework-copy
-          image: {{ default "hub.oepkgs.net/neocopilot/secret_inject:x86" .Values.euler_copilot.secret_inject.image }}
+          image: {{ .Values.euler_copilot.secret_inject.image | default (printf "hub.oepkgs.net/neocopilot/secret_inject:%s" (include "secret_inject.imageTag" .)) }}
           imagePullPolicy: {{ default "IfNotPresent" .Values.globals.imagePullPolicy }}
           volumeMounts:
             - mountPath: /config/.env
@@ -140,4 +149,20 @@ spec:
         - name: framework-shared
           emptyDir:
             medium: Memory
+{{- end -}}
+
+{{- define "euler-copilot-framework.imageTag" -}}
+  {{- $arch := .Values.globals.arch | default "x86_64" | replace "aarch64" "arm64" -}}
+  {{- if eq $arch "arm64" -}}0.9.4-arm
+  {{- else if eq $arch "x86_64" -}}0.9.4-x86
+  {{- else -}}0.9.4
+  {{- end -}}
+{{- end -}}
+
+{{- define "secret_inject.imageTag" -}}
+  {{- $arch := .Values.globals.arch | default "x86_64" | replace "aarch64" "arm64" -}}
+  {{- if eq $arch "arm64" -}}dev-arm
+  {{- else if eq $arch "x86_64" -}}dev-x86
+  {{- else -}}dev
+  {{- end -}}
 {{- end -}}
