@@ -6,6 +6,8 @@ from datetime import datetime, timezone
 from textwrap import dedent
 from typing import Union
 
+import ray
+
 from apps.common.queue import MessageQueue
 from apps.constants import LOGGER
 from apps.entities.collection import Document
@@ -19,14 +21,15 @@ from apps.entities.message import (
 from apps.entities.rag_data import RAGEventData, RAGQueryReq
 from apps.entities.record import RecordDocument
 from apps.entities.request_data import RequestData
-from apps.manager import TaskManager
+from apps.entities.task import TaskBlock
 from apps.service import RAG
 
 
 async def push_init_message(task_id: str, queue: MessageQueue, post_body: RequestData,  *, is_flow: bool = False) -> None:
     """推送初始化消息"""
     # 拿到Task
-    task = await TaskManager.get_task(task_id)
+    task_actor = ray.get_actor("task")
+    task: TaskBlock = await task_actor.get_task.remote(task_id)
     if not task:
         err = "[Scheduler] Task not found"
         raise ValueError(err)
@@ -51,7 +54,7 @@ async def push_init_message(task_id: str, queue: MessageQueue, post_body: Reques
     created_at = round(datetime.now(timezone.utc).timestamp(), 2)
     task.record.metadata.time = created_at
     task.record.metadata.feature = feature.model_dump(exclude_none=True, by_alias=True)
-    await TaskManager.set_task(task_id, task)
+    await task_actor.set_task.remote(task_id, task)
 
     # 推送初始化消息
     await queue.push_output(event_type=EventType.INIT, data=InitContent(feature=feature, createdAt=created_at).model_dump(exclude_none=True, by_alias=True))
@@ -59,7 +62,8 @@ async def push_init_message(task_id: str, queue: MessageQueue, post_body: Reques
 
 async def push_rag_message(task_id: str, queue: MessageQueue, user_sub: str, rag_data: RAGQueryReq) -> None:
     """推送RAG消息"""
-    task = await TaskManager.get_task(task_id)
+    task_actor = ray.get_actor("task")
+    task: TaskBlock = await task_actor.get_task.remote(task_id)
     if not task:
         err = "Task not found"
         raise ValueError(err)
@@ -74,7 +78,7 @@ async def push_rag_message(task_id: str, queue: MessageQueue, user_sub: str, rag
 
     # 保存答案
     task.record.content.answer = full_answer
-    await TaskManager.set_task(task_id, task)
+    await task_actor.set_task.remote(task_id, task)
 
 
 async def _push_rag_chunk(task_id: str, queue: MessageQueue, content: str, rag_input_tokens: int, rag_output_tokens: int) -> tuple[str, int, int]:
@@ -92,7 +96,8 @@ async def _push_rag_chunk(task_id: str, queue: MessageQueue, content: str, rag_i
         # 计算Token数量
         delta_input_tokens = content_obj.input_tokens - rag_input_tokens
         delta_output_tokens = content_obj.output_tokens - rag_output_tokens
-        await TaskManager.update_token_summary(task_id, delta_input_tokens, delta_output_tokens)
+        task_actor = ray.get_actor("task")
+        await task_actor.update_token_summary.remote(task_id, delta_input_tokens, delta_output_tokens)
         # 更新Token的值
         rag_input_tokens = content_obj.input_tokens
         rag_output_tokens = content_obj.output_tokens

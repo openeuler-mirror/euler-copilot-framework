@@ -25,6 +25,10 @@ class MetadataLoader:
         # 检查yaml格式
         try:
             metadata_dict = yaml.safe_load(await file_path.read_text())
+            # 忽略hashes字段，手动指定无效
+            if "hashes" in metadata_dict:
+                metadata_dict.pop("hashes")
+            # 提取metadata的类型
             metadata_type = metadata_dict["type"]
         except Exception as e:
             err = f"metadata.yaml读取失败: {e}"

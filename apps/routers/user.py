@@ -17,9 +17,9 @@ from apps.entities.request_data import RequestData
 from apps.entities.response_data import ResponseData, UserGetMsp, UserGetRsp
 from apps.entities.user import UserInfo
 from apps.manager.appcenter import AppCenterManager
+from apps.manager.user import UserManager
 from apps.scheduler.scheduler import Scheduler
 from apps.service.activity import Activity
-from apps.manager.user import UserManager
 
 router = APIRouter(
     prefix="/api/user",

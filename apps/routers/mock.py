@@ -1,7 +1,9 @@
+import json
+
+import tiktoken
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import StreamingResponse
-import json
-import tiktoken
+
 from apps.common.config import config
 from apps.dependency import (
     get_session,
@@ -108,7 +110,7 @@ def mock_data(question):
                     "inputTokens": 200,
                     "outputTokens": 50,
                     "time": 0.5,
-                }
+                },
             },
             { # 【API】获取任务简介
                 "event": "step.input",
@@ -146,9 +148,9 @@ def mock_data(question):
                     "inputTokens": 200,
                     "outputTokens": 50,
                     "time": 0.5,
-                }
+                },
             },
-            { 
+            {
                 "event": "step.output",
                 "id": "0f9d3e6b-7845-44ab-b247-35c522d38f13",
                 "groupId":"8b9d3e6b-a892-4602-b247-35c522d38f13",

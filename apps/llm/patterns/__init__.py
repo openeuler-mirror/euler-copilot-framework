@@ -6,7 +6,7 @@ from apps.llm.patterns.core import CorePattern
 from apps.llm.patterns.domain import Domain
 from apps.llm.patterns.executor import (
     ExecutorBackground,
-    ExecutorResult,
+    FinalThought,
     ExecutorThought,
 )
 from apps.llm.patterns.json import Json
@@ -17,7 +17,7 @@ __all__ = [
     "CorePattern",
     "Domain",
     "ExecutorBackground",
-    "ExecutorResult",
+    "FinalThought",
     "ExecutorThought",
     "Json",
     "Recommend",

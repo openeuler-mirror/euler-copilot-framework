@@ -5,16 +5,15 @@ Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 from collections.abc import AsyncGenerator
 from typing import Optional
 
+import ray
 import tiktoken
 from openai import AsyncOpenAI
 
 from apps.common.config import config
-from apps.common.singleton import Singleton
 from apps.constants import LOGGER, REASONING_BEGIN_TOKEN, REASONING_END_TOKEN
-from apps.manager.task import TaskManager
 
 
-class ReasoningLLM(metaclass=Singleton):
+class ReasoningLLM:
     """调用用于问答的大模型"""
 
     _encoder = tiktoken.get_encoding("cl100k_base")
@@ -158,4 +157,5 @@ class ReasoningLLM(metaclass=Singleton):
         LOGGER.info(f"推理LLM：{reasoning_content}\n\n{result}")
 
         output_tokens = self._calculate_token_length([{"role": "assistant", "content": result}], pure_text=True)
-        await TaskManager.update_token_summary(task_id, input_tokens, output_tokens)
+        task = ray.get_actor("task")
+        await task.update_token_summary.remote(task_id, input_tokens, output_tokens)

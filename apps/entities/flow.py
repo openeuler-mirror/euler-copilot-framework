@@ -67,7 +67,10 @@ class Permission(BaseModel):
 
 
 class MetadataBase(BaseModel):
-    """Service或App的元数据"""
+    """Service或App的元数据
+
+    注意：hash字段在save和load的时候exclude
+    """
 
     type: MetadataType = Field(description="元数据类型")
     id: str = Field(description="元数据ID")

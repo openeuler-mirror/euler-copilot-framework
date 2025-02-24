@@ -27,7 +27,7 @@ class APIParams(BaseModel):
         "application/json", "application/x-www-form-urlencoded", "multipart/form-data",
     ] = Field(description="API接口的Content-Type")
     timeout: int = Field(description="工具超时时间", default=300)
-    known_body: dict[str, Any] = Field(description="已知的部分请求体", default={})
+    body: dict[str, Any] = Field(description="已知的部分请求体", default={})
     input_schema: dict[str, Any] = Field(description="API请求体的JSON Schema", default={})
     auth: dict[str, Any] = Field(description="API鉴权信息", default={})
 

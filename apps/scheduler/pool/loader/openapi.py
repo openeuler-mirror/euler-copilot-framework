@@ -37,7 +37,7 @@ class OpenAPILoader:
         return reduce_openapi_spec(spec)
 
 
-    def parameters_to_spec(self, raw_schema: list[dict[str, Any]]) -> dict[str, Any]:
+    async def parameters_to_spec(self, raw_schema: list[dict[str, Any]]) -> dict[str, Any]:
         """将OpenAPI中GET接口List形式的请求体Spec转换为JSON Schema"""
         schema = {
             "type": "object",
@@ -97,7 +97,7 @@ class OpenAPILoader:
         }
 
         try:
-            input_schema["properties"]["url_parameters"] = self.parameters_to_spec(spec.spec["parameters"])
+            input_schema["properties"]["url_parameters"] = await self.parameters_to_spec(spec.spec["parameters"])
         except KeyError:
             err = f"接口{spec.name}不存在URL参数定义"
             LOGGER.error(msg=err)
@@ -162,6 +162,6 @@ class OpenAPILoader:
         return await self._process_spec(service_id, yaml_filename, spec, service_metadata)
 
 
-    async def save_one(self, nodes: list[NodePool]) -> None:
+    async def save_one(self, yaml_dict: dict[str, Any]) -> None:
         """保存单个OpenAPI文档"""
         pass
