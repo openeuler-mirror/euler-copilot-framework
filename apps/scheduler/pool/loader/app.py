@@ -66,7 +66,8 @@ class AppLoader:
         """
         # 创建文件夹
         app_path = Path(config["SEMANTICS_DIR"]) / APP_DIR / app_id
-        await app_path.mkdir(parents=True, exist_ok=True)
+        if not app_path.exists():
+            await app_path.mkdir(parents=True, exist_ok=True)
         # 保存元数据
         await MetadataLoader().save_one(MetadataType.APP, metadata, app_id)
         # 保存工作流

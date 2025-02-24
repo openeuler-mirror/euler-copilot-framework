@@ -2,6 +2,7 @@
 
 Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 """
+
 import asyncio
 import pathlib
 
@@ -49,11 +50,15 @@ class ServiceLoader:
         nodes = [NodePool(**node.model_dump(exclude_none=True, by_alias=True)) for node in nodes]
         await self._update_db(nodes, metadata)
 
-
     async def save(self, service_id: str, metadata: ServiceMetadata, data: dict) -> None:
         """在文件系统上保存Service，并更新数据库"""
         service_path = pathlib.Path(config["SEMANTICS_DIR"]) / "service" / service_id
-        openapi_path = service_path / "openapi"/"api.yaml"
+        # 创建文件夹
+        if not service_path.exists():
+            service_path.mkdir(parents=True, exist_ok=True)
+        if not (service_path / "openapi").exists():
+            (service_path / "openapi").mkdir(parents=True, exist_ok=True)
+        openapi_path = service_path / "openapi" / "api.yaml"
         # 保存元数据
         await MetadataLoader().save_one(MetadataType.SERVICE, metadata, service_id)
         # 保存 OpenAPI 文档
@@ -63,7 +68,6 @@ class ServiceLoader:
         # 重新载入
         hashes = FileChecker().check_one(service_path)
         await self.load(service_id, hashes)
-
 
     async def delete(self, service_id: str) -> None:
         """删除Service，并更新数据库"""
