@@ -57,9 +57,18 @@ spec:
         app: minio
     spec:
       automountServiceAccountToken: false
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: kubernetes.io/arch
+                operator: In
+                values:
+                - {{ .Values.globals.arch | default "x86_64" | replace "aarch64" "arm64" | quote }}
       containers:
         - name: minio
-          image: {{ default "hub.oepkgs.net/neocopilot/minio:empty" .Values.databases.minio.image }}
+          image: {{ .Values.databases.minio.image | default (printf "hub.oepkgs.net/neocopilot/minio:%s" (include "minio.imageTag" .)) }}
           imagePullPolicy: {{ default "IfNotPresent" .Values.globals.imagePullPolicy }}
           args:
             - "server"
@@ -105,3 +114,11 @@ spec:
           persistentVolumeClaim:
             claimName: minio-storage
 {{- end -}}
+
+{{- define "minio.imageTag" -}}
+  {{- $arch := .Values.globals.arch | default "x86_64" -}}
+  {{- if eq $arch "aarch64" -}}empty-arm
+  {{- else if eq $arch "x86_64" -}}empty-x86
+  {{- else -}}empty
+  {{- end -}}
+{{- end -}

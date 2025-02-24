@@ -33,9 +33,18 @@ spec:
         app: redis
     spec:
       automountServiceAccountToken: false
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: kubernetes.io/arch
+                operator: In
+                values:
+                - {{ .Values.globals.arch | default "x86_64" | replace "aarch64" "arm64" | quote }}
       containers:
         - name: redis
-          image: {{ default "hub.oepkgs.net/neocopilot/redis:7.4-alpine" .Values.databases.redis.image }}
+          image: {{ .Values.databases.redis.image | default (printf "hub.oepkgs.net/neocopilot/redis:%s" (include "redis.imageTag" .)) }}
           imagePullPolicy: {{ default "IfNotPresent" .Values.globals.imagePullPolicy }}
           command:
             - redis-server
@@ -74,4 +83,12 @@ spec:
         - name: redis-tmp
           emptyDir:
             medium: Memory
+{{- end -}}
+
+{{- define "redis.imageTag" -}}
+  {{- $arch := .Values.globals.arch | default "x86_64" -}}
+  {{- if eq $arch "aarch64" -}}7.4-alpine-arm
+  {{- else if eq $arch "x86_64" -}}7.4-alpine-x86
+  {{- else -}}7.4-alpine
+  {{- end -}}
 {{- end -}}

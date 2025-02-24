@@ -35,9 +35,18 @@ spec:
         app: authhub-backend
     spec:
       automountServiceAccountToken: false
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: kubernetes.io/arch
+                operator: In
+                values:
+                - {{ .Values.globals.arch | default "x86_64" | replace "aarch64" "arm64" | quote }}
       containers:
         - name: authhub-backend
-          image: {{ default "hub.oepkgs.net/neocopilot/authhub:0.9.3-x86" .Values.authhub.backend.image }}
+          image: {{ .Values.authhub.backend.image | default (printf "hub.oepkgs.net/neocopilot/authhub:%s" (include "authhub.imageTag" .)) }}
           imagePullPolicy: {{ default "IfNotPresent" .Values.globals.imagePullPolicy }}
           ports:
             - containerPort: 11120
@@ -61,7 +70,7 @@ spec:
               {{ toYaml .Values.authhub.backend.resourceLimits | nindent 14 }}
       initContainers:
         - name: authhub-backend-copy-secret
-          image: {{ default "hub.oepkgs.net/neocopilot/secret_inject:x86" .Values.authhub.secret_inject.image }}
+          image: {{ .Values.authhub.secret_inject.image | default (printf "hub.oepkgs.net/neocopilot/secret_inject:%s" (include "secret_inject.imageTag" .)) }}
           imagePullPolicy: {{ default "IfNotPresent" .Values.globals.imagePullPolicy }}
           volumeMounts:
             - mountPath: /secrets/mysql-password
@@ -95,3 +104,21 @@ spec:
           secret:
             secretName: euler-copilot-database
 {{- end -}}
+
+{{- define "authhub.imageTag" -}}
+  {{- $arch := .Values.globals.arch | default "x86_64" -}}
+  {{- if eq $arch "aarch64" -}}0.9.3-arm
+  {{- else if eq $arch "x86_64" -}}0.9.3-x86
+  {{- else -}}0.9.3
+  {{- end -}}
+{{- end -}}
+
+{{- define "secret_inject.imageTag" -}}
+  {{- $arch := .Values.globals.arch | default "x86_64" -}}
+  {{- if eq $arch "aarch64" -}}dev-arm
+  {{- else if eq $arch "x86_64" -}}dev-x86
+  {{- else -}}dev
+  {{- end -}}
+{{- end -}}
+
+

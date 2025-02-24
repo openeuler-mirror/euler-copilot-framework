@@ -35,9 +35,18 @@ spec:
         app: pgsql
     spec:
       automountServiceAccountToken: false
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: kubernetes.io/arch
+                operator: In
+                values:
+                - {{ .Values.globals.arch | default "x86_64" | replace "aarch64" "arm64" | quote }}
       containers:
         - name: pgsql
-          image: {{ default "hub.oepkgs.net/neocopilot/pgsql-empty:pg16" .Values.databases.pgsql.image }}
+          image: {{ .Values.databases.pgsql.image | default (printf "hub.oepkgs.net/neocopilot/pgsql-empty:%s" (include "pgsql.imageTag" .)) }}
           imagePullPolicy: {{ default "IfNotPresent" .Values.globals.imagePullPolicy }}
           ports:
             - containerPort: 5432
@@ -81,4 +90,12 @@ spec:
         - name: pgsql-init
           configMap:
             name: pgsql-config
+{{- end -}}
+
+{{- define "pgsql.imageTag" -}}
+  {{- $arch := .Values.globals.arch | default "x86_64" -}}
+  {{- if eq $arch "aarch64" -}}pg16-arm
+  {{- else if eq $arch "x86_64" -}}pg16-x86
+  {{- else -}}pg16
+  {{- end -}}
 {{- end -}}
