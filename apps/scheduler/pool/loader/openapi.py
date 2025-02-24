@@ -12,7 +12,7 @@ from anyio import Path
 from apps.constants import LOGGER
 from apps.entities.enum_var import ContentType, HTTPMethod
 from apps.entities.flow import ServiceMetadata
-from apps.entities.pool import NodePool
+from apps.entities.node import APINode, APINodeInput, APINodeOutput
 from apps.scheduler.openapi import (
     ReducedOpenAPIEndpoint,
     ReducedOpenAPISpec,
@@ -54,7 +54,7 @@ class OpenAPILoader:
         return schema
 
 
-    async def _get_api_data(self, spec: ReducedOpenAPIEndpoint, service_metadata: ServiceMetadata) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]]:
+    async def _get_api_data(self, spec: ReducedOpenAPIEndpoint, service_metadata: ServiceMetadata) -> tuple[APINodeInput, APINodeOutput, dict[str, Any]]:
         """从OpenAPI文档中获取API数据"""
         try:
             method = HTTPMethod[spec.method.upper()]
@@ -79,45 +79,23 @@ class OpenAPILoader:
                 LOGGER.error(msg=err)
                 raise RuntimeError(err)
 
-        input_schema = {
-            "type": "object",
-            "properties": {
-                "url_parameters": {
-                    "type": "object",
-                    "properties": {},
-                    "required": [],
-                },
-                "post_body": {
-                    "type": "object",
-                    "properties": {},
-                    "required": [],
-                },
-            },
-            "required": ["url_parameters", "post_body"],
-        }
-
         try:
-            input_schema["properties"]["url_parameters"] = await self.parameters_to_spec(spec.spec["parameters"])
+            inp = APINodeInput(
+                param_schema=await self.parameters_to_spec(spec.spec["parameters"]) if "parameters" in spec.spec else None,
+                body_schema=spec.spec["requestBody"]["content"][content_type]["schema"] if "requestBody" in spec.spec else None,
+            )
         except KeyError:
-            err = f"接口{spec.name}不存在URL参数定义"
+            err = f"接口{spec.name}请求体定义错误"
             LOGGER.error(msg=err)
 
         try:
-            input_schema["properties"]["post_body"] = spec.spec["requestBody"]["content"][content_type]["schema"]
-        except KeyError:
-            err = f"接口{spec.name}不存在请求体定义"
-            LOGGER.error(msg=err)
-
-        try:
-            output_schema = spec.spec["responses"]["200"]["content"]["application/json"]["schema"]
+            out = APINodeOutput(
+                resp_schema=spec.spec["responses"]["200"]["content"]["application/json"]["schema"],
+            )
         except KeyError:
             err = f"接口{spec.name}不存在响应体定义"
             LOGGER.error(msg=err)
-            output_schema = {
-                "type": "object",
-                "properties": {},
-                "required": [],
-            }
+            out = APINodeOutput()
 
         known_params = {
             "url": url,
@@ -125,15 +103,15 @@ class OpenAPILoader:
             "content_type": content_type,
         }
 
-        return input_schema, output_schema, known_params
+        return inp, out, known_params
 
 
-    async def _process_spec(self, service_id: str, yaml_filename: str, spec: ReducedOpenAPISpec, service_metadata: ServiceMetadata) -> list[NodePool]:
+    async def _process_spec(self, service_id: str, yaml_filename: str, spec: ReducedOpenAPISpec, service_metadata: ServiceMetadata) -> list[APINode]:
         """将OpenAPI文档拆解为Node"""
         nodes = []
         for api_endpoint in spec.endpoints:
             # 组装新的NodePool item
-            node = NodePool(
+            node = APINode(
                 _id=str(uuid.uuid4()),
                 name=api_endpoint.name,
                 # 此处固定Call的ID是"API"
@@ -149,7 +127,7 @@ class OpenAPILoader:
         return nodes
 
 
-    async def load_one(self, service_id: str, yaml_path: Path, service_metadata: ServiceMetadata) -> list[NodePool]:
+    async def load_one(self, service_id: str, yaml_path: Path, service_metadata: ServiceMetadata) -> list[APINode]:
         """加载单个OpenAPI文档，可以直接指定路径"""
         try:
             spec = await self._read_yaml(yaml_path)

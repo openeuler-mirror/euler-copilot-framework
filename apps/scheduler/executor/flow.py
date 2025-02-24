@@ -7,7 +7,7 @@ from typing import Any, Optional
 
 import ray
 
-from apps.constants import LOGGER, MAX_SCHEDULER_HISTORY_SIZE
+from apps.constants import LOGGER, STEP_HISTORY_SIZE
 from apps.entities.enum_var import StepStatus
 from apps.entities.flow import Step
 from apps.entities.scheduler import (
@@ -17,6 +17,7 @@ from apps.entities.scheduler import (
 from apps.entities.task import ExecutorState, TaskBlock
 from apps.llm.patterns import ExecutorThought
 from apps.llm.patterns.executor import ExecutorBackground
+from apps.manager.node import NodeManager
 from apps.manager.task import TaskManager
 from apps.scheduler.executor.message import (
     push_flow_start,
@@ -42,11 +43,12 @@ class Executor:
     async def load_state(self, sysexec_vars: SysExecVars) -> None:
         """从JSON中加载FlowExecutor的状态"""
         # 获取Task
-        task_pool = ray.get_actor("task")
-        task = await task_pool.get_task.remote(sysexec_vars.task_id)
-        if not task:
-            err = "[Executor] Task error."
-            raise ValueError(err)
+        task_actor = ray.get_actor("task")
+        try:
+            self._task: TaskBlock = await task_actor.get_task.remote(sysexec_vars.task_id)
+        except Exception as e:
+            err = f"[Executor] Task error. {e!s}"
+            raise ValueError(err) from e
 
         # 加载Flow信息
         pool = ray.get_actor("pool")
@@ -67,12 +69,12 @@ class Executor:
         self._flow_data = flow_data
 
         # 尝试恢复State
-        if task.flow_state:
-            self.flow_state = task.flow_state
+        if self._task.flow_state:
+            self.flow_state = self._task.flow_state
             # 如果flow_context为空，则从flow_history中恢复
-            if not task.flow_context:
-                task.flow_context = await TaskManager.get_flow_history_by_task_id(self._vars.task_id)
-            task.new_context = []
+            if not self._task.flow_context:
+                self._task.flow_context = await TaskManager.get_flow_history_by_task_id(self._vars.task_id)
+            self._task.new_context = []
         else:
             # 创建ExecutorState
             self.flow_state = ExecutorState(
@@ -86,7 +88,7 @@ class Executor:
             )
         # 是否结束运行
         self._stop = False
-        await task.set_task(self._vars.task_id, task)
+        await task_actor.set_task.remote(self._vars.task_id, self._task)
 
 
     async def _get_last_output(self, task: TaskBlock) -> dict[str, Any]:
@@ -96,15 +98,8 @@ class Executor:
         return CallResult(**task.flow_context[self.flow_state.step_id].output_data)
 
 
-    async def _run_step(self, step_data: Step) -> dict[str, Any]:  # noqa: PLR0915
+    async def _run_step(self, step_data: Step) -> dict[str, Any]:
         """运行单个步骤"""
-        # 获取Task
-        task_pool = ray.get_actor("task")
-        task = await task_pool.get_task.remote(self._vars.task_id)
-        if not task:
-            err = "[Executor] Task error."
-            raise ValueError(err)
-
         # 更新State
         self.flow_state.step_id = step_data.name
         self.flow_state.status = StepStatus.RUNNING
@@ -112,20 +107,22 @@ class Executor:
         # Call类型为none，直接错误
         node_id = step_data.node
         if node_id == "none":
-            self.flow_state.status = StepStatus.ERROR
             return {}
 
+        # 获取对应Node的call_id
+        call_id = await NodeManager.get_node_call_id(node_id)
         # 从Pool中获取对应的Call
-        call_data, call_cls = Pool().get_call(node_id, self.flow_state.app_id)
-        if call_data is None or call_cls is None:
-            err = f"[FlowExecutor] 尝试执行工具{node_id}时发生错误：找不到该工具。\n{traceback.format_exc()}"
-            LOGGER.error(err)
+        pool = ray.get_actor("pool")
+        try:
+            call_data, call_cls = await pool.get_call.remote(call_id, self.flow_state.app_id)
+        except Exception as e:
+            LOGGER.error(f"[FlowExecutor] 尝试执行工具{node_id}时发生错误：{e}。\n{traceback.format_exc()}")
             self.flow_state.status = StepStatus.ERROR
             return {}
 
         # 准备history
-        history = list(task.flow_context.values())
-        length = min(MAX_SCHEDULER_HISTORY_SIZE, len(history))
+        history = list(self._task.flow_context.values())
+        length = min(STEP_HISTORY_SIZE, len(history))
         history = history[-length:]
 
         # 准备SysCallVars

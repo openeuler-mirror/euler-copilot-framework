@@ -53,12 +53,12 @@ async def push_step_input(task_id: str, queue: MessageQueue, state: ExecutorStat
             err = "当前步骤不存在错误处理步骤！"
             raise ValueError(err)
         content = StepInputContent(
-            callType=flow.on_error,
+            callType="llm",
             params=state.slot_data,
         )
     else:
         content = StepInputContent(
-            callType=flow.steps[state.step_id].call_type,
+            callType=flow.steps[state.step_id].node,
             params=state.slot_data,
         )
     # 推送消息
@@ -86,7 +86,7 @@ async def push_step_output(task_id: str, queue: MessageQueue, state: ExecutorSta
 
     # 组装消息；只保留message和output
     content = StepOutputContent(
-        callType=flow.steps[state.step_id].call_type,
+        callType=flow.steps[state.step_id].node,
         message=output["message"] if output and "message" in output else "",
         output=output["output"] if output and "output" in output else {},
     )
@@ -133,7 +133,7 @@ async def push_flow_stop(task_id: str, queue: MessageQueue, state: ExecutorState
         ).model_dump(exclude_none=True, by_alias=True)
     elif call_type == "render":
         # 如果当前Flow是图表，则推送Chart
-        chart_option = CallResult(**task.flow_context[state.step_id].output_data).output
+        chart_option = task.flow_context[state.step_id].output_data["output"]
         content = FlowStopContent(
             type=FlowOutputType.CHART,
             data=chart_option,

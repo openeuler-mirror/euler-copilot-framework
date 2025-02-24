@@ -14,8 +14,8 @@ SLIDE_WINDOW_TIME = 60
 SLIDE_WINDOW_QUESTION_COUNT = 10
 # API Call 最大返回值长度（字符）
 MAX_API_RESPONSE_LENGTH = 8192
-# Scheduler最大历史轮次
-MAX_SCHEDULER_HISTORY_SIZE = 3
+# Executor最大步骤历史数
+STEP_HISTORY_SIZE = 3
 # 语义接口目录中工具子目录
 CALL_DIR = "call"
 # 语义接口目录中服务子目录

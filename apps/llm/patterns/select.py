@@ -15,38 +15,47 @@ from apps.llm.reasoning import ReasoningLLM
 class Select(CorePattern):
     """通过投票选择最佳答案"""
 
-    system_prompt: str = r""
-    """系统提示词"""
-
     user_prompt: str = r"""
-        根据历史对话（包括工具调用结果）和用户问题，从给出的选项列表中，选出最符合要求的那一项。
-        在输出之前，请先思考，并使用“<think>”标签给出思考过程。
+        <instructions>
+            <instruction>
+                根据历史对话（包括工具调用结果）和用户问题，从给出的选项列表中，选出最符合要求的那一项。
+                在输出之前，请先思考，并使用“<think>”标签给出思考过程。
+            </instruction>
 
-        ==样例==
-        用户问题: 使用天气API，查询明天杭州的天气信息
+            <example>
+                <input>
+                    <question>使用天气API，查询明天杭州的天气信息</question>
 
-        选项列表：
-        - [API] 请求特定API，获得返回的JSON数据
-        - [SQL] 查询数据库，获得数据库表中的数据
+                    <options>
+                        <item>[API] 请求特定API，获得返回的JSON数据</item>
+                        <item>[SQL] 查询数据库，获得数据库表中的数据</item>
+                    </options>
+                </input>
+
+                <think>
+                    API 工具可以通过 API 来获取外部数据，而天气信息可能就存储在外部数据中，由于用户说明中明确提到了天气 API 的使用，因此应该优先使用 API 工具。\
+                    SQL 工具用于从数据库中获取信息，考虑到天气数据的可变性和动态性，不太可能存储在数据库中，因此 SQL 工具的优先级相对较低，\
+                    最佳选择似乎是“API：请求特定 API，获取返回的 JSON 数据”。
+                </think>
+
+                <output>
+                    API
+                </output>
+            </example>
+        </instructions>
+
+        <input>
+            <question>
+                {question}
+            </question>
+
+            <options>
+                {choice_list}
+            </options>
+        </input>
 
         <think>
-        API 工具可以通过 API 来获取外部数据，而天气信息可能就存储在外部数据中，由于用户说明中明确提到了天气 API 的使用，因此应该优先使用 API 工具。\
-        SQL 工具用于从数据库中获取信息，考虑到天气数据的可变性和动态性，不太可能存储在数据库中，因此 SQL 工具的优先级相对较低，\
-        最佳选择似乎是“API：请求特定 API，获取返回的 JSON 数据”。
-        </think>
-
-        最符合要求的选项是：
-        API
-        ==结束样例==
-
-        用户问题: {question}
-
-        选项列表：
-        {choice_list}
-
-        思考：
-        <think>
-        让我们一步一步思考。
+          让我们一步一步思考。
     """
     """用户提示词"""
 

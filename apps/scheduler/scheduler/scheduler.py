@@ -24,11 +24,10 @@ from apps.entities.scheduler import ExecutorBackground, SysExecVars
 from apps.entities.task import RequestDataApp
 from apps.manager.document import DocumentManager
 from apps.manager.record import RecordManager
+from apps.manager.task import TaskManager
 from apps.manager.user import UserManager
 from apps.scheduler.executor import Executor
 from apps.scheduler.scheduler.context import generate_facts, get_context
-
-# from apps.scheduler.scheduler.flow import choose_flow
 from apps.scheduler.scheduler.message import (
     push_document_message,
     push_init_message,
@@ -90,8 +89,6 @@ class Scheduler:
                 top_k=5,
             )
 
-            # 状态位：是否需要生成推荐问题？
-            need_recommend = True
             # 如果是智能问答，直接执行
             if not post_body.app or post_body.app.app_id == "":
                 await push_init_message(self._task_id, self._queue, post_body, is_flow=False)
@@ -112,13 +109,8 @@ class Scheduler:
                     facts=facts,
                 )
 
-            # 生成推荐问题和事实提取
-            # 如果需要生成推荐问题，则生成
-            # routine_results = await asyncio.gather(generate_facts(self._task_id, post_body.question))
-
-            # 保存事实信息
-            # self._facts = routine_results[0]
-            self._facts = []
+            # 记忆提取
+            self._facts = await generate_facts(self._task_id, post_body.question)
 
             # 发送结束消息
             await self._queue.push_output(event_type=EventType.DONE, data={})
@@ -129,10 +121,11 @@ class Scheduler:
             await self._queue.close()
 
 
-    async def run_executor(self, session_id: str, post_body: RequestData, background: ExecutorBackground, user_selected_flow: RequestDataApp) -> bool:
+    async def run_executor(self, session_id: str, post_body: RequestData, background: ExecutorBackground, selected_flow: RequestDataApp) -> bool:
         """构造FlowExecutor，并执行所选择的流"""
         # 获取当前Task
-        task = await Task.get_task(self._task_id)
+        task_pool = ray.get_actor("task")
+        task = await task_pool.get_task.remote(self._task_id)
         if not task:
             err = "[Scheduler] Task error."
             raise ValueError(err)
@@ -143,7 +136,7 @@ class Scheduler:
             question=post_body.question,
             task_id=self._task_id,
             session_id=session_id,
-            app_data=user_selected_flow,
+            app_data=selected_flow,
             background=background,
         )
 
