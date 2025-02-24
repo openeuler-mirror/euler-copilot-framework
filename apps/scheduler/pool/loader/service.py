@@ -4,6 +4,7 @@ Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 """
 
 import asyncio
+import pathlib
 
 import ray
 from anyio import Path
@@ -17,6 +18,7 @@ from apps.entities.pool import NodePool
 from apps.entities.vector import NodePoolVector, ServicePoolVector
 from apps.models.mongo import MongoDB
 from apps.models.postgres import PostgreSQL
+from apps.scheduler.pool.check import FileChecker
 from apps.scheduler.pool.loader.metadata import MetadataLoader, MetadataType
 from apps.scheduler.pool.loader.openapi import OpenAPILoader
 
@@ -49,21 +51,16 @@ class ServiceLoader:
 
     async def save(self, service_id: str, metadata: ServiceMetadata, data: dict) -> None:
         """在文件系统上保存Service，并更新数据库"""
-        service_path = Path(config["SEMANTICS_DIR"]) / "service" / service_id
+        service_path = pathlib.Path(config["SEMANTICS_DIR"]) / "service" / service_id
         # 保存元数据
         await MetadataLoader().save_one(MetadataType.SERVICE, metadata, service_id)
         # 保存 OpenAPI 文档
         openapi_loader = OpenAPILoader.remote()
         await openapi_loader.save_one.remote(data)  # type: ignore[arg-type]
-        # 读取 Node 信息
-        nodes = [
-            openapi_loader.load_one.remote(service_id, yaml_path, metadata)  # type: ignore[arg-type]
-            async for yaml_path in (service_path / "openapi").rglob("*.yaml")
-        ]
-        nodes = (await asyncio.gather(*nodes))[0]
         ray.kill(openapi_loader)
-        # 更新数据库
-        await self._update_db(nodes, metadata)
+        # 重新载入
+        hashes = FileChecker().check_one(service_path)
+        await self.load(service_id, hashes)
 
     async def delete(self, service_id: str) -> None:
         """删除Service，并更新数据库"""
