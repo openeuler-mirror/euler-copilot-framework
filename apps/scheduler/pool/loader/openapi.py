@@ -4,7 +4,6 @@ Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 """
 import uuid
 from typing import Any
-
 import ray
 import yaml
 from anyio import Path
@@ -36,7 +35,6 @@ class OpenAPILoader:
 
         return reduce_openapi_spec(spec)
 
-
     async def parameters_to_spec(self, raw_schema: list[dict[str, Any]]) -> dict[str, Any]:
         """将OpenAPI中GET接口List形式的请求体Spec转换为JSON Schema"""
         schema = {
@@ -53,8 +51,9 @@ class OpenAPILoader:
                 schema["properties"][item["name"]][key] = val
         return schema
 
-
-    async def _get_api_data(self, spec: ReducedOpenAPIEndpoint, service_metadata: ServiceMetadata) -> tuple[APINodeInput, APINodeOutput, dict[str, Any]]:
+    async def _get_api_data(
+            self, spec: ReducedOpenAPIEndpoint, service_metadata: ServiceMetadata) -> tuple[
+            APINodeInput, APINodeOutput, dict[str, Any]]:
         """从OpenAPI文档中获取API数据"""
         try:
             method = HTTPMethod[spec.method.upper()]
@@ -105,8 +104,8 @@ class OpenAPILoader:
 
         return inp, out, known_params
 
-
-    async def _process_spec(self, service_id: str, yaml_filename: str, spec: ReducedOpenAPISpec, service_metadata: ServiceMetadata) -> list[APINode]:
+    async def _process_spec(self, service_id: str, yaml_filename: str, spec: ReducedOpenAPISpec,
+                            service_metadata: ServiceMetadata) -> list[APINode]:
         """将OpenAPI文档拆解为Node"""
         nodes = []
         for api_endpoint in spec.endpoints:
@@ -126,7 +125,6 @@ class OpenAPILoader:
             nodes.append(node)
         return nodes
 
-
     async def load_one(self, service_id: str, yaml_path: Path, service_metadata: ServiceMetadata) -> list[APINode]:
         """加载单个OpenAPI文档，可以直接指定路径"""
         try:
@@ -139,7 +137,16 @@ class OpenAPILoader:
         yaml_filename = yaml_path.name
         return await self._process_spec(service_id, yaml_filename, spec, service_metadata)
 
-
-    async def save_one(self, yaml_dict: dict[str, Any]) -> None:
+    async def save_one(self, yaml_path: Path, yaml_dict: dict[str, Any]) -> None:
         """保存单个OpenAPI文档"""
-        pass
+        """在文件系统上保存Service，并更新数据库"""
+
+        try:
+            yaml_data = yaml.safe_dump(yaml_dict)
+            await yaml_path.write_text(yaml_data)
+        except Exception as e:
+            if yaml_path.exists():
+                await yaml_path.unlink()
+            err = f"保存OpenAPI文档{yaml_path}失败：{e}"
+            LOGGER.error(msg=err)
+            raise RuntimeError(err) from e
