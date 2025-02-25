@@ -48,12 +48,11 @@ class ServiceLoader:
         except Exception as e:
             LOGGER.error(f"[ServiceLoader] 服务 {service_id} 文件损坏: {e}")
             return
-        data = await asyncio.gather(*nodes)
         try:
+            data = await asyncio.gather(*nodes)
             nodes = data[0]
         except Exception as e:
             LOGGER.error(f"[ServiceLoader] 服务 {service_id} 获取Node列表失败: {e}")
-            LOGGER.error(f"[ServiceLoader] 无效的Node数据：{data!s}")
             return
         # 更新数据库
         nodes = [NodePool(**node.model_dump(exclude_none=True, by_alias=True)) for node in nodes]
