@@ -6,7 +6,7 @@ from typing import Optional
 
 from apps.constants import LOGGER
 from apps.entities.collection import RecordGroup
-from apps.entities.task import FlowHistory, TaskData
+from apps.entities.task import FlowStepHistory, TaskData
 from apps.manager.record import RecordManager
 from apps.models.mongo import MongoDB
 
@@ -59,7 +59,7 @@ class TaskManager:
             return None
 
     @staticmethod
-    async def get_flow_history_by_record_id(record_group_id: str, record_id: str) -> list[FlowHistory]:
+    async def get_flow_history_by_record_id(record_group_id: str, record_id: str) -> list[FlowStepHistory]:
         """根据record_group_id获取flow信息"""
         record_group_collection = MongoDB.get_collection("record_group")
         flow_context_collection = MongoDB.get_collection("flow_context")
@@ -77,7 +77,7 @@ class TaskManager:
             for flow_context_id in records[0]["records"]["flow"]:
                 flow_context = await flow_context_collection.find_one({"_id": flow_context_id})
                 if flow_context:
-                    flow_context = FlowHistory.model_validate(flow_context)
+                    flow_context = FlowStepHistory.model_validate(flow_context)
                     flow_context_list.append(flow_context)
 
             return flow_context_list
@@ -88,14 +88,14 @@ class TaskManager:
 
 
     @staticmethod
-    async def get_flow_history_by_task_id(task_id: str) -> dict[str, FlowHistory]:
+    async def get_flow_history_by_task_id(task_id: str) -> dict[str, FlowStepHistory]:
         """根据task_id获取flow信息"""
         flow_context_collection = MongoDB.get_collection("flow_context")
 
         flow_context = {}
         try:
             async for history in flow_context_collection.find({"task_id": task_id}):
-                history_obj = FlowHistory.model_validate(history)
+                history_obj = FlowStepHistory.model_validate(history)
                 flow_context[history_obj.step_id] = history_obj
 
             return flow_context
@@ -105,7 +105,7 @@ class TaskManager:
 
 
     @staticmethod
-    async def create_flows(flow_context: list[FlowHistory]) -> None:
+    async def create_flows(flow_context: list[FlowStepHistory]) -> None:
         """保存flow信息到flow_context"""
         flow_context_collection = MongoDB.get_collection("flow_context")
         try:
@@ -128,4 +128,3 @@ class TaskManager:
                 await session.commit_transaction()
         except Exception as e:
             LOGGER.error(f"[TaskManager] Delete tasks by conversation_id failed: {e}")
-

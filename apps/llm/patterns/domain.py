@@ -73,5 +73,5 @@ class Domain(CorePattern):
             {"role": "assistant", "content": result},
         ]
 
-        output = await Json().generate(task_id, conversation=messages, spec=self.slot_schema)
+        output = await Json().generate("", conversation=messages, spec=self.slot_schema)
         return output["keywords"]

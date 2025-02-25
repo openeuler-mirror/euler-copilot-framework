@@ -13,7 +13,7 @@ from sqlalchemy import text
 
 from apps.common.config import config
 from apps.constants import LOGGER
-from apps.entities.scheduler import CallError, SysCallVars
+from apps.entities.scheduler import CallError, CallVars
 from apps.models.postgres import PostgreSQL
 from apps.scheduler.call.core import CoreCall
 
@@ -38,7 +38,7 @@ class SQL(metaclass=CoreCall, param_cls=_SQLParams, output_cls=_SQLOutput):
     description: str = "SQL工具，用于查询数据库中的结构化数据"
 
 
-    def init(self, _syscall_vars: SysCallVars, **_kwargs) -> None:  # noqa: ANN003
+    def init(self, _syscall_vars: CallVars, **_kwargs) -> None:  # noqa: ANN003
         """初始化SQL工具。"""
         # 初始化aiohttp的ClientSession
         self._session = aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(300))
@@ -48,7 +48,7 @@ class SQL(metaclass=CoreCall, param_cls=_SQLParams, output_cls=_SQLOutput):
         """运行SQL工具"""
         # 获取必要参数
         params: _SQLParams = getattr(self, "_params")
-        syscall_vars: SysCallVars = getattr(self, "_syscall_vars")
+        syscall_vars: CallVars = getattr(self, "_syscall_vars")
 
         # 若手动设置了SQL，则直接使用
         session = await PostgreSQL.get_session()

@@ -77,6 +77,7 @@ class Select(CorePattern):
         """初始化Prompt"""
         super().__init__(system_prompt, user_prompt)
 
+
     @staticmethod
     def _choices_to_prompt(choices: list[dict[str, Any]]) -> tuple[str, list[str]]:
         """将选项转换为Prompt"""
@@ -87,6 +88,7 @@ class Select(CorePattern):
             choice_str_list.append(choice["name"])
         return choices_prompt, choice_str_list
 
+
     async def _generate_single_attempt(self, task_id: str, user_input: str, choice_list: list[str]) -> str:
         """使用ReasoningLLM进行单次尝试"""
         messages = [
@@ -96,13 +98,16 @@ class Select(CorePattern):
         result = ""
         async for chunk in ReasoningLLM().call(task_id, messages, streaming=False):
             result += chunk
+
+
         # 使用FunctionLLM进行参数提取
         schema = self.slot_schema
         schema["properties"]["choice"]["enum"] = choice_list
 
         messages += [{"role": "assistant", "content": result}]
-        function_result = await Json().generate(task_id, conversation=messages, spec=schema)
+        function_result = await Json().generate("", conversation=messages, spec=schema)
         return function_result["choice"]
+
 
     async def generate(self, task_id: str, **kwargs) -> str:  # noqa: ANN003
         """使用大模型做出选择"""

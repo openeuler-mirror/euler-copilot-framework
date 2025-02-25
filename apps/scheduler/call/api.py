@@ -3,20 +3,20 @@
 Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 """
 import json
-from typing import Any, Literal, Optional
+from typing import Any, Literal, Optional, ClassVar
 
 import aiohttp
 from fastapi import status
 from pydantic import BaseModel, Field
 
 from apps.constants import LOGGER
-from apps.entities.scheduler import CallError, SysCallVars
+from apps.entities.scheduler import CallError, CallVars
 from apps.manager.token import TokenManager
 from apps.scheduler.call.core import CoreCall
 from apps.scheduler.slot.slot import Slot
 
 
-class APIParams(BaseModel):
+class _APIParams(BaseModel):
     """API调用工具的参数"""
 
     url: str = Field(description="API接口的完整URL")
@@ -28,7 +28,6 @@ class APIParams(BaseModel):
     ] = Field(description="API接口的Content-Type")
     timeout: int = Field(description="工具超时时间", default=300)
     body: dict[str, Any] = Field(description="已知的部分请求体", default={})
-    input_schema: dict[str, Any] = Field(description="API请求体的JSON Schema", default={})
     auth: dict[str, Any] = Field(description="API鉴权信息", default={})
 
 
@@ -40,13 +39,13 @@ class _APIOutput(BaseModel):
     output: dict[str, Any] = Field(description="API调用工具的输出")
 
 
-class API(metaclass=CoreCall, param_cls=APIParams, output_cls=_APIOutput):
+class API(CoreCall):
     """API调用工具"""
 
-    name: str = "api"
-    description: str = "根据给定的用户输入和历史记录信息，向某一个API接口发送请求、获取数据。"
+    name: ClassVar[str] = "HTTP请求"
+    description: ClassVar[str] = "向某一个API接口发送HTTP请求，获取数据。"
 
-    async def __call__(self, slot_data: dict[str, Any]) -> _APIOutput:
+    async def exec(self, syscall_vars: CallVars, **kwargs: Any) -> _APIOutput:
         """调用API，然后返回LLM解析后的数据"""
         self._session = aiohttp.ClientSession()
         try:
@@ -60,11 +59,10 @@ class API(metaclass=CoreCall, param_cls=APIParams, output_cls=_APIOutput):
 
     async def _make_api_call(self, data: Optional[dict], files: aiohttp.FormData):  # noqa: ANN202, C901
         # 获取必要参数
-        params: APIParams = getattr(self, "_params")
-        syscall_vars: SysCallVars = getattr(self, "_syscall_vars")
+        params: _APIParams = getattr(self, "_params")
+        syscall_vars: CallVars = getattr(self, "_syscall_vars")
 
-        """调用API"""
-        if self._data_type != "form":
+        if params.content_type != "form":
             req_header = {
                 "Content-Type": "application/json",
             }
@@ -113,7 +111,7 @@ class API(metaclass=CoreCall, param_cls=APIParams, output_cls=_APIOutput):
 
     async def _call_api(self, slot_data: Optional[dict[str, Any]] = None) -> _APIOutput:
         # 获取必要参数
-        params: APIParams = getattr(self, "_params")
+        params: _APIParams = getattr(self, "_params")
         LOGGER.info(f"调用接口{params.url}，请求数据为{slot_data}")
 
         session_context = await self._make_api_call(slot_data, aiohttp.FormData())
@@ -155,5 +153,5 @@ class API(metaclass=CoreCall, param_cls=APIParams, output_cls=_APIOutput):
         return _APIOutput(
             http_code=response_status,
             output=json.loads(response_data),
-            message=message + """The API returned some data, and is shown in the "output" field below.""",
+            message=message + "The API returned some data, and is shown in the 'output' field below.",
         )

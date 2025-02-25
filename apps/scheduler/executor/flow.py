@@ -3,17 +3,16 @@
 Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 """
 import traceback
-from typing import Any, Optional
+from typing import Any
 
 import ray
+from pydantic import BaseModel, Field
 
 from apps.constants import LOGGER, STEP_HISTORY_SIZE
 from apps.entities.enum_var import StepStatus
-from apps.entities.flow import Step
-from apps.entities.scheduler import (
-    SysCallVars,
-    SysExecVars,
-)
+from apps.entities.flow import Flow, Step
+from apps.entities.request_data import RequestDataApp
+from apps.entities.scheduler import CallVars
 from apps.entities.task import ExecutorState, TaskBlock
 from apps.llm.patterns import ExecutorThought
 from apps.llm.patterns.executor import ExecutorBackground
@@ -25,77 +24,63 @@ from apps.scheduler.executor.message import (
     push_step_input,
     push_step_output,
 )
-from apps.scheduler.pool.pool import Pool
 from apps.scheduler.slot.slot import Slot
 
 
 # 单个流的执行工具
-@ray.remote
-class Executor:
+class Executor(BaseModel):
     """用于执行工作流的Executor"""
 
-    name: str = ""
-    """Flow名称"""
-    description: str = ""
-    """Flow描述"""
+    name: str = Field(description="Flow名称")
+    description: str = Field(description="Flow描述")
+
+    flow: Flow = Field(description="工作流数据")
+    task: TaskBlock = Field(description="任务信息")
+    queue: ray.ObjectRef = Field(description="消息队列")
+    question: str = Field(description="用户输入")
+    context: str = Field(description="上下文", default="")
+    post_body_app: RequestDataApp = Field(description="请求体中的app信息")
+
+    class Config:
+        """Pydantic配置"""
+
+        arbitrary_types_allowed = True
 
 
-    async def load_state(self, sysexec_vars: SysExecVars) -> None:
-        """从JSON中加载FlowExecutor的状态"""
-        # 获取Task
-        task_actor = ray.get_actor("task")
-        try:
-            self._task: TaskBlock = await task_actor.get_task.remote(sysexec_vars.task_id)
-        except Exception as e:
-            err = f"[Executor] Task error. {e!s}"
-            raise ValueError(err) from e
-
-        # 加载Flow信息
-        pool = ray.get_actor("pool")
-        flow, flow_data = await pool.get_flow.remote(sysexec_vars.app_data.flow_id, sysexec_vars.app_data.app_id)
-
-        # Flow不合法，拒绝执行
-        if flow is None or flow_data is None:
-            err = "Flow不存在！请检查Flow ID是否正确！"
-            raise ValueError(err)
-
-        # 设置名称和描述
-        self.name = str(flow.name)
-        self.description = str(flow.description)
-
-        # 保存当前变量（只读）
-        self._vars = sysexec_vars
-        # 保存Flow数据（只读）
-        self._flow_data = flow_data
-
+    async def load_state(self) -> None:
+        """从数据库中加载FlowExecutor的状态"""
         # 尝试恢复State
-        if self._task.flow_state:
-            self.flow_state = self._task.flow_state
+        if self.task.flow_state:
+            self.flow_state = self.task.flow_state
             # 如果flow_context为空，则从flow_history中恢复
-            if not self._task.flow_context:
-                self._task.flow_context = await TaskManager.get_flow_history_by_task_id(self._vars.task_id)
-            self._task.new_context = []
+            if not self.task.flow_context:
+                self.task.flow_context = await TaskManager.get_flow_history_by_task_id(self.task.record.task_id)
+            self.task.new_context = []
         else:
             # 创建ExecutorState
             self.flow_state = ExecutorState(
-                name=str(flow.name),
-                description=str(flow.description),
+                name=str(self.flow.name),
+                description=str(self.flow.description),
                 status=StepStatus.RUNNING,
-                app_id=str(sysexec_vars.app_data.app_id),
+                app_id=str(self.post_body_app.app_id),
                 step_id="start",
                 thought="",
-                slot_data=sysexec_vars.app_data.params,
+                filled_data=self.post_body_app.params,
             )
         # 是否结束运行
         self._stop = False
-        await task_actor.set_task.remote(self._vars.task_id, self._task)
 
 
-    async def _get_last_output(self, task: TaskBlock) -> dict[str, Any]:
-        """获取上一步的输出"""
-        if not task.flow_context:
-            return {}
-        return CallResult(**task.flow_context[self.flow_state.step_id].output_data)
+    async def _check_cls(self, call_cls: Any) -> bool:
+        """检查Call是否符合标准要求"""
+        flag = True
+        if not hasattr(call_cls, "name") or not isinstance(call_cls.name, str):
+            flag = False
+        if not hasattr(call_cls, "description") or not isinstance(call_cls.description, str):
+            flag = False
+        if not hasattr(call_cls, "exec") or not callable(call_cls.exec):
+            flag = False
+        return flag
 
 
     async def _run_step(self, step_data: Step) -> dict[str, Any]:
@@ -104,32 +89,44 @@ class Executor:
         self.flow_state.step_id = step_data.name
         self.flow_state.status = StepStatus.RUNNING
 
-        # Call类型为none，直接错误
+        # Call类型为none，跳过执行
         node_id = step_data.node
         if node_id == "none":
             return {}
 
         # 获取对应Node的call_id
-        call_id = await NodeManager.get_node_call_id(node_id)
+        try:
+            call_id = await NodeManager.get_node_call_id(node_id)
+        except Exception as e:
+            LOGGER.error(f"[FlowExecutor] 获取工具{node_id}的call_id时发生错误：{e}。\n{traceback.format_exc()}")
+            self.flow_state.status = StepStatus.ERROR
+            return {}
+
         # 从Pool中获取对应的Call
         pool = ray.get_actor("pool")
         try:
-            call_data, call_cls = await pool.get_call.remote(call_id, self.flow_state.app_id)
+            call_cls = await pool.get_call.remote(call_id, self.flow_state.app_id)
         except Exception as e:
-            LOGGER.error(f"[FlowExecutor] 尝试执行工具{node_id}时发生错误：{e}。\n{traceback.format_exc()}")
+            LOGGER.error(f"[FlowExecutor] 载入工具{node_id}时发生错误：{e}。\n{traceback.format_exc()}")
+            self.flow_state.status = StepStatus.ERROR
+            return {}
+
+        # 检查Call合法性
+        if not self._check_cls(call_cls):
+            LOGGER.error(f"[FlowExecutor] 工具{node_id}不符合Call标准要求。")
             self.flow_state.status = StepStatus.ERROR
             return {}
 
         # 准备history
-        history = list(self._task.flow_context.values())
+        history = list(self.task.flow_context.values())
         length = min(STEP_HISTORY_SIZE, len(history))
         history = history[-length:]
 
         # 准备SysCallVars
-        sys_vars = SysCallVars(
-            question=self._vars.question,
-            task_id=self._vars.task_id,
-            session_id=self._vars.session_id,
+        sys_vars = CallVars(
+            question=self.question,
+            task_id=self.task.record.task_id,
+            session_id=self.task.session_id,
             extra={
                 "app_id": self.flow_state.app_id,
                 "flow_id": self.flow_state.name,
@@ -160,28 +157,28 @@ class Executor:
         if slot_processor is not None:
             # 处理参数
             remaining_schema, slot_data = await slot_processor.process(
-                self.flow_state.slot_data,
-                self._vars.app_data.params,
+                self.flow_state.filled_data,
+                self.sysexec_vars.app_data.params,
                 {
-                    "task_id": self._vars.task_id,
-                    "question": self._vars.question,
+                    "task_id": self.task.record.task_id,
+                    "question": self.question,
                     "thought": self.flow_state.thought,
-                    "previous_output": await self._get_last_output(task),
+                    "previous_output": await self._get_last_output(self.task),
                 },
             )
             # 保存Schema至State
             self.flow_state.remaining_schema = remaining_schema
-            self.flow_state.slot_data.update(slot_data)
+            self.flow_state.filled_data.update(slot_data)
             # 如果还有未填充的部分，则终止执行
             if remaining_schema:
                 self._stop = True
                 self.flow_state.status = StepStatus.RUNNING
                 # 推送空输入
-                await push_step_input(self._vars.task_id, self._vars.queue, self.flow_state, self._flow_data)
+                await push_step_input(self.task, self.queue, self.flow_state, self.flow)
                 # 推送空输出
                 self.flow_state.status = StepStatus.PARAM
                 result = {}
-                await push_step_output(self._vars.task_id, self._vars.queue, self.flow_state, self._flow_data, result)
+                await push_step_output(self.task, self.queue, self.flow_state, result)
                 return result
 
         # 推送步骤输入
@@ -189,7 +186,7 @@ class Executor:
 
         # 执行Call
         try:
-            result: dict[str, Any] = await call_obj.call(self.flow_state.slot_data)
+            result: dict[str, Any] = await call_obj.call(self.flow_state.filled_data)
         except Exception as e:
             err = f"[FlowExecutor] 执行工具{node_id}时发生错误：{e!s}\n{traceback.format_exc()}"
             LOGGER.error(err)
@@ -244,7 +241,7 @@ class Executor:
         数据通过向Queue发送消息的方式传输
         """
         # 推送Flow开始
-        await push_flow_start(self._vars.task_id, self._vars.queue, self.flow_state, self._vars.question)
+        await push_flow_start(self._task, self._vars.queue, self.flow_state, self._vars.question)
 
         # 更新背景
         self.flow_state.thought = await ExecutorBackground().generate(self._vars.task_id, background=self._vars.background)

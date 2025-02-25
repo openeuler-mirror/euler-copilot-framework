@@ -29,11 +29,9 @@ class Facts(CorePattern):
                 2. 事实必须清晰、简洁、易于理解。必须少于30个字。
                 3. 必须按照以下JSON格式输出：
 
-                ```json
                 {{
                     "facts": ["事实1", "事实2", "事实3"]
                 }}
-                ```
             </instruction>
 
             <example>
@@ -89,7 +87,7 @@ class Facts(CorePattern):
             result += chunk
 
         messages += [{"role": "assistant", "content": result}]
-        fact_dict = await Json().generate(task_id, conversation=messages, spec=self.slot_schema)
+        fact_dict = await Json().generate("", conversation=messages, spec=self.slot_schema)
 
         if not fact_dict or "facts" not in fact_dict or not fact_dict["facts"]:
             return []

@@ -76,6 +76,7 @@ class AppLoader:
             raise RuntimeError(err) from e
         await self._update_db(metadata)
 
+
     async def save(self, metadata: AppMetadata, app_id: str) -> None:
         """保存应用
 
@@ -114,6 +115,7 @@ class AppLoader:
             LOGGER.error(err)
 
         await session.aclose()
+
 
     async def _update_db(self, metadata: AppMetadata) -> None:
         """更新数据库"""

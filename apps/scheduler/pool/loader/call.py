@@ -26,27 +26,6 @@ class CallLoader:
     用户Call放在call下
     """
 
-    @staticmethod
-    def _check_class(user_cls) -> bool:  # noqa: ANN001
-        """检查用户类是否符合Call标准要求"""
-        flag = True
-
-        if not hasattr(user_cls, "name") or not isinstance(user_cls.name, str):
-            flag = False
-        if not hasattr(user_cls, "description") or not isinstance(user_cls.description, str):
-            flag = False
-        if not hasattr(user_cls, "output_schema") or not isinstance(user_cls.output_schema, dict):
-            flag = False
-        if not hasattr(user_cls, "params_schema") or not isinstance(user_cls.params_schema, dict):
-            flag = False
-        if not hasattr(user_cls, "init") or not callable(user_cls.init):
-            flag = False
-        if not callable(user_cls) or not callable(user_cls.__call__):
-            flag = False
-
-        return flag
-
-
     async def _load_system_call(self) -> list[CallPool]:
         """加载系统Call"""
         call_metadata = []
@@ -54,10 +33,6 @@ class CallLoader:
         # 检查合法性
         for call_id in system_call.__all__:
             call_cls = getattr(system_call, call_id)
-            if not self._check_class(call_cls):
-                err = f"系统类{call_cls.__name__}不符合Call标准要求。"
-                LOGGER.info(msg=err)
-                continue
 
             call_metadata.append(
                 CallPool(
@@ -105,11 +80,6 @@ class CallLoader:
                 call_cls = getattr(call_package, call_id)
             except Exception as e:
                 err = f"载入工具call.{call_name}.{call_id}失败：{e}；跳过载入。"
-                LOGGER.info(msg=err)
-                continue
-
-            if not self._check_class(call_cls):
-                err = f"工具call.{call_name}.{call_id}不符合标准要求；跳过载入。"
                 LOGGER.info(msg=err)
                 continue
 

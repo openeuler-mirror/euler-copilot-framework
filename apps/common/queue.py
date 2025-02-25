@@ -9,7 +9,7 @@ import ray
 from redis.exceptions import ResponseError
 
 from apps.constants import LOGGER
-from apps.entities.enum_var import EventType, StepStatus
+from apps.entities.enum_var import EventType
 from apps.entities.message import (
     HeartbeatData,
     MessageBase,
@@ -20,13 +20,14 @@ from apps.entities.task import TaskBlock
 from apps.models.redis import RedisConnectionPool
 
 
+@ray.remote
 class MessageQueue:
     """包装SimpleQueue，加入组装消息、自动心跳等机制"""
 
     _heartbeat_interval: float = 3.0
 
 
-    async def init(self, task_id: str, *, enable_heartbeat: bool = False) -> None:
+    async def init(self, task_id: str) -> None:
         """异步初始化消息队列
 
         :param task_id: 任务ID
@@ -38,11 +39,10 @@ class MessageQueue:
         self._consumer_name = "consumer"
         self._close = False
 
-        if enable_heartbeat:
-            self._heartbeat_task = asyncio.create_task(self._heartbeat())
+        self._heartbeat_task = asyncio.get_running_loop().create_task(self._heartbeat())
 
 
-    async def push_output(self, event_type: EventType, data: dict[str, Any]) -> None:
+    async def push_output(self, task: TaskBlock, event_type: EventType, data: dict[str, Any]) -> None:
         """组装用于向用户（前端/Shell端）输出的消息"""
         client = RedisConnectionPool.get_redis_connection()
 
@@ -50,46 +50,31 @@ class MessageQueue:
             await client.publish(self._stream_name, "[DONE]")
             return
 
-        task = ray.get_actor("task")
-        tcb: TaskBlock = await task.get_task.remote(self._task_id)
-
-        # 计算创建Task到现在的时间
-        used_time = round((datetime.now(timezone.utc).timestamp() - tcb.record.metadata.time), 2)
+        # 计算当前Step时间
+        step_time = round((datetime.now(timezone.utc).timestamp() - task.record.metadata.time), 3)
         metadata = MessageMetadata(
-            time=used_time,
-            input_tokens=tcb.record.metadata.input_tokens,
-            output_tokens=tcb.record.metadata.output_tokens,
+            time=step_time,
+            input_tokens=task.record.metadata.input_tokens,
+            output_tokens=task.record.metadata.output_tokens,
         )
 
-        if tcb.flow_state:
-            history_ids = tcb.new_context
-            if not history_ids:
-                # 如果new_history为空，则说明是第一次执行，创建一个空值
-                flow = MessageFlow(
-                    appId=tcb.flow_state.app_id,
-                    flowId=tcb.flow_state.name,
-                    stepId="start",
-                    stepStatus=StepStatus.RUNNING,
-                )
-            else:
-                # 如果new_history不为空，则说明是继续执行，使用最后一个FlowHistory
-                history = tcb.flow_context[tcb.flow_state.step_id]
-
-                flow = MessageFlow(
-                    appId=history.app_id,
-                    flowId=history.flow_id,
-                    stepId=history.step_id,
-                    stepStatus=history.status,
-                )
+        if task.flow_state:
+            # 如果使用了Flow
+            flow = MessageFlow(
+                appId=task.flow_state.app_id,
+                flowId=task.flow_state.name,
+                stepId=task.flow_state.step_id,
+                stepStatus=task.flow_state.status,
+            )
         else:
             flow = None
 
         message = MessageBase(
             event=event_type,
-            id=tcb.record.id,
-            groupId=tcb.record.group_id,
-            conversationId=tcb.record.conversation_id,
-            taskId=tcb.record.task_id,
+            id=task.record.id,
+            groupId=task.record.group_id,
+            conversationId=task.record.conversation_id,
+            taskId=task.record.task_id,
             metadata=metadata,
             flow=flow,
             content=data,

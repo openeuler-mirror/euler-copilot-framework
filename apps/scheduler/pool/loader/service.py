@@ -55,6 +55,7 @@ class ServiceLoader:
         nodes = [NodePool(**node.model_dump(exclude_none=True, by_alias=True)) for node in nodes]
         await self._update_db(nodes, metadata)
 
+
     async def save(self, service_id: str, metadata: ServiceMetadata, data: dict) -> None:
         """在文件系统上保存Service，并更新数据库"""
         service_path = Path(config["SEMANTICS_DIR"]) / SERVICE_DIR / service_id
@@ -74,6 +75,7 @@ class ServiceLoader:
         file_checker = FileChecker()
         await file_checker.diff_one(service_path)
         await self.load(service_id, file_checker.hashes[f"{SERVICE_DIR}/{service_id}"])
+
 
     async def delete(self, service_id: str) -> None:
         """删除Service，并更新数据库"""

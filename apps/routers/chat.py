@@ -2,7 +2,7 @@
 
 Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 """
-import asyncio
+import random
 import traceback
 import uuid
 from collections.abc import AsyncGenerator
@@ -13,7 +13,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import JSONResponse, StreamingResponse
 
 from apps.common.queue import MessageQueue
-from apps.constants import LOGGER
+from apps.constants import LOGGER, SCHEDULER_REPLICAS
 from apps.dependency import (
     get_session,
     get_user,
@@ -24,7 +24,7 @@ from apps.entities.request_data import RequestData
 from apps.entities.response_data import ResponseData
 from apps.manager.appcenter import AppCenterManager
 from apps.manager.blacklist import QuestionBlacklistManager, UserBlacklistManager
-from apps.scheduler.scheduler import Scheduler
+from apps.scheduler.scheduler.context import save_data
 from apps.service.activity import Activity
 
 RECOMMEND_TRES = 5
@@ -61,22 +61,24 @@ async def chat_generator(post_body: RequestData, user_sub: str, session_id: str)
         await task_pool.set_task.remote(task_id, task)
 
         # 创建queue；由Scheduler进行关闭
-        queue = MessageQueue()
-        await queue.init(task_id, enable_heartbeat=True)
+        queue = MessageQueue.remote()
+        await queue.init.remote(task_id) # type: ignore[attr-defined]
 
         # 在单独Task中运行Scheduler，拉齐queue.get的时机
-        scheduler = Scheduler(task_id, queue)
-        scheduler_task = asyncio.create_task(scheduler.run(user_sub, session_id, post_body))
+        randnum = random.randint(0, SCHEDULER_REPLICAS - 1)  # noqa: S311
+        scheduler_actor = ray.get_actor(f"scheduler_{randnum}")
+        scheduler = scheduler_actor.run.remote(task_id, queue, user_sub, post_body)
 
         # 处理每一条消息
-        async for event in queue.get():
-            if event[:6] == "[DONE]":
+        async for event in queue.get.remote(): # type: ignore[attr-defined]
+            content = await event
+            if content[:6] == "[DONE]":
                 break
 
-            yield "data: " + event + "\n\n"
+            yield "data: " + content + "\n\n"
 
         # 等待Scheduler运行完毕
-        await asyncio.gather(scheduler_task)
+        result = await scheduler
 
         # 获取最终答案
         task = await task_pool.get_task.remote(task_id)
@@ -95,9 +97,7 @@ async def chat_generator(post_body: RequestData, user_sub: str, session_id: str)
             return
 
         # 创建新Record，存入数据库
-        await scheduler.save_state(user_sub, post_body)
-        # 保存Task，从task_map中删除task
-        await task_pool.save_task.remote(task_id)
+        await save_data(task_id, user_sub, post_body, result.used_docs)
 
         yield "data: [DONE]\n\n"
 
@@ -106,8 +106,6 @@ async def chat_generator(post_body: RequestData, user_sub: str, session_id: str)
         yield "data: [ERROR]\n\n"
 
     finally:
-        if scheduler_task:
-            scheduler_task.cancel()
         await Activity.remove_active(user_sub)
 
 

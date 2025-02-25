@@ -13,7 +13,7 @@ from jinja2 import BaseLoader, select_autoescape
 from jinja2.sandbox import SandboxedEnvironment
 from pydantic import BaseModel, Field
 
-from apps.entities.scheduler import SysCallVars
+from apps.entities.scheduler import CallVars
 from apps.scheduler.call.core import CoreCall
 
 
@@ -27,8 +27,8 @@ class _ConvertParam(BaseModel):
 class _ConvertOutput(BaseModel):
     """定义Convert工具的输出"""
 
-    message: str = Field(description="格式化后的文字信息")
-    output: dict = Field(description="格式化后的结果")
+    text: str = Field(description="格式化后的文字信息")
+    data: dict = Field(description="格式化后的结果")
 
 
 class Convert(metaclass=CoreCall, param_cls=_ConvertParam, output_cls=_ConvertOutput):
@@ -46,7 +46,7 @@ class Convert(metaclass=CoreCall, param_cls=_ConvertParam, output_cls=_ConvertOu
         """
         # 获取必要参数
         params: _ConvertParam = getattr(self, "_params")
-        syscall_vars: SysCallVars = getattr(self, "_syscall_vars")
+        syscall_vars: CallVars = getattr(self, "_syscall_vars")
         last_output = syscall_vars.history[-1].output_data
         # 判断用户是否给了值
         time = datetime.now(tz=pytz.timezone("Asia/Shanghai")).strftime("%Y-%m-%d %H:%M:%S")
@@ -77,6 +77,6 @@ class Convert(metaclass=CoreCall, param_cls=_ConvertParam, output_cls=_ConvertOu
             result_data = json.loads(_jsonnet.evaluate_snippet(data_template, params.data), ensure_ascii=False)
 
         return _ConvertOutput(
-            message=result_message,
-            output=result_data,
+            text=result_message,
+            data=result_data,
         )

@@ -268,9 +268,9 @@ class Slot:
         ]
 
         if previous_output is not None:
-            tool_str = f"""I used a tool to get extra information from other sources. \
-                The output data of the tool is `{previous_output}`.
-                The schema of the output is `{json.dumps(previous_output["output_schema"], ensure_ascii=False)}`, which contains description of the output.
+            tool_str = f"""我使用了一个工具从其他来源获取额外信息。\
+                工具的输出数据是 `{previous_output}`。
+                输出的schema是 `{json.dumps(previous_output["output_schema"], ensure_ascii=False)}`，其中包含了输出的描述信息。
                 """
 
             conversation.append({"role": "tool", "content": tool_str})

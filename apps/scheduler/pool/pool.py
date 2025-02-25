@@ -9,10 +9,10 @@ from typing import Any, Optional
 import ray
 from anyio import Path
 
-from apps.common.config import config
 from apps.constants import APP_DIR, LOGGER, SERVICE_DIR
 from apps.entities.enum_var import MetadataType
-from apps.entities.flow_topology import FlowItem
+from apps.entities.flow import Flow
+from apps.entities.pool import AppFlow
 from apps.models.mongo import MongoDB
 from apps.scheduler.pool.check import FileChecker
 from apps.scheduler.pool.loader import (
@@ -80,23 +80,42 @@ class Pool:
         pass
 
 
-    async def get_flow_metadata(self, app_id: str) -> Optional[FlowItem]:
+    async def get_flow_metadata(self, app_id: str) -> list[AppFlow]:
         """从数据库中获取特定App的全部Flow的元数据"""
         app_collection = MongoDB.get_collection("app")
+        flow_metadata_list = []
         try:
             flow_list = await app_collection.find_one({"_id": app_id}, {"flows": 1})
+            if not flow_list:
+                return []
+            for flow in flow_list["flows"]:
+                flow_metadata_list.extend(AppFlow(**flow))
         except Exception as e:
             err = f"获取App{app_id}的Flow列表失败：{e}"
             LOGGER.error(err)
             raise RuntimeError(err) from e
 
-        if not flow_list:
-            return None
+        return flow_metadata_list
 
 
-    async def get_flow(self, app_id: str, flow_id: str) -> Optional[FlowItem]:
+    # TODO
+    async def get_flow(self, app_id: str, flow_id: str) -> Optional[Flow]:
         """从数据库中获取单个Flow的全部数据"""
-        pass
+        app_collection = MongoDB.get_collection("app")
+        try:
+            # 使用聚合管道来查找特定的flow
+            pipeline = [
+                {"$match": {"_id": app_id}},
+                {"$unwind": "$flows"},
+                {"$match": {"flows._id": flow_id}},
+            ]
+            async for flow in await app_collection.aggregate(pipeline):
+                return Flow(**flow)
+            return None
+        except Exception as e:
+            err = f"获取App {app_id} 的Flow {flow_id} 失败：{e}"
+            LOGGER.error(err)
+            raise RuntimeError(err) from e
 
 
     async def get_call(self, call_path: str) -> Any:
@@ -107,11 +126,11 @@ class Pool:
             LOGGER.error(err)
             raise ValueError(err)
 
+        # Python类型的Call
         if call_path_split[0] == "python":
             try:
                 call_module = importlib.import_module(call_path_split[1])
-                call_class = getattr(call_module, call_path_split[2])
-                return call_class
+                return getattr(call_module, call_path_split[2])
             except Exception as e:
                 err = f"导入Call{call_path}失败：{e}"
                 LOGGER.error(err)

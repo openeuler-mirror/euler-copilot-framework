@@ -40,9 +40,7 @@ class FlowChooser:
         if not flow_list:
             return "KnowledgeBase"
 
-        top_flow = await Select.generate()
-        return top_flow
-
+        return await Select().generate(self._task_id, question=self._question, choices=flow_list)
 
 
     async def choose_flow(self) -> Optional[RequestDataApp]:

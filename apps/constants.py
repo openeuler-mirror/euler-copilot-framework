@@ -26,6 +26,8 @@ APP_DIR = "app"
 FLOW_DIR = "flow"
 # 日志记录器
 LOGGER = logging.getLogger("ray")
+# Scheduler进程数
+SCHEDULER_REPLICAS = 4
 
 REASONING_BEGIN_TOKEN = [
     "<think>",

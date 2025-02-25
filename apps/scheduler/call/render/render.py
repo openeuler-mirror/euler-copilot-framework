@@ -8,7 +8,7 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
-from apps.entities.scheduler import CallError, SysCallVars
+from apps.entities.scheduler import CallError, CallVars
 from apps.scheduler.call.core import CoreCall
 from apps.scheduler.call.render.style import RenderStyle
 
@@ -50,7 +50,7 @@ class Render(metaclass=CoreCall, param_cls=_RenderParam, output_cls=_RenderOutpu
     description: str = "渲染图表工具，可将给定的数据绘制为图表。"
 
 
-    def init(self, _syscall_vars: SysCallVars, **_kwargs) -> None:  # noqa: ANN003
+    def init(self, _syscall_vars: CallVars, **_kwargs) -> None:  # noqa: ANN003
         """初始化Render Call，校验参数，读取option模板"""
         try:
             option_location = Path(__file__).parent / "option.json"
@@ -63,7 +63,7 @@ class Render(metaclass=CoreCall, param_cls=_RenderParam, output_cls=_RenderOutpu
     async def __call__(self, _slot_data: dict[str, Any]) -> _RenderOutput:
         """运行Render Call"""
         # 获取必要参数
-        syscall_vars: SysCallVars = getattr(self, "_syscall_vars")
+        syscall_vars: CallVars = getattr(self, "_syscall_vars")
 
         # 检测前一个工具是否为SQL
         if "dataset" not in syscall_vars.history[-1].output_data:
