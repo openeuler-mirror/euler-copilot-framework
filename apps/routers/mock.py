@@ -345,8 +345,9 @@ async def mock_data(appId="68dd3d90-6a97-4da0-aa62-d38a81c7d2f5", flowId="966c79
                             sample_input["content"][key] = params[key]
                         else:
                             params[key] = value
+                time.sleep(sample_input["metadata"]["time_cost"])
                 yield "data: " + json.dumps(sample_input,ensure_ascii=False) + "\n\n"
-                sample_output["metadata"]["time_cost"] = random.uniform(0.5, 1.5)
+                sample_output["metadata"]["time_cost"] = random.uniform(1.5, 3.5)
                 sample_output["flow"]["stepId"] = now_flow_item
                 sample_output["flow"]["stepName"],sample_output["content"] = mapp[now_flow_item]
                 sample_output["content"] = sample_output["content"]["output_parameters"] if now_flow_item != "start" else sample_output["content"]
@@ -357,6 +358,7 @@ async def mock_data(appId="68dd3d90-6a97-4da0-aa62-d38a81c7d2f5", flowId="966c79
                 if "content" in sample_output and type(sample_output["content"])==dict:
                     for key, value in sample_output["content"].items():
                         params[key]=value
+                time.sleep(sample_output["metadata"]["time_cost"])
                 yield "data: " + json.dumps(sample_output,ensure_ascii=False) + "\n\n"
                 now_flow_item = edge.edge_to
 
