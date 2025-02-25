@@ -37,7 +37,7 @@ spec:
       automountServiceAccountToken: false
       containers:
         - name: mongo
-          image: {{ .Values.databases.mongo.image | default (printf "hub.oepkgs.net/neocopilot/mongo:%s" (include "mongo.imageTag" .)) }}
+          image: {{ if .Values.databases.mongo.image }}{{ .Values.databases.mongo.image }}{{ else }}{{ .Values.globals.imageRegistry | default "hub.oepkgs.net" }}/neocopilot/mongo:7.0.16-{{ .Values.globals.arch | default "x86" }}{{ end }}
           imagePullPolicy: {{ .Values.globals.imagePullPolicy | default "IfNotPresent" }}
           command:
             - bash
@@ -96,23 +96,3 @@ spec:
           configMap:
             name: mongo-config
 {{- end }}
-
-{{- define "mongo.imageTag" -}}
-  {{- $arch := .Values.globals.arch | default "amd64" | replace "aarch64" "arm64" -}}
-  {{- if eq $arch "arm64" -}}7.0.16-arm
-  {{- else if eq $arch "amd64" -}}7.0.16-x86
-  {{- else -}}7.0.16
-  {{- end -}}
-{{- end -}}
-
-{{- define "mongo.name" -}}
-{{- default "mongo" .Values.databases.mongo.nameOverride | trunc 63 | trimSuffix "-" -}}
-{{- end -}}
-
-{{- define "mongo.fullname" -}}
-{{- printf "%s-%s" .Release.Name "mongo" | trunc 63 | trimSuffix "-" -}}
-{{- end -}}
-
-{{- define "mongo.configmap" -}}
-{{- printf "%s-config" (include "mongo.fullname" .) -}}
-{{- end -}}

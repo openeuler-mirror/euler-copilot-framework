@@ -37,7 +37,7 @@ spec:
       automountServiceAccountToken: false
       containers:
         - name: authhub-backend
-          image: {{ .Values.authhub.backend.image | default (printf "hub.oepkgs.net/neocopilot/authhub:%s" (include "authhub.imageTag" .)) }}
+          image: {{ if .Values.authhub.backend.image }}{{ .Values.authhub.backend.image }}{{ else }}{{ .Values.globals.imageRegistry | default "hub.oepkgs.net" }}/neocopilot/authhub:0.9.3-{{ .Values.globals.arch | default "x86" }}{{ end }}
           imagePullPolicy: {{ default "IfNotPresent" .Values.globals.imagePullPolicy }}
           ports:
             - containerPort: 11120
@@ -61,7 +61,7 @@ spec:
               {{ toYaml .Values.authhub.backend.resourceLimits | nindent 14 }}
       initContainers:
         - name: authhub-backend-copy-secret
-          image: {{ .Values.authhub.secret_inject.image | default (printf "hub.oepkgs.net/neocopilot/secret_inject:%s" (include "secret_inject.imageTag" .)) }}
+          image: {{ if .Values.authhub.secret_inject.image }}{{ .Values.authhub.secret_inject.image }}{{ else }}{{ .Values.globals.imageRegistry | default "hub.oepkgs.net" }}/neocopilot/secret_inject:dev-{{ .Values.globals.arch | default "x86" }}{{ end }}
           imagePullPolicy: {{ default "IfNotPresent" .Values.globals.imagePullPolicy }}
           volumeMounts:
             - mountPath: /secrets/mysql-password
@@ -94,20 +94,4 @@ spec:
         - name: euler-copilot-database-vl
           secret:
             secretName: euler-copilot-database
-{{- end -}}
-
-{{- define "authhub.imageTag" -}}
-  {{- $arch := .Values.globals.arch | default "x86_64" | replace "aarch64" "arm64" -}}
-  {{- if eq $arch "arm64" -}}0.9.3-arm
-  {{- else if eq $arch "x86_64" -}}0.9.3-x86
-  {{- else -}}0.9.3
-  {{- end -}}
-{{- end -}}
-
-{{- define "secret_inject.imageTag" -}}
-  {{- $arch := .Values.globals.arch | default "x86_64" | replace "aarch64" "arm64" -}}
-  {{- if eq $arch "arm64" -}}dev-arm
-  {{- else if eq $arch "x86_64" -}}dev-x86
-  {{- else -}}dev
-  {{- end -}}
 {{- end -}}

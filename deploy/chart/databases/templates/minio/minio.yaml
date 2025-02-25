@@ -59,7 +59,7 @@ spec:
       automountServiceAccountToken: false
       containers:
         - name: minio
-          image: {{ .Values.databases.minio.image | default (printf "hub.oepkgs.net/neocopilot/minio:%s" (include "minio.imageTag" .)) }}
+          image: {{ if .Values.databases.minio.image }}{{ .Values.databases.minio.image }}{{ else }}{{ .Values.globals.imageRegistry | default "hub.oepkgs.net" }}/neocopilot/minio:empty-{{ .Values.globals.arch | default "x86" }}{{ end }}
           imagePullPolicy: {{ default "IfNotPresent" .Values.globals.imagePullPolicy }}
           args:
             - "server"
@@ -104,12 +104,4 @@ spec:
         - name: minio-data
           persistentVolumeClaim:
             claimName: minio-storage
-{{- end -}}
-
-{{- define "minio.imageTag" -}}
-  {{- $arch := .Values.globals.arch | default "x86_64" | replace "aarch64" "arm64" -}}
-  {{- if eq $arch "arm64" -}}empty-arm
-  {{- else if eq $arch "x86_64" -}}empty-x86
-  {{- else -}}empty
-  {{- end -}}
 {{- end -}}
