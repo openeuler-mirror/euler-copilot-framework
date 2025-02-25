@@ -10,7 +10,7 @@ from fastapi.responses import JSONResponse
 
 from apps.dependency.csrf import verify_csrf_token
 from apps.dependency.user import get_user, verify_user
-from apps.entities.appcenter import AppPermissionData
+from apps.entities.appcenter import AppFlowInfo, AppPermissionData
 from apps.entities.enum_var import SearchType
 from apps.entities.request_data import CreateAppRequest, ModFavAppRequest
 from apps.entities.response_data import (
@@ -182,7 +182,15 @@ async def get_application(
                 result={},
             ).model_dump(exclude_none=True, by_alias=True),
         )
-    workflows = [{"id": flow.id, "name": flow.name, "debug":flow.debug} for flow in app_data.flows]
+    workflows = [
+        AppFlowInfo(
+            id=flow.id,
+            name=flow.name,
+            description=flow.description,
+            debug=flow.debug,
+        )
+        for flow in app_data.flows
+    ]
     return JSONResponse(
         status_code=status.HTTP_200_OK,
         content=GetAppPropertyRsp(

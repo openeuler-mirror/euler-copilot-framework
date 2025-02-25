@@ -7,7 +7,6 @@ from typing import Optional
 from pydantic import BaseModel, Field
 
 from apps.entities.enum_var import PermissionType
-from apps.entities.flow import AppLink
 
 
 class AppCenterCardItem(BaseModel):
@@ -37,6 +36,22 @@ class AppPermissionData(BaseModel):
     )
 
 
+class AppLink(BaseModel):
+    """App的相关链接"""
+
+    title: str = Field(description="链接标题")
+    url: str = Field(..., description="链接地址", pattern=r"^(https|http)://.*$")
+
+
+class AppFlowInfo(BaseModel):
+    """应用工作流数据结构"""
+
+    id: str = Field(..., description="工作流ID")
+    name: str = Field(..., description="工作流名称")
+    description: str = Field(..., description="工作流简介")
+    debug: bool = Field(..., description="是否经过调试")
+
+
 class AppData(BaseModel):
     """应用信息数据结构"""
 
@@ -49,4 +64,4 @@ class AppData(BaseModel):
     history_len: int = Field(3, alias="dialogRounds", ge=1, le=10, description="对话轮次（1～10）")
     permission: AppPermissionData = Field(
         default_factory=lambda: AppPermissionData(authorizedUsers=None), description="权限配置")
-    workflows: list[dict] = Field(default=[], description="工作流ID，名称列表")
+    workflows: list[AppFlowInfo] = Field(default=[], description="工作流信息列表")

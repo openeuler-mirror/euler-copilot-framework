@@ -6,11 +6,13 @@ from typing import Any, Optional
 
 from pydantic import BaseModel, Field
 
+from apps.entities.appcenter import AppLink
 from apps.entities.enum_var import (
     EdgeType,
     MetadataType,
     PermissionType,
 )
+from apps.entities.pool import AppFlow
 
 
 class StepPos(BaseModel):
@@ -123,21 +125,16 @@ class ServiceMetadata(MetadataBase):
     permission: Optional[Permission] = Field(description="服务权限配置", default=None)
 
 
-class AppLink(BaseModel):
-    """App的相关链接"""
-
-    title: str = Field(description="链接标题")
-    url: str = Field(..., description="链接地址", pattern=r"^(https|http)://.*$")
-
-
 class AppMetadata(MetadataBase):
     """App的元数据"""
 
     type: MetadataType = MetadataType.APP
+    published: bool = Field(description="是否发布", default=False)
     links: list[AppLink] = Field(description="相关链接", default=[])
     first_questions: list[str] = Field(description="首次提问", default=[])
     history_len: int = Field(description="对话轮次", default=3, le=10)
     permission: Optional[Permission] = Field(description="应用权限配置", default=None)
+    flows: list[AppFlow] = Field(description="Flow列表", default=[])
 
 
 class ServiceApiSpec(BaseModel):
