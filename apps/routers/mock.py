@@ -1,5 +1,3 @@
-import asyncio
-import copy
 import json
 import random
 import time
@@ -8,7 +6,7 @@ from typing import Any, AsyncGenerator, Dict, Optional
 import aiohttp
 from pydantic import BaseModel, Field
 import tiktoken
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, status
 from fastapi.responses import StreamingResponse
 
 from apps.common.config import config
@@ -19,20 +17,16 @@ from apps.dependency import (
     verify_user,
 )
 from apps.entities.request_data import MockRequestData, RequestData
-from apps.entities.scheduler import CallError, SysCallVars
+from apps.entities.scheduler import CallError
 from apps.manager.flow import FlowManager
 from apps.scheduler.pool.loader.flow import FlowLoader
 from datetime import datetime
 from textwrap import dedent
 from typing import Any
 
-import pytz
-from jinja2 import BaseLoader, select_autoescape
-from jinja2.sandbox import SandboxedEnvironment
 from pydantic import BaseModel, Field
 
-from apps.entities.scheduler import CallError, SysCallVars
-from apps.scheduler.call.core import CoreCall
+from apps.entities.scheduler import CallError
 
 
 """问答大模型调用
@@ -323,7 +317,7 @@ async def mock_data(appId="68dd3d90-6a97-4da0-aa62-d38a81c7d2f5", flowId="966c79
             time.sleep(t)
         yield "data: " + json.dumps(message,ensure_ascii=False) + "\n\n"
     mid_message = []
-    flow = await FlowLoader.load(appId, flowId)
+    flow = await FlowLoader().load(appId, flowId)
     now_flow_item = "start"
     start_time = time.time()
     last_item = ""
