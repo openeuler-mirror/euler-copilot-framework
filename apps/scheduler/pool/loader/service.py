@@ -40,10 +40,14 @@ class ServiceLoader:
 
         # 载入OpenAPI文档，获取Node列表
         openapi_loader = OpenAPILoader.remote()
-        nodes = [
-            openapi_loader.load_one.remote(service_id, yaml_path, metadata)  # type: ignore[arg-type]
-            async for yaml_path in (service_path / "openapi").rglob("*.yaml")
-        ]
+        try:
+            nodes = [
+                openapi_loader.load_one.remote(service_id, yaml_path, metadata)  # type: ignore[arg-type]
+                async for yaml_path in (service_path / "openapi").rglob("*.yaml")
+            ]
+        except Exception as e:
+            LOGGER.error(f"[ServiceLoader] 服务 {service_id} 文件损坏: {e}")
+            return
         data = await asyncio.gather(*nodes)
         try:
             nodes = data[0]
