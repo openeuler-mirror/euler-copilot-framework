@@ -14,7 +14,7 @@ from sqlalchemy.dialects.postgresql import insert
 from apps.common.config import config
 from apps.constants import APP_DIR, FLOW_DIR, LOGGER
 from apps.entities.flow import AppMetadata, MetadataType, Permission
-from apps.entities.pool import AppPool
+from apps.entities.pool import AppFlow, AppPool
 from apps.entities.vector import AppPoolVector
 from apps.models.mongo import MongoDB
 from apps.models.postgres import PostgreSQL
@@ -50,11 +50,25 @@ class AppLoader:
         flow_path = app_path / FLOW_DIR
         flow_loader = FlowLoader()
 
-        flows = []
+        flow_ids = [app_flow.id for app_flow in metadata.flows]
+        metadata.flows = []
         async for flow_file in flow_path.rglob("*.yaml"):
+            if flow_file.stem not in flow_ids:
+                LOGGER.warning(f"[AppLoader] 工作流 {flow_file} 不在元数据中")
             flow = await flow_loader.load(flow_file)
-            if flow:
-                flows.append(flow)
+            if not flow:
+                err = f"[AppLoader] 工作流 {flow_file} 加载失败"
+                LOGGER.error(err)
+                raise ValueError(err)
+            metadata.flows.append(
+                AppFlow(
+                    _id=flow_file.stem,
+                    name=flow.name,
+                    description=flow.description,
+                    path=str(flow_file),
+                    debug=flow.debug,
+                ),
+            )
 
         await self._update_db(metadata)
 
@@ -65,13 +79,15 @@ class AppLoader:
         :param app_id: 应用 ID
         """
         # 创建文件夹
-        app_path = Path(config["SEMANTICS_DIR"]) / APP_DIR / app_id
-        if not await app_path.exists():
-            await app_path.mkdir(parents=True, exist_ok=True)
+        app_path = pathlib.Path(config["SEMANTICS_DIR"]) / APP_DIR / app_id
+        if not app_path.exists():
+            app_path.mkdir(parents=True, exist_ok=True)
         # 保存元数据
         await MetadataLoader().save_one(MetadataType.APP, metadata, app_id)
-        # 保存工作流
-        await self._update_db(metadata)
+        # 重新载入
+        file_checker = FileChecker()
+        file_checker.diff_one(app_path)
+        await self.load(app_id, file_checker.hashes)
 
     async def delete(self, app_id: str) -> None:
         """删除App，并更新数据库
@@ -98,16 +114,16 @@ class AppLoader:
     async def _update_db(self, metadata: AppMetadata) -> None:
         """更新数据库"""
         if not metadata.hashes:
-            LOGGER.warning(f"[AppLoader] 应用 {metadata.id} 的哈希值为空")
-            # 重新计算哈希值
-            metadata.hashes = FileChecker().check_one(pathlib.Path(config["SEMANTICS_DIR"]) / APP_DIR / metadata.id)
+            err = f"[AppLoader] 应用 {metadata.id} 的哈希值为空"
+            LOGGER.error(err)
+            raise ValueError(err)
         # 更新应用数据
         try:
             app_collection = MongoDB.get_collection("app")
-            if not await app_collection.find_one({"_id": metadata.id}):
-                # 创建应用时需写入完整数据结构，自动初始化创建时间、flow列表、收藏列表和权限
-                await app_collection.insert_one(
-                    jsonable_encoder(
+            await app_collection.update_one(
+                {"_id": metadata.id},
+                {
+                    "$set": jsonable_encoder(
                         AppPool(
                             _id=metadata.id,
                             icon=metadata.icon,
@@ -118,28 +134,13 @@ class AppLoader:
                             first_questions=metadata.first_questions,
                             history_len=metadata.history_len,
                             permission=metadata.permission if metadata.permission else Permission(),
+                            flows=metadata.flows,
                             hashes=metadata.hashes,
                         ),
                     ),
-                )
-            else:
-                # 更新应用数据：部分映射 AppMetadata 到 AppPool，其他字段不更新
-                await app_collection.update_one(
-                    {"_id": metadata.id},
-                    {
-                        "$set": {
-                            "icon": metadata.icon,
-                            "name": metadata.name,
-                            "description": metadata.description,
-                            "author": metadata.author,
-                            "links": metadata.links,
-                            "first_questions": metadata.first_questions,
-                            "history_len": metadata.history_len,
-                            "permission": metadata.permission if metadata.permission else Permission(),
-                            "hashes": metadata.hashes,
-                        },
-                    },
-                )
+                },
+                upsert=True,
+            )
         except Exception as e:
             err = f"[AppLoader] 更新 MongoDB 失败：{e}"
             LOGGER.error(err)

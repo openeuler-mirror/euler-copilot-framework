@@ -72,8 +72,9 @@ class ServiceLoader:
         await openapi_loader.save_one.remote(openapi_path, data)  # type: ignore[arg-type]
         ray.kill(openapi_loader)
         # 重新载入
-        hashes = FileChecker().check_one(service_path)
-        await self.load(service_id, hashes)
+        file_checker = FileChecker()
+        file_checker.diff_one(service_path)
+        await self.load(service_id, file_checker.hashes)
 
     async def delete(self, service_id: str) -> None:
         """删除Service，并更新数据库"""
@@ -100,9 +101,9 @@ class ServiceLoader:
     async def _update_db(self, nodes: list[NodePool], metadata: ServiceMetadata) -> None:
         """更新数据库"""
         if not metadata.hashes:
-            LOGGER.warning(f"[ServiceLoader] 服务 {metadata.id} 的哈希值为空")
-            # 重新计算哈希值
-            metadata.hashes = FileChecker().check_one(pathlib.Path(config["SEMANTICS_DIR"]) / "service" / metadata.id)
+            err = f"[ServiceLoader] 服务 {metadata.id} 的哈希值为空"
+            LOGGER.error(err)
+            raise ValueError(err)
         # 更新MongoDB
         service_collection = MongoDB.get_collection("service")
         node_collection = MongoDB.get_collection("node")
@@ -110,10 +111,10 @@ class ServiceLoader:
             # 先删除旧的节点
             await node_collection.delete_many({"service_id": metadata.id})
             # 插入或更新 Service
-            if not await service_collection.find_one({"_id": metadata.id}):
-                # 创建服务时需写入完整数据结构，自动初始化创建时间、收藏列表和权限
-                await service_collection.insert_one(
-                    jsonable_encoder(
+            await service_collection.update_one(
+                {"_id": metadata.id},
+                {
+                    "$set": jsonable_encoder(
                         ServicePool(
                             _id=metadata.id,
                             name=metadata.name,
@@ -123,21 +124,9 @@ class ServiceLoader:
                             hashes=metadata.hashes,
                         ),
                     ),
-                )
-            else:
-                # 更新服务数据：部分映射 ServiceMetadata 到 ServicePool，其他字段不更新
-                await service_collection.update_one(
-                    {"_id": metadata.id},
-                    {
-                        "$set": {
-                            "name": metadata.name,
-                            "description": metadata.description,
-                            "author": metadata.author,
-                            "permission": metadata.permission if metadata.permission else Permission(),
-                            "hashes": metadata.hashes,
-                        },
-                    },
-                )
+                },
+                upsert=True,
+            )
             for node in nodes:
                 await node_collection.insert_one(jsonable_encoder(node))
         except Exception as e:

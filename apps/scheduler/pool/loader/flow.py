@@ -75,7 +75,7 @@ class FlowLoader:
 
     async def save(self, app_id: str, flow_id: str, flow: Flow) -> None:
         """保存工作流"""
-        flow_path = Path(config["SERVICE_DIR"]) / "app" / app_id / "flow" / f"{flow_id}.yaml"
+        flow_path = Path(config["SERVICE_DIR"]) / APP_DIR / app_id / FLOW_DIR / f"{flow_id}.yaml"
         if not await flow_path.parent.exists():
             await flow_path.parent.mkdir(parents=True)
         if not await flow_path.exists():

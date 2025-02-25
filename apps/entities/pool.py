@@ -38,7 +38,6 @@ class ServicePool(BaseData):
 
     author: str = Field(description="作者的用户ID")
     permission: Permission = Field(description="服务可见性配置", default=Permission())
-    favorites: list[str] = Field(description="收藏此服务的用户列表", default=[])
     hashes: dict[str, str] = Field(description="服务关联的 OpenAPI YAML 和元数据文件哈希")
 
 
@@ -116,5 +115,4 @@ class AppPool(BaseData):
     history_len: int = Field(3, ge=1, le=10, description="对话轮次（1～10）")
     permission: Permission = Field(description="应用权限配置", default=Permission())
     flows: list[AppFlow] = Field(description="Flow列表", default=[])
-    favorites: list[str] = Field(description="收藏此应用的用户列表", default=[])
     hashes: dict[str, str] = Field(description="关联文件的hash值", default={})
