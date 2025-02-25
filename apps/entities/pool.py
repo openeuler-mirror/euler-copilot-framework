@@ -10,8 +10,7 @@ from pydantic import BaseModel, Field
 
 from apps.entities.appcenter import AppLink
 from apps.entities.enum_var import CallType
-from apps.entities.flow import Permission
-from apps.entities.flow_topology import PositionItem
+from apps.entities.flow import AppFlow, Permission
 
 
 class BaseData(BaseModel):
@@ -90,15 +89,6 @@ class NodePool(BaseData):
         description="Node的输出Schema；用于描述Call的输出中特定的字段",
         default=None,
     )
-
-
-class AppFlow(BaseData):
-    """Flow的元数据；会被存储在App下面"""
-
-    enabled: bool = Field(description="是否启用", default=True)
-    path: str = Field(description="Flow的路径")
-    focus_point: PositionItem = Field(description="Flow的视觉焦点", default=PositionItem(x=0, y=0))
-    debug: bool = Field(description="调试是否成功", default=False)
 
 
 class AppPool(BaseData):

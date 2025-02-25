@@ -2,6 +2,7 @@
 
 Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 """
+
 from typing import Any, Optional
 
 from pydantic import BaseModel, Field
@@ -12,7 +13,7 @@ from apps.entities.enum_var import (
     MetadataType,
     PermissionType,
 )
-from apps.entities.pool import AppFlow
+from apps.entities.flow_topology import PositionItem
 
 
 class StepPos(BaseModel):
@@ -100,14 +101,10 @@ class ServiceApiAuthKeyVal(BaseModel):
 class ServiceApiAuth(BaseModel):
     """Service的API鉴权方式"""
 
-    header: list[ServiceApiAuthKeyVal] = Field(
-        description="HTTP头鉴权配置", default=[])
-    cookie: list[ServiceApiAuthKeyVal] = Field(
-        description="HTTP Cookie鉴权配置", default=[])
-    query: list[ServiceApiAuthKeyVal] = Field(
-        description="HTTP URL参数鉴权配置", default=[])
-    oidc: Optional[ServiceApiAuthOidc] = Field(
-        description="OIDC鉴权配置", default=None)
+    header: list[ServiceApiAuthKeyVal] = Field(description="HTTP头鉴权配置", default=[])
+    cookie: list[ServiceApiAuthKeyVal] = Field(description="HTTP Cookie鉴权配置", default=[])
+    query: list[ServiceApiAuthKeyVal] = Field(description="HTTP URL参数鉴权配置", default=[])
+    oidc: Optional[ServiceApiAuthOidc] = Field(description="OIDC鉴权配置", default=None)
 
 
 class ServiceApiConfig(BaseModel):
@@ -123,6 +120,18 @@ class ServiceMetadata(MetadataBase):
     type: MetadataType = MetadataType.SERVICE
     api: ServiceApiConfig = Field(description="API配置")
     permission: Optional[Permission] = Field(description="服务权限配置", default=None)
+
+
+class AppFlow(BaseModel):
+    """Flow的元数据；会被存储在App下面"""
+
+    id: str
+    name: str
+    description: str
+    enabled: bool = Field(description="是否启用", default=True)
+    path: str = Field(description="Flow的路径")
+    focus_point: PositionItem = Field(description="Flow的视觉焦点", default=PositionItem(x=0, y=0))
+    debug: bool = Field(description="调试是否成功", default=False)
 
 
 class AppMetadata(MetadataBase):
