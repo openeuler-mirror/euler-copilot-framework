@@ -23,7 +23,7 @@ from apps.entities.pool import AppFlow, AppPool
 from apps.models.mongo import MongoDB
 from apps.scheduler.pool.loader.app import AppLoader
 from apps.scheduler.pool.loader.flow import FlowLoader
-
+from apps.manager.node import NodeManager
 
 class FlowManager:
     """Flow相关操作"""
@@ -79,9 +79,10 @@ class FlowManager:
 
             nodes_meta_data_items = []
             async for node_pool_record in cursor:
+                params_schema, output_schema = await NodeManager.get_node_params(node_pool_record["_id"])
                 parameters = {
-                    "input_parameters": node_pool_record["params_schema"],
-                    "output_parameters": node_pool_record["output_schema"],
+                    "input_parameters": params_schema,
+                    "output_parameters": output_schema,
                 }
                 node_meta_data_item = NodeMetaDataItem(
                     nodeMetaDataId=node_pool_record["_id"],
@@ -109,7 +110,6 @@ class FlowManager:
         service_collection = MongoDB.get_collection("service")
         try:
             match_conditions = [
-                {"author": "system"},
                 {"author": user_sub},
                 {
                     "$and": [
@@ -133,6 +133,14 @@ class FlowManager:
             service_records = await service_records_cursor.to_list(length=None)
             service_items = [
                 NodeServiceItem(
+                    serviceId="",
+                    name="系统",
+                    type="system",
+                    nodeMetaDatas=[]
+                )
+            ]
+            service_items += [
+                NodeServiceItem(
                     serviceId=record["_id"],
                     name=record["name"],
                     type="default",
@@ -144,7 +152,7 @@ class FlowManager:
             for service_item in service_items:
                 node_meta_datas = await FlowManager.get_node_meta_datas_by_service_id(service_item.service_id)
                 if node_meta_datas is None:
-                    node_meta_datas=[]
+                    node_meta_datas = []
                 service_item.node_meta_datas = node_meta_datas
             return service_items
 
@@ -424,12 +432,11 @@ class FlowManager:
             return None
 
     @staticmethod
-    async def updata_flow_debug_by_app_and_flow_id(app_id: str, flow_id: str, debug: bool)-> bool:
+    async def updata_flow_debug_by_app_and_flow_id(app_id: str, flow_id: str, debug: bool) -> bool:
         try:
             app_pool_collection = MongoDB.get_collection("app")
             result = await app_pool_collection.find_one(
-                {"_id": app_id},
-                array_filters=[{"flows.id": flow_id}]  # 使用关键字参数 array_filters
+                {"_id": app_id,"flows.id": flow_id}  # 使用关键字参数 array_filters
             )
             if result is None:
                 LOGGER.error("Update flow debug from app pool failed")
@@ -440,7 +447,6 @@ class FlowManager:
                     description=result.get("description", ""),
                     created_at=result.get("created_at", None),
                     author=result.get("author", ""),
-                    type=result.get("type", "default"),
                     icon=result.get("icon", ""),
                     published=result.get("published", False),
                     links=[AppLink(**link) for link in result.get("links", [])],
@@ -448,9 +454,33 @@ class FlowManager:
                     history_len=result.get("history_len", 3),
                     permission=Permission(**result.get("permission", {})),
                     flows=[AppFlow(**flow) for flow in result.get("flows", [])],
-                    hashes=result.get("hashes", {})
                 )
-
+            metadata = AppMetadata(
+                id=app_pool.id,
+                name=app_pool.name,
+                description=app_pool.description,
+                author=app_pool.author,
+                icon=app_pool.id,
+                published=app_pool.published,
+                links=app_pool.links,
+                first_questions=app_pool.first_questions,
+                history_len=app_pool.history_len,
+                permission=app_pool.permission,
+                flows=app_pool.flows,
+                version="1.0",
+            )
+            for flows in metadata.flows:
+                if flows.id == flow_id:
+                    flows.debug = debug
+            app_loader = AppLoader.remote()
+            await app_loader.save.remote(metadata, app_id)  # type: ignore[attr-type]
+            ray.kill(app_loader)
+            flow_loader = FlowLoader()
+            flow = await flow_loader.load(app_id, flow_id)
+            if flow is None:
+                return False
+            flow.debug = debug
+            await flow_loader.save(app_id=app_id,flow_id=flow_id,flow=flow)
             return True
         except Exception as e:
             LOGGER.error(f"Update flow debug from app pool failed: {e!s}")
