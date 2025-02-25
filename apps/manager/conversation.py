@@ -20,7 +20,7 @@ class ConversationManager:
         """根据用户ID获取对话列表，按时间由近到远排序"""
         try:
             conv_collection = MongoDB.get_collection("conversation")
-            return [Conversation(**conv) async for conv in conv_collection.find({"user_sub": user_sub}).sort({"created_at": 1})]
+            return [Conversation(**conv) async for conv in conv_collection.find({"user_sub": user_sub,"debug": False}).sort({"created_at": 1})]
         except Exception as e:
             LOGGER.info(f"[ConversationManager] Get conversation by user_sub failed: {e}")
         return []

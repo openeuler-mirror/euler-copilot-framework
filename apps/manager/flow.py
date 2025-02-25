@@ -8,8 +8,9 @@ from pymongo import ASCENDING
 import ray
 
 from apps.constants import LOGGER
+from apps.entities.appcenter import AppLink
 from apps.entities.enum_var import MetadataType, PermissionType
-from apps.entities.flow import AppMetadata, Edge, Flow, FlowConfig, Step, StepPos
+from apps.entities.flow import AppMetadata, Edge, Flow, FlowConfig, Permission, Step, StepPos
 from apps.entities.flow_topology import (
     EdgeItem,
     FlowItem,
@@ -401,10 +402,9 @@ class FlowManager:
                 permission=app_pool.permission,
                 flows=app_pool.flows,
             )
-            if flow_record:
-                for flow in metadata.flows:
-                    if flow.id == flow_id:
-                        metadata.flows.remove(flow)
+            for flow in metadata.flows:
+                if flow.id == flow_id:
+                    metadata.flows.remove(flow)
             app_loader = AppLoader.remote()
             await app_loader.save.remote(metadata, app_id)  # type: ignore[attr-type]
             ray.kill(app_loader)
@@ -421,14 +421,30 @@ class FlowManager:
     async def updata_flow_debug_by_app_and_flow_id(app_id: str, flow_id: str, debug: bool)-> bool:
         try:
             app_pool_collection = MongoDB.get_collection("app")
-            result = await app_pool_collection.find_one_and_update(
+            result = await app_pool_collection.find_one(
                 {"_id": app_id},
-                {"$set": {"flows.$[flow].debug": debug}},
-                array_filters=[{"flow._id": flow_id}]  # 使用关键字参数 array_filters
+                array_filters=[{"flows.id": flow_id}]  # 使用关键字参数 array_filters
             )
             if result is None:
                 LOGGER.error("Update flow debug from app pool failed")
                 return False
+            app_pool = AppPool(
+                    _id=result["_id"],  # 使用 alias="_id" 自动映射
+                    name=result.get("name", ""),
+                    description=result.get("description", ""),
+                    created_at=result.get("created_at", None),
+                    author=result.get("author", ""),
+                    type=result.get("type", "default"),
+                    icon=result.get("icon", ""),
+                    published=result.get("published", False),
+                    links=[AppLink(**link) for link in result.get("links", [])],
+                    first_questions=result.get("first_questions", []),
+                    history_len=result.get("history_len", 3),
+                    permission=Permission(**result.get("permission", {})),
+                    flows=[AppFlow(**flow) for flow in result.get("flows", [])],
+                    hashes=result.get("hashes", {})
+                )
+
             return True
         except Exception as e:
             LOGGER.error(f'Update flow debug from app pool failed: {e}')
