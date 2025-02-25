@@ -422,8 +422,7 @@ class FlowManager:
         try:
             app_pool_collection = MongoDB.get_collection("app")
             result = await app_pool_collection.find_one(
-                {"_id": app_id},
-                array_filters=[{"flows.id": flow_id}]  # 使用关键字参数 array_filters
+                {"_id": app_id,"flows.id": flow_id}  # 使用关键字参数 array_filters
             )
             if result is None:
                 LOGGER.error("Update flow debug from app pool failed")
@@ -434,7 +433,6 @@ class FlowManager:
                     description=result.get("description", ""),
                     created_at=result.get("created_at", None),
                     author=result.get("author", ""),
-                    type=result.get("type", "default"),
                     icon=result.get("icon", ""),
                     published=result.get("published", False),
                     links=[AppLink(**link) for link in result.get("links", [])],
@@ -442,9 +440,33 @@ class FlowManager:
                     history_len=result.get("history_len", 3),
                     permission=Permission(**result.get("permission", {})),
                     flows=[AppFlow(**flow) for flow in result.get("flows", [])],
-                    hashes=result.get("hashes", {})
                 )
-
+            metadata = AppMetadata(
+                id=app_pool.id,
+                name=app_pool.name,
+                description=app_pool.description,
+                author=app_pool.author,
+                icon=app_pool.id,
+                published=app_pool.published,
+                links=app_pool.links,
+                first_questions=app_pool.first_questions,
+                history_len=app_pool.history_len,
+                permission=app_pool.permission,
+                flows=app_pool.flows,
+                version="1.0",
+            )
+            for flows in metadata.flows:
+                if flows.id == flow_id:
+                    flows.debug = debug
+            app_loader = AppLoader.remote()
+            await app_loader.save.remote(metadata, app_id)  # type: ignore[attr-type]
+            ray.kill(app_loader)
+            flow_loader = FlowLoader()
+            flow = await flow_loader.load(app_id, flow_id)
+            if flow is None:
+                return False
+            flow.debug = debug
+            await flow_loader.save(app_id=app_id,flow_id=flow_id,flow=flow)
             return True
         except Exception as e:
             LOGGER.error(f'Update flow debug from app pool failed: {e}')
