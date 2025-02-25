@@ -190,7 +190,7 @@ class FlowManager:
                 LOGGER.error(f"应用{app_id}不存在")
                 return None
             cursor = app_collection.find(
-                {"_id": app_id, "flows._id": flow_id},
+                {"_id": app_id, "flows.id": flow_id},
                 {"flows.$": 1},  # 只返回 flows 数组中符合条件的第一个元素
             )
             # 获取结果列表，并限制长度为1，因为我们只期待一个结果
@@ -207,8 +207,7 @@ class FlowManager:
             return None
         try:
             if flow_record:
-                flow_config= await FlowLoader().load(app_id, flow_id)
-                flow_config = flow_config.dict()
+                flow_config = await FlowLoader().load(app_id, flow_id)
                 if not flow_config:
                     LOGGER.error(
                         "Get flow config by app_id and flow_id failed")
@@ -216,33 +215,33 @@ class FlowManager:
                 focus_point = flow_record["focus_point"]
                 flow_item = FlowItem(
                     flowId=flow_id,
-                    name=flow_config["name"],
-                    description=flow_config["description"],
+                    name=flow_config.name,
+                    description=flow_config.description,
                     enable=True,
                     editable=True,
                     nodes=[],
                     edges=[],
-                    createdAt=flow_record["created_at"],
+                    debug=flow_config.debug,
                 )
-                for node_id, node_config in flow_config["steps"].items():
+                for node_id, node_config in flow_config.steps.items():
                     node_item = NodeItem(
                         nodeId=node_id,
-                        nodeMetaDataId=node_config["node"],
-                        name=node_config["name"],
-                        description=node_config["description"],
+                        nodeMetaDataId=node_config.node,
+                        name=node_config.name,
+                        description=node_config.description,
                         enable=True,
                         editable=True,
-                        type=node_config["type"],
-                        parameters=node_config["params"],
+                        type=node_config.type,
+                        parameters=node_config.params,
                         position=PositionItem(
-                            x=node_config["pos"]["x"], y=node_config["pos"]["y"]),
+                            x=node_config.pos.x, y=node_config.pos.y),
                     )
                     flow_item.nodes.append(node_item)
 
-                for edge_config in flow_config["edges"]:
-                    edge_from = edge_config["edge_from"]
+                for edge_config in flow_config.edges:
+                    edge_from = edge_config.edge_from
                     branch_id = ""
-                    tmp_list = edge_config["edge_from"].split(".")
+                    tmp_list = edge_config.edge_from.split(".")
                     if len(tmp_list) == 0 or len(tmp_list) > 2:
                         LOGGER.error("edge from format error")
                         continue
@@ -250,10 +249,10 @@ class FlowManager:
                         edge_from = tmp_list[0]
                         branch_id = tmp_list[1]
                     flow_item.edges.append(EdgeItem(
-                        edgeId=edge_config["id"],
+                        edgeId=edge_config.id,
                         sourceNode=edge_from,
-                        targetNode=edge_config["edge_to"],
-                        type=edge_config["edge_type"],
+                        targetNode=edge_config.edge_to,
+                        type=edge_config.edge_type,
                         branchId=branch_id,
                     ))
                 return (flow_item, focus_point)
@@ -353,7 +352,7 @@ class FlowManager:
                         flow.focus_point = PositionItem(x=focus_point.x, y=focus_point.y)
             else:
                 new_flow = AppFlow(
-                    _id=flow_id,
+                    id=flow_id,
                     name=flow_item.name,
                     description=flow_item.description,
                     path="",

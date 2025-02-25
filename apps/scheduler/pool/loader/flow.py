@@ -22,7 +22,7 @@ class FlowLoader:
 
     async def load(self, app_id, flow_id) -> Optional[Flow]:
         """从文件系统中加载【单个】工作流"""
-        flow_path = Path(config["SERVICE_DIR"]) / "app" / app_id / "flow" / f"{flow_id}.yaml"
+        flow_path = Path(config["SEMANTICS_DIR"]) / "app" / app_id / "flow" / f"{flow_id}.yaml"
         async with aiofiles.open(flow_path, encoding="utf-8") as f:
             flow_yaml = yaml.safe_load(await f.read())
 
@@ -58,11 +58,11 @@ class FlowLoader:
             if key == "start":
                 step["name"] = "开始"
                 step["description"] = "开始节点"
-                step["type"] = "none"
+                step["type"] = "start"
             elif key == "end":
                 step["name"] = "结束"
                 step["description"] = "结束节点"
-                step["type"] = "none"
+                step["type"] = "end"
             else:
                 step["type"] = await NodeManager.get_node_call_id(step["node"])
                 step["name"] = await NodeManager.get_node_name(step["node"]) if "name" not in step or step["name"] == "" else step["name"]
@@ -81,7 +81,7 @@ class FlowLoader:
     async def save(self, app_id: str, flow_id: str, flow: Flow) -> None:
         """保存工作流"""
         await self._updata_db(FlowConfig(flow_config=flow, flow_id=flow_id))
-        flow_path = Path(config["SERVICE_DIR"]) / "app" / app_id / "flow" / f"{flow_id}.yaml"
+        flow_path = Path(config["SEMANTICS_DIR"]) / "app" / app_id / "flow" / f"{flow_id}.yaml"
         if not await flow_path.parent.exists():
             await flow_path.parent.mkdir(parents=True)
         if not await flow_path.exists():
@@ -97,7 +97,10 @@ class FlowLoader:
                     "description": step.description,
                     "node": step.node,
                     "params": step.params,
-                    "pos": step.pos,
+                    "pos": {
+                        "x":step.pos.x,
+                        "y":step.pos.y,
+                    },
                 }
                 for step_id, step in flow.steps.items()
             },
