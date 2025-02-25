@@ -13,7 +13,7 @@ from sqlalchemy import delete
 from sqlalchemy.dialects.postgresql import insert
 
 from apps.common.config import config
-from apps.constants import LOGGER
+from apps.constants import LOGGER, SERVICE_DIR
 from apps.entities.flow import Permission, ServiceMetadata
 from apps.entities.pool import NodePool, ServicePool
 from apps.entities.vector import NodePoolVector, ServicePoolVector
@@ -30,7 +30,7 @@ class ServiceLoader:
 
     async def load(self, service_id: str, hashes: dict[str, str]) -> None:
         """加载单个Service"""
-        service_path = Path(config["SEMANTICS_DIR"]) / "service" / service_id
+        service_path = Path(config["SEMANTICS_DIR"]) / SERVICE_DIR / service_id
         # 载入元数据
         metadata = await MetadataLoader().load_one(service_path / "metadata.yaml")
         if not isinstance(metadata, ServiceMetadata):
@@ -58,7 +58,7 @@ class ServiceLoader:
 
     async def save(self, service_id: str, metadata: ServiceMetadata, data: dict) -> None:
         """在文件系统上保存Service，并更新数据库"""
-        service_path = pathlib.Path(config["SEMANTICS_DIR"]) / "service" / service_id
+        service_path = pathlib.Path(config["SEMANTICS_DIR"]) / SERVICE_DIR / service_id
         # 创建文件夹
         if not service_path.exists():
             service_path.mkdir(parents=True, exist_ok=True)
@@ -74,7 +74,7 @@ class ServiceLoader:
         # 重新载入
         file_checker = FileChecker()
         file_checker.diff_one(service_path)
-        await self.load(service_id, file_checker.hashes)
+        await self.load(service_id, file_checker.hashes[f"{SERVICE_DIR}/{service_id}"])
 
     async def delete(self, service_id: str) -> None:
         """删除Service，并更新数据库"""
