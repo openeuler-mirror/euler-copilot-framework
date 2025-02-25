@@ -57,6 +57,8 @@ class User(BaseModel):
     conversations: list[str] = []
     domains: list[UserDomainData] = []
     app_usage: dict[str, AppUsageData] = {}
+    fav_apps: list[str] = []
+    fav_services: list[str] = []
 
 
 class Conversation(BaseModel):

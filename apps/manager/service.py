@@ -12,6 +12,7 @@ from jsonschema import ValidationError
 
 from apps.common.config import config
 from apps.constants import LOGGER, SERVICE_DIR
+from apps.entities.collection import User
 from apps.entities.enum_var import SearchType
 from apps.entities.file_type import OpenAPI
 from apps.entities.flow import ServiceApiConfig, ServiceMetadata
@@ -35,6 +36,7 @@ class ServiceCenterManager:
         """获取所有服务列表"""
         filters = ServiceCenterManager._build_filters({}, search_type, keyword) if keyword else {}
         service_pools, total_count = await ServiceCenterManager._search_service(filters, page, page_size)
+        fav_service_ids = await ServiceCenterManager._get_favorite_service_ids_by_user(user_sub)
         services = [
             ServiceCardItem(
                 serviceId=service_pool.id,
@@ -42,7 +44,7 @@ class ServiceCenterManager:
                 name=service_pool.name,
                 description=service_pool.description,
                 author=service_pool.author,
-                favorited=(user_sub in service_pool.favorites),
+                favorited=(service_pool.id in fav_service_ids),
             )
             for service_pool in service_pools
         ]
@@ -60,6 +62,7 @@ class ServiceCenterManager:
         base_filter = {"author": user_sub}
         filters = ServiceCenterManager._build_filters(base_filter, search_type, keyword) if keyword else base_filter
         service_pools, total_count = await ServiceCenterManager._search_service(filters, page, page_size)
+        fav_service_ids = await ServiceCenterManager._get_favorite_service_ids_by_user(user_sub)
         services = [
             ServiceCardItem(
                 serviceId=service_pool.id,
@@ -67,7 +70,7 @@ class ServiceCenterManager:
                 name=service_pool.name,
                 description=service_pool.description,
                 author=service_pool.author,
-                favorited=(user_sub in service_pool.favorites),
+                favorited=(service_pool.id in fav_service_ids),
             )
             for service_pool in service_pools
         ]
@@ -211,12 +214,13 @@ class ServiceCenterManager:
         service_id: str,
     ) -> bool:
         """删除服务"""
-        # 验证用户权限
         service_collection = MongoDB.get_collection("service")
+        user_collection = MongoDB.get_collection("user")
         db_service = await service_collection.find_one({"_id": service_id})
         if not db_service:
             msg = "Service not found"
             raise ValueError(msg)
+        # 验证用户权限
         service_pool_store = ServicePool.model_validate(db_service)
         if service_pool_store.author != user_sub:
             msg = "Permission denied"
@@ -225,6 +229,11 @@ class ServiceCenterManager:
         service_loader = ServiceLoader.remote()
         await service_loader.delete.remote(service_id)  # type: ignore[attr-type]
         ray.kill(service_loader)
+        # 删除用户收藏
+        await user_collection.update_many(
+            {"fav_services": {"$in": [service_id]}},
+            {"$pull": {"fav_services": service_id}},
+        )
         return True
 
     @staticmethod
@@ -236,23 +245,29 @@ class ServiceCenterManager:
     ) -> bool:
         """修改收藏状态"""
         service_collection = MongoDB.get_collection("service")
+        user_collection = MongoDB.get_collection("user")
         db_service = await service_collection.find_one({"_id": service_id})
         if not db_service:
             msg = "Service not found"
             raise ValueError(msg)
-        service_pool_store = ServicePool.model_validate(db_service)
-        already_favorited = user_sub in service_pool_store.favorites
+        db_user = await user_collection.find_one({"sub": user_sub})
+        if not db_user:
+            msg = "User not found"
+            raise ValueError(msg)
+        user_data = User.model_validate(db_user)
+        already_favorited = service_id in user_data.fav_services
         if already_favorited == favorited:
             return False
         if favorited:
-            service_pool_store.favorites.append(user_sub)
-            service_pool_store.favorites = list(set(service_pool_store.favorites))
+            await user_collection.update_one(
+                {"_id": user_sub},
+                {"$addToSet": {"fav_services": service_id}},
+            )
         else:
-            service_pool_store.favorites.remove(user_sub)
-        await service_collection.update_one(
-            {"_id": service_id},
-            {"$set": service_pool_store.model_dump(exclude_none=True, by_alias=True)},
-        )
+            await user_collection.update_one(
+                {"_id": user_sub},
+                {"$pull": {"fav_services": service_id}},
+            )
         return True
 
     @staticmethod
@@ -277,9 +292,9 @@ class ServiceCenterManager:
     @staticmethod
     async def _get_favorite_service_ids_by_user(user_sub: str) -> list[str]:
         """获取用户收藏的服务ID"""
-        service_collection = MongoDB.get_collection("service")
-        cursor = service_collection.find({"favorites": {"$in": [user_sub]}})
-        return [ServicePool.model_validate(doc).id async for doc in cursor]
+        user_collection = MongoDB.get_collection("user")
+        user_data = User.model_validate(await user_collection.find_one({"_id": user_sub}))
+        return user_data.fav_services
 
     @staticmethod
     def _validate_service_data(data: dict[str, Any]) -> bool:

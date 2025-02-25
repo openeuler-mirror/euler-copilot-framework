@@ -63,6 +63,7 @@ class AppCenterManager:
             )
             # 执行应用搜索
             apps, total_apps = await AppCenterManager._search_apps_by_filter(filters, page, page_size)
+            fav_apps = await AppCenterManager._get_favorite_app_ids_by_user(user_sub)
             # 构建返回的应用卡片列表
             return [
                 AppCenterCardItem(
@@ -71,7 +72,7 @@ class AppCenterManager:
                     name=app.name,
                     description=app.description,
                     author=app.author,
-                    favorited=(user_sub in app.favorites),
+                    favorited=(app.id in fav_apps),
                     published=app.published,
                 )
                 for app in apps
@@ -111,6 +112,7 @@ class AppCenterManager:
                 else base_filter
             )
             apps, total_apps = await AppCenterManager._search_apps_by_filter(filters, page, page_size)
+            fav_apps = await AppCenterManager._get_favorite_app_ids_by_user(user_sub)
             return [
                 AppCenterCardItem(
                     appId=app.id,
@@ -118,7 +120,7 @@ class AppCenterManager:
                     name=app.name,
                     description=app.description,
                     author=app.author,
-                    favorited=(user_sub in app.favorites),
+                    favorited=(app.id in fav_apps),
                     published=app.published,
                 )
                 for app in apps
@@ -145,10 +147,10 @@ class AppCenterManager:
         :return: 应用列表，总应用数
         """
         try:
-            fav_app = await AppCenterManager._get_favorite_app_ids_by_user(user_sub)
+            fav_apps = await AppCenterManager._get_favorite_app_ids_by_user(user_sub)
             # 搜索条件
             base_filter = {
-                "_id": {"$in": fav_app},
+                "_id": {"$in": fav_apps},
                 "published": True,
             }
             filters: dict[str, Any] = (
@@ -258,12 +260,11 @@ class AppCenterManager:
             app_data = AppPool.model_validate(await app_collection.find_one({"_id": app_id}))
             if not app_data:
                 return False
+            metadata.flows = app_data.flows
+            metadata.published = app_data.published
             app_loader = AppLoader.remote()
             await app_loader.save.remote(metadata, app_id)  # type: ignore[attr-type]
             ray.kill(app_loader)
-            # 如果工作流ID列表不一致，则需要取消发布状态
-            if {flow.id for flow in app_data.flows} != set(data.workflows):
-                await app_collection.update_one({"_id": app_id}, {"$set": {"published": False}})
             return True
         except Exception as e:
             LOGGER.error(f"[AppCenterManager] Update app failed: {e}")
@@ -298,26 +299,28 @@ class AppCenterManager:
         """
         try:
             app_collection = MongoDB.get_collection("app")
+            user_collection = MongoDB.get_collection("user")
             db_data = await app_collection.find_one({"_id": app_id})
             if not db_data:
                 return AppCenterManager.ModFavAppFlag.NOT_FOUND
+            db_user = await user_collection.find_one({"_id": user_sub})
+            if not db_user:
+                return AppCenterManager.ModFavAppFlag.BAD_REQUEST
+            user_data = User.model_validate(db_user)
 
-            app_data = AppPool.model_validate(db_data)
-            already_favorited = user_sub in app_data.favorites
-
+            already_favorited = app_id in user_data.fav_apps
             if favorited == already_favorited:
                 return AppCenterManager.ModFavAppFlag.BAD_REQUEST
 
             if favorited:
-                await app_collection.update_one(
-                    {"_id": app_id},
-                    {"$addToSet": {"favorites": user_sub}},
-                    upsert=True,
+                await user_collection.update_one(
+                    {"_id": user_sub},
+                    {"$addToSet": {"fav_apps": app_id}},
                 )
             else:
-                await app_collection.update_one(
-                    {"_id": app_id},
-                    {"$pull": {"favorites": user_sub}},
+                await user_collection.update_one(
+                    {"_id": user_sub},
+                    {"$pull": {"fav_apps": app_id}},
                 )
             return AppCenterManager.ModFavAppFlag.SUCCESS
         except Exception as e:
@@ -339,13 +342,20 @@ class AppCenterManager:
                 return False
             if app_data.author != user_sub:
                 return False
+            # 删除应用
             app_loader = AppLoader.remote()
             await app_loader.delete.remote(app_id)  # type: ignore[attr-type]
             ray.kill(app_loader)
             user_collection = MongoDB.get_collection("user")
-            await user_collection.update_one(
-                {"_id": user_sub},
+            # 删除用户使用记录
+            await user_collection.update_many(
+                {f"app_usage.{app_id}": {"$exists": True}},
                 {"$unset": {f"app_usage.{app_id}": ""}},
+            )
+            # 删除用户收藏
+            await user_collection.update_many(
+                {"fav_apps": {"$in": [app_id]}},
+                {"$pull": {"fav_apps": app_id}},
             )
             return True
         except Exception as e:
@@ -466,9 +476,9 @@ class AppCenterManager:
     async def _get_favorite_app_ids_by_user(user_sub: str) -> list[str]:
         """获取用户收藏的应用ID"""
         try:
-            app_collection = MongoDB.get_collection("app")
-            cursor = app_collection.find({"favorites": {"$in": [user_sub]}})
-            return [AppPool.model_validate(doc).id async for doc in cursor]
+            user_collection = MongoDB.get_collection("user")
+            user_data = User.model_validate(await user_collection.find_one({"_id": user_sub}))
+            return user_data.fav_apps
         except Exception as e:
             LOGGER.info(f"[AppCenterManager] Get favorite app ids by user_sub failed: {e}")
         return []

@@ -11,6 +11,7 @@ from apps.entities.enum_var import (
     MetadataType,
     PermissionType,
 )
+from apps.entities.pool import AppFlow
 
 
 class StepPos(BaseModel):
@@ -134,10 +135,12 @@ class AppMetadata(MetadataBase):
     """App的元数据"""
 
     type: MetadataType = MetadataType.APP
+    published: bool = Field(description="是否发布", default=False)
     links: list[AppLink] = Field(description="相关链接", default=[])
     first_questions: list[str] = Field(description="首次提问", default=[])
     history_len: int = Field(description="对话轮次", default=3, le=10)
     permission: Optional[Permission] = Field(description="应用权限配置", default=None)
+    flows: list[AppFlow] = Field(description="Flow列表", default=[])
 
 
 class ServiceApiSpec(BaseModel):
