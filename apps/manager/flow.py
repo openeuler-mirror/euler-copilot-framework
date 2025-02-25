@@ -78,10 +78,14 @@ class FlowManager:
             nodes_meta_data_items = []
             async for node_pool_record in cursor:
                 params_schema, output_schema = await NodeManager.get_node_params(node_pool_record["_id"])
-                parameters = {
-                    "input_parameters": generate_from_schema(params_schema),
-                    "output_parameters": generate_from_schema(output_schema),
-                }
+                try:
+                    parameters = {
+                        "input_parameters": generate_from_schema(params_schema),
+                        "output_parameters": output_schema,
+                    }
+                except Exception as e:
+                    LOGGER.error(f"[FlowManeger] generate_from_schema failed {e}")
+                    continue
                 node_meta_data_item = NodeMetaDataItem(
                     nodeMetaDataId=node_pool_record["_id"],
                     type=node_pool_record["call_id"],
