@@ -20,6 +20,7 @@ class NodeMetaDataItem(BaseModel):
     editable: bool = Field(default=True)
     created_at: Optional[float] = Field(alias="createdAt")
 
+
 class NodeServiceItem(BaseModel):
     """GET /api/flow/service 中单个service信息以及service下的节点元数据的信息"""
 
@@ -27,7 +28,7 @@ class NodeServiceItem(BaseModel):
     name: str = Field(..., description="服务名称")
     type: str = Field(..., description="服务类型")
     node_meta_datas: list[NodeMetaDataItem] = Field(alias="nodeMetaDatas", default=[])
-    created_at: str = Field(..., alias="createdAt", description="创建时间")
+    created_at: Optional[str] = Field(..., alias="createdAt", description="创建时间")
 
 
 class PositionItem(BaseModel):
@@ -47,16 +48,16 @@ class DependencyItem(BaseModel):
 class NodeItem(BaseModel):
     """请求/响应中的节点变量类"""
 
-    node_id: str = Field(alias="nodeId",default="")
-    service_id: str = Field(alias="serviceId",default="")
-    node_meta_data_id: str = Field(alias="nodeMetaDataId",default="")
-    name: str=Field(default="")
+    node_id: str = Field(alias="nodeId", default="")
+    service_id: str = Field(alias="serviceId", default="")
+    node_meta_data_id: str = Field(alias="nodeMetaDataId", default="")
+    name: str = Field(default="")
     type: str = Field(default=NodeType.NORMAL.value)
     description: str = Field(default="")
     enable: bool = Field(default=True)
     parameters: dict[str, Any] = Field(default={})
     depedency: Optional[DependencyItem] = None
-    position: PositionItem=Field(default=PositionItem())
+    position: PositionItem = Field(default=PositionItem())
     editable: bool = Field(default=True)
 
 
