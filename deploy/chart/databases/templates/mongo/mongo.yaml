@@ -1,62 +1,53 @@
-{{- if .Values.databases.mongo.enabled -}}
----
+{{- if .Values.databases.mongo.enabled }}
 apiVersion: v1
 kind: Service
 metadata:
-  name: mongo-db
+  name: {{ include "mongo.fullname" . }}
   namespace: {{ .Release.Namespace }}
 spec:
   type: {{ default "ClusterIP" .Values.databases.mongo.service.type }}
   selector:
-    app: mongo
+    app: {{ include "mongo.name" . }}
   ports:
     - port: 27017
       targetPort: 27017
-      nodePort: {{ default nil .Values.databases.mongo.service.nodePort }}
-
+      {{- if eq (default "ClusterIP" .Values.databases.mongo.service.type) "NodePort" }}
+      nodePort: {{ .Values.databases.mongo.service.nodePort | required "当service.type为NodePort时必须指定nodePort" }}
+      {{- end }}
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: mongo-deploy
+  name: {{ include "mongo.fullname" . }}
   namespace: {{ .Release.Namespace }}
   labels:
-    app: mongo
+    app: {{ include "mongo.name" . }}
 spec:
-  replicas: {{ default 1 .Values.globals.replicaCount }}
+  replicas: {{ .Values.globals.replicaCount | default 1 }}
   selector:
     matchLabels:
-      app: mongo
+      app: {{ include "mongo.name" . }}
   template:
     metadata:
       annotations:
-        checksum/config: {{ include (print $.Template.BasePath "/mongo/mongo-config.yaml") . | sha256sum }}
+        checksum/config: {{ include "mongo.configmap" . | sha256sum }}
       labels:
-        app: mongo
+        app: {{ include "mongo.name" . }}
     spec:
       automountServiceAccountToken: false
-      affinity:
-        nodeAffinity:
-          requiredDuringSchedulingIgnoredDuringExecution:
-            nodeSelectorTerms:
-            - matchExpressions:
-              - key: kubernetes.io/arch
-                operator: In
-                values:
-                - {{ .Values.globals.arch | default "x86_64" | replace "aarch64" "arm64" | quote }}
       containers:
         - name: mongo
           image: {{ .Values.databases.mongo.image | default (printf "hub.oepkgs.net/neocopilot/mongo:%s" (include "mongo.imageTag" .)) }}
-          imagePullPolicy: {{ default "IfNotPresent" .Values.globals.imagePullPolicy }}
+          imagePullPolicy: {{ .Values.globals.imagePullPolicy | default "IfNotPresent" }}
           command:
             - bash
             - -c
             - |
               if [ ! -f "/data/db/file.key" ]; then
-                  openssl rand -base64 756 > /data/db/file.key;
+                  openssl rand -base64 756 > /data/db/file.key
               fi
-              chmod 400 /data/db/file.key;
-              chown 999:999 /data/db/file.key;
+              chmod 400 /data/db/file.key
+              chown 999:999 /data/db/file.key
               exec docker-entrypoint.sh $$@
           args:
             - "mongod"
@@ -73,9 +64,10 @@ spec:
               command:
                 - bash
                 - /tmp/healthcheck.sh
-            failureThreshold: 5
             initialDelaySeconds: 30
-            periodSeconds: 60
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
           env:
             - name: TZ
               value: "Asia/Shanghai"
@@ -95,12 +87,7 @@ spec:
               name: mongo-init
               subPath: healthcheck.sh
           resources:
-            requests:
-              cpu: 0.25
-              memory: 256Mi
-            limits:
-              {{ toYaml .Values.databases.mongo.resourceLimits | nindent 14 }}
-      restartPolicy: Always
+            {{- toYaml .Values.databases.mongo.resources | nindent 12 }}
       volumes:
         - name: mongo-data
           persistentVolumeClaim:
@@ -108,13 +95,24 @@ spec:
         - name: mongo-init
           configMap:
             name: mongo-config
-{{- end -}}
+{{- end }}
 
 {{- define "mongo.imageTag" -}}
-  {{- $arch := .Values.globals.arch | default "x86_64" | replace "aarch64" "arm64" -}}
+  {{- $arch := .Values.globals.arch | default "amd64" | replace "aarch64" "arm64" -}}
   {{- if eq $arch "arm64" -}}7.0.16-arm
-  {{- else if eq $arch "x86_64" -}}7.0.16-x86
+  {{- else if eq $arch "amd64" -}}7.0.16-x86
   {{- else -}}7.0.16
   {{- end -}}
 {{- end -}}
-`
+
+{{- define "mongo.name" -}}
+{{- default "mongo" .Values.databases.mongo.nameOverride | trunc 63 | trimSuffix "-" -}}
+{{- end -}}
+
+{{- define "mongo.fullname" -}}
+{{- printf "%s-%s" .Release.Name "mongo" | trunc 63 | trimSuffix "-" -}}
+{{- end -}}
+
+{{- define "mongo.configmap" -}}
+{{- printf "%s-config" (include "mongo.fullname" .) -}}
+{{- end -}}

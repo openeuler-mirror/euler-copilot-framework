@@ -33,15 +33,6 @@ spec:
         app: redis
     spec:
       automountServiceAccountToken: false
-      affinity:
-        nodeAffinity:
-          requiredDuringSchedulingIgnoredDuringExecution:
-            nodeSelectorTerms:
-            - matchExpressions:
-              - key: kubernetes.io/arch
-                operator: In
-                values:
-                - {{ .Values.globals.arch | default "x86_64" | replace "aarch64" "arm64" | quote }}
       containers:
         - name: redis
           image: {{ .Values.databases.redis.image | default (printf "hub.oepkgs.net/neocopilot/redis:%s" (include "redis.imageTag" .)) }}
