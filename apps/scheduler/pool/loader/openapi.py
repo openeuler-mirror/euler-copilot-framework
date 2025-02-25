@@ -161,7 +161,7 @@ class OpenAPILoader:
             yaml_data = yaml.safe_dump(yaml_dict)
             await yaml_path.write_text(yaml_data)
         except Exception as e:
-            if await yaml_path.exists():
+            if yaml_path.exists():
                 await yaml_path.unlink()
             err = f"保存OpenAPI文档{yaml_path}失败：{e}"
             LOGGER.error(msg=err)
