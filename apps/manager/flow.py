@@ -105,20 +105,27 @@ class FlowManager:
         :return: service的列表
         """
         service_collection = MongoDB.get_collection("service")
+        user_collection = MongoDB.get_collection("user")
         try:
+            user_record = await user_collection.find_one({"_id": user_sub}, {"fav_services": 1, "_id": 0})
+            fav_services = []
+            if user_record:
+                fav_services = user_record.get("fav_services", [])
+            else:
+                return []
             match_conditions = [
                 {"author": user_sub},
                 {
                     "$and": [
                         {"permissions.type": PermissionType.PUBLIC.value},
-                        {"favorites": user_sub},
+                        {"_id": {"$in": fav_services}},
                     ],
                 },
                 {
                     "$and": [
                         {"permissions.type": PermissionType.PROTECTED.value},
                         {"permissions.users": user_sub},
-                        {"favorites": user_sub},
+                        {"_id": {"$in": fav_services}},
                     ],
                 },
             ]
