@@ -5,10 +5,11 @@ Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 from typing import Optional
 
 from pymongo import ASCENDING
+import ray
 
 from apps.constants import LOGGER
 from apps.entities.enum_var import PermissionType
-from apps.entities.flow import Edge, Flow, FlowConfig, Step, StepPos
+from apps.entities.flow import AppMetadata, Edge, Flow, FlowConfig, Step, StepPos
 from apps.entities.flow_topology import (
     EdgeItem,
     FlowItem,
@@ -19,6 +20,7 @@ from apps.entities.flow_topology import (
 )
 from apps.entities.pool import AppFlow
 from apps.models.mongo import MongoDB
+from apps.scheduler.pool.loader.app import AppLoader
 from apps.scheduler.pool.loader.flow import FlowLoader
 
 
@@ -205,7 +207,7 @@ class FlowManager:
             return None
         try:
             if flow_record:
-                flow_config= await FlowLoader.load(app_id, flow_id)
+                flow_config= await FlowLoader().load(app_id, flow_id)
                 flow_config = flow_config.dict()
                 if not flow_config:
                     LOGGER.error(
@@ -320,8 +322,8 @@ class FlowManager:
                     edge_type=edge_item.type
                 )
                 flow_config.edges.append(edge_config)
-            await FlowLoader.save(app_id, flow_id, flow_config)
-            flow_config = await FlowLoader.load(app_id, flow_id)
+            await FlowLoader().save(app_id, flow_id, flow_config)
+            flow_config = await FlowLoader().load(app_id, flow_id)
             if flow_record:
                 app_collection = MongoDB.get_collection("app")
                 result = await app_collection.find_one_and_update(
@@ -346,14 +348,15 @@ class FlowManager:
                 focus_point=PositionItem(x=focus_point.x, y=focus_point.y),
             )
             app_collection = MongoDB.get_collection("app")
-            result = await app_collection.find_one_and_update(
+            result = await app_collection.find_one(
                 {"_id": app_id},
-                {
-                    "$push": {
-                        "flows": new_flow.model_dump(by_alias=True),
-                    },
-                },
             )
+            
+            # 更新APP
+            app_loader = AppLoader.remote()
+            await app_loader.save.remote(metadata, app_id)  # type: ignore[attr-type]
+            ray.kill(app_loader)
+            
             if result is None:
                 LOGGER.error("Add flow failed")
                 return None
