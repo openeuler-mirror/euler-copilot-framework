@@ -93,7 +93,7 @@ class AppLoader:
         # 重新载入
         file_checker = FileChecker()
         file_checker.diff_one(app_path)
-        await self.load(app_id, file_checker.hashes)
+        await self.load(app_id, file_checker.hashes[f"{APP_DIR}/{app_id}"])
 
     async def delete(self, app_id: str) -> None:
         """删除App，并更新数据库
