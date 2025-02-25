@@ -3,8 +3,6 @@
 Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 """
 
-import pathlib
-
 import ray
 from anyio import Path
 from fastapi.encoders import jsonable_encoder
@@ -85,14 +83,14 @@ class AppLoader:
         :param app_id: 应用 ID
         """
         # 创建文件夹
-        app_path = pathlib.Path(config["SEMANTICS_DIR"]) / APP_DIR / app_id
-        if not app_path.exists():
-            app_path.mkdir(parents=True, exist_ok=True)
+        app_path = Path(config["SEMANTICS_DIR"]) / APP_DIR / app_id
+        if not await app_path.exists():
+            await app_path.mkdir(parents=True, exist_ok=True)
         # 保存元数据
         await MetadataLoader().save_one(MetadataType.APP, metadata, app_id)
         # 重新载入
         file_checker = FileChecker()
-        file_checker.diff_one(app_path)
+        await file_checker.diff_one(app_path)
         await self.load(app_id, file_checker.hashes[f"{APP_DIR}/{app_id}"])
 
     async def delete(self, app_id: str) -> None:

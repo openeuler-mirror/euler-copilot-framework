@@ -2,9 +2,11 @@
 
 Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 """
+
 from hashlib import sha256
-from pathlib import Path
 from typing import Optional
+
+from anyio import Path
 
 from apps.common.config import config
 from apps.constants import APP_DIR, LOGGER, SERVICE_DIR
@@ -20,34 +22,31 @@ class FileChecker:
         self.hashes = {}
         self._dir_path = Path(config["SEMANTICS_DIR"])
 
-
-    def check_one(self, path: Path) -> dict[str, str]:
+    async def check_one(self, path: Path) -> dict[str, str]:
         """检查单个App/Service文件是否有变动"""
         hashes = {}
-        if not path.exists():
+        if not await path.exists():
             err = FileNotFoundError(f"File {path} not found")
             raise err
-        if path.is_file():
-            err = NotADirectoryError(f"File {path} is not a directory")
+        if not await path.is_dir():
+            err = NotADirectoryError(f"Path {path} is not a directory")
             raise err
 
-        for file in path.iterdir():
-            if file.is_file():
+        async for file in path.iterdir():
+            if await file.is_file():
                 relative_path = file.relative_to(self._resource_path)
-                hashes[relative_path.as_posix()] = sha256(file.read_bytes()).hexdigest()
-            elif file.is_dir():
-                hashes.update(self.check_one(file))
+                hashes[relative_path.as_posix()] = sha256(await file.read_bytes()).hexdigest()
+            elif await file.is_dir():
+                hashes.update(await self.check_one(file))
 
         return hashes
 
-
-    def diff_one(self, path: Path, previous_hashes: Optional[dict[str, str]] = None) -> bool:
+    async def diff_one(self, path: Path, previous_hashes: Optional[dict[str, str]] = None) -> bool:
         """检查文件是否发生变化"""
         self._resource_path = path
         path_diff = self._resource_path.relative_to(config["SEMANTICS_DIR"])
-        self.hashes[path_diff.as_posix()] = self.check_one(path)
+        self.hashes[path_diff.as_posix()] = await self.check_one(path)
         return self.hashes[path_diff.as_posix()] != previous_hashes
-
 
     async def diff(self, check_type: MetadataType) -> tuple[list[str], list[str]]:
         """生成更新列表和删除列表"""
@@ -81,13 +80,15 @@ class FileChecker:
 
         # 遍历目录
         item_names = [item["_id"] for item in items]
-        for service_folder in self._dir_path.iterdir():
+        async for service_folder in self._dir_path.iterdir():
             # 判断是否新增？
-            if (service_folder.name not in item_names and
-                service_folder.name not in deleted_list and
-                service_folder.name not in changed_list):
+            if (
+                service_folder.name not in item_names
+                and service_folder.name not in deleted_list
+                and service_folder.name not in changed_list
+            ):
                 changed_list += [service_folder.name]
                 # 触发一次hash计算
-                self.diff_one(service_folder)
+                await self.diff_one(service_folder)
 
         return changed_list, deleted_list
