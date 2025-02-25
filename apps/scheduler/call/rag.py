@@ -16,9 +16,9 @@ from apps.scheduler.call.core import CoreCall
 class _RAGParams(BaseModel):
     """RAG工具的参数"""
 
-    knowledge_base: str = Field(description="知识库的id", alias="kb_sn")
+    knowledge_base: str = Field(description="知识库的id", alias="kb_sn", default=None)
     top_k: int = Field(description="返回的答案数量(经过整合以及上下文关联)", default=5)
-    methods: Optional[list[str]] = Field(description="rag检索方法")
+    retrieval_mode: str = Field(description="检索模式", default="chunk", choices=['chunk', 'full_text'])
 
 
 class _RAGOutputList(BaseModel):
@@ -45,8 +45,7 @@ class RAG(metaclass=CoreCall, param_cls=_RAGParams, output_cls=_RAGOutput):
         params: _RAGParams = getattr(self, "_params")
 
         params_dict = params.model_dump(exclude_none=True, by_alias=True)
-        params_dict["question"] = syscall_vars.question
-
+        params_dict["content"] = syscall_vars.question
         url = config["RAG_HOST"].rstrip("/") + "/chunk/get"
         headers = {
             "Content-Type": "application/json",
@@ -59,6 +58,8 @@ class RAG(metaclass=CoreCall, param_cls=_RAGParams, output_cls=_RAGOutput):
             if response.status == status.HTTP_200_OK:
                 result = await response.json()
                 chunk_list = result["data"]
+                for chunk in chunk_list:
+                    chunk=chunk.replace("\n", " ")
                 return _RAGOutput(
                     output=_RAGOutputList(corpus=chunk_list),
                 )
