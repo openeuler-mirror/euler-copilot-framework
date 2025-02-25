@@ -54,15 +54,6 @@ spec:
         app: rag-web
     spec:
       automountServiceAccountToken: false
-      affinity:
-        nodeAffinity:
-          requiredDuringSchedulingIgnoredDuringExecution:
-            nodeSelectorTerms:
-            - matchExpressions:
-              - key: kubernetes.io/arch
-                operator: In
-                values:
-                - {{ .Values.globals.arch | default "x86_64" | replace "aarch64" "arm64" | quote }}
       containers:
         - name: rag-web
           image: {{ .Values.euler_copilot.rag_web.image | default (printf "hub.oepkgs.net/neocopilot/data_chain_web:%s" (include "data_chain_web.imageTag" .)) }}

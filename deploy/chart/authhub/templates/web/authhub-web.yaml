@@ -54,15 +54,6 @@ spec:
         app: authhub-web
     spec:
       automountServiceAccountToken: false
-      affinity:
-        nodeAffinity:
-          requiredDuringSchedulingIgnoredDuringExecution:
-            nodeSelectorTerms:
-            - matchExpressions:
-              - key: kubernetes.io/arch
-                operator: In
-                values:
-                - {{ .Values.globals.arch | default "x86_64" | replace "aarch64" "arm64" | quote }}
       containers:
         - name: authhub-web
           image: {{ .Values.authhub.web.image | default (printf "hub.oepkgs.net/neocopilot/authhub-web:%s" (include "authhub-web.imageTag" .)) }}
