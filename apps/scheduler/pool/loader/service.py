@@ -45,7 +45,13 @@ class ServiceLoader:
             openapi_loader.load_one.remote(service_id, yaml_path, metadata)  # type: ignore[arg-type]
             async for yaml_path in (service_path / "openapi").rglob("*.yaml")
         ]
-        nodes = (await asyncio.gather(*nodes))[0]
+        data = await asyncio.gather(*nodes)
+        try:
+            nodes = data[0]
+        except Exception as e:
+            LOGGER.error(f"[ServiceLoader] 服务 {service_id} 获取Node列表失败: {e}")
+            LOGGER.error(f"[ServiceLoader] 无效的Node数据：{data!s}")
+            return
         # 更新数据库
         nodes = [NodePool(**node.model_dump(exclude_none=True, by_alias=True)) for node in nodes]
         await self._update_db(nodes, metadata)
