@@ -32,9 +32,9 @@ class FlowService:
                 node_to_branches[node.node_id].add('')
         new_edges_items = []
         for edge in flow_item.edges:
-            if edge.source_node not in node_to_branches.keys():
+            if edge.source_node not in node_to_branches:
                 continue
-            if edge.target_node not in node_to_branches.keys():
+            if edge.target_node not in node_to_branches:
                 continue
             if edge.branch_id not in node_to_branches[edge.source_node]:
                 continue

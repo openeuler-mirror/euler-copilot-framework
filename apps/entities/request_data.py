@@ -37,7 +37,7 @@ class RequestData(BaseModel):
     language: str = Field(default="zh", description="语言")
     files: list[str] = Field(default=[], description="文件列表")
     app: Optional[RequestDataApp] = Field(default=None, description="应用")
-    features: RequestDataFeatures = Field(description="消息功能设置")
+    features: Optional[RequestDataFeatures] = Field(default=None, description="消息功能设置")
     debug: bool = Field(default=False, description="是否调试")
 
 

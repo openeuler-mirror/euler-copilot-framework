@@ -27,9 +27,9 @@ class Edge(BaseModel):
     """Flow中Edge的数据"""
 
     id: str = Field(description="边的ID")
-    edge_from: str = Field(description="边的来源节点ID", alias="from")
-    edge_to: str = Field(description="边的目标节点ID", alias="to")
-    edge_type: Optional[EdgeType] = Field(description="边的类型", default=EdgeType.NORMAL)
+    edge_from: str = Field(description="边的来源节点ID")
+    edge_to: str = Field(description="边的目标节点ID")
+    edge_type: Optional[EdgeType] = Field(description="边的类型",default = EdgeType.NORMAL)
 
 
 class Step(BaseModel):
@@ -159,6 +159,5 @@ class ServiceApiSpec(BaseModel):
 class FlowConfig(BaseModel):
     """Flow的配置信息 用于前期调试使用"""
 
-    app_id: str
     flow_id: str
     flow_config: Flow

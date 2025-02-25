@@ -40,16 +40,19 @@ class ServiceLoader:
 
         # 载入OpenAPI文档，获取Node列表
         openapi_loader = OpenAPILoader.remote()
-        nodes = [
-            openapi_loader.load_one.remote(service_id, yaml_path, metadata)  # type: ignore[arg-type]
-            async for yaml_path in (service_path / "openapi").rglob("*.yaml")
-        ]
-        data = await asyncio.gather(*nodes)
         try:
+            nodes = [
+                openapi_loader.load_one.remote(service_id, yaml_path, metadata)  # type: ignore[arg-type]
+                async for yaml_path in (service_path / "openapi").rglob("*.yaml")
+            ]
+        except Exception as e:
+            LOGGER.error(f"[ServiceLoader] 服务 {service_id} 文件损坏: {e}")
+            return
+        try:
+            data = await asyncio.gather(*nodes)
             nodes = data[0]
         except Exception as e:
             LOGGER.error(f"[ServiceLoader] 服务 {service_id} 获取Node列表失败: {e}")
-            LOGGER.error(f"[ServiceLoader] 无效的Node数据：{data!s}")
             return
         # 更新数据库
         nodes = [NodePool(**node.model_dump(exclude_none=True, by_alias=True)) for node in nodes]
@@ -60,9 +63,9 @@ class ServiceLoader:
         """在文件系统上保存Service，并更新数据库"""
         service_path = Path(config["SEMANTICS_DIR"]) / SERVICE_DIR / service_id
         # 创建文件夹
-        if not service_path.exists():
+        if not await service_path.exists():
             await service_path.mkdir(parents=True, exist_ok=True)
-        if not (service_path / "openapi").exists():
+        if not await (service_path / "openapi").exists():
             await (service_path / "openapi").mkdir(parents=True, exist_ok=True)
         openapi_path = service_path / "openapi" / "api.yaml"
         # 保存元数据

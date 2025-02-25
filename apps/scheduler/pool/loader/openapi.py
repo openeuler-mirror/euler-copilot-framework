@@ -67,6 +67,7 @@ class OpenAPILoader:
             raise RuntimeError(err) from e
 
         url = service_metadata.api.server.rstrip("/") + spec.uri
+        known_params = {}
 
         if method in (HTTPMethod.POST, HTTPMethod.PUT, HTTPMethod.PATCH):
             body_spec = spec.spec["requestBody"]["content"]
@@ -76,7 +77,7 @@ class OpenAPILoader:
                 (ct for ct in ContentType if ct.value in body_spec),
                 None,
             )
-
+            known_params["content_type"]=content_type
             if content_type is None:
                 err = f"接口{spec.name}的Content-Type不支持"
                 LOGGER.error(msg=err)
@@ -107,7 +108,6 @@ class OpenAPILoader:
         known_params = {
             "url": url,
             "method": method,
-            "content_type": content_type,
         }
 
         return inp, out, known_params
@@ -151,7 +151,12 @@ class OpenAPILoader:
             raise RuntimeError(err) from e
 
         yaml_filename = yaml_path.name
-        return await self._process_spec(service_id, yaml_filename, spec, service_metadata)
+        try:
+            return await self._process_spec(service_id, yaml_filename, spec, service_metadata)
+        except Exception as e:
+            err = f"处理OpenAPI文档{yaml_filename}失败：{e}"
+            LOGGER.error(msg=err)
+            raise RuntimeError(err) from e
 
     async def save_one(self, yaml_path: Path, yaml_dict: dict[str, Any]) -> None:
         """保存单个OpenAPI文档"""
