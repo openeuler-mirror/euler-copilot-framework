@@ -8,8 +8,9 @@ from typing import Any, Optional
 
 from pydantic import BaseModel, Field
 
+from apps.entities.appcenter import AppLink
 from apps.entities.enum_var import CallType
-from apps.entities.flow import AppLink, Permission
+from apps.entities.flow import Permission
 from apps.entities.flow_topology import PositionItem
 
 

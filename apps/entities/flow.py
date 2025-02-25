@@ -6,6 +6,7 @@ from typing import Any, Optional
 
 from pydantic import BaseModel, Field
 
+from apps.entities.appcenter import AppLink
 from apps.entities.enum_var import (
     EdgeType,
     MetadataType,
@@ -122,13 +123,6 @@ class ServiceMetadata(MetadataBase):
     type: MetadataType = MetadataType.SERVICE
     api: ServiceApiConfig = Field(description="API配置")
     permission: Optional[Permission] = Field(description="服务权限配置", default=None)
-
-
-class AppLink(BaseModel):
-    """App的相关链接"""
-
-    title: str = Field(description="链接标题")
-    url: str = Field(..., description="链接地址", pattern=r"^(https|http)://.*$")
 
 
 class AppMetadata(MetadataBase):

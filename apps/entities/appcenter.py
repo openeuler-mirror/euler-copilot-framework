@@ -7,7 +7,6 @@ from typing import Optional
 from pydantic import BaseModel, Field
 
 from apps.entities.enum_var import PermissionType
-from apps.entities.flow import AppLink
 
 
 class AppCenterCardItem(BaseModel):
@@ -35,6 +34,13 @@ class AppPermissionData(BaseModel):
         alias="authorizedUsers",
         description="附加人员名单（如果可见性为部分人可见）",
     )
+
+
+class AppLink(BaseModel):
+    """App的相关链接"""
+
+    title: str = Field(description="链接标题")
+    url: str = Field(..., description="链接地址", pattern=r"^(https|http)://.*$")
 
 
 class AppFlowInfo(BaseModel):
