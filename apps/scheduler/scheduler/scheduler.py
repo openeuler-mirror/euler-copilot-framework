@@ -26,8 +26,8 @@ from apps.manager.document import DocumentManager
 from apps.manager.record import RecordManager
 from apps.manager.task import TaskManager
 from apps.manager.user import UserManager
-from apps.scheduler.executor import Executor
 from apps.scheduler.scheduler.context import generate_facts, get_context
+from apps.scheduler.scheduler.flow import Flow, FlowChooser
 from apps.scheduler.scheduler.message import (
     push_document_message,
     push_init_message,
@@ -70,6 +70,8 @@ class Scheduler:
         """运行调度器"""
         try:
             # 根据用户的请求，返回插件ID列表，选择Flow
+            flow_chooser = FlowChooser(task_id=self._task_id, question=post_body.question,user_selected=post_body.app)
+            user_selected_flow = flow_chooser.choose_flow()
             # 获取当前问答可供关联的文档
             docs, doc_ids = await self._get_docs(user_sub, post_body)
             # 获取上下文；最多20轮
@@ -90,7 +92,7 @@ class Scheduler:
             )
 
             # 如果是智能问答，直接执行
-            if not post_body.app or post_body.app.app_id == "":
+            if not user_selected_flow:
                 await push_init_message(self._task_id, self._queue, post_body, is_flow=False)
                 await asyncio.sleep(0.1)
                 for doc in docs:
@@ -108,6 +110,7 @@ class Scheduler:
                     conversation=context,
                     facts=facts,
                 )
+                need_recommend = await self.run_executor(session_id, post_body, background, user_selected_flow)
 
             # 记忆提取
             self._facts = await generate_facts(self._task_id, post_body.question)
@@ -139,6 +142,7 @@ class Scheduler:
             app_data=selected_flow,
             background=background,
         )
+        # print("begin_to_run")
 
         # 执行Executor
         # flow_exec = Executor()

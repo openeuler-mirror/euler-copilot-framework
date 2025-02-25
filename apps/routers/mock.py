@@ -3,7 +3,10 @@ import copy
 import json
 import random
 import time
+from typing import Any, AsyncGenerator, Dict, Optional
 
+import aiohttp
+from pydantic import BaseModel, Field
 import tiktoken
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import StreamingResponse
@@ -16,8 +19,203 @@ from apps.dependency import (
     verify_user,
 )
 from apps.entities.request_data import MockRequestData, RequestData
+from apps.entities.scheduler import CallError, SysCallVars
 from apps.manager.flow import FlowManager
 from apps.scheduler.pool.loader.flow import FlowLoader
+from datetime import datetime
+from textwrap import dedent
+from typing import Any
+
+import pytz
+from jinja2 import BaseLoader, select_autoescape
+from jinja2.sandbox import SandboxedEnvironment
+from pydantic import BaseModel, Field
+
+from apps.entities.scheduler import CallError, SysCallVars
+from apps.scheduler.call.core import CoreCall
+
+
+"""问答大模型调用
+
+Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
+"""
+from collections.abc import AsyncGenerator
+from typing import Optional
+
+import ray
+import tiktoken
+from openai import AsyncOpenAI
+
+from apps.common.config import config
+from apps.constants import LOGGER, REASONING_BEGIN_TOKEN, REASONING_END_TOKEN
+
+
+class ReasoningLLM:
+    """调用用于问答的大模型"""
+
+    _encoder = tiktoken.get_encoding("cl100k_base")
+
+    def __init__(self) -> None:
+        """判断配置文件里用了哪种大模型；初始化大模型客户端"""
+        if not config["LLM_KEY"]:
+            self._client = AsyncOpenAI(
+                base_url=config["LLM_URL"],
+            )
+            return
+
+        self._client =  AsyncOpenAI(
+            api_key=config["LLM_KEY"],
+            base_url=config["LLM_URL"],
+        )
+
+    def _calculate_token_length(self, messages: list[dict[str, str]], *, pure_text: bool = False) -> int:
+        """使用ChatGPT的cl100k tokenizer，估算Token消耗量"""
+        result = 0
+        if not pure_text:
+            result += 3 * (len(messages) + 1)
+
+        for msg in messages:
+            result += len(self._encoder.encode(msg["content"]))
+
+        return result
+
+    def _validate_messages(self, messages: list[dict[str, str]]) -> list[dict[str, str]]:
+        """验证消息格式是否正确"""
+        if messages[0]["role"] != "system":
+            # 添加默认系统消息
+            messages.insert(0, {"role": "system", "content": "You are a helpful assistant."})
+
+        if messages[-1]["role"] != "user":
+            err = f"消息格式错误，最后一个消息必须是用户消息：{messages[-1]}"
+            raise ValueError(err)
+
+        return messages
+
+    async def call(self, messages: list[dict[str, str]],  # noqa: C901
+                   max_tokens: Optional[int] = None, temperature: Optional[float] = None,
+                   *, streaming: bool = True, result_only: bool = True) -> AsyncGenerator[str, None]:
+        """调用大模型，分为流式和非流式两种"""
+        # input_tokens = self._calculate_token_length(messages)
+        try:
+
+            msg_list = self._validate_messages(messages)
+        except ValueError as e:
+            err = f"消息格式错误：{e}"
+            raise ValueError(err) from e
+
+        if max_tokens is None:
+            max_tokens = config["LLM_MAX_TOKENS"]
+        if temperature is None:
+            temperature = config["LLM_TEMPERATURE"]
+
+        stream = await self._client.chat.completions.create(
+            model=config["LLM_MODEL"],
+            messages=msg_list,     # type: ignore[]
+            max_tokens=max_tokens,
+            temperature=temperature,
+            stream=True,
+        )     # type: ignore[]
+
+        reasoning_content = ""
+        result = ""
+
+        is_first_chunk = True
+        is_reasoning = False
+        reasoning_type = ""
+
+        async for chunk in stream:
+            # 当前Chunk内的信息
+            reason = ""
+            text = ""
+
+            if is_first_chunk:
+                if hasattr(chunk.choices[0].delta, "reasoning_content"):
+                    reason = "<think>" + chunk.choices[0].delta.reasoning_content or ""
+                    reasoning_type = "args"
+                    is_reasoning = True
+                else:
+                    for token in REASONING_BEGIN_TOKEN:
+                        if token == (chunk.choices[0].delta.content or ""):
+                            reason = "<think>"
+                            reasoning_type = "tokens"
+                            is_reasoning = True
+                            break
+
+            # 当前已经不是第一个Chunk了
+            is_first_chunk = False
+
+            # 当前是正常问答
+            if not is_reasoning:
+                text = chunk.choices[0].delta.content or ""
+
+            # 当前处于推理状态
+            if not is_first_chunk and is_reasoning:
+                # 如果推理内容用特殊参数传递
+                if reasoning_type == "args":
+                    # 还在推理
+                    if hasattr(chunk.choices[0].delta, "reasoning_content"):
+                        reason = chunk.choices[0].delta.reasoning_content or ""
+                    # 推理结束
+                    else:
+                        is_reasoning = False
+                        reason = "</think>"
+
+                # 如果推理内容用特殊token传递
+                elif reasoning_type == "tokens":
+                    # 结束推理
+                    for token in REASONING_END_TOKEN:
+                        if token == (chunk.choices[0].delta.content or ""):
+                            is_reasoning = False
+                            reason = "</think>"
+                            text = ""
+                            break
+                    # 还在推理
+                    if is_reasoning:
+                        reason = chunk.choices[0].delta.content or ""
+
+            # 推送消息
+            if streaming:
+                # 如果需要推送推理内容
+                if reason and not result_only:
+                    yield reason
+
+                # 推送text
+                yield text
+
+            # 整理结果
+            reasoning_content += reason
+            result += text
+
+        if not streaming:
+            if not result_only:
+                yield reasoning_content
+            yield result
+
+        # LOGGER.info(f"推理LLM：{reasoning_content}\n\n{result}")
+
+        # output_tokens = self._calculate_token_length([{"role": "assistant", "content": result}], pure_text=True)
+        # task = ray.get_actor("task")
+        # await task.update_token_summary.remote(input_tokens, output_tokens)
+
+
+class _RAGParams(BaseModel):
+    """RAG工具的参数"""
+
+    knowledge_base: str = Field(description="知识库的id", alias="kb_sn")
+    top_k: int = Field(description="返回的答案数量(经过整合以及上下文关联)", default=5)
+    methods: Optional[list[str]] = Field(description="rag检索方法")
+
+
+class _RAGOutputList(BaseModel):
+    """RAG工具的输出"""
+
+    corpus: list[str] = Field(description="知识库的语料列表")
+
+
+class _RAGOutput(BaseModel):
+    """RAG工具的输出"""
+
+    output: _RAGOutputList = Field(description="RAG工具的输出")
 
 router = APIRouter(
     prefix="/api",
@@ -25,8 +223,9 @@ router = APIRouter(
 )
 
 
-def mock_data(appId="68dd3d90-6a97-4da0-aa62-d38a81c7d2f5", flowId="966c7964-e1c1-4bd8-9333-ed099cf25908", conversationId="eccb08c3-0621-4602-a4d2-4eaada892557", question="你好"):
+async def mock_data(appId="68dd3d90-6a97-4da0-aa62-d38a81c7d2f5", flowId="966c7964-e1c1-4bd8-9333-ed099cf25908", conversationId="eccb08c3-0621-4602-a4d2-4eaada892557", question="你好"):
     _encoder = tiktoken.get_encoding("cl100k_base")
+    
     start_message = [{ # 任务流开始
                         "event": "flow.start",
                         "id": "0f9d3e6b-7845-44ab-b247-35c522d38f13",
@@ -40,11 +239,6 @@ def mock_data(appId="68dd3d90-6a97-4da0-aa62-d38a81c7d2f5", flowId="966c7964-e1c
                             "stepStatus": "pending",
                         },
                         "content": {
-                            "question": "查询所有主机的CVE信息",
-                            "params": {
-                                "cveId": "CVE-2021-44228",
-                                "host": "192.168.10.1"
-                            }
                         },
                         "metadata": {
                             "inputTokens": 200,
@@ -117,12 +311,25 @@ def mock_data(appId="68dd3d90-6a97-4da0-aa62-d38a81c7d2f5", flowId="966c7964-e1c
                     "time_cost": 0.5,
                 }
                 }
+    messages = []
+    for message in start_message:
+        messages.append(message)
+    for message in messages:
+        if message['event']=='step.output':
+            t=message['metadata']['time_cost']
+            time.sleep(t)
+        elif message['event']=='text.add':
+            t=random.uniform(0.15, 0.2)
+            time.sleep(t)
+        yield "data: " + json.dumps(message,ensure_ascii=False) + "\n\n"
     mid_message = []
-    flow = asyncio.run(FlowLoader.load(appId, flowId))
+    flow = await FlowLoader.load(appId, flowId)
     now_flow_item = "start"
     start_time = time.time()
     last_item = ""
     mapp={}
+    params={}
+    params["question"] = question
     # print(json.dumps(flow))
     for step_id, step in flow.steps.items():
         mapp[step_id]= step.name, step.params
@@ -138,26 +345,38 @@ def mock_data(appId="68dd3d90-6a97-4da0-aa62-d38a81c7d2f5", flowId="966c7964-e1c
                 sample_input["flow"]["stepId"] = now_flow_item
                 sample_input["flow"]["stepName"],sample_input["content"] = mapp[now_flow_item]
                 sample_input["content"] = sample_input["content"]["input_parameters"] if now_flow_item != "start" else sample_input["content"]
-                mid_message.append(copy.deepcopy(sample_input))
+                if "content" in sample_input and type(sample_input["content"])==dict:
+                    for key, value in sample_input["content"].items():
+                        if key in params:
+                            sample_input["content"][key] = params[key]
+                        else:
+                            params[key] = value
+                yield "data: " + json.dumps(sample_input,ensure_ascii=False) + "\n\n"
                 sample_output["metadata"]["time_cost"] = random.uniform(0.5, 1.5)
                 sample_output["flow"]["stepId"] = now_flow_item
                 sample_output["flow"]["stepName"],sample_output["content"] = mapp[now_flow_item]
                 sample_output["content"] = sample_output["content"]["output_parameters"] if now_flow_item != "start" else sample_output["content"]
                 if sample_output["flow"]["stepName"] == "【RAG】知识库智能问答":
-                    sample_output["content"] = call_rag()
-                if sample_output["flow"]["stepName"] == "【LLM】模型问答":
-                    sample_output["content"] = call_llm()
-                mid_message.append(copy.deepcopy(sample_output))
+                    sample_output["content"] = await call_rag(params)
+                if sample_output["flow"]["stepName"] == "【LLM】大模型问答":
+                    sample_output["content"] = await call_llm(params)
+                if "content" in sample_output and type(sample_output["content"])==dict:
+                    for key, value in sample_output["content"].items():
+                        params[key]=value
+                yield "data: " + json.dumps(sample_output,ensure_ascii=False) + "\n\n"
                 now_flow_item = edge.edge_to
 
     if now_flow_item == "end":
         sample_input["flow"]["stepId"] = now_flow_item
         sample_input["flow"]["stepName"] = "结束"
-        mid_message.append(sample_input)
+        yield "data: " + json.dumps(sample_input,ensure_ascii=False) + "\n\n"
         sample_output["flow"]["stepId"] = now_flow_item
         sample_output["flow"]["stepName"] = "结束"
         sample_output["metadata"]["time_cost"] = random.uniform(0.5, 1.5)
-        mid_message.append(sample_output)
+        yield "data: " + json.dumps(sample_output,ensure_ascii=False) + "\n\n"
+
+    
+
 
     end_message =  [
             { # flow结束
@@ -181,33 +400,113 @@ def mock_data(appId="68dd3d90-6a97-4da0-aa62-d38a81c7d2f5", flowId="966c7964-e1c
                     "time_cost": 0.5
                 }
             }]
-    chat_message = [
-        ]
     messages = []
-    for message in start_message:
-        messages.append(message)
-    for message in mid_message:
-        messages.append(message)
     for message in end_message:
         messages.append(message)
-    for message in chat_message:
-        messages.append(message)
-    asyncio.run(FlowManager.updata_flow_debug_by_app_and_flow_id(appId,flowId,True))
+        for message in messages:
+            if message['event']=='step.output':
+                t=message['metadata']['time_cost']
+                time.sleep(t)
+            elif message['event']=='text.add':
+                t=random.uniform(0.15, 0.2)
+                time.sleep(t)
+            yield "data: " + json.dumps(message,ensure_ascii=False) + "\n\n"
 
-    for message in messages:
-        if message['event']=='step.output':
-            t=message['metadata']['time_cost']
-            time.sleep(t)
-        elif message['event']=='text.add':
-            t=random.uniform(0.15, 0.2)
-            time.sleep(t)
-        yield "data: " + json.dumps(message,ensure_ascii=False) + "\n\n"
+    chat_message = call_llm_stream(params)
+    messages = []
+    temp_messages = []
+    async for message in chat_message:
+        yield "data: "+ message + "\n\n"
+    yield json.dumps({"event": "text.end", "content": "|", "input_tokens": len(_encoder.encode(question)), "output_tokens": 290})
+    await FlowManager.updata_flow_debug_by_app_and_flow_id(appId,flowId,True)
 
-async def call_rag():
-    return "RAG"
 
-async def call_llm():
-    return "LLM"
+async def call_rag(params:dict = {}):
+    url = config["RAG_HOST"].rstrip("/") + "/chunk/get"
+    headers = {
+        "Content-Type": "application/json",
+    }
+    params_dict = {
+        "kb_sn": params["kb_sn"],
+        "top_k": params["top_k"],
+        "content": params["question"],
+    }
+        # 发送 GET 请求
+    async with aiohttp.ClientSession() as session:
+        async with session.get(url, headers=headers, params=params_dict) as response:
+            # 检查响应状态码
+            if response.status == status.HTTP_200_OK:
+                result = await response.json()
+                chunk_list = result["data"]
+                for chunk in chunk_list:
+                    chunk.replace('\n\n','')
+                return {"chunk_list":chunk_list}
+            text = await response.text()
+            raise CallError(
+                message=f"rag调用失败：{text}",
+                data={
+                    "question": params["question"],
+                    "status": response.status,
+                    "text": text,
+                },
+            )
+
+async def call_llm(params: dict = {}):
+    # 构建请求 URL 和 headers
+    url = config["LLM_URL"] + "/chat/completions"
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {config['LLM_KEY']}",  # 添加鉴权 Token
+    }
+    prompt = params.get("prompt", "")
+    chunk_list = params.get("chunk_list", "")
+    user_call = "请回答问题" + params.get("quetion", "") + "下面是获得的信息："
+    # 构建请求体
+    payload = {
+        "model": params.get("model", config["LLM_MODEL"]),  # 默认模型
+        "messages": params.get("messages", [{"role":"system","content":prompt},{'role':'user','content':user_call+str(chunk_list)}]),  # 消息列表
+        "stream": params.get("stream", False),  # 是否流式返回
+        "n": params.get("n", 1),  # 返回的候选答案数量
+        "max_tokens": params.get("max_tokens", 4096),  # 最大 token 数量
+    }
+
+    # 发送 POST 请求
+    async with aiohttp.ClientSession() as session:
+        async with session.post(url, headers=headers, json=payload) as response:
+            # 检查响应状态码
+            if response.status == status.HTTP_200_OK:
+                result = await response.json()
+                result = result["choices"][0]["message"]["content"]
+                print(result)
+                result = result.replace("\n\n", "")
+                return {"content":result}
+            else:
+                text = await response.text()
+                print(f"LLM 调用失败：{text}")
+                return None
+
+class _LLMOutput(BaseModel):
+    """定义LLM工具调用的输出"""
+
+    message: str = Field(description="大模型输出的文字信息")
+async def call_llm_stream(params: Dict[str, Any] = {}):
+    _encoder = tiktoken.get_encoding("cl100k_base")
+    prompt = "你是EulerCopilot，我们向你问了一个问题，需要你完成这个问题，我们会给出对应的信息"
+    question = params.get("question", "")
+    content = f"问题：{question}\n" + "信息：" + str(params.get("chunk_list", ""))
+    message = params.get("messages", [{"role":"system","content":prompt},{'role':'user','content':content}])
+    sum = 0
+    async for chunk in ReasoningLLM().call(messages=message):
+        sum = sum + len(_encoder.encode(chunk))
+        chunk = chunk.replace('\n\n','')
+        output = {
+            "event": "text.add",
+            "content": chunk,
+            "input_tokens": len(_encoder.encode(question)),
+            "output_tokens": sum ,
+        }
+        yield json.dumps(output,ensure_ascii=False)
+
 
 @router.post("/mock/chat", dependencies=[Depends(verify_csrf_token), Depends(verify_user)])
 async def chat(

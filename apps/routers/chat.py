@@ -11,7 +11,7 @@ from typing import Annotated
 import ray
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import JSONResponse, StreamingResponse
-
+from apps.routers.mock import mock_data
 from apps.common.queue import MessageQueue
 from apps.constants import LOGGER
 from apps.dependency import (
@@ -24,7 +24,7 @@ from apps.entities.request_data import RequestData
 from apps.entities.response_data import ResponseData
 from apps.manager.appcenter import AppCenterManager
 from apps.manager.blacklist import QuestionBlacklistManager, UserBlacklistManager
-from apps.scheduler.scheduler import Scheduler
+# from apps.scheduler.scheduler import Scheduler
 from apps.service.activity import Activity
 
 RECOMMEND_TRES = 5
@@ -35,80 +35,80 @@ router = APIRouter(
 )
 
 
-async def chat_generator(post_body: RequestData, user_sub: str, session_id: str) -> AsyncGenerator[str, None]:
-    """进行实际问答，并从MQ中获取消息"""
-    try:
-        await Activity.set_active(user_sub)
+# async def chat_generator(post_body: RequestData, user_sub: str, session_id: str) -> AsyncGenerator[str, None]:
+#     """进行实际问答，并从MQ中获取消息"""
+#     try:
+#         await Activity.set_active(user_sub)
 
-        # 敏感词检查
-        word_check = ray.get_actor("words_check")
-        if await word_check.check.remote(post_body.question) != 1:
-            yield "data: [SENSITIVE]\n\n"
-            LOGGER.info(msg="问题包含敏感词！")
-            await Activity.remove_active(user_sub)
-            return
+#         # 敏感词检查
+#         word_check = ray.get_actor("words_check")
+#         if await word_check.check.remote(post_body.question) != 1:
+#             yield "data: [SENSITIVE]\n\n"
+#             LOGGER.info(msg="问题包含敏感词！")
+#             await Activity.remove_active(user_sub)
+#             return
 
-        # 生成group_id
-        group_id = str(uuid.uuid4()) if not post_body.group_id else post_body.group_id
+#         # 生成group_id
+#         group_id = str(uuid.uuid4()) if not post_body.group_id else post_body.group_id
 
-        # 创建或还原Task
-        task_pool = ray.get_actor("task")
-        task = await task_pool.get_task.remote(session_id=session_id, post_body=post_body)
-        task_id = task.record.task_id
+#         # 创建或还原Task（获取task_id）
+#         task_pool = ray.get_actor("task")
+#         task = await task_pool.get_task.remote(session_id=session_id, post_body=post_body)
+#         task_id = task.record.task_id
 
-        task.record.group_id = group_id
-        post_body.group_id = group_id
-        await task_pool.set_task.remote(task_id, task)
+#         task.record.group_id = group_id
+#         post_body.group_id = group_id
+#         await task_pool.set_task.remote(task_id, task)
 
-        # 创建queue；由Scheduler进行关闭
-        queue = MessageQueue()
-        await queue.init(task_id, enable_heartbeat=True)
+#         # 创建queue；由Scheduler进行关闭
+#         queue = MessageQueue()
+#         await queue.init(task_id, enable_heartbeat=True)
 
-        # 在单独Task中运行Scheduler，拉齐queue.get的时机
-        scheduler = Scheduler(task_id, queue)
-        scheduler_task = asyncio.create_task(scheduler.run(user_sub, session_id, post_body))
+#         # 在单独Task中运行Scheduler，拉齐queue.get的时机
+#         scheduler = Scheduler(task_id, queue)
+#         scheduler_task = asyncio.create_task(scheduler.run(user_sub, session_id, post_body))
 
-        # 处理每一条消息
-        async for event in queue.get():
-            if event[:6] == "[DONE]":
-                break
+#         # 处理每一条消息
+#         async for event in queue.get():
+#             if event[:6] == "[DONE]":
+#                 break
 
-            yield "data: " + event + "\n\n"
+#             yield "data: " + event + "\n\n"
 
-        # 等待Scheduler运行完毕
-        await asyncio.gather(scheduler_task)
+#         # 等待Scheduler运行完毕
+#         await asyncio.gather(scheduler_task)
 
-        # 获取最终答案
-        task = await task_pool.get_task.remote(task_id)
-        answer_text = task.record.content.answer
-        if not answer_text:
-            LOGGER.error(msg="Answer is empty")
-            yield "data: [ERROR]\n\n"
-            await Activity.remove_active(user_sub)
-            return
+#         # 获取最终答案
+#         task = await task_pool.get_task.remote(task_id)
+#         answer_text = task.record.content.answer
+#         if not answer_text:
+#             LOGGER.error(msg="Answer is empty")
+#             yield "data: [ERROR]\n\n"
+#             await Activity.remove_active(user_sub)
+#             return
 
-        # 对结果进行敏感词检查
-        if await word_check.check.remote(answer_text) != 1:
-            yield "data: [SENSITIVE]\n\n"
-            LOGGER.info(msg="答案包含敏感词！")
-            await Activity.remove_active(user_sub)
-            return
+#         # 对结果进行敏感词检查
+#         if await word_check.check.remote(answer_text) != 1:
+#             yield "data: [SENSITIVE]\n\n"
+#             LOGGER.info(msg="答案包含敏感词！")
+#             await Activity.remove_active(user_sub)
+#             return
 
-        # 创建新Record，存入数据库
-        await scheduler.save_state(user_sub, post_body)
-        # 保存Task，从task_map中删除task
-        await task_pool.save_task.remote(task_id)
+#         # 创建新Record，存入数据库
+#         await scheduler.save_state(user_sub, post_body)
+#         # 保存Task，从task_map中删除task
+#         await task_pool.save_task.remote(task_id)
 
-        yield "data: [DONE]\n\n"
+#         yield "data: [DONE]\n\n"
 
-    except Exception as e:
-        LOGGER.error(msg=f"生成答案失败：{e!s}\n{traceback.format_exc()}")
-        yield "data: [ERROR]\n\n"
+#     except Exception as e:
+#         LOGGER.error(msg=f"生成答案失败：{e!s}\n{traceback.format_exc()}")
+#         yield "data: [ERROR]\n\n"
 
-    finally:
-        if scheduler_task:
-            scheduler_task.cancel()
-        await Activity.remove_active(user_sub)
+#     finally:
+#         if scheduler_task:
+#             scheduler_task.cancel()
+#         await Activity.remove_active(user_sub)
 
 
 @router.post("/chat", dependencies=[Depends(verify_csrf_token), Depends(verify_user)])
@@ -130,7 +130,12 @@ async def chat(
 
     if post_body.app and post_body.app.app_id:
         await AppCenterManager.update_recent_app(user_sub, post_body.app.app_id)
-    res = chat_generator(post_body, user_sub, session_id)
+    # res = chat_generator(post_body, user_sub, session_id)
+
+    if post_body.app and post_body.app.app_id:
+        res = mock_data(appId=post_body.app.app_id, conversationId=post_body.conversation_id, flowId=post_body.app.flow_id,question=post_body.question)
+    else:
+        res = mock_data(question=post_body.question)
     return StreamingResponse(
         content=res,
         media_type="text/event-stream",
