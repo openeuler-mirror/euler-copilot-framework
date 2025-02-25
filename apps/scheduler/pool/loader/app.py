@@ -13,8 +13,8 @@ from sqlalchemy.dialects.postgresql import insert
 
 from apps.common.config import config
 from apps.constants import APP_DIR, FLOW_DIR, LOGGER
-from apps.entities.flow import AppMetadata, MetadataType, Permission
-from apps.entities.pool import AppFlow, AppPool
+from apps.entities.flow import AppFlow, AppMetadata, MetadataType, Permission
+from apps.entities.pool import AppPool
 from apps.entities.vector import AppPoolVector
 from apps.models.mongo import MongoDB
 from apps.models.postgres import PostgreSQL
