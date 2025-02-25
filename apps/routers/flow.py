@@ -66,6 +66,7 @@ async def get_services(
 })
 async def get_node_metadatas(
     user_sub: Annotated[str, Depends(get_user)],
+    service_id: Annotated[str, Query(alias="serviceId")],
     node_metadata_id: Annotated[str, Query(alias="NodeMetadataId")],
 ):
     """获取节点元数据的详细信息"""
