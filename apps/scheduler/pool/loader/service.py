@@ -23,7 +23,6 @@ from apps.scheduler.pool.loader.metadata import MetadataLoader, MetadataType
 from apps.scheduler.pool.loader.openapi import OpenAPILoader
 
 
-@ray.remote
 class ServiceLoader:
     """Service 加载器"""
 

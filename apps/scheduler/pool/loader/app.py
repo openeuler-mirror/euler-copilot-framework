@@ -5,7 +5,6 @@ Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 
 import shutil
 
-import ray
 from anyio import Path
 from fastapi.encoders import jsonable_encoder
 from sqlalchemy import delete
@@ -23,7 +22,6 @@ from apps.scheduler.pool.loader.flow import FlowLoader
 from apps.scheduler.pool.loader.metadata import MetadataLoader
 
 
-@ray.remote
 class AppLoader:
     """应用加载器"""
 

@@ -2,7 +2,6 @@
 
 Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 """
-import asyncio
 import importlib
 from typing import Any, Optional
 
@@ -36,43 +35,35 @@ class Pool:
         changed_service, deleted_service = await checker.diff(MetadataType.SERVICE)
 
         # 处理Service
-        service_loader = ServiceLoader.remote()
+        service_loader = ServiceLoader()
 
         # 批量删除
-        delete_task = [service_loader.delete.remote(service) for service in changed_service]  # type: ignore[attr-type]
-        delete_task += [service_loader.delete.remote(service) for service in deleted_service]  # type: ignore[attr-type]
-        await asyncio.gather(*delete_task)
+        for service in changed_service:
+            await service_loader.delete(service)
+        for service in deleted_service:
+            await service_loader.delete(service)
 
         # 批量加载
-        load_task = []
         for service in changed_service:
             hash_key = Path(SERVICE_DIR + "/" + service).as_posix()
             if hash_key in checker.hashes:
-                load_task.append(service_loader.load.remote(service, checker.hashes[hash_key])) # type: ignore[attr-type]
-        await asyncio.gather(*load_task)
-
-        # 完成Service load
-        ray.kill(service_loader)
+                await service_loader.load(service, checker.hashes[hash_key])
 
         # 加载App
         changed_app, deleted_app = await checker.diff(MetadataType.APP)
-        app_loader = AppLoader.remote()
+        app_loader = AppLoader()
 
         # 批量删除App
-        delete_task = [app_loader.delete.remote(app) for app in changed_app]  # type: ignore[attr-type]
-        delete_task += [app_loader.delete.remote(app) for app in deleted_app]  # type: ignore[attr-type]
-        await asyncio.gather(*delete_task)
+        for app in changed_app:
+            await app_loader.delete(app)
+        for app in deleted_app:
+            await app_loader.delete(app)
 
         # 批量加载App
-        load_task = []
         for app in changed_app:
             hash_key = Path(APP_DIR + "/" + app).as_posix()
             if hash_key in checker.hashes:
-                load_task.append(app_loader.load.remote(app, checker.hashes[hash_key])) # type: ignore[attr-type]
-        await asyncio.gather(*load_task)
-
-        # 完成App load
-        ray.kill(app_loader)
+                await app_loader.load(app, checker.hashes[hash_key])
 
 
     async def save(self, *, is_deletion: bool = False) -> None:

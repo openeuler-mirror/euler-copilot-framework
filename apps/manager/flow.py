@@ -4,7 +4,6 @@ Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 """
 from typing import Optional
 
-import ray
 from pymongo import ASCENDING
 
 from apps.constants import LOGGER
@@ -20,10 +19,11 @@ from apps.entities.flow_topology import (
     PositionItem,
 )
 from apps.entities.pool import AppFlow, AppPool
+from apps.manager.node import NodeManager
 from apps.models.mongo import MongoDB
 from apps.scheduler.pool.loader.app import AppLoader
 from apps.scheduler.pool.loader.flow import FlowLoader
-from apps.manager.node import NodeManager
+
 
 class FlowManager:
     """Flow相关操作"""
@@ -79,7 +79,8 @@ class FlowManager:
 
             nodes_meta_data_items = []
             async for node_pool_record in cursor:
-                params_schema, output_schema = await NodeManager.get_node_params(node_pool_record["_id"])
+                # params_schema, output_schema = await NodeManager.get_node_params(node_pool_record["_id"])
+                params_schema, output_schema = {},{}
                 parameters = {
                     "input_parameters": params_schema,
                     "output_parameters": output_schema,
@@ -374,9 +375,8 @@ class FlowManager:
                     focus_point=PositionItem(x=focus_point.x, y=focus_point.y),
                 )
                 metadata.flows.append(new_flow)
-            app_loader = AppLoader.remote()
-            await app_loader.save.remote(metadata, app_id)  # type: ignore[attr-type]
-            ray.kill(app_loader)
+            app_loader = AppLoader()
+            await app_loader.save(metadata, app_id)
             if result is None:
                 LOGGER.error("Add flow failed")
                 return None
@@ -419,9 +419,8 @@ class FlowManager:
             for flow in metadata.flows:
                 if flow.id == flow_id:
                     metadata.flows.remove(flow)
-            app_loader = AppLoader.remote()
-            await app_loader.save.remote(metadata, app_id)  # type: ignore[attr-type]
-            ray.kill(app_loader)
+            app_loader = AppLoader()
+            await app_loader.save(metadata, app_id)
             if result is None:
                 LOGGER.error("Delete flow from app pool failed")
                 return None
@@ -472,9 +471,8 @@ class FlowManager:
             for flows in metadata.flows:
                 if flows.id == flow_id:
                     flows.debug = debug
-            app_loader = AppLoader.remote()
-            await app_loader.save.remote(metadata, app_id)  # type: ignore[attr-type]
-            ray.kill(app_loader)
+            app_loader = AppLoader()
+            await app_loader.save(metadata, app_id)
             flow_loader = FlowLoader()
             flow = await flow_loader.load(app_id, flow_id)
             if flow is None:
