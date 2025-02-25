@@ -79,8 +79,7 @@ class FlowManager:
 
             nodes_meta_data_items = []
             async for node_pool_record in cursor:
-                # params_schema, output_schema = await NodeManager.get_node_params(node_pool_record["_id"])
-                params_schema, output_schema = {},{}
+                params_schema, output_schema = await NodeManager.get_node_params(node_pool_record["_id"])
                 parameters = {
                     "input_parameters": params_schema,
                     "output_parameters": output_schema,
