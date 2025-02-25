@@ -28,7 +28,7 @@ class NodeServiceItem(BaseModel):
     name: str = Field(..., description="服务名称")
     type: str = Field(..., description="服务类型")
     node_meta_datas: list[NodeMetaDataItem] = Field(alias="nodeMetaDatas", default=[])
-    created_at: Optional[str] = Field(..., alias="createdAt", description="创建时间")
+    created_at: Optional[str] = Field(default=None, alias="createdAt", description="创建时间")
 
 
 class PositionItem(BaseModel):
