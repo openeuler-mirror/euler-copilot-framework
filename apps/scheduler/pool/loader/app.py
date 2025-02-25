@@ -51,7 +51,7 @@ class AppLoader:
         flow_loader = FlowLoader()
 
         flow_ids = [app_flow.id for app_flow in metadata.flows]
-        metadata.flows = []
+        new_flows: list[AppFlow] = []
         async for flow_file in flow_path.rglob("*.yaml"):
             if flow_file.stem not in flow_ids:
                 LOGGER.warning(f"[AppLoader] 工作流 {flow_file} 不在元数据中")
@@ -60,16 +60,22 @@ class AppLoader:
                 err = f"[AppLoader] 工作流 {flow_file} 加载失败"
                 LOGGER.error(err)
                 raise ValueError(err)
-            metadata.flows.append(
+            new_flows.append(
                 AppFlow(
                     id=flow_file.stem,
                     name=flow.name,
                     description=flow.description,
-                    path=str(flow_file),
+                    path=flow_file.as_posix(),
                     debug=flow.debug,
                 ),
             )
-
+        metadata.flows = new_flows
+        try:
+            metadata = AppMetadata.model_validate(metadata)
+        except Exception as e:
+            err = f"[AppLoader] 元数据验证失败：{e}"
+            LOGGER.error(err)
+            raise RuntimeError(err) from e
         await self._update_db(metadata)
 
     async def save(self, metadata: AppMetadata, app_id: str) -> None:
