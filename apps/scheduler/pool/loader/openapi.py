@@ -151,7 +151,12 @@ class OpenAPILoader:
             raise RuntimeError(err) from e
 
         yaml_filename = yaml_path.name
-        return await self._process_spec(service_id, yaml_filename, spec, service_metadata)
+        try:
+            return await self._process_spec(service_id, yaml_filename, spec, service_metadata)
+        except Exception as e:
+            err = f"处理OpenAPI文档{yaml_filename}失败：{e}"
+            LOGGER.error(msg=err)
+            raise RuntimeError(err) from e
 
     async def save_one(self, yaml_path: Path, yaml_dict: dict[str, Any]) -> None:
         """保存单个OpenAPI文档"""
