@@ -41,7 +41,6 @@ create_namespace() {
     fi
 }
 
-
 delete_pvcs() {
     echo -e "${BLUE}==> 清理现有资源...${NC}"
 
@@ -61,8 +60,11 @@ delete_pvcs() {
         echo -e "${YELLOW}未找到需要清理的Helm Release${NC}"
     fi
 
+    # 修改重点：仅筛选特定PVC名称
     local pvc_list
-    pvc_list=$(kubectl get pvc -n euler-copilot -o jsonpath='{.items[*].metadata.name}' 2>/dev/null | tr ' ' '\n' | grep -v '^mysql-pvc$' || true)
+    pvc_list=$(kubectl get pvc -n euler-copilot -o jsonpath='{.items[*].metadata.name}' 2>/dev/null \
+        | tr ' ' '\n' \
+        | grep -E '^(pgsql-storage|mongo-storage|minio-storage)$' || true)  # 精确匹配三个指定名称
 
     if [ -n "$pvc_list" ]; then
         echo -e "${YELLOW}找到以下PVC，开始清理...${NC}"
