@@ -24,6 +24,7 @@ from apps.models.mongo import MongoDB
 from apps.scheduler.pool.loader.app import AppLoader
 from apps.scheduler.pool.loader.flow import FlowLoader
 from apps.manager.node import NodeManager
+from apps.utils.flow import generate_from_schema
 
 class FlowManager:
     """Flow相关操作"""
@@ -77,10 +78,14 @@ class FlowManager:
             nodes_meta_data_items = []
             async for node_pool_record in cursor:
                 params_schema, output_schema = await NodeManager.get_node_params(node_pool_record["_id"])
-                parameters = {
-                    "input_parameters": params_schema,
-                    "output_parameters": output_schema,
-                }
+                try:
+                    parameters = {
+                        "input_parameters": generate_from_schema(params_schema),
+                        "output_parameters": output_schema,
+                    }
+                except Exception as e:
+                    LOGGER.error(f"[FlowManeger] generate_from_schema failed {e}")
+                    continue
                 node_meta_data_item = NodeMetaDataItem(
                     nodeMetaDataId=node_pool_record["_id"],
                     type=node_pool_record["call_id"],

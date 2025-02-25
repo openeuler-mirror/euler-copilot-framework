@@ -119,5 +119,43 @@ class FlowService:
         if node_reached_cnt!=len(flow_item.nodes):
             LOGGER.error(msg="流程图存在孤立子图")
             raise Exception("流程图存在孤立子图")
-        
 
+def generate_from_schema(schema: dict) -> dict:
+    """根据 JSON Schema 生成示例 JSON 数据。
+
+    :param schema: JSON Schema 字典
+    :return: 生成的示例 JSON 数据
+    """
+    def _generate_example(schema_node: dict):
+        # 处理类型为 object 的节点
+        if schema_node.get("type") == "object":
+            example = {}
+            properties = schema_node.get("properties", {})
+            for prop_name, prop_schema in properties.items():
+                example[prop_name] = _generate_example(prop_schema)
+            return example
+
+        # 处理类型为 array 的节点
+        elif schema_node.get("type") == "array":
+            items_schema = schema_node.get("items", {})
+            return [_generate_example(items_schema)]
+
+        # 处理类型为 string 的节点
+        elif schema_node.get("type") == "string":
+            return schema_node.get("default", "example_string")
+
+        # 处理类型为 number 或 integer 的节点
+        elif schema_node.get("type") in ["number", "integer"]:
+            return schema_node.get("default", 0)
+
+        # 处理类型为 boolean 的节点
+        elif schema_node.get("type") == "boolean":
+            return schema_node.get("default", False)
+
+        # 处理其他类型或未定义类型
+        else:
+            return None
+
+
+    # 生成示例数据
+    return _generate_example(schema)
