@@ -102,7 +102,7 @@ class FlowManager:
         service_collection = MongoDB.get_collection("service")
         try:
             match_conditions = [
-                {"name": "系统"},
+                {"author": "system"},
                 {"author": user_sub},
                 {
                     "$and": [
