@@ -66,7 +66,7 @@ class Task:
                 input_tokens=0,
                 output_tokens=0,
                 time=0,
-                feature=post_body.features.model_dump(by_alias=True),
+                feature={},
             ),
             createdAt=round(datetime.now(timezone.utc).timestamp(), 3),
         )

@@ -16,6 +16,13 @@ class CoreCall(BaseModel):
     name: ClassVar[str] = Field(description="Call的名称")
     description: ClassVar[str] = Field(description="Call的描述")
 
+    ret_type: ClassVar[type[BaseModel]]
+
+    def __init_subclass__(cls, ret_type: type[BaseModel], **kwargs: Any) -> None:
+        """初始化子类"""
+        super().__init_subclass__(**kwargs)
+        cls.ret_type = ret_type
+
     class Config:
         """Pydantic 配置类"""
 

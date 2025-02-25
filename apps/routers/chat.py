@@ -138,7 +138,6 @@ async def chat(
     )
 
 
-
 @router.post("/stop", response_model=ResponseData, dependencies=[Depends(verify_csrf_token)])
 async def stop_generation(user_sub: Annotated[str, Depends(get_user)]):  # noqa: ANN201
     """停止生成"""

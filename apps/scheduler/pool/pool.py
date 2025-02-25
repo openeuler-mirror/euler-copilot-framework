@@ -17,6 +17,7 @@ from apps.scheduler.pool.check import FileChecker
 from apps.scheduler.pool.loader import (
     AppLoader,
     CallLoader,
+    FlowLoader,
     ServiceLoader,
 )
 
@@ -80,33 +81,19 @@ class Pool:
             if not flow_list:
                 return []
             for flow in flow_list["flows"]:
-                flow_metadata_list.extend(AppFlow(**flow))
+                flow_metadata_list += [AppFlow.model_validate(flow)]
+            return flow_metadata_list
         except Exception as e:
             err = f"获取App{app_id}的Flow列表失败：{e}"
             LOGGER.error(err)
-            raise RuntimeError(err) from e
-
-        return flow_metadata_list
+            return []
 
 
-    # TODO
     async def get_flow(self, app_id: str, flow_id: str) -> Optional[Flow]:
-        """从数据库中获取单个Flow的全部数据"""
-        app_collection = MongoDB.get_collection("app")
-        try:
-            # 使用聚合管道来查找特定的flow
-            pipeline = [
-                {"$match": {"_id": app_id}},
-                {"$unwind": "$flows"},
-                {"$match": {"flows._id": flow_id}},
-            ]
-            async for flow in await app_collection.aggregate(pipeline):
-                return Flow(**flow)
-            return None
-        except Exception as e:
-            err = f"获取App {app_id} 的Flow {flow_id} 失败：{e}"
-            LOGGER.error(err)
-            raise RuntimeError(err) from e
+        """从文件系统中获取单个Flow的全部数据"""
+        LOGGER.info(f"[Pool] Getting flow {flow_id} for app {app_id}...")
+        flow_loader = FlowLoader()
+        return await flow_loader.load(app_id, flow_id)
 
 
     async def get_call(self, call_path: str) -> Any:

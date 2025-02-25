@@ -8,6 +8,7 @@ from typing import Union
 
 import ray
 
+from apps.common.config import config
 from apps.constants import LOGGER
 from apps.entities.collection import Document
 from apps.entities.enum_var import EventType
@@ -19,27 +20,26 @@ from apps.entities.message import (
 )
 from apps.entities.rag_data import RAGEventData, RAGQueryReq
 from apps.entities.record import RecordDocument
-from apps.entities.request_data import RequestData
 from apps.entities.task import TaskBlock
 from apps.service import RAG
 
 
-async def push_init_message(task_id: str, queue: ray.ObjectRef, post_body: RequestData,  *, is_flow: bool = False) -> None:
+async def push_init_message(task_id: str, queue: ray.ObjectRef, context_num: int, *, is_flow: bool = False) -> None:
     """推送初始化消息"""
     task_actor = ray.get_actor("task")
     task: TaskBlock = await task_actor.get_task.remote(task_id)
     # 组装feature
     if is_flow:
         feature = InitContentFeature(
-            maxTokens=post_body.features.max_tokens,
-            contextNum=post_body.features.context_num,
+            maxTokens=config["LLM_MAX_TOKENS"],
+            contextNum=context_num,
             enableFeedback=False,
             enableRegenerate=False,
         )
     else:
         feature = InitContentFeature(
-            maxTokens=post_body.features.max_tokens,
-            contextNum=post_body.features.context_num,
+            maxTokens=config["LLM_MAX_TOKENS"],
+            contextNum=context_num,
             enableFeedback=True,
             enableRegenerate=True,
         )

@@ -7,6 +7,7 @@ import json
 from collections import Counter
 from typing import Any, ClassVar, Optional
 
+from apps.constants import LOGGER
 from apps.llm.patterns.core import CorePattern
 from apps.llm.patterns.json import Json
 from apps.llm.reasoning import ReasoningLLM
@@ -91,6 +92,7 @@ class Select(CorePattern):
 
     async def _generate_single_attempt(self, task_id: str, user_input: str, choice_list: list[str]) -> str:
         """使用ReasoningLLM进行单次尝试"""
+        LOGGER.info(f"[Select] Trying single attempt for task {task_id}...")
         messages = [
             {"role": "system", "content": self.system_prompt},
             {"role": "user", "content": user_input},
@@ -98,7 +100,7 @@ class Select(CorePattern):
         result = ""
         async for chunk in ReasoningLLM().call(task_id, messages, streaming=False):
             result += chunk
-
+        LOGGER.info(f"[Select] Result: {result}")
 
         # 使用FunctionLLM进行参数提取
         schema = self.slot_schema
@@ -111,6 +113,7 @@ class Select(CorePattern):
 
     async def generate(self, task_id: str, **kwargs) -> str:  # noqa: ANN003
         """使用大模型做出选择"""
+        LOGGER.info(f"[Select] Selecting using LLM: {task_id}...")
         max_try = 3
         result_list = []
 
@@ -129,4 +132,5 @@ class Select(CorePattern):
         result_list = await asyncio.gather(*result_coroutine)
 
         count = Counter(result_list)
+        LOGGER.info(f"[Select] Result: {count.most_common(1)[0][0]}")
         return count.most_common(1)[0][0]

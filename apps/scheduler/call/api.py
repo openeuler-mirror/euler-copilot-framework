@@ -39,11 +39,12 @@ class APIOutput(BaseModel):
     output: dict[str, Any] = Field(description="API调用工具的输出")
 
 
-class API(CoreCall):
+class API(CoreCall, ret_type=APIOutput):
     """API调用工具"""
 
     name: ClassVar[str] = "HTTP请求"
     description: ClassVar[str] = "向某一个API接口发送HTTP请求，获取数据。"
+
 
     async def __call__(self, syscall_vars: CallVars, **_kwargs: Any) -> APIOutput:
         """调用API，然后返回LLM解析后的数据"""

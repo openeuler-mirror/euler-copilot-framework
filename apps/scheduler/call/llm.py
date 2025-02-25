@@ -41,7 +41,7 @@ class LLMNodeOutput(BaseModel):
     message: str = Field(description="大模型输出的文字信息")
 
 
-class LLM(CoreCall):
+class LLM(CoreCall, ret_type=LLMNodeOutput):
     """大模型调用工具"""
 
     name: ClassVar[str] = "大模型"
@@ -51,7 +51,6 @@ class LLM(CoreCall):
     enable_context: bool = Field(description="是否启用上下文", default=True)
     system_prompt: str = Field(description="大模型系统提示词", default="")
     user_prompt: str = Field(description="大模型用户提示词", default=LLM_DEFAULT_PROMPT)
-
 
     async def __call__(self, syscall_vars: CallVars, **_kwargs: Any) -> LLMNodeOutput:
         """运行LLM Call"""

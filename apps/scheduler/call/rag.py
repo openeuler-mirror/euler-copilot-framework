@@ -19,7 +19,7 @@ class RAGOutput(BaseModel):
     corpus: list[str] = Field(description="知识库的语料列表")
 
 
-class RAG(CoreCall):
+class RAG(CoreCall, ret_type=RAGOutput):
     """RAG工具：查询知识库"""
 
     name: ClassVar[str] = "知识库"
