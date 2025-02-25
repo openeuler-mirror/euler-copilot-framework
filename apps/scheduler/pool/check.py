@@ -33,10 +33,10 @@ class FileChecker:
             raise err
 
         async for file in path.iterdir():
-            if file.is_file():
+            if await file.is_file():
                 relative_path = file.relative_to(self._resource_path)
                 hashes[relative_path.as_posix()] = sha256(await file.read_bytes()).hexdigest()
-            elif file.is_dir():
+            elif await file.is_dir():
                 hashes.update(await self.check_one(file))
 
         return hashes
