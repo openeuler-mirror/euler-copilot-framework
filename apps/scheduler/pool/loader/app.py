@@ -62,7 +62,7 @@ class AppLoader:
                 raise ValueError(err)
             metadata.flows.append(
                 AppFlow(
-                    _id=flow_file.stem,
+                    id=flow_file.stem,
                     name=flow.name,
                     description=flow.description,
                     path=str(flow_file),
