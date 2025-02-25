@@ -15,17 +15,17 @@ get_architecture() {
     arch=$(uname -m)
     case "$arch" in
         x86_64)
-            arch="x86_64"
+            arch="x86"
             ;;
         aarch64)
-            arch="aarch64"
+            arch="arm"
             ;;
         *)
             echo -e "${RED}错误：不支持的架构 $arch${NC}"
             exit 1
             ;;
     esac
-    echo -e "${GREEN}检测到系统架构：$arch${NC}"
+    echo -e "${GREEN}检测到系统架构：$(uname -m)${NC}"
 }
 
 create_namespace() {

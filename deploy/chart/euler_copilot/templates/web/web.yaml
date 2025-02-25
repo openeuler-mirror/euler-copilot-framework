@@ -52,21 +52,12 @@ spec:
       labels:
         app: web
     spec:
-      affinity:
-        nodeAffinity:
-          requiredDuringSchedulingIgnoredDuringExecution:
-            nodeSelectorTerms:
-            - matchExpressions:
-              - key: kubernetes.io/arch
-                operator: In
-                values:
-                - {{ .Values.globals.arch | default "x86_64" | replace "aarch64" "arm64" | quote }}
       automountServiceAccountToken: false
       securityContext:
         fsGroup: 1001
       containers:
         - name: web
-          image: {{ .Values.euler_copilot.web.image | default (printf "hub.oepkgs.net/neocopilot/euler-copilot-web:%s" (include "euler-copilot-web.imageTag" .)) }}
+          image: {{ if .Values.euler_copilot.web.image }}{{ .Values.euler_copilot.web.image }}{{ else }}{{ .Values.globals.imageRegistry | default "hub.oepkgs.net" }}/neocopilot/euler-copilot-web:0.9.4-{{ .Values.globals.arch | default "x86" }}{{ end }}
           imagePullPolicy: {{ default "IfNotPresent" .Values.globals.imagePullPolicy }}
           ports:
             - containerPort: 8080
@@ -116,12 +107,4 @@ spec:
         - name: web-tmp
           emptyDir:
             medium: Memory
-{{- end -}}
-
-{{- define "euler-copilot-web.imageTag" -}}
-  {{- $arch := .Values.globals.arch | default "x86_64" | replace "aarch64" "arm64" -}}
-  {{- if eq $arch "arm64" -}}0.9.4-arm
-  {{- else if eq $arch "x86_64" -}}0.9.4-x86
-  {{- else -}}0.9.4
-  {{- end -}}
 {{- end -}}

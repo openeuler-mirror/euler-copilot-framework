@@ -18,18 +18,17 @@ get_architecture() {
     arch=$(uname -m)
     case "$arch" in
         x86_64)
-            arch="x86_64"
+            arch="x86"
             ;;
         aarch64)
-            arch="aarch64"
+            arch="arm"
             ;;
         *)
             echo -e "${RED}错误：不支持的架构 $arch${NC}" >&2
             return 1
             ;;
     esac
-    echo -e "${GREEN}检测到系统架构：$arch${NC}" >&2
-    echo "$arch"
+    echo -e "${GREEN}检测到系统架构：$(uname -m)${NC}" >&2
 }
 
 # 自动检测业务网口
@@ -168,12 +167,12 @@ modify_yaml() {
       "${DEPLOY_DIR}/chart/euler_copilot/values.yaml" \
       --set "models.answer.url=http://$host:11434" \
       --set "models.answer.key=sk-123456" \
-      --set "models.answer.name=deepseek-llm-7b-chat" \
+      --set "models.answer.name=deepseek-llm-7b-chat:latest" \
       --set "models.answer.ctx_length=8192" \
       --set "models.answer.max_tokens=2048" \
       --set "models.embedding.url=http://$host:11434" \
       --set "models.embedding.key=sk-123456" \
-      --set "models.embedding.name=bge-m3" \
+      --set "models.embedding.name=bge-m3:latest" \
       --set "login.client.id=${client_id}" \
       --set "login.client.secret=${client_secret}" \
       --set "domain.authhub=${authhub_domain}" \

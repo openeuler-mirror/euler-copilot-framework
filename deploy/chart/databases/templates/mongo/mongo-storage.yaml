@@ -14,3 +14,4 @@ spec:
     requests:
       storage: {{ default "10Gi" .Values.storage.mongo }}
 {{- end -}}
+

@@ -35,18 +35,9 @@ spec:
         app: mongo
     spec:
       automountServiceAccountToken: false
-      affinity:
-        nodeAffinity:
-          requiredDuringSchedulingIgnoredDuringExecution:
-            nodeSelectorTerms:
-            - matchExpressions:
-              - key: kubernetes.io/arch
-                operator: In
-                values:
-                - {{ .Values.globals.arch | default "x86_64" | replace "aarch64" "arm64" | quote }}
       containers:
         - name: mongo
-          image: {{ .Values.databases.mongo.image | default (printf "hub.oepkgs.net/neocopilot/mongo:%s" (include "mongo.imageTag" .)) }}
+          image: {{ if .Values.databases.mongo.image }}{{ .Values.databases.mongo.image }}{{ else }}{{ .Values.globals.imageRegistry | default "hub.oepkgs.net" }}/neocopilot/mongo:7.0.16-{{ .Values.globals.arch | default "x86" }}{{ end }}
           imagePullPolicy: {{ default "IfNotPresent" .Values.globals.imagePullPolicy }}
           command:
             - bash
@@ -109,12 +100,3 @@ spec:
           configMap:
             name: mongo-config
 {{- end -}}
-
-{{- define "mongo.imageTag" -}}
-  {{- $arch := .Values.globals.arch | default "x86_64" | replace "aarch64" "arm64" -}}
-  {{- if eq $arch "arm64" -}}7.0.16-arm
-  {{- else if eq $arch "x86_64" -}}7.0.16-x86
-  {{- else -}}7.0.16
-  {{- end -}}
-{{- end -}}
-`

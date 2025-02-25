@@ -29,6 +29,26 @@ function check_arch {
     return 0
 }
 
+install_basic_tools() {
+    # 安装基础工具
+    echo "Installing tar, vim, curl, wget..."
+    yum install -y tar vim curl wget
+
+    # 检查 pip 是否已安装
+    if ! command -v pip &> /dev/null; then
+        echo "pip could not be found, installing python3-pip..."
+        yum install -y python3-pip
+    else
+        echo "pip is already installed."
+    fi
+
+    # 使用 pip 安装 requests
+    echo "Installing requests with pip..."
+    pip install requests
+
+    echo "All basic tools have been installed."
+}
+
 function install_k3s {
     local k3s_version="v1.30.2+k3s1"
     local image_name="k3s-airgap-images-$ARCH.tar.zst"
@@ -126,8 +146,10 @@ function check_k3s_status() {
 }
 
 function main {
+    
     check_user
     check_arch || exit 1
+    install_basic_tools
 
     local use_mirror=""
     [[ $1 == "cn" ]] && use_mirror="cn"
