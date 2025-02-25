@@ -248,11 +248,13 @@ class ServiceCenterManager:
         user_collection = MongoDB.get_collection("user")
         db_service = await service_collection.find_one({"_id": service_id})
         if not db_service:
-            msg = "Service not found"
+            msg = f"[ServiceCenterManager] Service not found: {service_id}"
+            LOGGER.warning(msg)
             raise ValueError(msg)
-        db_user = await user_collection.find_one({"sub": user_sub})
+        db_user = await user_collection.find_one({"_id": user_sub})
         if not db_user:
-            msg = "User not found"
+            msg = f"[ServiceCenterManager] User not found: {user_sub}"
+            LOGGER.warning(msg)
             raise ValueError(msg)
         user_data = User.model_validate(db_user)
         already_favorited = service_id in user_data.fav_services
