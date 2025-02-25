@@ -6,13 +6,18 @@ from typing import Any
 
 import ray
 
-from apps.entities.enum_var import EventType, FlowOutputType, StepStatus
+from apps.entities.enum_var import EventType, FlowOutputType
 from apps.entities.flow import Flow
 from apps.entities.message import (
     FlowStartContent,
     FlowStopContent,
 )
-from apps.entities.task import ExecutorState, FlowStepHistory, TaskBlock
+from apps.entities.task import (
+    ExecutorState,
+    FlowStepHistory,
+    TaskBlock,
+)
+from apps.manager.node import NodeManager
 
 
 async def push_step_input(task_id: str, queue: ray.ObjectRef, state: ExecutorState, input_data: dict[str, Any]) -> None:
@@ -74,7 +79,7 @@ async def push_flow_start(task_id: str, queue: ray.ObjectRef, state: ExecutorSta
 
 async def assemble_flow_stop_content(state: ExecutorState, flow: Flow) -> FlowStopContent:
     """组装Flow结束消息"""
-    call_type = flow.steps[state.step_id].call_type
+    call_type = await NodeManager.get_node_call_id(state.step_id)
     if state.remaining_schema:
         # 如果当前Flow是填充步骤，则推送Schema
         content = FlowStopContent(

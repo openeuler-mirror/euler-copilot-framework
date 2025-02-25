@@ -80,7 +80,7 @@ class ExecutorThought(CorePattern):
         return result
 
 
-class ExecutorBackground(CorePattern):
+class ExecutorSummary(CorePattern):
     """使用大模型进行生成Executor初始背景"""
 
     user_prompt: str = r"""

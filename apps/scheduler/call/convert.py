@@ -31,7 +31,7 @@ class _ConvertOutput(BaseModel):
     data: dict = Field(description="格式化后的结果")
 
 
-class Convert(metaclass=CoreCall, param_cls=_ConvertParam, output_cls=_ConvertOutput):
+class Convert(CoreCall):
     """Convert 工具，用于对生成的文字信息和原始数据进行格式化"""
 
     name: str = "convert"

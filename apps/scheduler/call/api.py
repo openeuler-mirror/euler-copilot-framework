@@ -3,7 +3,7 @@
 Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 """
 import json
-from typing import Any, Literal, Optional, ClassVar
+from typing import Any, ClassVar, Literal, Optional
 
 import aiohttp
 from fastapi import status
@@ -31,7 +31,7 @@ class _APIParams(BaseModel):
     auth: dict[str, Any] = Field(description="API鉴权信息", default={})
 
 
-class _APIOutput(BaseModel):
+class APIOutput(BaseModel):
     """API调用工具的输出"""
 
     http_code: int = Field(description="API调用工具的HTTP返回码")
@@ -45,7 +45,7 @@ class API(CoreCall):
     name: ClassVar[str] = "HTTP请求"
     description: ClassVar[str] = "向某一个API接口发送HTTP请求，获取数据。"
 
-    async def exec(self, syscall_vars: CallVars, **kwargs: Any) -> _APIOutput:
+    async def __call__(self, syscall_vars: CallVars, **_kwargs: Any) -> APIOutput:
         """调用API，然后返回LLM解析后的数据"""
         self._session = aiohttp.ClientSession()
         try:
@@ -109,7 +109,7 @@ class API(CoreCall):
         raise NotImplementedError(err)
 
 
-    async def _call_api(self, slot_data: Optional[dict[str, Any]] = None) -> _APIOutput:
+    async def _call_api(self, slot_data: Optional[dict[str, Any]] = None) -> APIOutput:
         # 获取必要参数
         params: _APIParams = getattr(self, "_params")
         LOGGER.info(f"调用接口{params.url}，请求数据为{slot_data}")
@@ -132,7 +132,7 @@ class API(CoreCall):
         message = f"""You called the HTTP API "{params.url}", which is used to "{self._spec[2]['summary']}"."""
         # 如果没有返回结果
         if response_data is None:
-            return _APIOutput(
+            return APIOutput(
                 http_code=response_status,
                 output={},
                 message=message + "But the API returned an empty response.",
@@ -150,7 +150,7 @@ class API(CoreCall):
             slot = Slot(response_schema)
             response_data = json.dumps(slot.process_json(response_dict), ensure_ascii=False)
 
-        return _APIOutput(
+        return APIOutput(
             http_code=response_status,
             output=json.loads(response_data),
             message=message + "The API returned some data, and is shown in the 'output' field below.",

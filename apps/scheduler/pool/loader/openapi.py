@@ -3,7 +3,7 @@
 Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 """
 
-import uuid
+from hashlib import shake_128
 from typing import Any
 
 import ray
@@ -122,15 +122,16 @@ class OpenAPILoader:
         """将OpenAPI文档拆解为Node"""
         nodes = []
         for api_endpoint in spec.endpoints:
+            # 通过算法生成唯一的标识符
+            identifier = shake_128(f"openapi::{yaml_filename}::{api_endpoint.uri}".encode()).hexdigest(16)
             # 组装新的NodePool item
             node = APINode(
-                _id=str(uuid.uuid4()),
+                _id=identifier,
                 name=api_endpoint.name,
                 # 此处固定Call的ID是"API"
                 call_id="API",
                 description=api_endpoint.description,
                 service_id=service_id,
-                annotation=f"openapi::{yaml_filename}",
             )
 
             # 合并参数

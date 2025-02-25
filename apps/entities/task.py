@@ -39,7 +39,7 @@ class ExecutorState(BaseModel):
     step_id: str = Field(description="当前步骤名称")
     app_id: str = Field(description="应用ID")
     # 运行时数据
-    thought: str = Field(description="大模型的思考内容", default="")
+    ai_summary: str = Field(description="大模型的思考内容", default="")
     filled_data: dict[str, Any] = Field(description="待使用的参数", default={})
     remaining_schema: dict[str, Any] = Field(description="待填充参数的JSON Schema", default={})
 

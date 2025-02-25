@@ -31,7 +31,6 @@ from apps.routers import (
     flow,
     health,
     knowledge,
-    mock,
     record,
     service,
     user,
@@ -65,7 +64,6 @@ app.include_router(blacklist.router)
 app.include_router(document.router)
 app.include_router(knowledge.router)
 app.include_router(flow.router)
-app.include_router(mock.router)
 app.include_router(user.router)
 # 初始化后台定时任务
 scheduler = BackgroundScheduler()

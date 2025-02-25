@@ -22,11 +22,6 @@ class CoreCall(BaseModel):
         arbitrary_types_allowed = True
 
 
-    def __init_subclass__(cls, **kwargs: Any) -> None:
-        """初始化子类"""
-        return super().__init_subclass__(**kwargs)
-
-
-    async def exec(self, syscall_vars: CallVars, **kwargs: Any) -> type[BaseModel]:
+    async def __call__(self, syscall_vars: CallVars, **kwargs: Any) -> type[BaseModel]:
         """Call类实例的调用方法"""
         raise NotImplementedError

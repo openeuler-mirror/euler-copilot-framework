@@ -5,7 +5,7 @@ Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 from apps.llm.patterns.core import CorePattern
 from apps.llm.patterns.domain import Domain
 from apps.llm.patterns.executor import (
-    ExecutorBackground,
+    ExecutorSummary,
     FinalThought,
     ExecutorThought,
 )
@@ -16,7 +16,7 @@ from apps.llm.patterns.select import Select
 __all__ = [
     "CorePattern",
     "Domain",
-    "ExecutorBackground",
+    "ExecutorSummary",
     "FinalThought",
     "ExecutorThought",
     "Json",

@@ -76,7 +76,6 @@ class NodePool(BaseData):
 
     service_id: Optional[str] = Field(description="Node所属的Service ID", default=None)
     call_id: str = Field(description="所使用的Call的ID")
-    annotation: Optional[str] = Field(description="Node的注释", default=None)
     known_params: Optional[dict[str, Any]] = Field(
         description="已知的用于Call部分的参数，独立于输入和输出之外",
         default=None,

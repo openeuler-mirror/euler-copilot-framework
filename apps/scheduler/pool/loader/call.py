@@ -13,7 +13,7 @@ import apps.scheduler.call as system_call
 from apps.common.config import config
 from apps.constants import CALL_DIR, LOGGER
 from apps.entities.enum_var import CallType
-from apps.entities.pool import CallPool
+from apps.entities.pool import CallPool, NodePool
 from apps.entities.vector import CallPoolVector
 from apps.models.mongo import MongoDB
 from apps.models.postgres import PostgreSQL
@@ -128,7 +128,6 @@ class CallLoader:
         return call_metadata
 
 
-    # TODO: 动态卸载
     async def _delete_one(self, call_name: str) -> None:
         """删除单个Call"""
         pass
@@ -144,10 +143,18 @@ class CallLoader:
         """更新数据库"""
         # 更新MongoDB
         call_collection = MongoDB.get_collection("call")
+        node_collection = MongoDB.get_collection("node")
         call_descriptions = []
         try:
             for call in call_metadata:
                 await call_collection.update_one({"_id": call.id}, {"$set": call.model_dump(exclude_none=True, by_alias=True)}, upsert=True)
+                await node_collection.insert_one(NodePool(
+                    _id=call.id,
+                    name=call.name,
+                    description=call.description,
+                    service_id="",
+                    call_id=call.id,
+                ).model_dump(exclude_none=True, by_alias=True))
                 call_descriptions += [call.description]
         except Exception as e:
             err = f"更新MongoDB失败：{e}"
@@ -174,8 +181,10 @@ class CallLoader:
         """初始化Call信息"""
         # 清空collection
         call_collection = MongoDB.get_collection("call")
+        node_collection = MongoDB.get_collection("node")
         try:
             await call_collection.delete_many({})
+            await node_collection.delete_many({"service_id": ""})
         except Exception as e:
             LOGGER.error(msg=f"Call的collection清空失败：{e}")
 

@@ -19,16 +19,15 @@ class CallVars(BaseModel):
     question: str = Field(description="改写后的用户输入")
     history: list[FlowStepHistory] = Field(description="Executor中历史工具的结构化数据", default=[])
     task_id: str = Field(description="任务ID")
+    flow_id: str = Field(description="Flow ID")
     session_id: str = Field(description="当前用户的Session ID")
-    extra: dict[str, Any] = Field(description="其他Executor设置的、用户不可修改的参数", default={})
 
 
 class ExecutorBackground(BaseModel):
     """Executor的背景信息"""
 
-    conversation: list[dict[str, str]] = Field(description="当前Executor的背景信息")
+    conversation: str = Field(description="当前Executor的背景信息")
     facts: list[str] = Field(description="当前Executor的背景信息")
-    thought: str = Field(description="之前Executor的思考内容", default="")
 
 
 class CallError(Exception):

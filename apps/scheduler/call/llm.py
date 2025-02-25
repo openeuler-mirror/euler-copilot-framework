@@ -53,7 +53,7 @@ class LLM(CoreCall):
     user_prompt: str = Field(description="大模型用户提示词", default=LLM_DEFAULT_PROMPT)
 
 
-    async def exec(self, syscall_vars: CallVars, **kwargs: Any) -> LLMNodeOutput:
+    async def __call__(self, syscall_vars: CallVars, **_kwargs: Any) -> LLMNodeOutput:
         """运行LLM Call"""
         # 参数
         time = datetime.now(tz=pytz.timezone("Asia/Shanghai")).strftime("%Y-%m-%d %H:%M:%S")
