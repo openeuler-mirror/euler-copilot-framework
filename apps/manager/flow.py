@@ -23,7 +23,7 @@ from apps.entities.pool import AppFlow, AppPool
 from apps.models.mongo import MongoDB
 from apps.scheduler.pool.loader.app import AppLoader
 from apps.scheduler.pool.loader.flow import FlowLoader
-
+from apps.manager.node import NodeManager
 
 class FlowManager:
     """Flow相关操作"""
@@ -76,9 +76,10 @@ class FlowManager:
 
             nodes_meta_data_items = []
             async for node_pool_record in cursor:
+                params_schema, output_schema = await NodeManager.get_node_params(node_pool_record["_id"])
                 parameters = {
-                    "input_parameters": node_pool_record["params_schema"],
-                    "output_parameters": node_pool_record["output_schema"],
+                    "input_parameters": params_schema,
+                    "output_parameters": output_schema,
                 }
                 node_meta_data_item = NodeMetaDataItem(
                     nodeMetaDataId=node_pool_record["_id"],
@@ -106,7 +107,6 @@ class FlowManager:
         service_collection = MongoDB.get_collection("service")
         try:
             match_conditions = [
-                {"author": "system"},
                 {"author": user_sub},
                 {
                     "$and": [
@@ -130,6 +130,14 @@ class FlowManager:
             service_records = await service_records_cursor.to_list(length=None)
             service_items = [
                 NodeServiceItem(
+                    serviceId="",
+                    name="系统",
+                    type="system",
+                    nodeMetaDatas=[]
+                )
+            ]
+            service_items += [
+                NodeServiceItem(
                     serviceId=record["_id"],
                     name=record["name"],
                     type="default",
@@ -141,7 +149,7 @@ class FlowManager:
             for service_item in service_items:
                 node_meta_datas = await FlowManager.get_node_meta_datas_by_service_id(service_item.service_id)
                 if node_meta_datas is None:
-                    node_meta_datas=[]
+                    node_meta_datas = []
                 service_item.node_meta_datas = node_meta_datas
             return service_items
 
@@ -418,7 +426,7 @@ class FlowManager:
             return None
 
     @staticmethod
-    async def updata_flow_debug_by_app_and_flow_id(app_id: str, flow_id: str, debug: bool)-> bool:
+    async def updata_flow_debug_by_app_and_flow_id(app_id: str, flow_id: str, debug: bool) -> bool:
         try:
             app_pool_collection = MongoDB.get_collection("app")
             result = await app_pool_collection.find_one(
@@ -429,21 +437,21 @@ class FlowManager:
                 LOGGER.error("Update flow debug from app pool failed")
                 return False
             app_pool = AppPool(
-                    _id=result["_id"],  # 使用 alias="_id" 自动映射
-                    name=result.get("name", ""),
-                    description=result.get("description", ""),
-                    created_at=result.get("created_at", None),
-                    author=result.get("author", ""),
-                    type=result.get("type", "default"),
-                    icon=result.get("icon", ""),
-                    published=result.get("published", False),
-                    links=[AppLink(**link) for link in result.get("links", [])],
-                    first_questions=result.get("first_questions", []),
-                    history_len=result.get("history_len", 3),
-                    permission=Permission(**result.get("permission", {})),
-                    flows=[AppFlow(**flow) for flow in result.get("flows", [])],
-                    hashes=result.get("hashes", {})
-                )
+                _id=result["_id"],  # 使用 alias="_id" 自动映射
+                name=result.get("name", ""),
+                description=result.get("description", ""),
+                created_at=result.get("created_at", None),
+                author=result.get("author", ""),
+                type=result.get("type", "default"),
+                icon=result.get("icon", ""),
+                published=result.get("published", False),
+                links=[AppLink(**link) for link in result.get("links", [])],
+                first_questions=result.get("first_questions", []),
+                history_len=result.get("history_len", 3),
+                permission=Permission(**result.get("permission", {})),
+                flows=[AppFlow(**flow) for flow in result.get("flows", [])],
+                hashes=result.get("hashes", {})
+            )
 
             return True
         except Exception as e:
