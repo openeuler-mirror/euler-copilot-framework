@@ -378,7 +378,8 @@ async def mock_data(
                         if sample_output["flow"]["stepName"] == "知识库":
                             sample_output["content"] = await call_rag(params)
                         if sample_output["flow"]["stepName"] == "大模型":
-                            sample_output["content"] = await call_llm(params)
+                            # sample_output["content"] = await call_llm(params)
+                            sample_output["content"] = {"message": "<StreamAnswerResponse>"}
                         if "content" in sample_output and isinstance(sample_output["content"], dict):
                             for key, value in sample_output["content"].items():
                                 params[key] = value
