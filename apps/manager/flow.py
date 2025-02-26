@@ -444,52 +444,14 @@ class FlowManager:
     @staticmethod
     async def updata_flow_debug_by_app_and_flow_id(app_id: str, flow_id: str, debug: bool) -> bool:
         try:
-            app_pool_collection = MongoDB.get_collection("app")
-            result = await app_pool_collection.find_one(
-                {"_id": app_id,"flows.id": flow_id}  # 使用关键字参数 array_filters
-            )
-            if result is None:
-                LOGGER.error("Update flow debug from app pool failed")
-                return False
-            app_pool = AppPool(
-                    _id=result["_id"],  # 使用 alias="_id" 自动映射
-                    name=result.get("name", ""),
-                    description=result.get("description", ""),
-                    created_at=result.get("created_at", None),
-                    author=result.get("author", ""),
-                    icon=result.get("icon", ""),
-                    published=result.get("published", False),
-                    links=[AppLink(**link) for link in result.get("links", [])],
-                    first_questions=result.get("first_questions", []),
-                    history_len=result.get("history_len", 3),
-                    permission=Permission(**result.get("permission", {})),
-                    flows=[AppFlow(**flow) for flow in result.get("flows", [])],
-                )
-            metadata = AppMetadata(
-                id=app_pool.id,
-                name=app_pool.name,
-                description=app_pool.description,
-                author=app_pool.author,
-                icon=app_pool.id,
-                published=app_pool.published,
-                links=app_pool.links,
-                first_questions=app_pool.first_questions,
-                history_len=app_pool.history_len,
-                permission=app_pool.permission,
-                flows=app_pool.flows,
-                version="1.0",
-            )
-            for flows in metadata.flows:
-                if flows.id == flow_id:
-                    flows.debug = debug
-            app_loader = AppLoader()
-            await app_loader.save(metadata, app_id)
             flow_loader = FlowLoader()
             flow = await flow_loader.load(app_id, flow_id)
             if flow is None:
                 return False
             flow.debug = debug
             await flow_loader.save(app_id=app_id,flow_id=flow_id,flow=flow)
+            app_loader = AppLoader()
+            await app_loader.load(app_id, 0)
             return True
         except Exception as e:
             LOGGER.error(f"Update flow debug from app pool failed: {e!s}")
