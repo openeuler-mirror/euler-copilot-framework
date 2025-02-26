@@ -1,53 +1,53 @@
-{{- if .Values.databases.mongo.enabled }}
+{{- if .Values.databases.mongo.enabled -}}
+---
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ include "mongo.fullname" . }}
+  name: mongo-db
   namespace: {{ .Release.Namespace }}
 spec:
   type: {{ default "ClusterIP" .Values.databases.mongo.service.type }}
   selector:
-    app: {{ include "mongo.name" . }}
+    app: mongo
   ports:
     - port: 27017
       targetPort: 27017
-      {{- if eq (default "ClusterIP" .Values.databases.mongo.service.type) "NodePort" }}
-      nodePort: {{ .Values.databases.mongo.service.nodePort | required "当service.type为NodePort时必须指定nodePort" }}
-      {{- end }}
+      nodePort: {{ default nil .Values.databases.mongo.service.nodePort }}
+
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "mongo.fullname" . }}
+  name: mongo-deploy
   namespace: {{ .Release.Namespace }}
   labels:
-    app: {{ include "mongo.name" . }}
+    app: mongo
 spec:
-  replicas: {{ .Values.globals.replicaCount | default 1 }}
+  replicas: {{ default 1 .Values.globals.replicaCount }}
   selector:
     matchLabels:
-      app: {{ include "mongo.name" . }}
+      app: mongo
   template:
     metadata:
       annotations:
-        checksum/config: {{ include "mongo.configmap" . | sha256sum }}
+        checksum/config: {{ include (print $.Template.BasePath "/mongo/mongo-config.yaml") . | sha256sum }}
       labels:
-        app: {{ include "mongo.name" . }}
+        app: mongo
     spec:
       automountServiceAccountToken: false
       containers:
         - name: mongo
           image: {{ if .Values.databases.mongo.image }}{{ .Values.databases.mongo.image }}{{ else }}{{ .Values.globals.imageRegistry | default "hub.oepkgs.net" }}/neocopilot/mongo:7.0.16-{{ .Values.globals.arch | default "x86" }}{{ end }}
-          imagePullPolicy: {{ .Values.globals.imagePullPolicy | default "IfNotPresent" }}
+          imagePullPolicy: {{ default "IfNotPresent" .Values.globals.imagePullPolicy }}
           command:
             - bash
             - -c
             - |
               if [ ! -f "/data/db/file.key" ]; then
-                  openssl rand -base64 756 > /data/db/file.key
+                  openssl rand -base64 756 > /data/db/file.key;
               fi
-              chmod 400 /data/db/file.key
-              chown 999:999 /data/db/file.key
+              chmod 400 /data/db/file.key;
+              chown 999:999 /data/db/file.key;
               exec docker-entrypoint.sh $$@
           args:
             - "mongod"
@@ -64,10 +64,9 @@ spec:
               command:
                 - bash
                 - /tmp/healthcheck.sh
+            failureThreshold: 5
             initialDelaySeconds: 30
-            periodSeconds: 10
-            timeoutSeconds: 5
-            failureThreshold: 3
+            periodSeconds: 60
           env:
             - name: TZ
               value: "Asia/Shanghai"
@@ -87,7 +86,12 @@ spec:
               name: mongo-init
               subPath: healthcheck.sh
           resources:
-            {{- toYaml .Values.databases.mongo.resources | nindent 12 }}
+            requests:
+              cpu: 0.25
+              memory: 256Mi
+            limits:
+              {{ toYaml .Values.databases.mongo.resourceLimits | nindent 14 }}
+      restartPolicy: Always
       volumes:
         - name: mongo-data
           persistentVolumeClaim:
@@ -95,4 +99,4 @@ spec:
         - name: mongo-init
           configMap:
             name: mongo-config
-{{- end }}
+{{- end -}}
