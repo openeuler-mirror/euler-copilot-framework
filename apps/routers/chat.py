@@ -131,6 +131,9 @@ async def chat(
     if post_body.app and post_body.app.app_id:
         await AppCenterManager.update_recent_app(user_sub, post_body.app.app_id)
     if post_body.app and post_body.app.app_id:
+        if not post_body.app.flow_id:
+            flow_id = await AppCenterManager.get_default_flow_id(post_body.app.app_id)
+            post_body.app.flow_id = flow_id if flow_id else ""
         res = mock_data(
             appId=post_body.app.app_id,
             conversationId=post_body.conversation_id,

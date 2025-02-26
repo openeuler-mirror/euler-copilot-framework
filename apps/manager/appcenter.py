@@ -424,6 +424,27 @@ class AppCenterManager:
             return False
 
     @staticmethod
+    async def get_default_flow_id(app_id: str) -> Optional[str]:
+        """获取默认工作流ID
+
+        :param app_id: 应用ID
+        :return: 默认工作流ID
+        """
+        try:
+            app_collection = MongoDB.get_collection("app")
+            db_data = await app_collection.find_one({"_id": app_id})
+            if not db_data:
+                LOGGER.warning(f"[AppCenterManager] No data found for app_id: {app_id}")
+                return None
+            app_data = AppPool.model_validate(db_data)
+            if not app_data.flows or len(app_data.flows) == 0:
+                return None
+            return app_data.flows[0].id
+        except Exception as e:
+            LOGGER.error(f"[AppCenterManager] Get default flow id failed: {e}")
+        return None
+
+    @staticmethod
     def _build_filters(
         base_filters: dict[str, Any],
         search_type: SearchType,
