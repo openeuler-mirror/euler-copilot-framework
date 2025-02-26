@@ -13,7 +13,7 @@ import apps.scheduler.call as system_call
 from apps.common.config import config
 from apps.constants import CALL_DIR, LOGGER
 from apps.entities.enum_var import CallType
-from apps.entities.pool import CallPool
+from apps.entities.pool import CallPool, NodePool
 from apps.entities.vector import CallPoolVector
 from apps.models.mongo import MongoDB
 from apps.models.postgres import PostgreSQL
@@ -26,27 +26,6 @@ class CallLoader:
     用户Call放在call下
     """
 
-    @staticmethod
-    def _check_class(user_cls) -> bool:  # noqa: ANN001
-        """检查用户类是否符合Call标准要求"""
-        flag = True
-
-        if not hasattr(user_cls, "name") or not isinstance(user_cls.name, str):
-            flag = False
-        if not hasattr(user_cls, "description") or not isinstance(user_cls.description, str):
-            flag = False
-        if not hasattr(user_cls, "output_schema") or not isinstance(user_cls.output_schema, dict):
-            flag = False
-        if not hasattr(user_cls, "params_schema") or not isinstance(user_cls.params_schema, dict):
-            flag = False
-        if not hasattr(user_cls, "init") or not callable(user_cls.init):
-            flag = False
-        if not callable(user_cls) or not callable(user_cls.__call__):
-            flag = False
-
-        return flag
-
-
     async def _load_system_call(self) -> list[CallPool]:
         """加载系统Call"""
         call_metadata = []
@@ -54,10 +33,6 @@ class CallLoader:
         # 检查合法性
         for call_id in system_call.__all__:
             call_cls = getattr(system_call, call_id)
-            if not self._check_class(call_cls):
-                err = f"系统类{call_cls.__name__}不符合Call标准要求。"
-                LOGGER.info(msg=err)
-                continue
 
             call_metadata.append(
                 CallPool(
@@ -108,11 +83,6 @@ class CallLoader:
                 LOGGER.info(msg=err)
                 continue
 
-            if not self._check_class(call_cls):
-                err = f"工具call.{call_name}.{call_id}不符合标准要求；跳过载入。"
-                LOGGER.info(msg=err)
-                continue
-
             cls_path = f"{call_package.service}::call.{call_name}.{call_id}"
             cls_hash = shake_128(cls_path.encode()).hexdigest(8)
             call_metadata.append(
@@ -158,7 +128,6 @@ class CallLoader:
         return call_metadata
 
 
-    # TODO: 动态卸载
     async def _delete_one(self, call_name: str) -> None:
         """删除单个Call"""
         pass
@@ -174,10 +143,18 @@ class CallLoader:
         """更新数据库"""
         # 更新MongoDB
         call_collection = MongoDB.get_collection("call")
+        node_collection = MongoDB.get_collection("node")
         call_descriptions = []
         try:
             for call in call_metadata:
                 await call_collection.update_one({"_id": call.id}, {"$set": call.model_dump(exclude_none=True, by_alias=True)}, upsert=True)
+                await node_collection.insert_one(NodePool(
+                    _id=call.id,
+                    name=call.name,
+                    description=call.description,
+                    service_id="",
+                    call_id=call.id,
+                ).model_dump(exclude_none=True, by_alias=True))
                 call_descriptions += [call.description]
         except Exception as e:
             err = f"更新MongoDB失败：{e}"
@@ -204,8 +181,10 @@ class CallLoader:
         """初始化Call信息"""
         # 清空collection
         call_collection = MongoDB.get_collection("call")
+        node_collection = MongoDB.get_collection("node")
         try:
             await call_collection.delete_many({})
+            await node_collection.delete_many({"service_id": ""})
         except Exception as e:
             LOGGER.error(msg=f"Call的collection清空失败：{e}")
 

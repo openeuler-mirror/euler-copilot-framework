@@ -90,9 +90,11 @@ class Recommend(CorePattern):
     }
     """最终输出的JSON Schema"""
 
+
     def __init__(self, system_prompt: Optional[str] = None, user_prompt: Optional[str] = None) -> None:
         """初始化推荐问题生成Prompt"""
         super().__init__(system_prompt, user_prompt)
+
 
     async def generate(self, task_id: str, **kwargs) -> list[str]:  # noqa: ANN003
         """生成推荐问题"""
@@ -123,11 +125,11 @@ class Recommend(CorePattern):
         ]
 
         result = ""
-        async for chunk in ReasoningLLM().call(task_id, messages, streaming=False, temperature=0.7, result_only=True):
+        async for chunk in ReasoningLLM().call(task_id, messages, streaming=False, temperature=0.7):
             result += chunk
         messages += [{"role": "assistant", "content": result}]
 
-        question_dict = await Json().generate(task_id, conversation=messages, spec=self.slot_schema)
+        question_dict = await Json().generate("", conversation=messages, spec=self.slot_schema)
 
         if not question_dict or "predicted_questions" not in question_dict or not question_dict["predicted_questions"]:
             return []

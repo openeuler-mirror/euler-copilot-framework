@@ -5,16 +5,14 @@ Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 from typing import Optional
 
 import aiofiles
-from fastapi.encoders import jsonable_encoder
 import yaml
 from anyio import Path
 
 from apps.common.config import config
 from apps.constants import APP_DIR, FLOW_DIR, LOGGER
 from apps.entities.enum_var import EdgeType
-from apps.entities.flow import Flow, FlowConfig
+from apps.entities.flow import Flow
 from apps.manager.node import NodeManager
-from apps.models.mongo import MongoDB
 
 
 class FlowLoader:
@@ -22,6 +20,7 @@ class FlowLoader:
 
     async def load(self, app_id, flow_id) -> Optional[Flow]:
         """从文件系统中加载【单个】工作流"""
+        LOGGER.info(f"[FlowLoader] Loading flow {flow_id} for app {app_id}...")
         flow_path = Path(config["SEMANTICS_DIR"]) / "app" / app_id / "flow" / f"{flow_id}.yaml"
         async with aiofiles.open(flow_path, encoding="utf-8") as f:
             flow_yaml = yaml.safe_load(await f.read())
@@ -39,6 +38,7 @@ class FlowLoader:
             LOGGER.error(err)
             raise ValueError(err)
 
+        LOGGER.info(f"[FlowLoader] Parsing edges of flow {flow_id} for app {app_id}...")
         for edge in flow_yaml["edges"]:
             # 把from变成edge_from,to改成edge_to，type改成edge_type
             if "from" in edge:
@@ -54,6 +54,7 @@ class FlowLoader:
                     LOGGER.error(err)
                     raise ValueError(err) from e
 
+        LOGGER.info(f"[FlowLoader] Parsing steps of flow {flow_id} for app {app_id}...")
         for key, step in flow_yaml["steps"].items():
             if key == "start":
                 step["name"] = "开始"
@@ -67,25 +68,20 @@ class FlowLoader:
                 step["type"] = await NodeManager.get_node_call_id(step["node"])
                 step["name"] = await NodeManager.get_node_name(step["node"]) if "name" not in step or step["name"] == "" else step["name"]
 
+        LOGGER.info(f"[FlowLoader] Validating flow {flow_id} for app {app_id}...")
         try:
             # 检查Flow格式，并转换为Flow对象
-            flow = Flow.model_validate(flow_yaml)
+            return Flow.model_validate(flow_yaml)
         except Exception as e:
             LOGGER.error(f"Invalid flow format: {e}")
             return None
-        await self._updata_db(FlowConfig(flow_config=flow, flow_id=flow_id))
-
-        return flow
 
 
     async def save(self, app_id: str, flow_id: str, flow: Flow) -> None:
         """保存工作流"""
-        await self._updata_db(FlowConfig(flow_config=flow, flow_id=flow_id))
         flow_path = Path(config["SEMANTICS_DIR"]) / "app" / app_id / "flow" / f"{flow_id}.yaml"
         if not await flow_path.parent.exists():
             await flow_path.parent.mkdir(parents=True)
-        if not await flow_path.exists():
-            await flow_path.touch()
 
         flow_dict = {
             "name": flow.name,
@@ -124,61 +120,14 @@ class FlowLoader:
         """删除指定工作流文件"""
         flow_path = Path(config["SEMANTICS_DIR"]) / APP_DIR / app_id / FLOW_DIR / f"{flow_id}.yaml"
         # 确保目标为文件且存在
-        if await flow_path.is_file():
+        if await flow_path.exists():
             try:
                 await flow_path.unlink()
                 LOGGER.info(f"[FlowLoader] Successfully deleted flow file: {flow_path}")
+                return True
             except OSError as e:
                 LOGGER.error(f"[FlowLoader] Failed to delete flow file {flow_path}: {e}")
                 return False
         else:
             LOGGER.warning(f"[FlowLoader] Flow file does not exist or is not a file: {flow_path}")
-            return False
-
-        flow_collection = MongoDB.get_collection("flow")
-        try:
-            await flow_collection.delete_one({"_id": flow_id})
-        except Exception as e:
-            LOGGER.error(f"[FlowLoader] Failed to delete flow from database: {e}")
-            return False
-
-
-    async def _updata_db(self, flow_config: FlowConfig):
-        """更新数据库"""
-        try:
-            flow_collection = MongoDB.get_collection("flow")
-            flow = flow_config.flow_config
-            # 查询条件为app_id
-            if await flow_collection.find_one({"_id": flow_config.flow_id}) is None:
-                # 创建应用时需写入完整数据结构，自动初始化创建时间、flow列表、收藏列表和权限
-                await flow_collection.insert_one(
-                    jsonable_encoder(
-                        Flow(
-                            name=flow.name,
-                            description=flow.description,
-                            on_error=flow.on_error,
-                            steps=flow.steps,
-                            edges=flow.edges,
-                            debug=flow.debug,
-                        ),
-                    ),
-                )
-            else:
-                # 更新应用数据：部分映射 AppMetadata 到 AppPool，其他字段不更新
-                await flow_collection.update_one(
-                    {"_id":flow_config.flow_id},
-                    jsonable_encoder(
-                        Flow(
-                            name=flow.name,
-                            description=flow.description,
-                            on_error=flow.on_error,
-                            steps=flow.steps,
-                            edges=flow.edges,
-                            debug=flow.debug,
-                        ),
-                    ),
-                )
-        except Exception as e:
-            err=f"[FlowLoader] Failed to update flow in database: {e}"
-            LOGGER.error(err)
-            raise ValueError(err)
+            return True

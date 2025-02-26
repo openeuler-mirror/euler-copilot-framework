@@ -29,10 +29,12 @@ class Task:
         """初始化TaskManager"""
         self._task_map: dict[str, TaskBlock] = {}
 
+
     async def update_token_summary(self, task_id: str, input_num: int, output_num: int) -> None:
         """更新对应task_id的Token统计数据"""
         self._task_map[task_id].record.metadata.input_tokens += input_num
         self._task_map[task_id].record.metadata.output_tokens += output_num
+
 
     async def get_task(self, task_id: Optional[str] = None, session_id: Optional[str] = None, post_body: Optional[RequestData] = None) -> TaskBlock:
         """获取任务块"""
@@ -64,7 +66,7 @@ class Task:
                 input_tokens=0,
                 output_tokens=0,
                 time=0,
-                feature=post_body.features.model_dump(by_alias=True),
+                feature={},
             ),
             createdAt=round(datetime.now(timezone.utc).timestamp(), 3),
         )

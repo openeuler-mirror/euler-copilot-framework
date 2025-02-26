@@ -25,4 +25,13 @@ class QuestionRewrite(CorePattern):
             {question}
         </input>
     """
+    """用户提示词"""
+
+    async def generate(self, task_id: str, **kwargs) -> str:  # noqa: ANN003
+        """问题补全与重写"""
+        question = kwargs["question"]
+
+        messages = [
+            
+        ]
 

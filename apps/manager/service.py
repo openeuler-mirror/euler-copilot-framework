@@ -5,7 +5,6 @@ Copyright (c) Huawei Technologies Co., Ltd. 2024-2025. All rights reserved.
 import uuid
 from typing import Any, Optional
 
-import ray
 import yaml
 from anyio import Path
 from jsonschema import ValidationError
@@ -120,9 +119,8 @@ class ServiceCenterManager:
             author=user_sub,
             api=ServiceApiConfig(server=data["servers"][0]["url"]),
         )
-        service_loader = ServiceLoader.remote()
-        await service_loader.save.remote(service_id, service_metadata, data)  # type: ignore[attr-type]
-        ray.kill(service_loader)
+        service_loader = ServiceLoader()
+        await service_loader.save(service_id, service_metadata, data)
         # 返回服务ID
         return service_id
 
@@ -154,9 +152,8 @@ class ServiceCenterManager:
             author=user_sub,
             api=ServiceApiConfig(server=data["servers"][0]["url"]),
         )
-        service_loader = ServiceLoader.remote()
-        await service_loader.save.remote(service_id, service_metadata, data)  # type: ignore[attr-type]
-        ray.kill(service_loader)
+        service_loader = ServiceLoader()
+        await service_loader.save(service_id, service_metadata, data)
         # 返回服务ID
         return service_id
 
@@ -226,9 +223,8 @@ class ServiceCenterManager:
             msg = "Permission denied"
             raise ValueError(msg)
         # 删除服务
-        service_loader = ServiceLoader.remote()
-        await service_loader.delete.remote(service_id)  # type: ignore[attr-type]
-        ray.kill(service_loader)
+        service_loader = ServiceLoader()
+        await service_loader.delete(service_id)
         # 删除用户收藏
         await user_collection.update_many(
             {"fav_services": {"$in": [service_id]}},

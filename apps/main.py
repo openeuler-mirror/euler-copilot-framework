@@ -15,6 +15,7 @@ from ray.serve.config import HTTPOptions
 from apps.common.config import config
 from apps.common.task import Task
 from apps.common.wordscheck import WordsCheck
+from apps.constants import SCHEDULER_REPLICAS
 from apps.cron.delete_user import DeleteUserCron
 from apps.dependency.session import VerifySessionMiddleware
 from apps.routers import (
@@ -30,12 +31,12 @@ from apps.routers import (
     flow,
     health,
     knowledge,
-    mock,
     record,
     service,
     user,
 )
 from apps.scheduler.pool.pool import Pool
+from apps.scheduler.scheduler.scheduler import Scheduler
 
 # 定义FastAPI app
 app = FastAPI(docs_url=None, redoc_url=None)
@@ -63,7 +64,6 @@ app.include_router(blacklist.router)
 app.include_router(document.router)
 app.include_router(knowledge.router)
 app.include_router(flow.router)
-app.include_router(mock.router)
 app.include_router(user.router)
 # 初始化后台定时任务
 scheduler = BackgroundScheduler()
@@ -88,6 +88,8 @@ if __name__ == "__main__":
     task = Task.options(name="task").remote()
     pool_actor = Pool.options(name="pool").remote()
     ray.get(pool_actor.init.remote())   # type: ignore[attr-type]
+    # 初始化Scheduler
+    scheduler_sctors = [Scheduler.options(name=f"scheduler_{i}").remote() for i in range(SCHEDULER_REPLICAS)]
 
     # 启动FastAPI
     serve.start(http_options=HTTPOptions(host="0.0.0.0", port=8002))  # noqa: S104

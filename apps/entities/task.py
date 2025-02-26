@@ -12,7 +12,7 @@ from apps.entities.enum_var import StepStatus
 from apps.entities.record import RecordData
 
 
-class FlowHistory(BaseModel):
+class FlowStepHistory(BaseModel):
     """任务执行历史；每个Executor每个步骤执行后都会创建
 
     Collection: flow_history
@@ -39,8 +39,8 @@ class ExecutorState(BaseModel):
     step_id: str = Field(description="当前步骤名称")
     app_id: str = Field(description="应用ID")
     # 运行时数据
-    thought: str = Field(description="大模型的思考内容", default="")
-    slot_data: dict[str, Any] = Field(description="待使用的参数", default={})
+    ai_summary: str = Field(description="大模型的思考内容", default="")
+    filled_data: dict[str, Any] = Field(description="待使用的参数", default={})
     remaining_schema: dict[str, Any] = Field(description="待填充参数的JSON Schema", default={})
 
 
@@ -50,7 +50,7 @@ class TaskBlock(BaseModel):
     session_id: str = Field(description="浏览器会话ID")
     record: RecordData = Field(description="当前任务执行过程关联的Record")
     flow_state: Optional[ExecutorState] = Field(description="Flow的状态", default=None)
-    flow_context: dict[str, FlowHistory] = Field(description="Flow的执行信息", default={})
+    flow_context: dict[str, FlowStepHistory] = Field(description="Flow的执行信息", default={})
     new_context: list[str] = Field(description="Flow的执行信息（增量ID）", default=[])
 
 
@@ -76,3 +76,8 @@ class TaskData(BaseModel):
     ended: bool = False
     updated_at: float = Field(default_factory=lambda: round(datetime.now(tz=timezone.utc).timestamp(), 3))
 
+
+class SchedulerResult(BaseModel):
+    """调度器返回结果"""
+
+    used_docs: list[str] = Field(description="已使用的文档ID列表")

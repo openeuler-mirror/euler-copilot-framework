@@ -7,7 +7,7 @@ from typing import Any, Optional
 import ray
 from pydantic import BaseModel, Field
 
-from apps.entities.scheduler import CallError, SysCallVars
+from apps.entities.scheduler import CallError, CallVars
 from apps.manager.user_domain import UserDomainManager
 from apps.scheduler.call.core import CoreCall
 
@@ -50,7 +50,7 @@ class Suggestion(metaclass=CoreCall, param_cls=_SuggestInput, output_cls=_Sugges
 
     async def __call__(self, _slot_data: dict[str, Any]) -> _SuggestionOutput:
         """运行问题推荐"""
-        sys_vars: SysCallVars = getattr(self, "_syscall_vars")
+        sys_vars: CallVars = getattr(self, "_syscall_vars")
         params: _SuggestInput = getattr(self, "_params")
 
         # 获取当前任务

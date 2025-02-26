@@ -24,7 +24,7 @@ class ExecutorThought(CorePattern):
                 注意：
                 工具的相关信息在<tool></tool>标签中给出。
                 为了使你更好的理解发生了什么，你之前的思考过程在<thought></thought>标签中给出。
-                输出时请不要包含XML标签，请精准、简明。
+                输出时请不要包含XML标签，输出时请保持简明和清晰。
             </instruction>
         </instructions>
 
@@ -50,6 +50,7 @@ class ExecutorThought(CorePattern):
     def __init__(self, system_prompt: Optional[str] = None, user_prompt: Optional[str] = None) -> None:
         """处理Prompt"""
         super().__init__(system_prompt, user_prompt)
+
 
     async def generate(self, task_id: str, **kwargs) -> str:  # noqa: ANN003
         """调用大模型，生成对话总结"""
@@ -79,15 +80,17 @@ class ExecutorThought(CorePattern):
         return result
 
 
-class ExecutorBackground(CorePattern):
+class ExecutorSummary(CorePattern):
     """使用大模型进行生成Executor初始背景"""
 
     user_prompt: str = r"""
-        根据对话上文，结合给定的AI助手思考过程，生成一个完整的背景总结。这个总结将用于后续对话的上下文理解。
-        生成总结的要求如下：
-        1. 突出重要信息点，例如时间、地点、人物、事件等。
-        2. 下面给出的事实条目若与历史记录有关，则可以在生成总结时作为已知信息。
-        3. 确保信息准确性，不得编造信息。
+        <instructions>
+            <instruction>
+                根据，结合给定的AI助手思考过程，生成一个完整的背景总结。这个总结将用于后续对话的上下文理解。
+                生成总结的要求如下：
+                1. 突出重要信息点，例如时间、地点、人物、事件等。
+                2. 下面给出的事实条目若与历史记录有关，则可以在生成总结时作为已知信息。
+                3. 确保信息准确性，不得编造信息。
         4. 总结应少于1000个字。
 
         思考过程（在<thought>标签中）：
@@ -141,28 +144,36 @@ class FinalThought(CorePattern):
     """使用大模型生成Executor的最终结果"""
 
     user_prompt: str = r"""
-        你是AI智能助手，请回答用户的问题并满足以下要求：
-        1. 使用中文回答问题，不要使用其他语言。
-        2. 回答应当语气友好、通俗易懂，并包含尽可能完整的信息。
-        3. 回答时应结合思考过程。
+        <instruction>
+            你是AI智能助手，请回答用户的问题并满足以下要求：
 
-        用户的问题是：
-        {question}
+            1. 使用中文回答问题，不要使用其他语言。
+            2. 回答应当语气友好、通俗易懂，并包含尽可能完整的信息。
+            3. 回答时应结合思考过程。
+            4. 输出时请不要包含XML标签，不要编造任何信息。
 
-        思考过程（在<thought>标签中）：
+            用户的问题将在<question>标签中给出，你之前的思考过程将在<thought>标签中给出。
+        </instruction>
+
+        <question>
+            {question}
+        </question>
+
         <thought>
-        {thought}{output}
+            {thought}{output}
         </thought>
 
         现在，请根据以上信息进行回答：
     """
     """用户提示词"""
 
+
     def __init__(self, system_prompt: Optional[str] = None, user_prompt: Optional[str] = None) -> None:
         """初始化ExecutorResult模式"""
         super().__init__(system_prompt, user_prompt)
 
-    async def generate(self, task_id: str, **kwargs) -> AsyncGenerator[str, None]:  # noqa: ANN003
+
+    async def generate(self, task_id: str, **kwargs) -> AsyncGenerator[str, Any]:  # noqa: ANN003
         """进行ExecutorResult生成"""
         question: str = kwargs["question"]
         thought: str = kwargs["thought"]

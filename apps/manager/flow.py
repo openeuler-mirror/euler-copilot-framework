@@ -5,12 +5,11 @@ Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 from typing import Optional
 
 from pymongo import ASCENDING
-import ray
 
 from apps.constants import LOGGER
 from apps.entities.appcenter import AppLink
-from apps.entities.enum_var import MetadataType, PermissionType
-from apps.entities.flow import AppMetadata, Edge, Flow, FlowConfig, Permission, Step, StepPos
+from apps.entities.enum_var import EdgeType, MetadataType, PermissionType
+from apps.entities.flow import AppMetadata, Edge, Flow, Permission, Step, StepPos
 from apps.entities.flow_topology import (
     EdgeItem,
     FlowItem,
@@ -20,6 +19,7 @@ from apps.entities.flow_topology import (
     PositionItem,
 )
 from apps.entities.pool import AppFlow, AppPool
+from apps.manager.node import NodeManager
 from apps.models.mongo import MongoDB
 from apps.scheduler.pool.loader.app import AppLoader
 from apps.scheduler.pool.loader.flow import FlowLoader
@@ -42,6 +42,9 @@ class FlowManager:
 
         try:
             node_pool_record = await node_pool_collection.find_one({"_id": node_meta_data_id})
+            if node_pool_record is None:
+                LOGGER.error(f"节点元数据{node_meta_data_id}不存在")
+                return False
             match_conditions = [
                 {"author": user_sub},
                 {"permissions.type": PermissionType.PUBLIC.value},
@@ -179,6 +182,9 @@ class FlowManager:
         node_pool_collection = MongoDB.get_collection("node")  # 获取节点集合
         try:
             node_pool_record = await node_pool_collection.find_one({"_id": node_meta_data_id})
+            if node_pool_record is None:
+                LOGGER.error(f"节点元数据{node_meta_data_id}不存在")
+                return None
             parameters = {
                 "input_parameters": node_pool_record["params_schema"],
                 "output_parameters": node_pool_record["output_schema"],
@@ -273,7 +279,7 @@ class FlowManager:
                         edgeId=edge_config.id,
                         sourceNode=edge_from,
                         targetNode=edge_config.edge_to,
-                        type=edge_config.edge_type,
+                        type=edge_config.edge_type.value if edge_config.edge_type else EdgeType.NORMAL.value,
                         branchId=branch_id,
                     ))
                 return (flow_item, focus_point)
@@ -339,7 +345,7 @@ class FlowManager:
                     id=edge_item.edge_id,
                     edge_from=edge_from,
                     edge_to=edge_item.target_node,
-                    edge_type=edge_item.type
+                    edge_type=EdgeType(edge_item.type) if edge_item.type else EdgeType.NORMAL,
                 )
                 flow_config.edges.append(edge_config)
             await FlowLoader().save(app_id, flow_id, flow_config)
@@ -380,9 +386,8 @@ class FlowManager:
                     focus_point=PositionItem(x=focus_point.x, y=focus_point.y),
                 )
                 metadata.flows.append(new_flow)
-            app_loader = AppLoader.remote()
-            await app_loader.save.remote(metadata, app_id)  # type: ignore[attr-type]
-            ray.kill(app_loader)
+            app_loader = AppLoader()
+            await app_loader.save(metadata, app_id)
             if result is None:
                 LOGGER.error("Add flow failed")
                 return None
@@ -425,9 +430,8 @@ class FlowManager:
             for flow in metadata.flows:
                 if flow.id == flow_id:
                     metadata.flows.remove(flow)
-            app_loader = AppLoader.remote()
-            await app_loader.save.remote(metadata, app_id)  # type: ignore[attr-type]
-            ray.kill(app_loader)
+            app_loader = AppLoader()
+            await app_loader.save(metadata, app_id)
             if result is None:
                 LOGGER.error("Delete flow from app pool failed")
                 return None
@@ -478,9 +482,8 @@ class FlowManager:
             for flows in metadata.flows:
                 if flows.id == flow_id:
                     flows.debug = debug
-            app_loader = AppLoader.remote()
-            await app_loader.save.remote(metadata, app_id)  # type: ignore[attr-type]
-            ray.kill(app_loader)
+            app_loader = AppLoader()
+            await app_loader.save(metadata, app_id)
             flow_loader = FlowLoader()
             flow = await flow_loader.load(app_id, flow_id)
             if flow is None:
@@ -489,5 +492,5 @@ class FlowManager:
             await flow_loader.save(app_id=app_id,flow_id=flow_id,flow=flow)
             return True
         except Exception as e:
-            LOGGER.error(f'Update flow debug from app pool failed: {e}')
+            LOGGER.error(f"Update flow debug from app pool failed: {e!s}")
             return False

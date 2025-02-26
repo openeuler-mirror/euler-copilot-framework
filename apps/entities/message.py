@@ -80,26 +80,11 @@ class FlowStartContent(BaseModel):
     params: dict[str, Any] = Field(description="预先提供的参数")
 
 
-class StepInputContent(BaseModel):
-    """step.input消息的content"""
-
-    call_type: str = Field(description="Call类型", alias="callType")
-    params: dict[str, Any] = Field(description="Step最后输入的参数")
-
-
-class StepOutputContent(BaseModel):
-    """step.output消息的content"""
-
-    call_type: str = Field(description="Call类型", alias="callType")
-    message: str = Field(description="LLM大模型输出的自然语言文本")
-    output: dict[str, Any] = Field(description="Step输出的结构化数据")
-
-
 class FlowStopContent(BaseModel):
     """flow.stop消息的content"""
 
-    type: FlowOutputType = Field(description="Flow输出的类型")
-    data: Optional[dict[str, Any]] = Field(description="Flow输出的数据")
+    type: Optional[FlowOutputType] = Field(description="Flow输出的类型", default=None)
+    data: Optional[dict[str, Any]] = Field(description="Flow输出的数据", default=None)
 
 
 class MessageBase(HeartbeatData):

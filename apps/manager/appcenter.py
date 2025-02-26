@@ -8,8 +8,6 @@ from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, Optional
 
-import ray
-
 from apps.constants import LOGGER
 from apps.entities.appcenter import AppCenterCardItem, AppData
 from apps.entities.collection import User
@@ -223,9 +221,8 @@ class AppCenterManager:
             ),
         )
         try:
-            app_loader = AppLoader.remote()
-            await app_loader.save.remote(metadata, app_id)  # type: ignore[attr-type]
-            ray.kill(app_loader)
+            app_loader = AppLoader()
+            await app_loader.save(metadata, app_id)
             return app_id
         except Exception as e:
             LOGGER.error(f"[AppCenterManager] Create app failed: {e}")
@@ -262,9 +259,8 @@ class AppCenterManager:
                 return False
             metadata.flows = app_data.flows
             metadata.published = app_data.published
-            app_loader = AppLoader.remote()
-            await app_loader.save.remote(metadata, app_id)  # type: ignore[attr-type]
-            ray.kill(app_loader)
+            app_loader = AppLoader()
+            await app_loader.save(metadata, app_id)
             return True
         except Exception as e:
             LOGGER.error(f"[AppCenterManager] Update app failed: {e}")
@@ -343,9 +339,8 @@ class AppCenterManager:
             if app_data.author != user_sub:
                 return False
             # 删除应用
-            app_loader = AppLoader.remote()
-            await app_loader.delete.remote(app_id)  # type: ignore[attr-type]
-            ray.kill(app_loader)
+            app_loader = AppLoader()
+            await app_loader.delete(app_id)
             user_collection = MongoDB.get_collection("user")
             # 删除用户使用记录
             await user_collection.update_many(

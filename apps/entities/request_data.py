@@ -7,6 +7,7 @@ from typing import Any, Optional
 
 from pydantic import BaseModel, Field
 
+from apps.common.config import config
 from apps.entities.appcenter import AppData
 from apps.entities.flow_topology import FlowItem, PositionItem
 from apps.entities.task import RequestDataApp
@@ -24,7 +25,7 @@ class MockRequestData(BaseModel):
 class RequestDataFeatures(BaseModel):
     """POST /api/chat的features字段数据"""
 
-    max_tokens: int = Field(default=8192, description="最大生成token数", ge=0)
+    max_tokens: int = Field(default=config["LLM_MAX_TOKENS"], description="最大生成token数", ge=0)
     context_num: int = Field(default=5, description="上下文消息数量", le=10, ge=0)
 
 
@@ -37,7 +38,6 @@ class RequestData(BaseModel):
     language: str = Field(default="zh", description="语言")
     files: list[str] = Field(default=[], description="文件列表")
     app: Optional[RequestDataApp] = Field(default=None, description="应用")
-    features: Optional[RequestDataFeatures] = Field(default=None, description="消息功能设置")
     debug: bool = Field(default=False, description="是否调试")
 
 

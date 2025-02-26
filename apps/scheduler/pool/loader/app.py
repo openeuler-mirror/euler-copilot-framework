@@ -3,7 +3,8 @@
 Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 """
 
-import ray
+import shutil
+
 from anyio import Path
 from fastapi.encoders import jsonable_encoder
 from sqlalchemy import delete
@@ -21,7 +22,6 @@ from apps.scheduler.pool.loader.flow import FlowLoader
 from apps.scheduler.pool.loader.metadata import MetadataLoader
 
 
-@ray.remote
 class AppLoader:
     """应用加载器"""
 
@@ -76,6 +76,7 @@ class AppLoader:
             raise RuntimeError(err) from e
         await self._update_db(metadata)
 
+
     async def save(self, metadata: AppMetadata, app_id: str) -> None:
         """保存应用
 
@@ -92,6 +93,7 @@ class AppLoader:
         file_checker = FileChecker()
         await file_checker.diff_one(app_path)
         await self.load(app_id, file_checker.hashes[f"{APP_DIR}/{app_id}"])
+
 
     async def delete(self, app_id: str) -> None:
         """删除App，并更新数据库
@@ -114,6 +116,11 @@ class AppLoader:
             LOGGER.error(err)
 
         await session.aclose()
+
+        app_path = Path(config["SEMANTICS_DIR"]) / APP_DIR / app_id
+        if await app_path.exists():
+            shutil.rmtree(str(app_path), ignore_errors=True)
+
 
     async def _update_db(self, metadata: AppMetadata) -> None:
         """更新数据库"""

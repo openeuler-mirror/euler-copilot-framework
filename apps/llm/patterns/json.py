@@ -32,7 +32,7 @@ class Json(CorePattern):
 
         EXAMPLE
         <conversation>
-        [HUMAN] 创建“任务1”，并进行扫描
+        [HUMAN] 创建"任务1"，并进行扫描
         </conversation>
 
         <tool_call>
@@ -122,25 +122,25 @@ class Json(CorePattern):
 
         # 把必要信息放到描述中，起提示作用
         if "pattern" in spec:
-            new_spec["description"] += f"\nThe regex pattern is: {spec['pattern']}."
+            new_spec["description"] += f"\n正则表达式模式为：{spec['pattern']}"
         if "example" in spec:
-            new_spec["description"] += f"\nFor example: {spec['example']}."
+            new_spec["description"] += f"\n示例：{spec['example']}"
         if "default" in spec:
-            new_spec["description"] += f"\nThe default value is: {spec['default']}."
+            new_spec["description"] += f"\n默认值为：{spec['default']}"
         if "enum" in spec:
-            new_spec["description"] += f"\nValue must be one of: {', '.join(str(item) for item in spec['enum'])}."
+            new_spec["description"] += f"\n取值必须是以下之一：{', '.join(str(item) for item in spec['enum'])}"
         if "minimum" in spec:
-            new_spec["description"] += f"\nValue must be greater than or equal to: {spec['minimum']}."
+            new_spec["description"] += f"\n值必须大于或等于：{spec['minimum']}"
         if "maximum" in spec:
-            new_spec["description"] += f"\nValue must be less than or equal to: {spec['maximum']}."
+            new_spec["description"] += f"\n值必须小于或等于：{spec['maximum']}"
         if "minLength" in spec:
-            new_spec["description"] += f"\nValue must be at least {spec['minLength']} characters long."
+            new_spec["description"] += f"\n长度必须至少为 {spec['minLength']} 个字符"
         if "maxLength" in spec:
-            new_spec["description"] += f"\nValue must be at most {spec['maxLength']} characters long."
+            new_spec["description"] += f"\n长度不能超过 {spec['maxLength']} 个字符"
         if "minItems" in spec:
-            new_spec["description"] += f"\nArray must contain at least {spec['minItems']} items."
+            new_spec["description"] += f"\n数组至少包含 {spec['minItems']} 个项目"
         if "maxItems" in spec:
-            new_spec["description"] += f"\nArray must contain at most {spec['maxItems']} items."
+            new_spec["description"] += f"\n数组最多包含 {spec['maxItems']} 个项目"
 
         return new_spec
 

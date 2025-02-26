@@ -2,22 +2,22 @@
 
 Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 """
-import asyncio
 import importlib
 from typing import Any, Optional
 
 import ray
 from anyio import Path
 
-from apps.common.config import config
 from apps.constants import APP_DIR, LOGGER, SERVICE_DIR
 from apps.entities.enum_var import MetadataType
-from apps.entities.flow_topology import FlowItem
+from apps.entities.flow import Flow
+from apps.entities.pool import AppFlow
 from apps.models.mongo import MongoDB
 from apps.scheduler.pool.check import FileChecker
 from apps.scheduler.pool.loader import (
     AppLoader,
     CallLoader,
+    FlowLoader,
     ServiceLoader,
 )
 
@@ -36,43 +36,35 @@ class Pool:
         changed_service, deleted_service = await checker.diff(MetadataType.SERVICE)
 
         # 处理Service
-        service_loader = ServiceLoader.remote()
+        service_loader = ServiceLoader()
 
         # 批量删除
-        delete_task = [service_loader.delete.remote(service) for service in changed_service]  # type: ignore[attr-type]
-        delete_task += [service_loader.delete.remote(service) for service in deleted_service]  # type: ignore[attr-type]
-        await asyncio.gather(*delete_task)
+        for service in changed_service:
+            await service_loader.delete(service)
+        for service in deleted_service:
+            await service_loader.delete(service)
 
         # 批量加载
-        load_task = []
         for service in changed_service:
             hash_key = Path(SERVICE_DIR + "/" + service).as_posix()
             if hash_key in checker.hashes:
-                load_task.append(service_loader.load.remote(service, checker.hashes[hash_key])) # type: ignore[attr-type]
-        await asyncio.gather(*load_task)
-
-        # 完成Service load
-        ray.kill(service_loader)
+                await service_loader.load(service, checker.hashes[hash_key])
 
         # 加载App
         changed_app, deleted_app = await checker.diff(MetadataType.APP)
-        app_loader = AppLoader.remote()
+        app_loader = AppLoader()
 
         # 批量删除App
-        delete_task = [app_loader.delete.remote(app) for app in changed_app]  # type: ignore[attr-type]
-        delete_task += [app_loader.delete.remote(app) for app in deleted_app]  # type: ignore[attr-type]
-        await asyncio.gather(*delete_task)
+        for app in changed_app:
+            await app_loader.delete(app)
+        for app in deleted_app:
+            await app_loader.delete(app)
 
         # 批量加载App
-        load_task = []
         for app in changed_app:
             hash_key = Path(APP_DIR + "/" + app).as_posix()
             if hash_key in checker.hashes:
-                load_task.append(app_loader.load.remote(app, checker.hashes[hash_key])) # type: ignore[attr-type]
-        await asyncio.gather(*load_task)
-
-        # 完成App load
-        ray.kill(app_loader)
+                await app_loader.load(app, checker.hashes[hash_key])
 
 
     async def save(self, *, is_deletion: bool = False) -> None:
@@ -80,23 +72,28 @@ class Pool:
         pass
 
 
-    async def get_flow_metadata(self, app_id: str) -> Optional[FlowItem]:
+    async def get_flow_metadata(self, app_id: str) -> list[AppFlow]:
         """从数据库中获取特定App的全部Flow的元数据"""
         app_collection = MongoDB.get_collection("app")
+        flow_metadata_list = []
         try:
             flow_list = await app_collection.find_one({"_id": app_id}, {"flows": 1})
+            if not flow_list:
+                return []
+            for flow in flow_list["flows"]:
+                flow_metadata_list += [AppFlow.model_validate(flow)]
+            return flow_metadata_list
         except Exception as e:
             err = f"获取App{app_id}的Flow列表失败：{e}"
             LOGGER.error(err)
-            raise RuntimeError(err) from e
-
-        if not flow_list:
-            return None
+            return []
 
 
-    async def get_flow(self, app_id: str, flow_id: str) -> Optional[FlowItem]:
-        """从数据库中获取单个Flow的全部数据"""
-        pass
+    async def get_flow(self, app_id: str, flow_id: str) -> Optional[Flow]:
+        """从文件系统中获取单个Flow的全部数据"""
+        LOGGER.info(f"[Pool] Getting flow {flow_id} for app {app_id}...")
+        flow_loader = FlowLoader()
+        return await flow_loader.load(app_id, flow_id)
 
 
     async def get_call(self, call_path: str) -> Any:
@@ -107,11 +104,11 @@ class Pool:
             LOGGER.error(err)
             raise ValueError(err)
 
+        # Python类型的Call
         if call_path_split[0] == "python":
             try:
                 call_module = importlib.import_module(call_path_split[1])
-                call_class = getattr(call_module, call_path_split[2])
-                return call_class
+                return getattr(call_module, call_path_split[2])
             except Exception as e:
                 err = f"导入Call{call_path}失败：{e}"
                 LOGGER.error(err)
