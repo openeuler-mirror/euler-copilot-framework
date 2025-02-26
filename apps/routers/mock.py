@@ -350,9 +350,9 @@ async def mock_data(
                         else sample_output["content"]
                     )
                     if sample_output["flow"]["stepName"] == "【RAG】知识库智能问答":
-                        sample_output["content"]["text"] = await call_rag(params)
+                        sample_output["content"] = await call_rag(params)
                     if sample_output["flow"]["stepName"] == "【LLM】大模型问答":
-                        sample_output["content"]["text"] = await call_llm(params)
+                        sample_output["content"] = await call_llm(params)
                     if "content" in sample_output and isinstance(sample_output["content"], dict):
                         for key, value in sample_output["content"].items():
                             params[key] = value
@@ -473,7 +473,7 @@ async def call_llm(params: dict = {}):
                 result = result["choices"][0]["message"]["content"]
                 LOGGER.info(result)
                 result = result.replace("\n\n", "")
-                return {"content": result}
+                return {"content": {"text": result}}
             text = await response.text()
             LOGGER.error(f"LLM 调用失败：{text}")
             return None
