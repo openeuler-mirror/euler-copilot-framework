@@ -6,6 +6,7 @@ Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 import json
 import random
 import time
+import traceback
 import uuid
 from collections.abc import AsyncGenerator
 from datetime import datetime
@@ -442,8 +443,8 @@ async def mock_data(
 
         # # 创建新Record，存入数据库
         # await save_data(task_id, user_sub, post_body, result.used_docs)
-    except Exception as e:
-        LOGGER.error(f"Run mock_data failed：{e}")
+    except Exception:
+        LOGGER.error(f"Run mock_data failed：{traceback.format_exc()}")
         yield "data: [ERROR]\n\n"
 
 
