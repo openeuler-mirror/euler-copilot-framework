@@ -23,8 +23,8 @@ from apps.manager.node import NodeManager
 from apps.models.mongo import MongoDB
 from apps.scheduler.pool.loader.app import AppLoader
 from apps.scheduler.pool.loader.flow import FlowLoader
-from apps.manager.node import NodeManager
 from apps.utils.flow import generate_from_schema
+
 
 class FlowManager:
     """Flow相关操作"""
@@ -451,7 +451,7 @@ class FlowManager:
             flow.debug = debug
             await flow_loader.save(app_id=app_id,flow_id=flow_id,flow=flow)
             app_loader = AppLoader()
-            await app_loader.load(app_id, 0)
+            await app_loader.load(app_id, {"":""})
             return True
         except Exception as e:
             LOGGER.error(f"Update flow debug from app pool failed: {e!s}")
