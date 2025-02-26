@@ -119,10 +119,9 @@ install_ollama() {
   log "SUCCESS" "Ollama核心安装完成，版本: $($OLLAMA_BIN_PATH --version)"
 }
 
-# 修复用户配置
 fix_user() {
   log "INFO" "步骤4/8: 修复用户配置..."
-
+  
   # 终止所有使用ollama用户的进程
   if pgrep -u ollama >/dev/null; then
     log "WARNING" "发现正在运行的ollama进程，正在终止..."
@@ -138,38 +137,54 @@ fix_user() {
   if id ollama &>/dev/null; then
     # 检查用户是否被锁定
     if passwd -S ollama | grep -q 'L'; then
-      log "INFO" "发现被锁定的ollama用户，正在解锁..."
-      usermod -U ollama
+      log "INFO" "发现被锁定的ollama用户，正在解锁并设置随机密码..."
+      random_pass=$(openssl rand -base64 32 | tr -dc 'a-zA-Z0-9' | head -c 16)
+      usermod -p "$(openssl passwd -1 "$random_pass")" ollama
     fi
-
+    
     # 删除用户及其主目录
-    userdel -r ollama || {
+    if ! userdel -r ollama; then
       log "WARNING" "无法删除ollama用户，尝试强制删除..."
-      userdel -f -r ollama || {
-        log "ERROR" "强制删除用户失败，请手动检查"
-        exit 1
-      }
-    }
+      if ! userdel -f -r ollama; then
+        log "ERROR" "强制删除用户失败，尝试手动清理..."
+        sed -i '/^ollama:/d' /etc/passwd /etc/shadow /etc/group
+        rm -rf /var/lib/ollama
+        log "WARNING" "已手动清理ollama用户信息"
+      fi
+    fi
     log "INFO" "已删除旧ollama用户"
   fi
 
-  # 清理旧目录
-  [ -d /var/lib/ollama ] && rm -rf /var/lib/ollama
+  # 检查组是否存在
+  if getent group ollama >/dev/null; then
+    log "INFO" "ollama组已存在，将使用现有组"
+    existing_group=true
+  else
+    existing_group=false
+  fi
 
-  # 创建系统用户和主目录
-  if ! useradd -r -U -d /var/lib/ollama -s /bin/false ollama; then
+  # 创建系统用户
+  if ! useradd -r -g ollama -d /var/lib/ollama -s /bin/false ollama; then
     log "ERROR" "用户创建失败，尝试手动创建..."
-
-    # 尝试手动创建用户
-    groupadd -r ollama || true
-    useradd -r -g ollama -d /var/lib/ollama -s /bin/false ollama || {
+    
+    # 如果组不存在则创建
+    if ! $existing_group; then
+      if ! groupadd -r ollama; then
+        log "ERROR" "无法创建ollama组"
+        exit 1
+      fi
+    fi
+    
+    # 再次尝试创建用户
+    if ! useradd -r -g ollama -d /var/lib/ollama -s /bin/false ollama; then
       log "ERROR" "手动创建用户失败，请检查以下内容："
       log "ERROR" "1. /etc/passwd 和 /etc/group 文件是否可写"
       log "ERROR" "2. 系统中是否存在冲突的用户/组"
       log "ERROR" "3. 系统用户限制（/etc/login.defs）"
       exit 1
-    }
+    fi
   fi
+
   # 创建目录结构
   mkdir -p /var/lib/ollama/.ollama/{models,bin}
   chown -R ollama:ollama /var/lib/ollama
