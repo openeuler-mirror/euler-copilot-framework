@@ -223,17 +223,17 @@ async def mock_data(
     try:
         await Activity.set_active(user_sub)
 
-        # 生成group_id
-        group_id = str(uuid.uuid4()) if not post_body.group_id else post_body.group_id
+        # # 生成group_id
+        # group_id = str(uuid.uuid4()) if not post_body.group_id else post_body.group_id
 
-        # 创建或还原Task
-        task_pool = ray.get_actor("task")
-        task = await task_pool.get_task.remote(session_id=session_id, post_body=post_body)
-        task_id = task.record.task_id
+        # # 创建或还原Task
+        # task_pool = ray.get_actor("task")
+        # task = await task_pool.get_task.remote(session_id=session_id, post_body=post_body)
+        # task_id = task.record.task_id
 
-        task.record.group_id = group_id
-        post_body.group_id = group_id
-        await task_pool.set_task.remote(task_id, task)
+        # task.record.group_id = group_id
+        # post_body.group_id = group_id
+        # await task_pool.set_task.remote(task_id, task)
 
         _encoder = tiktoken.get_encoding("cl100k_base")
 
@@ -387,14 +387,14 @@ async def mock_data(
                         yield "data: " + json.dumps(sample_output, ensure_ascii=False) + "\n\n"
                         now_flow_item = edge.edge_to
 
-        # if now_flow_item == "end":
-        #     sample_input["flow"]["stepId"] = now_flow_item
-        #     sample_input["flow"]["stepName"] = "结束"
-        #     yield "data: " + json.dumps(sample_input, ensure_ascii=False) + "\n\n"
-        #     sample_output["flow"]["stepId"] = now_flow_item
-        #     sample_output["flow"]["stepName"] = "结束"
-        #     sample_output["metadata"]["time_cost"] = random.uniform(0.5, 1.5)
-        #     yield "data: " + json.dumps(sample_output, ensure_ascii=False) + "\n\n"
+        if now_flow_item == "end":
+            sample_input["flow"]["stepId"] = now_flow_item
+            sample_input["flow"]["stepName"] = "结束"
+            yield "data: " + json.dumps(sample_input, ensure_ascii=False) + "\n\n"
+            sample_output["flow"]["stepId"] = now_flow_item
+            sample_output["flow"]["stepName"] = "结束"
+            sample_output["metadata"]["time_cost"] = random.uniform(0.5, 1.5)
+            yield "data: " + json.dumps(sample_output, ensure_ascii=False) + "\n\n"
 
         end_message = [
             {  # flow结束
@@ -403,13 +403,7 @@ async def mock_data(
                 "groupId": "8b9d3e6b-a892-4602-b247-35c522d38f13",
                 "conversationId": conversationId,
                 "taskId": "eb717bc7-3435-4172-82d1-6b69e62f3fd6",
-                "flow": {
-                    "appId": appId,
-                    "flowId": flowId,
-                    "stepId": "end",
-                    "stepName": "结束",
-                    "stepStatus": "success",
-                },
+                "flow": {},
                 "content": {},
                 "measure": {"inputTokens": 200, "outputTokens": 50, "time_cost": random.uniform(0.5, 1.5)},
             },
@@ -436,6 +430,18 @@ async def mock_data(
         )
         if appId and flowId:
             await FlowManager.updata_flow_debug_by_app_and_flow_id(appId, flowId, True)
+
+        # # 获取最终答案
+        # task = await task_pool.get_task.remote(task_id)
+        # answer_text = task.record.content.answer
+        # if not answer_text:
+        #     LOGGER.error(msg="Answer is empty")
+        #     yield "data: [ERROR]\n\n"
+        #     await Activity.remove_active(user_sub)
+        #     return
+
+        # # 创建新Record，存入数据库
+        # await save_data(task_id, user_sub, post_body, result.used_docs)
     except Exception as e:
         LOGGER.error(f"创建或还原Task失败：{e}")
         yield "data: [ERROR]\n\n"
