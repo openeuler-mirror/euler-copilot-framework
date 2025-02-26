@@ -57,7 +57,7 @@ spec:
         fsGroup: 1001
       containers:
         - name: web
-          image: {{ default "hub.oepkgs.net/neocopilot/euler-copilot-web:0.9.4-x86" .Values.euler_copilot.web.image }}
+          image: {{ if .Values.euler_copilot.web.image }}{{ .Values.euler_copilot.web.image }}{{ else }}{{ .Values.globals.imageRegistry | default "hub.oepkgs.net" }}/neocopilot/euler-copilot-web:0.9.4-{{ .Values.globals.arch | default "x86" }}{{ end }}
           imagePullPolicy: {{ default "IfNotPresent" .Values.globals.imagePullPolicy }}
           ports:
             - containerPort: 8080

@@ -37,7 +37,7 @@ spec:
       automountServiceAccountToken: false
       containers:
         - name: mysql
-          image: {{ default "hub.oepkgs.net/neocopilot/mysql:8-x86" .Values.authhub.mysql.image }}
+          image: {{ if .Values.authhub.mysql.image }}{{ .Values.authhub.mysql.image }}{{ else }}{{ .Values.globals.imageRegistry | default "hub.oepkgs.net" }}/neocopilot/mysql:8-{{ .Values.globals.arch | default "x86" }}{{ end }}
           imagePullPolicy: {{ default "IfNotPresent" .Values.globals.imagePullPolicy }}
           args:
             - "--character-set-server=utf8mb4"
@@ -87,3 +87,4 @@ spec:
           configMap:
             name: mysql-config
 {{- end -}}
+

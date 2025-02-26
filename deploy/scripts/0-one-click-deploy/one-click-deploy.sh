@@ -48,7 +48,7 @@ print_step_title() {
 MAIN_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 cd "$MAIN_DIR" || exit 1
 
-# 带错误检查的脚本执行函数
+# 带错误检查的脚本执行函数（改进版）
 run_script_with_check() {
     local script_path=$1
     local script_name=$2
@@ -62,26 +62,48 @@ run_script_with_check() {
     fi
 
     print_step_title $step_number "$script_name"
-    echo -e "${DIM}${BLUE}🠖 执行路径：${YELLOW}${script_path}${RESET}"
+    
+    # 获取绝对路径和执行目录
+    local script_abs_path=$(realpath "$script_path")
+    local script_dir=$(dirname "$script_abs_path")
+    local script_base=$(basename "$script_abs_path")
+    
+    echo -e "${DIM}${BLUE}🠖 脚本绝对路径：${YELLOW}${script_abs_path}${RESET}"
+    echo -e "${DIM}${BLUE}🠖 执行工作目录：${YELLOW}${script_dir}${RESET}"
+    echo -e "${DIM}${BLUE}🠖 开始执行时间：${YELLOW}$(date +'%Y-%m-%d %H:%M:%S')${RESET}"
 
-    # 执行脚本（带自动输入处理）
-    local output
+    # 创建临时日志文件
+    local log_file=$(mktemp)
+    echo -e "${DIM}${BLUE}🠖 临时日志文件：${YELLOW}${log_file}${RESET}"
+
+    # 执行脚本（带自动输入处理和实时日志输出）
+    local exit_code=0
     if $auto_input; then
-        output=$(yes "" | bash "$script_path" 2>&1)
+        (cd "$script_dir" && yes "" | bash "$script_base" 2>&1 | tee "$log_file")
     else
-        output=$(bash "$script_path" 2>&1)
+        (cd "$script_dir" && bash "$script_base" 2>&1 | tee "$log_file")
     fi
+    exit_code=${PIPESTATUS[0]}
 
     # 处理执行结果
-    if [ $? -eq 0 ]; then
+    if [ $exit_code -eq 0 ]; then
         echo -e "\n${BOLD}${GREEN}✓ ${script_name} 执行成功！${RESET}"
-        echo -e "${DIM}${CYAN}${output}${RESET}"
-        return 0
+        echo -e "${DIM}${CYAN}$(printf '%.0s─' $(seq 1 $(tput cols)))${RESET}"
+        echo -e "${DIM}${CYAN}操作日志：${RESET}"
+        cat "$log_file" | sed -e "s/^/${DIM}${CYAN}  🠖 ${RESET}/"
+        echo -e "${DIM}${CYAN}$(printf '%.0s─' $(seq 1 $(tput cols)))${RESET}"
     else
         echo -e "\n${BOLD}${RED}✗ ${script_name} 执行失败！${RESET}" >&2
-        echo -e "${DIM}${RED}${output}${RESET}" >&2
+        echo -e "${DIM}${RED}$(printf '%.0s─' $(seq 1 $(tput cols)))${RESET}" >&2
+        echo -e "${DIM}${RED}错误日志：${RESET}" >&2
+        cat "$log_file" | sed -e "s/^/${DIM}${RED}  ✗ ${RESET}/" >&2
+        echo -e "${DIM}${RED}$(printf '%.0s─' $(seq 1 $(tput cols)))${RESET}" >&2
+        rm "$log_file"
         exit 1
     fi
+
+    rm "$log_file"
+    return $exit_code
 }
 
 # 卸载所有组件
@@ -188,7 +210,7 @@ show_completion() {
     echo -e "${YELLOW}请通过以下方式验证部署："
     echo -e "  ➤ 检查所有Pod状态: kubectl get pods -n euler-copilot"
     echo -e "  ➤ 查看服务端点: kubectl get svc -n euler-copilot"
-    echo -e "  ➤ 访问Web界面: http://<节点IP>:<服务端口>${RESET}"
+    echo -e "  ➤ 访问Web界面: https://www.eulercopilot.local${RESET}"
 }
 
 # 主执行流程

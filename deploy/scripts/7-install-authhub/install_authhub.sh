@@ -11,6 +11,23 @@ NC='\033[0m'
 
 DEPLOY_DIR="/home/euler-copilot-framework/deploy"
 
+# 获取系统架构
+get_architecture() {
+    local arch=$(uname -m)
+    case "$arch" in
+        x86_64)
+            arch="x86"
+            ;;
+        aarch64)
+            arch="arm"
+            ;;
+        *)
+            echo -e "${RED}错误：不支持的架构 $arch${NC}" >&2
+            return 1
+            ;;
+    esac
+    echo -e "${GREEN}检测到系统架构：$(uname -m)${NC}"
+}
 
 create_namespace() {
     echo -e "${BLUE}==> 检查命名空间 euler-copilot...${NC}"
@@ -41,12 +58,12 @@ delete_pvcs() {
         echo -e "${YELLOW}未找到需要清理的Helm Release${NC}"
     fi
 
-    local pvc_list
-    pvc_list=$(kubectl get pvc -n euler-copilot -o name | grep 'persistentvolumeclaim/mysql-pvc' 2>/dev/null || true)
+    local pvc_name
+    pvc_name=$(kubectl get pvc -n euler-copilot | grep 'mysql-pvc' 2>/dev/null || true)
 
     if [ -n "$pvc_list" ]; then
         echo -e "${YELLOW}找到以下PVC，开始清理...${NC}"
-        echo "$pvc_list" | xargs -n 1 kubectl delete -n euler-copilot || echo -e "${RED}PVC删除失败，继续执行...${NC}"
+	kubectl delete pvc mysql-pvc -n euler-copilot --force --grace-period=0 || echo -e "${RED}PVC删除失败，继续执行...${NC}"
     else
         echo -e "${YELLOW}未找到需要清理的PVC${NC}"
     fi
@@ -70,20 +87,6 @@ get_user_input() {
     fi
 }
 
-modify_yaml() {
-    echo -e "${BLUE}开始修改YAML配置文件...${NC}"
-    python3 "${DEPLOY_DIR}/scripts/9-other-script/modify_eulercopilot_yaml.py" \
-      "${DEPLOY_DIR}/chart/authhub/values.yaml" \
-      "${DEPLOY_DIR}/chart/authhub/values.yaml" \
-      --set "domain.authhub=${authhub_domain}"
-
-    if [ $? -ne 0 ]; then
-        echo -e "${RED}错误：YAML文件修改失败${NC}"
-        exit 1
-    fi
-    echo -e "${GREEN}YAML文件修改成功！${NC}"
-}
-
 helm_install() {
     echo -e "${BLUE}==> 进入部署目录...${NC}"
     [ ! -d "${DEPLOY_DIR}/chart" ] && {
@@ -93,7 +96,9 @@ helm_install() {
     cd "${DEPLOY_DIR}/chart"
 
     echo -e "${BLUE}正在安装 authhub...${NC}"
-    helm install authhub -n euler-copilot ./authhub || {
+    helm upgrade --install authhub -n euler-copilot ./authhub \
+        --set globals.arch="$arch" \
+        --set domain.authhub="${authhub_domain}" || {
         echo -e "${RED}Helm 安装 authhub 失败！${NC}"
         return 1
     }
@@ -135,10 +140,10 @@ check_pods_status() {
 }
 
 main() {
+    get_architecture
     create_namespace
     delete_pvcs
     get_user_input
-    modify_yaml
     helm_install
     check_pods_status
 
@@ -151,3 +156,4 @@ main() {
 
 trap 'echo -e "${RED}操作被中断！${NC}"; exit 1' INT
 main "$@"
+

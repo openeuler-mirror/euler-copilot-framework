@@ -10,6 +10,24 @@ NC='\033[0m'
 
 chart_dir="/home/euler-copilot-framework/deploy/chart"
 
+# 获取系统架构
+get_architecture() {
+    arch=$(uname -m)
+    case "$arch" in
+        x86_64)
+            arch="x86"
+            ;;
+        aarch64)
+            arch="arm"
+            ;;
+        *)
+            echo -e "${RED}错误：不支持的架构 $arch${NC}"
+            exit 1
+            ;;
+    esac
+    echo -e "${GREEN}检测到系统架构：$(uname -m)${NC}"
+}
+
 create_namespace() {
     echo -e "${BLUE}==> 检查命名空间 euler-copilot...${NC}"
     if ! kubectl get namespace euler-copilot &> /dev/null; then
@@ -23,37 +41,46 @@ create_namespace() {
     fi
 }
 
-
-# 删除PVC和Helm Release
 delete_pvcs() {
     echo -e "${BLUE}==> 清理现有资源...${NC}"
-    
-    # 获取Helm Release列表
-    local RELEASES
-    RELEASES=$(helm list -n euler-copilot --short | grep databases || true)
-    
-    # 删除所有关联的Helm Release
-    if [ -n "$RELEASES" ]; then
+
+    local helm_releases
+    helm_releases=$(helm list -n euler-copilot -q --filter '^databases' 2>/dev/null || true)
+
+    if [ -n "$helm_releases" ]; then
         echo -e "${YELLOW}找到以下Helm Release，开始清理...${NC}"
-        for release in $RELEASES; do
+        while IFS= read -r release; do
             echo -e "${BLUE}正在删除Helm Release: ${release}${NC}"
-            helm uninstall "$release" -n euler-copilot || echo -e "${RED}删除Helm Release失败，继续执行...${NC}"
-        done
+            if ! helm uninstall "$release" -n euler-copilot --wait --timeout 2m; then
+                echo -e "${RED}错误：删除Helm Release ${release} 失败！${NC}" >&2
+                return 1
+            fi
+        done <<< "$helm_releases"
     else
         echo -e "${YELLOW}未找到需要清理的Helm Release${NC}"
     fi
 
-    # 获取所有非mysql的PVC列表
+    # 修改重点：仅筛选特定PVC名称
     local pvc_list
-    pvc_list=$(kubectl get pvc -n euler-copilot -o name | grep -v 'persistentvolumeclaim/mysql-pvc' 2>/dev/null || true)
-    
-    # 删除PVC
+    pvc_list=$(kubectl get pvc -n euler-copilot -o jsonpath='{.items[*].metadata.name}' 2>/dev/null \
+        | tr ' ' '\n' \
+        | grep -E '^(pgsql-storage|mongo-storage|minio-storage)$' || true)  # 精确匹配三个指定名称
+
     if [ -n "$pvc_list" ]; then
         echo -e "${YELLOW}找到以下PVC，开始清理...${NC}"
-        echo "$pvc_list" | xargs -n 1 kubectl delete -n euler-copilot || echo -e "${RED}PVC删除失败，继续执行...${NC}"
+        while IFS= read -r pvc; do
+            echo -e "${BLUE}正在删除PVC: $pvc${NC}"
+            if ! kubectl delete pvc "$pvc" -n euler-copilot --force --grace-period=0; then
+                echo -e "${RED}错误：删除PVC $pvc 失败！${NC}" >&2
+                return 1
+            fi
+        done <<< "$pvc_list"
     else
         echo -e "${YELLOW}未找到需要清理的PVC${NC}"
     fi
+
+    echo -e "${BLUE}等待资源清理完成（10秒）...${NC}"
+    sleep 10
 
     echo -e "${GREEN}资源清理完成${NC}"
 }
@@ -67,7 +94,7 @@ helm_install() {
     cd "$chart_dir"
 
     echo -e "${BLUE}正在安装 databases...${NC}"
-    helm install databases -n euler-copilot ./databases || {
+    helm upgrade --install databases --set globals.arch=$arch -n euler-copilot ./databases || {
         echo -e "${RED}Helm 安装 databases 失败！${NC}"
         return 1
     }
@@ -108,13 +135,14 @@ check_pods_status() {
 }
 
 main() {
+    get_architecture
     create_namespace
     delete_pvcs
     helm_install
     check_pods_status
 
     echo -e "\n${GREEN}========================="
-    echo "Databases 部署完成！"
+    echo "数据库部署完成！"
     echo -e "=========================${NC}"
 }
 

@@ -59,7 +59,7 @@ spec:
       automountServiceAccountToken: false
       containers:
         - name: minio
-          image: {{ default "hub.oepkgs.net/neocopilot/minio:empty" .Values.databases.minio.image }}
+          image: {{ if .Values.databases.minio.image }}{{ .Values.databases.minio.image }}{{ else }}{{ .Values.globals.imageRegistry | default "hub.oepkgs.net" }}/neocopilot/minio:empty-{{ .Values.globals.arch | default "x86" }}{{ end }}
           imagePullPolicy: {{ default "IfNotPresent" .Values.globals.imagePullPolicy }}
           args:
             - "server"

@@ -1,5 +1,8 @@
 # 全局设置
 globals:
+  # 节点架构：默认是x86
+  # 节点设置：["x86", "arm"]
+  arch:
   # 镜像拉取策略， 默认为IfNotPresent
   imagePullPolicy:
   # 存储类；默认为local-path
@@ -86,15 +89,15 @@ storage:
 euler_copilot:
   # 配置文件工具
   secret_inject:
-    # 镜像设置；默认为hub.oepkgs.net/neocopilot/secret_inject:x86
-    # 镜像标签：["x86", "arm"]
-    image: "hub.oepkgs.net/neocopilot/secret_inject:dev"
+    # 镜像设置；默认为hub.oepkgs.net/neocopilot/secret_inject:dev-x86
+    # 镜像标签：["dev-x86", "dev-arm"]
+    image: 
 
   framework:
     # [必填] 是否部署Framework后端框架服务
     enabled: true
-    # 镜像设置；默认为hub.oepkgs.net/neocopilot/euler-copilot-framework:0.9.3-x86
-    # 镜像标签：["0.9.3-x86", "0.9.3-arm"]
+    # 镜像设置；默认为hub.oepkgs.net/neocopilot/euler-copilot-framework:0.9.4-x86
+    # 镜像标签：["0.9.4-x86", "0.9.4-arm"]
     image:
     # 容器根目录只读
     readOnly:
@@ -110,8 +113,8 @@ euler_copilot:
   web:
     # [必填] 是否部署Web前端用户界面
     enabled: true
-    # 镜像设置；默认为hub.oepkgs.net/neocopilot/euler-copilot-web:0.9.3-x86
-    # 镜像标签：["0.9.3-x86", "0.9.3-arm"]
+    # 镜像设置；默认为hub.oepkgs.net/neocopilot/euler-copilot-web:0.9.4-x86
+    # 镜像标签：["0.9.4-x86", "0.9.4-arm"]
     image:
     # 容器根目录只读
     readOnly:
@@ -131,8 +134,8 @@ euler_copilot:
   rag_web:
     # [必填] 是否部署RAG Web前端用户界面
     enabled: true
-    # 镜像设置；默认为hub.oepkgs.net/neocopilot/data_chain_web:0.9.3-x86
-    # 镜像标签：["0.9.3-x86", "0.9.3-arm"]
+    # 镜像设置；默认为hub.oepkgs.net/neocopilot/data_chain_web:0.9.4-x86
+    # 镜像标签：["0.9.4-x86", "0.9.4-arm"]
     image:
     # 容器根目录只读
     readOnly:
@@ -152,8 +155,8 @@ euler_copilot:
   rag:
     # [必填] 是否部署RAG后端服务
     enabled: true
-    # 镜像设置；默认为hub.oepkgs.net/neocopilot/data_chain_back_end:0.9.3-x86
-    # 镜像标签：["0.9.3-x86", "0.9.3-arm"]
+    # 镜像设置；默认为hub.oepkgs.net/neocopilot/data_chain_back_end:0.9.4-x86
+    # 镜像标签：["0.9.4-x86", "0.9.4-arm"]
     image:
     # 容器根目录只读
     readOnly:
