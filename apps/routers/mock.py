@@ -352,9 +352,7 @@ async def mock_data(
                     if sample_output["flow"]["stepName"] == "【RAG】知识库智能问答":
                         sample_output["content"] = await call_rag(params)
                     if sample_output["flow"]["stepName"] == "【LLM】大模型问答":
-                        llm_result = await call_llm(params)
-                        if llm_result:
-                            sample_output["content"] = {"text": llm_result["content"]}
+                        sample_output["content"] = await call_llm(params)
                     if "content" in sample_output and isinstance(sample_output["content"], dict):
                         for key, value in sample_output["content"].items():
                             params[key] = value
@@ -499,7 +497,7 @@ async def call_llm_stream(params: dict[str, Any] = {}):
         chunk = chunk.replace("\n\n", "")
         output = {
             "event": "text.add",
-            "content": chunk,
+            "content": {"text": chunk},
             "input_tokens": len(_encoder.encode(question)),
             "output_tokens": sum,
         }
