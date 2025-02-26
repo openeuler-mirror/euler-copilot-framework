@@ -8,6 +8,7 @@ from typing import Annotated, Optional, Union
 from fastapi import APIRouter, Body, Depends, Path, Query, status
 from fastapi.responses import JSONResponse
 
+from apps.constants import LOGGER
 from apps.dependency.csrf import verify_csrf_token
 from apps.dependency.user import get_user, verify_user
 from apps.entities.appcenter import AppFlowInfo, AppPermissionData
@@ -26,7 +27,6 @@ from apps.entities.response_data import (
     ResponseData,
 )
 from apps.manager.appcenter import AppCenterManager
-from apps.manager.flow import FlowManager
 
 router = APIRouter(
     prefix="/api/app",
@@ -100,10 +100,31 @@ async def create_or_update_application(
 ) -> JSONResponse:
     """创建或更新应用"""
     app_id = request.app_id
-    if app_id:
-        # 更新应用
-        confirm = await AppCenterManager.update_app(user_sub, app_id, request)
-        if not confirm:
+    if app_id:  # 更新应用
+        try:
+            await AppCenterManager.update_app(user_sub, app_id, request)
+        except ValueError as e:
+            LOGGER.error(msg=f"[AppCenter] 更新应用请求无效：{e!s}")
+            return JSONResponse(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                content=ResponseData(
+                    code=status.HTTP_400_BAD_REQUEST,
+                    message=str(e),
+                    result={},
+                ).model_dump(exclude_none=True, by_alias=True),
+            )
+        except PermissionError as e:
+            LOGGER.error(msg=f"[AppCenter] 更新应用鉴权失败：{e!s}")
+            return JSONResponse(
+                status_code=status.HTTP_403_FORBIDDEN,
+                content=ResponseData(
+                    code=status.HTTP_403_FORBIDDEN,
+                    message=str(e),
+                    result={},
+                ).model_dump(exclude_none=True, by_alias=True),
+            )
+        except Exception as e:
+            LOGGER.error(msg=f"[AppCenter] 更新应用失败：{e}")
             return JSONResponse(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 content=ResponseData(
@@ -112,25 +133,19 @@ async def create_or_update_application(
                     result={},
                 ).model_dump(exclude_none=True, by_alias=True),
             )
-        return JSONResponse(
-            status_code=status.HTTP_200_OK,
-            content=BaseAppOperationRsp(
-                code=status.HTTP_200_OK,
-                message="OK",
-                result=BaseAppOperationMsg(appId=app_id),
-            ).model_dump(exclude_none=True, by_alias=True),
-        )
-    # 创建应用
-    app_id = await AppCenterManager.create_app(user_sub, request)
-    if not app_id:
-        return JSONResponse(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            content=ResponseData(
-                code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                message="ERROR",
-                result={},
-            ).model_dump(exclude_none=True, by_alias=True),
-        )
+    else:  # 创建应用
+        try:
+            app_id = await AppCenterManager.create_app(user_sub, request)
+        except Exception as e:
+            LOGGER.error(msg=f"[AppCenter] 创建应用失败：{e}")
+            return JSONResponse(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                content=ResponseData(
+                    code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    message="ERROR",
+                    result={},
+                ).model_dump(exclude_none=True, by_alias=True),
+            )
     return JSONResponse(
         status_code=status.HTTP_200_OK,
         content=BaseAppOperationRsp(
@@ -147,8 +162,10 @@ async def get_recently_used_applications(
     count: Annotated[int, Query(..., ge=1, le=10)] = 5,
 ) -> JSONResponse:
     """获取最近使用的应用"""
-    recent_apps = await AppCenterManager.get_recently_used_apps(count, user_sub)
-    if recent_apps is None:
+    try:
+        recent_apps = await AppCenterManager.get_recently_used_apps(count, user_sub)
+    except Exception as e:
+        LOGGER.error(msg=f"[AppCenter] 获取最近使用的应用失败：{e}")
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             content=ResponseData(
@@ -172,13 +189,25 @@ async def get_application(
     app_id: Annotated[str, Path(..., alias="appId", description="应用ID")],
 ) -> JSONResponse:
     """获取应用详情"""
-    app_data = await AppCenterManager.fetch_app_data_by_id(app_id)
-    if not app_data:
+    try:
+        app_data = await AppCenterManager.fetch_app_data_by_id(app_id)
+    except ValueError as e:
+        LOGGER.error(msg=f"[AppCenter] 获取应用详情请求无效：{e!s}")
         return JSONResponse(
             status_code=status.HTTP_400_BAD_REQUEST,
             content=ResponseData(
                 code=status.HTTP_400_BAD_REQUEST,
                 message="INVALID_APP_ID",
+                result={},
+            ).model_dump(exclude_none=True, by_alias=True),
+        )
+    except Exception as e:
+        LOGGER.error(msg=f"[AppCenter] 获取应用详情失败：{e}")
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content=ResponseData(
+                code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                message="ERROR",
                 result={},
             ).model_dump(exclude_none=True, by_alias=True),
         )
@@ -225,39 +254,30 @@ async def delete_application(
     user_sub: Annotated[str, Depends(get_user)],
 ) -> JSONResponse:
     """删除应用"""
-    app_data = await AppCenterManager.fetch_app_data_by_id(app_id)
-    if not app_data:
+    try:
+        await AppCenterManager.delete_app(app_id, user_sub)
+    except ValueError as e:
+        LOGGER.error(msg=f"[AppCenter] 删除应用请求无效：{e!s}")
         return JSONResponse(
             status_code=status.HTTP_400_BAD_REQUEST,
             content=ResponseData(
                 code=status.HTTP_400_BAD_REQUEST,
-                message="INVALID_PARAMETER",
+                message=str(e),
                 result={},
             ).model_dump(exclude_none=True, by_alias=True),
         )
-    # 校验应用作者是否为当前用户
-    if app_data.author != user_sub:
+    except PermissionError as e:
+        LOGGER.error(msg=f"[AppCenter] 删除应用鉴权失败：{e!s}")
         return JSONResponse(
             status_code=status.HTTP_403_FORBIDDEN,
             content=ResponseData(
                 code=status.HTTP_403_FORBIDDEN,
-                message="UNAUTHORIZED",
+                message=str(e),
                 result={},
             ).model_dump(exclude_none=True, by_alias=True),
         )
-    # 删除应用相关的工作流
-    for flow in app_data.flows:
-        if not await FlowManager.delete_flow_by_app_and_flow_id(app_id, flow.id):
-            return JSONResponse(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                content=ResponseData(
-                    code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                    message="ERROR",
-                    result={},
-                ).model_dump(exclude_none=True, by_alias=True),
-            )
-    # 删除应用
-    if not await AppCenterManager.delete_app(app_id, user_sub):
+    except Exception as e:
+        LOGGER.error(msg=f"[AppCenter] 删除应用失败：{e}")
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             content=ResponseData(
@@ -282,28 +302,30 @@ async def publish_application(
     user_sub: Annotated[str, Depends(get_user)],
 ) -> JSONResponse:
     """发布应用"""
-    app_data = await AppCenterManager.fetch_app_data_by_id(app_id)
-    if not app_data:
+    try:
+        await AppCenterManager.publish_app(app_id, user_sub)
+    except ValueError as e:
+        LOGGER.error(msg=f"[AppCenter] 发布应用请求无效：{e!s}")
         return JSONResponse(
             status_code=status.HTTP_400_BAD_REQUEST,
             content=ResponseData(
                 code=status.HTTP_400_BAD_REQUEST,
-                message="INVALID_PARAMETER",
+                message=str(e),
                 result={},
             ).model_dump(exclude_none=True, by_alias=True),
         )
-    # 验证用户权限
-    if app_data.author != user_sub:
+    except PermissionError as e:
+        LOGGER.error(msg=f"[AppCenter] 发布应用鉴权失败：{e!s}")
         return JSONResponse(
             status_code=status.HTTP_403_FORBIDDEN,
             content=ResponseData(
                 code=status.HTTP_403_FORBIDDEN,
-                message="UNAUTHORIZED",
+                message=str(e),
                 result={},
             ).model_dump(exclude_none=True, by_alias=True),
         )
-    # 发布应用
-    if not await AppCenterManager.publish_app(app_id):
+    except Exception as e:
+        LOGGER.error(msg=f"[AppCenter] 发布应用失败：{e}")
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             content=ResponseData(
@@ -329,26 +351,20 @@ async def modify_favorite_application(
     user_sub: Annotated[str, Depends(get_user)],
 ) -> JSONResponse:
     """更改应用收藏状态"""
-    flag = await AppCenterManager.modify_favorite_app(app_id, user_sub, favorited=request.favorited)
-    if flag == AppCenterManager.ModFavAppFlag.NOT_FOUND:
+    try:
+        await AppCenterManager.modify_favorite_app(app_id, user_sub, favorited=request.favorited)
+    except ValueError as e:
+        LOGGER.error(msg=f"[AppCenter] 修改收藏状态请求无效：{e!s}")
         return JSONResponse(
             status_code=status.HTTP_400_BAD_REQUEST,
             content=ResponseData(
                 code=status.HTTP_400_BAD_REQUEST,
-                message="INVALID_APP_ID",
+                message=str(e),
                 result={},
             ).model_dump(exclude_none=True, by_alias=True),
         )
-    if flag == AppCenterManager.ModFavAppFlag.BAD_REQUEST:
-        return JSONResponse(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            content=ResponseData(
-                code=status.HTTP_400_BAD_REQUEST,
-                message="INVALID_PARAMETER",
-                result={},
-            ).model_dump(exclude_none=True, by_alias=True),
-        )
-    if flag == AppCenterManager.ModFavAppFlag.INTERNAL_ERROR:
+    except Exception as e:
+        LOGGER.error(msg=f"[AppCenter] 修改收藏状态失败：{e}")
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             content=ResponseData(

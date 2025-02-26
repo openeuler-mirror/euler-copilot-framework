@@ -2,6 +2,7 @@
 
 Copyright (c) Huawei Technologies Co., Ltd. 2024-2025. All rights reserved.
 """
+
 import uuid
 from typing import Any, Optional
 
@@ -140,7 +141,7 @@ class ServiceCenterManager:
         service_pool_store = ServicePool.model_validate(db_service)
         if service_pool_store.author != user_sub:
             msg = "Permission denied"
-            raise ValueError(msg)
+            raise PermissionError(msg)
         # 校验 OpenAPI 规范的 JSON Schema
         ServiceCenterManager._validate_service_data(data)
         # 存入数据库
@@ -199,7 +200,7 @@ class ServiceCenterManager:
         service_pool_store = ServicePool.model_validate(db_service)
         if service_pool_store.author != user_sub:
             msg = "Permission denied"
-            raise ValueError(msg)
+            raise PermissionError(msg)
         service_path = Path(config["SEMANTICS_DIR"]) / SERVICE_DIR / service_id / "openapi" / "api.yaml"
         async with await Path(service_path).open() as f:
             service_data = yaml.safe_load(await f.read())
@@ -221,7 +222,7 @@ class ServiceCenterManager:
         service_pool_store = ServicePool.model_validate(db_service)
         if service_pool_store.author != user_sub:
             msg = "Permission denied"
-            raise ValueError(msg)
+            raise PermissionError(msg)
         # 删除服务
         service_loader = ServiceLoader()
         await service_loader.delete(service_id)
@@ -295,7 +296,7 @@ class ServiceCenterManager:
         return user_data.fav_services
 
     @staticmethod
-    def _validate_service_data(data: dict[str, Any]) -> bool:
+    def _validate_service_data(data: dict[str, Any]) -> None:
         """验证服务数据"""
         # 验证数据是否为空
         if not data:
@@ -307,7 +308,6 @@ class ServiceCenterManager:
         except ValidationError as e:
             msg = f"Data does not conform to OpenAPI standard: {e.message}"
             raise ValueError(msg) from e
-        return True
 
     @staticmethod
     def _build_filters(

@@ -165,6 +165,15 @@ async def update_service(  # noqa: PLR0911
                     result={},
                 ).model_dump(exclude_none=True, by_alias=True),
             )
+        except PermissionError as e:
+            return JSONResponse(
+                status_code=status.HTTP_403_FORBIDDEN,
+                content=ResponseData(
+                    code=status.HTTP_403_FORBIDDEN,
+                    message=str(e),
+                    result={},
+                ).model_dump(exclude_none=True, by_alias=True),
+            )
         except Exception as e:
             LOGGER.error(f"[ServiceCenter] Update service failed: {e}")
             return JSONResponse(
@@ -209,6 +218,15 @@ async def get_service_detail(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 content=ResponseData(
                     code=status.HTTP_400_BAD_REQUEST,
+                    message=str(e),
+                    result={},
+                ).model_dump(exclude_none=True, by_alias=True),
+            )
+        except PermissionError as e:
+            return JSONResponse(
+                status_code=status.HTTP_403_FORBIDDEN,
+                content=ResponseData(
+                    code=status.HTTP_403_FORBIDDEN,
                     message=str(e),
                     result={},
                 ).model_dump(exclude_none=True, by_alias=True),
@@ -264,6 +282,15 @@ async def delete_service(
             status_code=status.HTTP_400_BAD_REQUEST,
             content=ResponseData(
                 code=status.HTTP_400_BAD_REQUEST,
+                message=str(e),
+                result={},
+            ).model_dump(exclude_none=True, by_alias=True),
+        )
+    except PermissionError as e:
+        return JSONResponse(
+            status_code=status.HTTP_403_FORBIDDEN,
+            content=ResponseData(
+                code=status.HTTP_403_FORBIDDEN,
                 message=str(e),
                 result={},
             ).model_dump(exclude_none=True, by_alias=True),

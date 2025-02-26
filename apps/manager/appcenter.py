@@ -5,7 +5,6 @@ Copyright (c) Huawei Technologies Co., Ltd. 2024-2025. All rights reserved.
 
 import uuid
 from datetime import datetime, timezone
-from enum import Enum
 from typing import Any, Optional
 
 from apps.constants import LOGGER
@@ -15,20 +14,13 @@ from apps.entities.enum_var import SearchType
 from apps.entities.flow import AppMetadata, MetadataType, Permission
 from apps.entities.pool import AppPool
 from apps.entities.response_data import RecentAppList, RecentAppListItem
+from apps.manager.flow import FlowManager
 from apps.models.mongo import MongoDB
 from apps.scheduler.pool.loader.app import AppLoader
 
 
 class AppCenterManager:
     """应用中心管理器"""
-
-    class ModFavAppFlag(Enum):
-        """收藏应用标志"""
-
-        SUCCESS = 0
-        NOT_FOUND = 1
-        BAD_REQUEST = 2
-        INTERNAL_ERROR = 3
 
     @staticmethod
     async def fetch_all_apps(
@@ -178,25 +170,21 @@ class AppCenterManager:
         return [], -1
 
     @staticmethod
-    async def fetch_app_data_by_id(app_id: str) -> Optional[AppPool]:
+    async def fetch_app_data_by_id(app_id: str) -> AppPool:
         """根据应用ID获取应用元数据
 
         :param app_id: 应用ID
         :return: 应用元数据
         """
-        try:
-            app_collection = MongoDB.get_collection("app")
-            db_data = await app_collection.find_one({"_id": app_id})
-            if not db_data:
-                LOGGER.warning(f"[AppCenterManager] No data found for app_id: {app_id}")
-                return None
-            return AppPool.model_validate(db_data)
-        except Exception as e:
-            LOGGER.error(f"[AppCenterManager] Get app metadata by app_id failed: {e}")
-        return None
+        app_collection = MongoDB.get_collection("app")
+        db_data = await app_collection.find_one({"_id": app_id})
+        if not db_data:
+            msg = "App not found"
+            raise ValueError(msg)
+        return AppPool.model_validate(db_data)
 
     @staticmethod
-    async def create_app(user_sub: str, data: AppData) -> Optional[str]:
+    async def create_app(user_sub: str, data: AppData) -> str:
         """创建应用
 
         :param user_sub: 用户唯一标识
@@ -220,21 +208,17 @@ class AppCenterManager:
                 users=data.permission.users or [],
             ),
         )
-        try:
-            app_loader = AppLoader()
-            await app_loader.save(metadata, app_id)
-            return app_id
-        except Exception as e:
-            LOGGER.error(f"[AppCenterManager] Create app failed: {e}")
-        return None
+        app_loader = AppLoader()
+        await app_loader.save(metadata, app_id)
+        return app_id
 
     @staticmethod
-    async def update_app(user_sub: str, app_id: str, data: AppData) -> bool:
+    async def update_app(user_sub: str, app_id: str, data: AppData) -> None:
         """更新应用
 
+        :param user_sub: 用户唯一标识
         :param app_id: 应用唯一标识
         :param data: 应用数据
-        :return: 是否成功
         """
         metadata = AppMetadata(
             type=MetadataType.APP,
@@ -252,133 +236,126 @@ class AppCenterManager:
                 users=data.permission.users or [],
             ),
         )
-        try:
-            app_collection = MongoDB.get_collection("app")
-            app_data = AppPool.model_validate(await app_collection.find_one({"_id": app_id}))
-            if not app_data:
-                return False
-            metadata.flows = app_data.flows
-            metadata.published = app_data.published
-            app_loader = AppLoader()
-            await app_loader.save(metadata, app_id)
-            return True
-        except Exception as e:
-            LOGGER.error(f"[AppCenterManager] Update app failed: {e}")
-        return False
+        app_collection = MongoDB.get_collection("app")
+        app_data = AppPool.model_validate(await app_collection.find_one({"_id": app_id}))
+        if not app_data:
+            msg = "App not found"
+            raise ValueError(msg)
+        if app_data.author != user_sub:
+            msg = "Permission denied"
+            raise PermissionError(msg)
+        metadata.flows = app_data.flows
+        metadata.published = app_data.published
+        app_loader = AppLoader()
+        await app_loader.save(metadata, app_id)
 
     @staticmethod
-    async def publish_app(app_id: str) -> bool:
+    async def publish_app(app_id: str, user_sub: str) -> None:
         """发布应用
 
         :param app_id: 应用唯一标识
-        :return: 是否成功
+        :param user_sub: 用户唯一标识
         """
-        try:
-            app_collection = MongoDB.get_collection("app")
-            await app_collection.update_one(
-                {"_id": app_id},
-                {"$set": {"published": True}},
-            )
-            return True
-        except Exception as e:
-            LOGGER.error(f"[AppCenterManager] Publish app failed: {e}")
-        return False
+        app_collection = MongoDB.get_collection("app")
+        app_data = AppPool.model_validate(await app_collection.find_one({"_id": app_id}))
+        if not app_data:
+            msg = "App not found"
+            raise ValueError(msg)
+        if app_data.author != user_sub:
+            msg = "Permission denied"
+            raise PermissionError(msg)
+        await app_collection.update_one(
+            {"_id": app_id},
+            {"$set": {"published": True}},
+        )
 
     @staticmethod
-    async def modify_favorite_app(app_id: str, user_sub: str, *, favorited: bool) -> ModFavAppFlag:
+    async def modify_favorite_app(app_id: str, user_sub: str, *, favorited: bool) -> None:
         """修改收藏状态
 
         :param app_id: 应用唯一标识
         :param user_sub: 用户唯一标识
         :param favorited: 是否收藏
-        :return: 修改结果
         """
-        try:
-            app_collection = MongoDB.get_collection("app")
-            user_collection = MongoDB.get_collection("user")
-            db_data = await app_collection.find_one({"_id": app_id})
-            if not db_data:
-                return AppCenterManager.ModFavAppFlag.NOT_FOUND
-            db_user = await user_collection.find_one({"_id": user_sub})
-            if not db_user:
-                return AppCenterManager.ModFavAppFlag.BAD_REQUEST
-            user_data = User.model_validate(db_user)
+        app_collection = MongoDB.get_collection("app")
+        user_collection = MongoDB.get_collection("user")
+        db_data = await app_collection.find_one({"_id": app_id})
+        if not db_data:
+            msg = "App not found"
+            raise ValueError(msg)
+        db_user = await user_collection.find_one({"_id": user_sub})
+        if not db_user:
+            msg = "User not found"
+            raise ValueError(msg)
+        user_data = User.model_validate(db_user)
 
-            already_favorited = app_id in user_data.fav_apps
-            if favorited == already_favorited:
-                return AppCenterManager.ModFavAppFlag.BAD_REQUEST
+        already_favorited = app_id in user_data.fav_apps
+        if favorited == already_favorited:
+            msg = "Duplicate operation"
+            raise ValueError(msg)
 
-            if favorited:
-                await user_collection.update_one(
-                    {"_id": user_sub},
-                    {"$addToSet": {"fav_apps": app_id}},
-                )
-            else:
-                await user_collection.update_one(
-                    {"_id": user_sub},
-                    {"$pull": {"fav_apps": app_id}},
-                )
-            return AppCenterManager.ModFavAppFlag.SUCCESS
-        except Exception as e:
-            LOGGER.error(f"[AppCenterManager] Modify favorite app failed: {e}")
-        return AppCenterManager.ModFavAppFlag.INTERNAL_ERROR
+        if favorited:
+            await user_collection.update_one(
+                {"_id": user_sub},
+                {"$addToSet": {"fav_apps": app_id}},
+            )
+        else:
+            await user_collection.update_one(
+                {"_id": user_sub},
+                {"$pull": {"fav_apps": app_id}},
+            )
 
     @staticmethod
-    async def delete_app(app_id: str, user_sub: str) -> bool:
+    async def delete_app(app_id: str, user_sub: str) -> None:
         """删除应用
 
         :param app_id: 应用唯一标识
         :param user_sub: 用户唯一标识
-        :return: 删除是否成功
         """
-        try:
-            app_collection = MongoDB.get_collection("app")
-            app_data = AppPool.model_validate(await app_collection.find_one({"_id": app_id}))
-            if not app_data:
-                return False
-            if app_data.author != user_sub:
-                return False
-            # 删除应用
-            app_loader = AppLoader()
-            await app_loader.delete(app_id)
-            return True
-        except Exception as e:
-            LOGGER.error(f"[AppCenterManager] Delete app failed: {e}")
-        return False
+        app_collection = MongoDB.get_collection("app")
+        app_data = AppPool.model_validate(await app_collection.find_one({"_id": app_id}))
+        if not app_data:
+            msg = "App not found"
+            raise ValueError(msg)
+        if app_data.author != user_sub:
+            msg = "Permission denied"
+            raise PermissionError(msg)
+        # 删除应用
+        app_loader = AppLoader()
+        await app_loader.delete(app_id)
+        # 删除应用相关的工作流
+        for flow in app_data.flows:
+            await FlowManager.delete_flow_by_app_and_flow_id(app_id, flow.id)
 
     @staticmethod
-    async def get_recently_used_apps(count: int, user_sub: str) -> Optional[RecentAppList]:
+    async def get_recently_used_apps(count: int, user_sub: str) -> RecentAppList:
         """获取用户最近使用的应用列表
 
         :param count: 应用数量
         :param user_sub: 用户唯一标识
         :return: 最近使用的应用列表
         """
-        try:
-            user_collection = MongoDB.get_collection("user")
-            app_collection = MongoDB.get_collection("app")
-            # 校验用户信息
-            user_data = User.model_validate(await user_collection.find_one({"_id": user_sub}))
-            # 获取最近使用的应用ID列表，按最后使用时间倒序排序
-            # 允许 app_usage 为空
-            usage_list = sorted(
-                user_data.app_usage.items(),
-                key=lambda x: x[1].last_used,
-                reverse=True,
-            )[:count]
-            app_ids = [t[0] for t in usage_list]
-            if not app_ids:
-                apps = []  # 如果 app_ids 为空，直接返回空列表
-            else:
-                # 查询 MongoDB，获取符合条件的应用
-                apps = await app_collection.find({"_id": {"$in": app_ids}}, {"name": 1}).to_list(len(app_ids))
-            app_map = {str(a["_id"]): a.get("name", "") for a in apps}
-            return RecentAppList(
-                applications=[RecentAppListItem(appId=app_id, name=app_map.get(app_id, "")) for app_id in app_ids],
-            )
-        except Exception as e:
-            LOGGER.info(f"[AppCenterManager] Get recently used apps failed: {e}")
-        return None
+        user_collection = MongoDB.get_collection("user")
+        app_collection = MongoDB.get_collection("app")
+        # 校验用户信息
+        user_data = User.model_validate(await user_collection.find_one({"_id": user_sub}))
+        # 获取最近使用的应用ID列表，按最后使用时间倒序排序
+        # 允许 app_usage 为空
+        usage_list = sorted(
+            user_data.app_usage.items(),
+            key=lambda x: x[1].last_used,
+            reverse=True,
+        )[:count]
+        app_ids = [t[0] for t in usage_list]
+        if not app_ids:
+            apps = []  # 如果 app_ids 为空，直接返回空列表
+        else:
+            # 查询 MongoDB，获取符合条件的应用
+            apps = await app_collection.find({"_id": {"$in": app_ids}}, {"name": 1}).to_list(len(app_ids))
+        app_map = {str(a["_id"]): a.get("name", "") for a in apps}
+        return RecentAppList(
+            applications=[RecentAppListItem(appId=app_id, name=app_map.get(app_id, "")) for app_id in app_ids],
+        )
 
     @staticmethod
     async def update_recent_app(user_sub: str, app_id: str) -> bool:
@@ -423,10 +400,11 @@ class AppCenterManager:
             app_collection = MongoDB.get_collection("app")
             db_data = await app_collection.find_one({"_id": app_id})
             if not db_data:
-                LOGGER.warning(f"[AppCenterManager] No data found for app_id: {app_id}")
+                LOGGER.warning(f"[AppCenterManager] App not found: {app_id}")
                 return None
             app_data = AppPool.model_validate(db_data)
             if not app_data.flows or len(app_data.flows) == 0:
+                LOGGER.warning(f"[AppCenterManager] No flows found for app: {app_id}")
                 return None
             return app_data.flows[0].id
         except Exception as e:
