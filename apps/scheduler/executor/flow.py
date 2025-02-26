@@ -153,9 +153,7 @@ class Executor(BaseModel):
 
     async def _get_last_output(self, task: TaskBlock) -> Optional[dict[str, Any]]:
         """获取上一步的输出"""
-        if not task.flow_context:
-            return None
-        return list(task.flow_context.values())[-1].filled_data
+        return None
 
 
     async def _execute_call(self, call_obj: Any, sys_vars: CallVars, node_id: str) -> dict[str, Any]:
