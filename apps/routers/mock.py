@@ -221,7 +221,7 @@ async def mock_data(
     session_id: str,
 ):
     try:
-        await Activity.set_active(user_sub)
+        # await Activity.set_active(user_sub)
 
         # # 生成group_id
         # group_id = str(uuid.uuid4()) if not post_body.group_id else post_body.group_id
@@ -443,7 +443,7 @@ async def mock_data(
         # # 创建新Record，存入数据库
         # await save_data(task_id, user_sub, post_body, result.used_docs)
     except Exception as e:
-        LOGGER.error(f"创建或还原Task失败：{e}")
+        LOGGER.error(f"Run mock_data failed：{e}")
         yield "data: [ERROR]\n\n"
 
 
