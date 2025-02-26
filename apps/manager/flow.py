@@ -23,8 +23,8 @@ from apps.manager.node import NodeManager
 from apps.models.mongo import MongoDB
 from apps.scheduler.pool.loader.app import AppLoader
 from apps.scheduler.pool.loader.flow import FlowLoader
-from apps.manager.node import NodeManager
 from apps.utils.flow import generate_from_schema
+
 
 class FlowManager:
     """Flow相关操作"""
@@ -482,14 +482,14 @@ class FlowManager:
             for flows in metadata.flows:
                 if flows.id == flow_id:
                     flows.debug = debug
-            app_loader = AppLoader()
-            await app_loader.save(metadata, app_id)
             flow_loader = FlowLoader()
             flow = await flow_loader.load(app_id, flow_id)
             if flow is None:
                 return False
             flow.debug = debug
             await flow_loader.save(app_id=app_id,flow_id=flow_id,flow=flow)
+            app_loader = AppLoader()
+            await app_loader.save(metadata, app_id)
             return True
         except Exception as e:
             LOGGER.error(f"Update flow debug from app pool failed: {e!s}")
