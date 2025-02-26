@@ -467,8 +467,7 @@ async def call_rag(params: dict = {}):
                 result = await response.json()
                 chunk_list = result["data"]
                 for chunk in chunk_list:
-                    chunk.replace("\n\n", "")
-                LOGGER.info("RAG 返回", chunk_list)
+                    chunk.replace("\n", "")
                 return {"chunk_list": chunk_list}
             text = await response.text()
             raise CallError(
