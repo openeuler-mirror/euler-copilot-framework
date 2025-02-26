@@ -430,6 +430,7 @@ async def call_rag(params: dict = {}):
                 chunk_list = result["data"]
                 for chunk in chunk_list:
                     chunk.replace("\n\n", "")
+                LOGGER.info("RAG 返回", chunk_list)
                 return {"chunk_list": chunk_list}
             text = await response.text()
             raise CallError(
@@ -451,6 +452,7 @@ async def call_llm(params: dict = {}):
     }
     prompt = params.get("prompt", "")
     chunk_list = params.get("chunk_list", "")
+    LOGGER.info("LLM 接收", chunk_list)
     user_call = "请回答问题" + params.get("quetion", "") + "下面是获得的信息："
     # 构建请求体
     payload = {
