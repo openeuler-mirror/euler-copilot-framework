@@ -420,8 +420,9 @@ async def call_rag(params: dict = {}):
         "kb_sn": params["kb_sn"],
         "top_k": params["top_k"],
         "content": params["question"],
+        "retrieval_mode": params["retrieval_mode"],
     }
-    # 发送 GET 请求
+    # 发送 POST 请求
     async with aiohttp.ClientSession() as session:
         async with session.post(url, headers=headers, data=params_dict) as response:
             # 检查响应状态码
