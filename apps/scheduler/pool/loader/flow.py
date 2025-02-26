@@ -2,6 +2,7 @@
 
 Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 """
+
 from typing import Optional
 
 import aiofiles
@@ -18,7 +19,7 @@ from apps.manager.node import NodeManager
 class FlowLoader:
     """工作流加载器"""
 
-    async def load(self, app_id, flow_id) -> Optional[Flow]:
+    async def load(self, app_id: str, flow_id: str) -> Optional[Flow]:
         """从文件系统中加载【单个】工作流"""
         LOGGER.info(f"[FlowLoader] Loading flow {flow_id} for app {app_id}...")
         flow_path = Path(config["SEMANTICS_DIR"]) / "app" / app_id / "flow" / f"{flow_id}.yaml"
@@ -66,7 +67,11 @@ class FlowLoader:
                 step["type"] = "end"
             else:
                 step["type"] = await NodeManager.get_node_call_id(step["node"])
-                step["name"] = await NodeManager.get_node_name(step["node"]) if "name" not in step or step["name"] == "" else step["name"]
+                step["name"] = (
+                    await NodeManager.get_node_name(step["node"])
+                    if "name" not in step or step["name"] == ""
+                    else step["name"]
+                )
 
         LOGGER.info(f"[FlowLoader] Validating flow {flow_id} for app {app_id}...")
         try:
@@ -75,7 +80,6 @@ class FlowLoader:
         except Exception as e:
             LOGGER.error(f"Invalid flow format: {e}")
             return None
-
 
     async def save(self, app_id: str, flow_id: str, flow: Flow) -> None:
         """保存工作流"""
@@ -94,8 +98,8 @@ class FlowLoader:
                     "node": step.node,
                     "params": step.params,
                     "pos": {
-                        "x":step.pos.x,
-                        "y":step.pos.y,
+                        "x": step.pos.x,
+                        "y": step.pos.y,
                     },
                 }
                 for step_id, step in flow.steps.items()
@@ -114,7 +118,6 @@ class FlowLoader:
 
         async with aiofiles.open(flow_path, mode="w", encoding="utf-8") as f:
             await f.write(yaml.dump(flow_dict, allow_unicode=True, sort_keys=False))
-
 
     async def delete(self, app_id: str, flow_id: str) -> bool:
         """删除指定工作流文件"""

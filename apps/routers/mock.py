@@ -1,15 +1,26 @@
+"""问答大模型调用
+
+Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
+"""
+
 import json
 import random
 import time
-from typing import Any, AsyncGenerator, Dict, Optional
+from collections.abc import AsyncGenerator
+from datetime import datetime
+from textwrap import dedent
+from typing import Any, AsyncGenerator, Optional
 
 import aiohttp
-from pydantic import BaseModel, Field
+import ray
 import tiktoken
 from fastapi import APIRouter, Depends, status
 from fastapi.responses import StreamingResponse
+from openai import AsyncOpenAI
+from pydantic import BaseModel, Field
 
 from apps.common.config import config
+from apps.constants import LOGGER, REASONING_BEGIN_TOKEN, REASONING_END_TOKEN
 from apps.dependency import (
     get_session,
     get_user,
@@ -20,28 +31,6 @@ from apps.entities.request_data import MockRequestData, RequestData
 from apps.entities.scheduler import CallError
 from apps.manager.flow import FlowManager
 from apps.scheduler.pool.loader.flow import FlowLoader
-from datetime import datetime
-from textwrap import dedent
-from typing import Any
-
-from pydantic import BaseModel, Field
-
-from apps.entities.scheduler import CallError
-
-
-"""问答大模型调用
-
-Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
-"""
-from collections.abc import AsyncGenerator
-from typing import Optional
-
-import ray
-import tiktoken
-from openai import AsyncOpenAI
-
-from apps.common.config import config
-from apps.constants import LOGGER, REASONING_BEGIN_TOKEN, REASONING_END_TOKEN
 
 
 class ReasoningLLM:
@@ -57,7 +46,7 @@ class ReasoningLLM:
             )
             return
 
-        self._client =  AsyncOpenAI(
+        self._client = AsyncOpenAI(
             api_key=config["LLM_KEY"],
             base_url=config["LLM_URL"],
         )
@@ -85,13 +74,18 @@ class ReasoningLLM:
 
         return messages
 
-    async def call(self, messages: list[dict[str, str]],  # noqa: C901
-                   max_tokens: Optional[int] = None, temperature: Optional[float] = None,
-                   *, streaming: bool = True, result_only: bool = True) -> AsyncGenerator[str, None]:
+    async def call(
+        self,
+        messages: list[dict[str, str]],  # noqa: C901
+        max_tokens: Optional[int] = None,
+        temperature: Optional[float] = None,
+        *,
+        streaming: bool = True,
+        result_only: bool = True,
+    ) -> AsyncGenerator[str, None]:
         """调用大模型，分为流式和非流式两种"""
         # input_tokens = self._calculate_token_length(messages)
         try:
-
             msg_list = self._validate_messages(messages)
         except ValueError as e:
             err = f"消息格式错误：{e}"
@@ -104,11 +98,11 @@ class ReasoningLLM:
 
         stream = await self._client.chat.completions.create(
             model=config["LLM_MODEL"],
-            messages=msg_list,     # type: ignore[]
+            messages=msg_list,  # type: ignore[]
             max_tokens=max_tokens,
             temperature=temperature,
             stream=True,
-        )     # type: ignore[]
+        )  # type: ignore[]
 
         reasoning_content = ""
         result = ""
@@ -211,213 +205,204 @@ class _RAGOutput(BaseModel):
 
     output: _RAGOutputList = Field(description="RAG工具的输出")
 
+
 router = APIRouter(
     prefix="/api",
     tags=["mock"],
 )
 
 
-async def mock_data(appId="68dd3d90-6a97-4da0-aa62-d38a81c7d2f5", flowId="966c7964-e1c1-4bd8-9333-ed099cf25908", conversationId="eccb08c3-0621-4602-a4d2-4eaada892557", question="你好"):
+async def mock_data(
+    conversationId: str,
+    question: str,
+    *,
+    appId: Optional[str] = None,
+    flowId: Optional[str] = None,
+):
     _encoder = tiktoken.get_encoding("cl100k_base")
-    
-    start_message = [{ # 任务流开始
-                        "event": "flow.start",
-                        "id": "0f9d3e6b-7845-44ab-b247-35c522d38f13",
-                        "groupId":"8b9d3e6b-a892-4602-b247-35c522d38f13", 
-                        "conversationId": conversationId,
-                        "taskId": "eb717bc7-3435-4172-82d1-6b69e62f3fd6",
-                        "flow": {
-                            "appId": appId,
-                            "flowId": flowId,
-                            "stepId": "start",
-                            "stepStatus": "pending",
-                        },
-                        "content": {
-                        },
-                        "metadata": {
-                            "inputTokens": 200,
-                            "outputTokens": 50,
-                            "time_cost": 0.5
-                        }
-                    },
-                    {
-                    "event": "init",
-                    "id": "0f9d3e6b-7845-44ab-b247-35c522d38f13",
-                    "groupId":"8b9d3e6b-a892-4602-b247-35c522d38f13",
-                    "conversationId": conversationId,
-                    "taskId": "eb717bc7-3435-4172-82d1-6b69e62f3fd6",
-                    "content": {
-                        "feature": {
-                            "enable_feedback": True,
-                            "enable_regenerate": True,
-                            "max_tokens": 2048,
-                            "context_num": 2
-                        }
-                    },
-                    "metadata": {
-                        "input_tokens": 200,
-                        "output_tokens": 50,
-                        "time_cost": 0.5
-                    }
-                },
-                ]
-    sample_input = { # 开始节点
-                "event": "step.input",
-                "id": "0f9d3e6b-7845-44ab-b247-35c522d38f13",
-                "groupId":"8b9d3e6b-a892-4602-b247-35c522d38f13",
-                "conversationId": conversationId,
-                "taskId": "eb717bc7-3435-4172-82d1-6b69e62f3fd6",
-                "flow": {
-                    "appId": appId,
-                    "flowId":flowId,
-                    "stepId": "start",
-                    "stepName": "开始",
-                    "stepStatus": "running",
-                },
-                "content": {
-                    "text":"测试输入"
-                },
-                "metadata": {
-                    "inputTokens": 200,
-                    "outputTokens": 50,
-                    "time_cost": 0.5,
-                }
-                }
-    sample_output = { # 开始节点
-                "event": "step.output",
-                "id": "0f9d3e6b-7845-44ab-b247-35c522d38f13",
-                "groupId":"8b9d3e6b-a892-4602-b247-35c522d38f13",
-                "conversationId": conversationId,
-                "taskId": "eb717bc7-3435-4172-82d1-6b69e62f3fd6",
-                "flow": {
-                    "appId": appId,
-                    "flowId":flowId,
-                    "stepId": "start",
-                    "stepName": "开始",
-                    "stepStatus": "success",
-                },
-                "content": {
-                    "text":"测试输出"
-                },
-                "metadata": {
-                    "inputTokens": 200,
-                    "outputTokens": 50,
-                    "time_cost": 0.5,
-                }
-                }
+
+    start_message = [
+        {  # 任务流开始
+            "event": "flow.start",
+            "id": "0f9d3e6b-7845-44ab-b247-35c522d38f13",
+            "groupId": "8b9d3e6b-a892-4602-b247-35c522d38f13",
+            "conversationId": conversationId,
+            "taskId": "eb717bc7-3435-4172-82d1-6b69e62f3fd6",
+            "flow": {
+                "appId": appId,
+                "flowId": flowId,
+                "stepId": "start",
+                "stepStatus": "pending",
+            },
+            "content": {},
+            "metadata": {"inputTokens": 200, "outputTokens": 50, "time_cost": 0.5},
+        },
+        {
+            "event": "init",
+            "id": "0f9d3e6b-7845-44ab-b247-35c522d38f13",
+            "groupId": "8b9d3e6b-a892-4602-b247-35c522d38f13",
+            "conversationId": conversationId,
+            "taskId": "eb717bc7-3435-4172-82d1-6b69e62f3fd6",
+            "content": {
+                "feature": {"enable_feedback": True, "enable_regenerate": True, "max_tokens": 2048, "context_num": 2},
+            },
+            "metadata": {"input_tokens": 200, "output_tokens": 50, "time_cost": 0.5},
+        },
+    ]
+    sample_input = {  # 开始节点
+        "event": "step.input",
+        "id": "0f9d3e6b-7845-44ab-b247-35c522d38f13",
+        "groupId": "8b9d3e6b-a892-4602-b247-35c522d38f13",
+        "conversationId": conversationId,
+        "taskId": "eb717bc7-3435-4172-82d1-6b69e62f3fd6",
+        "flow": {
+            "appId": appId,
+            "flowId": flowId,
+            "stepId": "start",
+            "stepName": "开始",
+            "stepStatus": "running",
+        },
+        "content": {"text": "测试输入"},
+        "metadata": {
+            "inputTokens": 200,
+            "outputTokens": 50,
+            "time_cost": 0.5,
+        },
+    }
+    sample_output = {  # 开始节点
+        "event": "step.output",
+        "id": "0f9d3e6b-7845-44ab-b247-35c522d38f13",
+        "groupId": "8b9d3e6b-a892-4602-b247-35c522d38f13",
+        "conversationId": conversationId,
+        "taskId": "eb717bc7-3435-4172-82d1-6b69e62f3fd6",
+        "flow": {
+            "appId": appId,
+            "flowId": flowId,
+            "stepId": "start",
+            "stepName": "开始",
+            "stepStatus": "success",
+        },
+        "content": {"text": "测试输出"},
+        "metadata": {
+            "inputTokens": 200,
+            "outputTokens": 50,
+            "time_cost": 0.5,
+        },
+    }
     messages = []
     for message in start_message:
         messages.append(message)
     for message in messages:
-        if message['event']=='step.output':
-            t=message['metadata']['time_cost']
+        if message["event"] == "step.output":
+            t = message["metadata"]["time_cost"]
             time.sleep(t)
-        elif message['event']=='text.add':
-            t=random.uniform(0.15, 0.2)
+        elif message["event"] == "text.add":
+            t = random.uniform(0.15, 0.2)
             time.sleep(t)
-        yield "data: " + json.dumps(message,ensure_ascii=False) + "\n\n"
+        yield "data: " + json.dumps(message, ensure_ascii=False) + "\n\n"
     mid_message = []
     flow = await FlowLoader().load(appId, flowId)
     now_flow_item = "start"
     start_time = time.time()
     last_item = ""
-    mapp={}
-    params={}
+    mapp = {}
+    params = {}
     params["question"] = question
-    # print(json.dumps(flow))
+    LOGGER.info(json.dumps(flow))
     for step_id, step in flow.steps.items():
-        mapp[step_id]= step.name, step.params
+        mapp[step_id] = step.name, step.params
     while now_flow_item != "end":
         if last_item == now_flow_item:
             break
-        #如果超过10s强制退出
+        # 如果超过10s强制退出
         if time.time() - start_time > 10:
             break
         last_item = now_flow_item
         for edge in flow.edges:
-            if edge.edge_from.split('.')[0] == now_flow_item:
+            if edge.edge_from.split(".")[0] == now_flow_item:
                 sample_input["flow"]["stepId"] = now_flow_item
-                sample_input["flow"]["stepName"],sample_input["content"] = mapp[now_flow_item]
-                sample_input["content"] = sample_input["content"]["input_parameters"] if now_flow_item != "start" else sample_input["content"]
-                if "content" in sample_input and type(sample_input["content"])==dict:
+                sample_input["flow"]["stepName"], sample_input["content"] = mapp[now_flow_item]
+                sample_input["content"] = (
+                    sample_input["content"]["input_parameters"] if now_flow_item != "start" else sample_input["content"]
+                )
+                if "content" in sample_input and type(sample_input["content"]) == dict:
                     for key, value in sample_input["content"].items():
                         if key in params:
                             sample_input["content"][key] = params[key]
                         else:
                             params[key] = value
                 time.sleep(sample_input["metadata"]["time_cost"])
-                yield "data: " + json.dumps(sample_input,ensure_ascii=False) + "\n\n"
+                yield "data: " + json.dumps(sample_input, ensure_ascii=False) + "\n\n"
                 sample_output["metadata"]["time_cost"] = random.uniform(1.5, 3.5)
                 sample_output["flow"]["stepId"] = now_flow_item
-                sample_output["flow"]["stepName"],sample_output["content"] = mapp[now_flow_item]
-                sample_output["content"] = sample_output["content"]["output_parameters"] if now_flow_item != "start" else sample_output["content"]
+                sample_output["flow"]["stepName"], sample_output["content"] = mapp[now_flow_item]
+                sample_output["content"] = (
+                    sample_output["content"]["output_parameters"]
+                    if now_flow_item != "start"
+                    else sample_output["content"]
+                )
                 if sample_output["flow"]["stepName"] == "【RAG】知识库智能问答":
                     sample_output["content"] = await call_rag(params)
                 if sample_output["flow"]["stepName"] == "【LLM】大模型问答":
                     sample_output["content"] = await call_llm(params)
-                if "content" in sample_output and type(sample_output["content"])==dict:
+                if "content" in sample_output and type(sample_output["content"]) == dict:
                     for key, value in sample_output["content"].items():
-                        params[key]=value
+                        params[key] = value
                 time.sleep(sample_output["metadata"]["time_cost"])
-                yield "data: " + json.dumps(sample_output,ensure_ascii=False) + "\n\n"
+                yield "data: " + json.dumps(sample_output, ensure_ascii=False) + "\n\n"
                 now_flow_item = edge.edge_to
 
     if now_flow_item == "end":
         sample_input["flow"]["stepId"] = now_flow_item
         sample_input["flow"]["stepName"] = "结束"
-        yield "data: " + json.dumps(sample_input,ensure_ascii=False) + "\n\n"
+        yield "data: " + json.dumps(sample_input, ensure_ascii=False) + "\n\n"
         sample_output["flow"]["stepId"] = now_flow_item
         sample_output["flow"]["stepName"] = "结束"
         sample_output["metadata"]["time_cost"] = random.uniform(0.5, 1.5)
-        yield "data: " + json.dumps(sample_output,ensure_ascii=False) + "\n\n"
+        yield "data: " + json.dumps(sample_output, ensure_ascii=False) + "\n\n"
 
-    
-
-
-    end_message =  [
-            { # flow结束
-                "event": "flow.stop",
-                "id": "0f9d3e6b-7845-44ab-b247-35c522d38f13",
-                "groupId":"8b9d3e6b-a892-4602-b247-35c522d38f13", 
-                "conversationId": conversationId,
-                "taskId": "eb717bc7-3435-4172-82d1-6b69e62f3fd6",
-                "flow": {
-                    "appId": appId,
-                    "flowId":flowId,
-                    "stepId": "end",
-                    "stepName": "end",
-                    "stepStatus": "success",
-                },
-                "content": {
-                },
-                "measure": {
-                    "inputTokens": 200,
-                    "outputTokens": 50,
-                    "time_cost": 0.5
-                }
-            }]
+    end_message = [
+        {  # flow结束
+            "event": "flow.stop",
+            "id": "0f9d3e6b-7845-44ab-b247-35c522d38f13",
+            "groupId": "8b9d3e6b-a892-4602-b247-35c522d38f13",
+            "conversationId": conversationId,
+            "taskId": "eb717bc7-3435-4172-82d1-6b69e62f3fd6",
+            "flow": {
+                "appId": appId,
+                "flowId": flowId,
+                "stepId": "end",
+                "stepName": "end",
+                "stepStatus": "success",
+            },
+            "content": {},
+            "measure": {"inputTokens": 200, "outputTokens": 50, "time_cost": 0.5},
+        },
+    ]
     messages = []
     for message in end_message:
         messages.append(message)
         for message in messages:
-            if message['event']=='step.output':
-                t=message['metadata']['time_cost']
+            if message["event"] == "step.output":
+                t = message["metadata"]["time_cost"]
                 time.sleep(t)
-            elif message['event']=='text.add':
-                t=random.uniform(0.15, 0.2)
+            elif message["event"] == "text.add":
+                t = random.uniform(0.15, 0.2)
                 time.sleep(t)
-            yield "data: " + json.dumps(message,ensure_ascii=False) + "\n\n"
+            yield "data: " + json.dumps(message, ensure_ascii=False) + "\n\n"
 
     chat_message = call_llm_stream(params)
     messages = []
     temp_messages = []
     async for message in chat_message:
-        yield "data: "+ message + "\n\n"
-    yield json.dumps({"event": "text.end", "content": "|", "input_tokens": len(_encoder.encode(question)), "output_tokens": 290})
-    await FlowManager.updata_flow_debug_by_app_and_flow_id(appId,flowId,True)
+        yield "data: " + message + "\n\n"
+    yield json.dumps(
+        {"event": "text.end", "content": "|", "input_tokens": len(_encoder.encode(question)), "output_tokens": 290}
+    )
+    await FlowManager.updata_flow_debug_by_app_and_flow_id(appId, flowId, True)
 
 
-async def call_rag(params:dict = {}):
+async def call_rag(params: dict = {}):
     url = config["RAG_HOST"].rstrip("/") + "/chunk/get"
     headers = {
         "Content-Type": "application/json",
@@ -427,7 +412,7 @@ async def call_rag(params:dict = {}):
         "top_k": params["top_k"],
         "content": params["question"],
     }
-        # 发送 GET 请求
+    # 发送 GET 请求
     async with aiohttp.ClientSession() as session:
         async with session.get(url, headers=headers, params=params_dict) as response:
             # 检查响应状态码
@@ -435,8 +420,8 @@ async def call_rag(params:dict = {}):
                 result = await response.json()
                 chunk_list = result["data"]
                 for chunk in chunk_list:
-                    chunk.replace('\n\n','')
-                return {"chunk_list":chunk_list}
+                    chunk.replace("\n\n", "")
+                return {"chunk_list": chunk_list}
             text = await response.text()
             raise CallError(
                 message=f"rag调用失败：{text}",
@@ -446,6 +431,7 @@ async def call_rag(params:dict = {}):
                     "text": text,
                 },
             )
+
 
 async def call_llm(params: dict = {}):
     # 构建请求 URL 和 headers
@@ -460,7 +446,10 @@ async def call_llm(params: dict = {}):
     # 构建请求体
     payload = {
         "model": params.get("model", config["LLM_MODEL"]),  # 默认模型
-        "messages": params.get("messages", [{"role":"system","content":prompt},{'role':'user','content':user_call+str(chunk_list)}]),  # 消息列表
+        "messages": params.get(
+            "messages",
+            [{"role": "system", "content": prompt}, {"role": "user", "content": user_call + str(chunk_list)}],
+        ),  # 消息列表
         "stream": params.get("stream", False),  # 是否流式返回
         "n": params.get("n", 1),  # 返回的候选答案数量
         "max_tokens": params.get("max_tokens", 4096),  # 最大 token 数量
@@ -473,35 +462,37 @@ async def call_llm(params: dict = {}):
             if response.status == status.HTTP_200_OK:
                 result = await response.json()
                 result = result["choices"][0]["message"]["content"]
-                print(result)
+                LOGGER.info(result)
                 result = result.replace("\n\n", "")
-                return {"content":result}
-            else:
-                text = await response.text()
-                print(f"LLM 调用失败：{text}")
-                return None
+                return {"content": result}
+            text = await response.text()
+            LOGGER.error(f"LLM 调用失败：{text}")
+            return None
+
 
 class _LLMOutput(BaseModel):
     """定义LLM工具调用的输出"""
 
     message: str = Field(description="大模型输出的文字信息")
-async def call_llm_stream(params: Dict[str, Any] = {}):
+
+
+async def call_llm_stream(params: dict[str, Any] = {}):
     _encoder = tiktoken.get_encoding("cl100k_base")
     prompt = "你是EulerCopilot，我们向你问了一个问题，需要你完成这个问题，我们会给出对应的信息"
     question = params.get("question", "")
     content = f"问题：{question}\n" + "信息：" + str(params.get("chunk_list", ""))
-    message = params.get("messages", [{"role":"system","content":prompt},{'role':'user','content':content}])
+    message = params.get("messages", [{"role": "system", "content": prompt}, {"role": "user", "content": content}])
     sum = 0
     async for chunk in ReasoningLLM().call(messages=message):
         sum = sum + len(_encoder.encode(chunk))
-        chunk = chunk.replace('\n\n','')
+        chunk = chunk.replace("\n\n", "")
         output = {
             "event": "text.add",
             "content": chunk,
             "input_tokens": len(_encoder.encode(question)),
-            "output_tokens": sum ,
+            "output_tokens": sum,
         }
-        yield json.dumps(output,ensure_ascii=False)
+        yield json.dumps(output, ensure_ascii=False)
 
 
 @router.post("/mock/chat", dependencies=[Depends(verify_csrf_token), Depends(verify_user)])
@@ -509,7 +500,12 @@ async def chat(
     post_body: MockRequestData,
 ) -> StreamingResponse:
     """LLM流式对话接口"""
-    res = mock_data(appId=post_body.app_id, conversationId=post_body.conversation_id, flowId=post_body.flow_id,question=post_body.question)
+    res = mock_data(
+        appId=post_body.app_id,
+        conversationId=post_body.conversation_id,
+        flowId=post_body.flow_id,
+        question=post_body.question,
+    )
     return StreamingResponse(
         content=res,
         media_type="text/event-stream",
