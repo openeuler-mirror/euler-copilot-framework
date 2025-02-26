@@ -388,7 +388,7 @@ async def mock_data(
                         time.sleep(sample_output["metadata"]["time_cost"])
                         if sample_output["flow"]["stepName"] == "知识库":
                             for i in range(len(sample_output["content"]["chunk_list"])):
-                                sample_output["content"]["chunk_list"][i] = sample_output["content"]["chunk_list"][i][:100] + "..."
+                                sample_output["content"]["chunk_list"][i] = sample_output["content"]["chunk_list"][i].replace("\n", "")[:100] + "..."
                         yield "data: " + json.dumps(sample_output, ensure_ascii=False) + "\n\n"
                         now_flow_item = edge.edge_to
 
@@ -470,8 +470,6 @@ async def call_rag(params: dict = {}):
             if response.status == status.HTTP_200_OK:
                 result = await response.json()
                 chunk_list = result["data"]
-                for i in range(len(chunk_list)):
-                    chunk_list[i] = chunk_list[i].replace("\n", "")
                 return {"chunk_list": chunk_list}
             text = await response.text()
             raise CallError(
