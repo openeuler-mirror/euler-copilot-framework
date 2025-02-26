@@ -301,56 +301,64 @@ async def mock_data(
             time.sleep(t)
         yield "data: " + json.dumps(message, ensure_ascii=False) + "\n\n"
     mid_message = []
-    flow = await FlowLoader().load(appId, flowId)
+
+    flow = None
+    if appId and flowId:
+        flow = await FlowLoader().load(appId, flowId)
+
     now_flow_item = "start"
     start_time = time.time()
     last_item = ""
     mapp = {}
     params = {}
     params["question"] = question
-    LOGGER.info(json.dumps(flow))
-    for step_id, step in flow.steps.items():
-        mapp[step_id] = step.name, step.params
-    while now_flow_item != "end":
-        if last_item == now_flow_item:
-            break
-        # 如果超过10s强制退出
-        if time.time() - start_time > 10:
-            break
-        last_item = now_flow_item
-        for edge in flow.edges:
-            if edge.edge_from.split(".")[0] == now_flow_item:
-                sample_input["flow"]["stepId"] = now_flow_item
-                sample_input["flow"]["stepName"], sample_input["content"] = mapp[now_flow_item]
-                sample_input["content"] = (
-                    sample_input["content"]["input_parameters"] if now_flow_item != "start" else sample_input["content"]
-                )
-                if "content" in sample_input and type(sample_input["content"]) == dict:
-                    for key, value in sample_input["content"].items():
-                        if key in params:
-                            sample_input["content"][key] = params[key]
-                        else:
+
+    if flow is not None:
+        LOGGER.info(json.dumps(flow.model_dump_json(exclude_none=True, by_alias=True), ensure_ascii=False))
+        for step_id, step in flow.steps.items():
+            mapp[step_id] = step.name, step.params
+        while now_flow_item != "end":
+            if last_item == now_flow_item:
+                break
+            # 如果超过10s强制退出
+            if time.time() - start_time > 10:
+                break
+            last_item = now_flow_item
+            for edge in flow.edges:
+                if edge.edge_from.split(".")[0] == now_flow_item:
+                    sample_input["flow"]["stepId"] = now_flow_item
+                    sample_input["flow"]["stepName"], sample_input["content"] = mapp[now_flow_item]
+                    sample_input["content"] = (
+                        sample_input["content"]["input_parameters"]
+                        if now_flow_item != "start"
+                        else sample_input["content"]
+                    )
+                    if "content" in sample_input and type(sample_input["content"]) == dict:
+                        for key, value in sample_input["content"].items():
+                            if key in params:
+                                sample_input["content"][key] = params[key]
+                            else:
+                                params[key] = value
+                    time.sleep(sample_input["metadata"]["time_cost"])
+                    yield "data: " + json.dumps(sample_input, ensure_ascii=False) + "\n\n"
+                    sample_output["metadata"]["time_cost"] = random.uniform(1.5, 3.5)
+                    sample_output["flow"]["stepId"] = now_flow_item
+                    sample_output["flow"]["stepName"], sample_output["content"] = mapp[now_flow_item]
+                    sample_output["content"] = (
+                        sample_output["content"]["output_parameters"]
+                        if now_flow_item != "start"
+                        else sample_output["content"]
+                    )
+                    if sample_output["flow"]["stepName"] == "【RAG】知识库智能问答":
+                        sample_output["content"] = await call_rag(params)
+                    if sample_output["flow"]["stepName"] == "【LLM】大模型问答":
+                        sample_output["content"] = await call_llm(params)
+                    if "content" in sample_output and type(sample_output["content"]) == dict:
+                        for key, value in sample_output["content"].items():
                             params[key] = value
-                time.sleep(sample_input["metadata"]["time_cost"])
-                yield "data: " + json.dumps(sample_input, ensure_ascii=False) + "\n\n"
-                sample_output["metadata"]["time_cost"] = random.uniform(1.5, 3.5)
-                sample_output["flow"]["stepId"] = now_flow_item
-                sample_output["flow"]["stepName"], sample_output["content"] = mapp[now_flow_item]
-                sample_output["content"] = (
-                    sample_output["content"]["output_parameters"]
-                    if now_flow_item != "start"
-                    else sample_output["content"]
-                )
-                if sample_output["flow"]["stepName"] == "【RAG】知识库智能问答":
-                    sample_output["content"] = await call_rag(params)
-                if sample_output["flow"]["stepName"] == "【LLM】大模型问答":
-                    sample_output["content"] = await call_llm(params)
-                if "content" in sample_output and type(sample_output["content"]) == dict:
-                    for key, value in sample_output["content"].items():
-                        params[key] = value
-                time.sleep(sample_output["metadata"]["time_cost"])
-                yield "data: " + json.dumps(sample_output, ensure_ascii=False) + "\n\n"
-                now_flow_item = edge.edge_to
+                    time.sleep(sample_output["metadata"]["time_cost"])
+                    yield "data: " + json.dumps(sample_output, ensure_ascii=False) + "\n\n"
+                    now_flow_item = edge.edge_to
 
     if now_flow_item == "end":
         sample_input["flow"]["stepId"] = now_flow_item
@@ -397,9 +405,10 @@ async def mock_data(
     async for message in chat_message:
         yield "data: " + message + "\n\n"
     yield json.dumps(
-        {"event": "text.end", "content": "|", "input_tokens": len(_encoder.encode(question)), "output_tokens": 290}
+        {"event": "text.end", "content": "|", "input_tokens": len(_encoder.encode(question)), "output_tokens": 290},
     )
-    await FlowManager.updata_flow_debug_by_app_and_flow_id(appId, flowId, True)
+    if appId and flowId:
+        await FlowManager.updata_flow_debug_by_app_and_flow_id(appId, flowId, True)
 
 
 async def call_rag(params: dict = {}):
