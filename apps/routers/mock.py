@@ -461,7 +461,7 @@ async def call_rag(params: dict = {}):
     }
     # 发送 POST 请求
     async with aiohttp.ClientSession() as session:
-        async with session.post(url, headers=headers, data=params_dict) as response:
+        async with session.post(url, headers=headers, json=params_dict) as response:
             # 检查响应状态码
             if response.status == status.HTTP_200_OK:
                 result = await response.json()
