@@ -167,12 +167,12 @@ modify_yaml() {
       "${DEPLOY_DIR}/chart/euler_copilot/values.yaml" \
       --set "models.answer.url=http://$host:11434" \
       --set "models.answer.key=sk-123456" \
-      --set "models.answer.name=deepseek-llm-7b-chat" \
+      --set "models.answer.name=deepseek-llm-7b-chat:latest" \
       --set "models.answer.ctx_length=8192" \
       --set "models.answer.max_tokens=2048" \
       --set "models.embedding.url=http://$host:11434" \
       --set "models.embedding.key=sk-123456" \
-      --set "models.embedding.name=bge-m3" \
+      --set "models.embedding.name=bge-m3:latest" \
       --set "login.client.id=${client_id}" \
       --set "login.client.secret=${client_secret}" \
       --set "domain.authhub=${authhub_domain}" \
