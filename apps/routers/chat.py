@@ -134,10 +134,9 @@ async def chat(
             flow_id = await AppCenterManager.get_default_flow_id(post_body.app.app_id)
             post_body.app.flow_id = flow_id if flow_id else ""
         res = mock_data(
-            appId=post_body.app.app_id,
-            conversationId=post_body.conversation_id,
-            flowId=post_body.app.flow_id,
-            question=post_body.question,
+            post_body=post_body,
+            user_sub=user_sub,
+            session_id=session_id,
         )
     else:
         res = chat_generator(post_body, user_sub, session_id)
