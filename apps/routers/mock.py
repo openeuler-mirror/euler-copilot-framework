@@ -466,8 +466,8 @@ async def call_rag(params: dict = {}):
             if response.status == status.HTTP_200_OK:
                 result = await response.json()
                 chunk_list = result["data"]
-                for chunk in chunk_list:
-                    chunk.replace("\n", "")
+                for i in range(len(chunk_list)):
+                    chunk_list[i] = chunk_list[i].replace("\n", "")
                 return {"chunk_list": chunk_list}
             text = await response.text()
             raise CallError(
