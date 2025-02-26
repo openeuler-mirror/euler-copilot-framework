@@ -75,11 +75,3 @@ spec:
           emptyDir:
             medium: Memory
 {{- end -}}
-
-{{- define "redis.imageTag" -}}
-  {{- $arch := .Values.globals.arch | default "x86_64" | replace "aarch64" "arm64" -}}
-  {{- if eq $arch "arm64" -}}7.4-alpine-arm
-  {{- else if eq $arch "x86_64" -}}7.4-alpine-x86
-  {{- else -}}7.4-alpine
-  {{- end -}}
-{{- end -}}

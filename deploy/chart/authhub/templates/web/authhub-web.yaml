@@ -84,11 +84,3 @@ spec:
           configMap:
             name: authhub-web-config
 {{- end -}}
-
-{{- define "authhub-web.imageTag" -}}
-  {{- $arch := .Values.globals.arch | default "x86_64" | replace "aarch64" "arm64" -}}
-  {{- if eq $arch "arm64" -}}0.9.3-arm
-  {{- else if eq $arch "x86_64" -}}0.9.3-x86
-  {{- else -}}0.9.3
-  {{- end -}}
-{{- end -}}
