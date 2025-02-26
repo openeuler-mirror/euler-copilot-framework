@@ -341,17 +341,6 @@ class AppCenterManager:
             # 删除应用
             app_loader = AppLoader()
             await app_loader.delete(app_id)
-            user_collection = MongoDB.get_collection("user")
-            # 删除用户使用记录
-            await user_collection.update_many(
-                {f"app_usage.{app_id}": {"$exists": True}},
-                {"$unset": {f"app_usage.{app_id}": ""}},
-            )
-            # 删除用户收藏
-            await user_collection.update_many(
-                {"fav_apps": {"$in": [app_id]}},
-                {"$pull": {"fav_apps": app_id}},
-            )
             return True
         except Exception as e:
             LOGGER.error(f"[AppCenterManager] Delete app failed: {e}")

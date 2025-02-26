@@ -76,7 +76,6 @@ class AppLoader:
             raise RuntimeError(err) from e
         await self._update_db(metadata)
 
-
     async def save(self, metadata: AppMetadata, app_id: str) -> None:
         """保存应用
 
@@ -94,17 +93,27 @@ class AppLoader:
         await file_checker.diff_one(app_path)
         await self.load(app_id, file_checker.hashes[f"{APP_DIR}/{app_id}"])
 
-
     async def delete(self, app_id: str) -> None:
         """删除App，并更新数据库
 
         :param app_id: 应用 ID
         """
-        app_collection = MongoDB.get_collection("app")
         try:
-            await app_collection.delete_one({"_id": app_id})
+            app_collection = MongoDB.get_collection("app")
+            await app_collection.delete_one({"_id": app_id})  # 删除应用数据
+            user_collection = MongoDB.get_collection("user")
+            # 删除用户使用记录
+            await user_collection.update_many(
+                {f"app_usage.{app_id}": {"$exists": True}},
+                {"$unset": {f"app_usage.{app_id}": ""}},
+            )
+            # 删除用户收藏
+            await user_collection.update_many(
+                {"fav_apps": {"$in": [app_id]}},
+                {"$pull": {"fav_apps": app_id}},
+            )
         except Exception as e:
-            err = f"[AppLoader] 删除App失败：{e}"
+            err = f"[AppLoader] MongoDB删除App失败：{e}"
             LOGGER.error(err)
 
         session = await PostgreSQL.get_session()
@@ -112,7 +121,7 @@ class AppLoader:
             await session.execute(delete(AppPoolVector).where(AppPoolVector.id == app_id))
             await session.commit()
         except Exception as e:
-            err = f"[AppLoader] 删除数据库失败：{e}"
+            err = f"[AppLoader] PostgreSQL删除App失败：{e}"
             LOGGER.error(err)
 
         await session.aclose()
@@ -120,7 +129,6 @@ class AppLoader:
         app_path = Path(config["SEMANTICS_DIR"]) / APP_DIR / app_id
         if await app_path.exists():
             shutil.rmtree(str(app_path), ignore_errors=True)
-
 
     async def _update_db(self, metadata: AppMetadata) -> None:
         """更新数据库"""
