@@ -3,6 +3,7 @@
 Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 """
 
+import copy
 import json
 import random
 import time
@@ -383,8 +384,11 @@ async def mock_data(
                             sample_output["content"] = {"message": "<StreamAnswerResponse>"}
                         if "content" in sample_output and isinstance(sample_output["content"], dict):
                             for key, value in sample_output["content"].items():
-                                params[key] = value
+                                params[key] = copy.deepcopy(value)
                         time.sleep(sample_output["metadata"]["time_cost"])
+                        if sample_output["flow"]["stepName"] == "知识库":
+                            for i in range(len(sample_output["content"]["chunk_list"])):
+                                sample_output["content"]["chunk_list"][i] = sample_output["content"]["chunk_list"][i][:100] + "..."
                         yield "data: " + json.dumps(sample_output, ensure_ascii=False) + "\n\n"
                         now_flow_item = edge.edge_to
 
