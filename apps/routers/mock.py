@@ -393,14 +393,17 @@ async def mock_data(
                         now_flow_item = edge.edge_to
 
         if now_flow_item == "end":
+            sample_input["content"]={}
             sample_input["flow"]["stepId"] = now_flow_item
             sample_input["flow"]["stepName"] = "结束"
             yield "data: " + json.dumps(sample_input, ensure_ascii=False) + "\n\n"
+            sample_output["content"]={}
             sample_output["flow"]["stepId"] = now_flow_item
             sample_output["flow"]["stepName"] = "结束"
             sample_output["metadata"]["time_cost"] = random.uniform(0.5, 1.5)
             yield "data: " + json.dumps(sample_output, ensure_ascii=False) + "\n\n"
-
+        if appId and flowId:
+            await FlowManager.updata_flow_debug_by_app_and_flow_id(appId, flowId, True)
         end_message = [
             {  # flow结束
                 "event": "flow.stop",
@@ -408,9 +411,9 @@ async def mock_data(
                 "groupId": "8b9d3e6b-a892-4602-b247-35c522d38f13",
                 "conversationId": conversationId,
                 "taskId": "eb717bc7-3435-4172-82d1-6b69e62f3fd6",
-                "flow": {},
+                "flow": {"stepStatus": "success"},
                 "content": {},
-                "measure": {"inputTokens": 200, "outputTokens": 50, "time_cost": random.uniform(0.5, 1.5)},
+                "metadata": {"inputTokens": 0, "outputTokens": 0, "time_cost": random.uniform(0.5, 1.5)},
             },
         ]
         messages = []
@@ -433,8 +436,6 @@ async def mock_data(
         yield json.dumps(
             {"event": "text.end", "content": "|", "input_tokens": len(_encoder.encode(question)), "output_tokens": 290},
         )
-        if appId and flowId:
-            await FlowManager.updata_flow_debug_by_app_and_flow_id(appId, flowId, True)
 
         # # 获取最终答案
         # task = await task_pool.get_task.remote(task_id)
