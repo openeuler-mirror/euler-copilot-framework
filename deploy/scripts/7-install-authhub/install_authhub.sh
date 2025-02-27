@@ -1,6 +1,5 @@
 #!/bin/bash
 
-
 set -eo pipefail
 
 RED='\033[31m'
@@ -26,7 +25,8 @@ get_architecture() {
             return 1
             ;;
     esac
-    echo -e "${GREEN}检测到系统架构：$(uname -m)${NC}"
+    echo -e "${GREEN}检测到系统架构：$(uname -m)${NC}" >&2
+    echo "$arch"
 }
 
 create_namespace() {
@@ -61,9 +61,9 @@ delete_pvcs() {
     local pvc_name
     pvc_name=$(kubectl get pvc -n euler-copilot | grep 'mysql-pvc' 2>/dev/null || true)
 
-    if [ -n "$pvc_list" ]; then
+    if [ -n "$pvc_name" ]; then
         echo -e "${YELLOW}找到以下PVC，开始清理...${NC}"
-	kubectl delete pvc mysql-pvc -n euler-copilot --force --grace-period=0 || echo -e "${RED}PVC删除失败，继续执行...${NC}"
+        kubectl delete pvc mysql-pvc -n euler-copilot --force --grace-period=0 || echo -e "${RED}PVC删除失败，继续执行...${NC}"
     else
         echo -e "${YELLOW}未找到需要清理的PVC${NC}"
     fi
@@ -88,6 +88,7 @@ get_user_input() {
 }
 
 helm_install() {
+    local arch="$1"
     echo -e "${BLUE}==> 进入部署目录...${NC}"
     [ ! -d "${DEPLOY_DIR}/chart" ] && {
         echo -e "${RED}错误：部署目录不存在 ${DEPLOY_DIR}/chart ${NC}"
@@ -140,15 +141,20 @@ check_pods_status() {
 }
 
 main() {
-    get_architecture
-    create_namespace
-    delete_pvcs
-    get_user_input
-    helm_install
-    check_pods_status
+    local arch
+    arch=$(get_architecture) || exit 1
+    create_namespace || exit 1
+    delete_pvcs || exit 1
+    get_user_input || exit 1
+    helm_install "$arch" || exit 1
+    check_pods_status || {
+        echo -e "${RED}部署失败：Pod状态检查未通过！${NC}"
+        exit 1
+    }
 
     echo -e "\n${GREEN}========================="
-    echo "Authhub 部署完成！"
+    echo -e "Authhub 部署完成！"
+    echo -e "查看pod状态：kubectl get pod -n euler-copilot"
     echo -e "Authhub登录地址为: https://${authhub_domain}"
     echo -e "默认账号密码: administrator/changeme"
     echo -e "=========================${NC}"
@@ -156,4 +162,3 @@ main() {
 
 trap 'echo -e "${RED}操作被中断！${NC}"; exit 1' INT
 main "$@"
-
