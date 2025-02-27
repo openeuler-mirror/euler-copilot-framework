@@ -37,7 +37,7 @@ spec:
       automountServiceAccountToken: false
       containers:
         - name: rag
-          image: {{ if .Values.euler_copilot.rag.image }}{{ .Values.euler_copilot.rag.image }}{{ else }}{{ .Values.globals.imageRegistry | default "hub.oepkgs.net" }}/neocopilot/data_chain_back_end:0.9.4-{{ .Values.globals.arch | default "x86" }}{{ end }}
+          image: {{ .Values.euler_copilot.rag.image | default (printf "%s/neocopilot/data_chain_back_end:0.9.4-%s" (.Values.globals.imageRegistry | default "hub.oepkgs.net") (ternary "arm" "x86" (eq (.Values.globals.arch | default "x86") "arm"))) }}
           imagePullPolicy: {{ default "IfNotPresent" .Values.globals.imagePullPolicy }}
           ports:
             - containerPort: 9988
@@ -64,7 +64,7 @@ spec:
               {{ toYaml .Values.euler_copilot.rag.resourceLimits | nindent 14 }}
       initContainers:
         - name: rag-copy-secret
-          image: {{ if .Values.euler_copilot.secret_inject.image }}{{ .Values.euler_copilot.secret_inject.image }}{{ else }}{{ .Values.globals.imageRegistry | default "hub.oepkgs.net" }}/neocopilot/secret_inject:dev-{{ .Values.globals.arch | default "x86" }}{{ end }}
+          image: {{ .Values.euler_copilot.secret_inject.image | default (printf "%s/neocopilot/secret_inject:dev-%s" (.Values.globals.imageRegistry | default "hub.oepkgs.net") (ternary "arm" "x86" (eq (.Values.globals.arch | default "x86") "arm"))) }}
           imagePullPolicy: {{ default "IfNotPresent" .Values.globals.imagePullPolicy }}
           volumeMounts:
             - mountPath: /config/.env
