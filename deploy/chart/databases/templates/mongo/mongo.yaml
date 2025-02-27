@@ -37,14 +37,7 @@ spec:
       automountServiceAccountToken: false
       containers:
         - name: mongo
-          image: {{- if .Values.databases.mongo.image }}
-            {{- .Values.databases.mongo.image }}
-          {{- else }}
-            {{- $registry := .Values.globals.imageRegistry | default "hub.oepkgs.net" }}
-            {{- $arch := .Values.globals.arch | default "x86" }}
-            {{- $suffix := ternary "arm" "x86" (eq $arch "arm") }}
-            {{- printf "%s/neocopilot/mongo:7.0.16-%s" $registry $suffix }}
-          {{- end }}
+          image: {{ .Values.databases.mongo.image | default (printf "%s/neocopilot/mongo:7.0.16-%s" (.Values.globals.imageRegistry | default "hub.oepkgs.net") (ternary "arm" "x86" (eq (.Values.globals.arch | default "x86") "arm")) }}
           imagePullPolicy: {{ default "IfNotPresent" .Values.globals.imagePullPolicy }}
           command:
             - bash
