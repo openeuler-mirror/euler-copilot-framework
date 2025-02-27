@@ -268,6 +268,23 @@ class AppCenterManager:
             {"_id": app_id},
             {"$set": {"published": True}},
         )
+        metadata = AppMetadata(
+            type=MetadataType.APP,
+            id=app_id,
+            icon=app_data.icon,
+            name=app_data.name,
+            description=app_data.description,
+            version="1.0.0",
+            author=user_sub,
+            links=app_data.links,
+            first_questions=app_data.first_questions,
+            history_len=app_data.history_len,
+            permission=app_data.permission,
+            published=True,
+            flows=app_data.flows,
+        )
+        app_loader = AppLoader()
+        await app_loader.save(metadata, app_id)
 
     @staticmethod
     async def modify_favorite_app(app_id: str, user_sub: str, *, favorited: bool) -> None:

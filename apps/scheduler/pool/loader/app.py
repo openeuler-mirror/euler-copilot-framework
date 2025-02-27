@@ -67,6 +67,8 @@ class AppLoader:
                     debug=flow.debug,
                 ),
             )
+            if not new_flows[-1].debug:
+                metadata.published = False
         metadata.flows = new_flows
         try:
             metadata = AppMetadata.model_validate(metadata)
