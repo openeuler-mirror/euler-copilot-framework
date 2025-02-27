@@ -153,6 +153,7 @@ class AppLoader:
                             first_questions=metadata.first_questions,
                             history_len=metadata.history_len,
                             permission=metadata.permission if metadata.permission else Permission(),
+                            published=metadata.published,
                             flows=metadata.flows,
                             hashes=metadata.hashes,
                         ),
