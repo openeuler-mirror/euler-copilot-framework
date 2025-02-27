@@ -179,7 +179,9 @@ class ServiceCenterManager:
             api_list.append(
                 ServiceApiData(
                     name=node.name,
-                    path="test path",
+                    path=f"{node.known_params['method'].upper()} {node.known_params['url']}"
+                    if node.known_params and "method" in node.known_params and "url" in node.known_params
+                    else "",
                     description=node.description,
                 ),
             )
