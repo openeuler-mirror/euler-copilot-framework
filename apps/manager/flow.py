@@ -5,11 +5,11 @@ Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 from typing import Optional
 
 from pymongo import ASCENDING
-
-from apps.constants import LOGGER
-from apps.entities.appcenter import AppLink
-from apps.entities.enum_var import EdgeType, MetadataType, PermissionType
-from apps.entities.flow import AppMetadata, Edge, Flow, Permission, Step, StepPos
+from anyio import Path
+from apps.common.config import config
+from apps.constants import APP_DIR, LOGGER
+from apps.entities.enum_var import EdgeType, PermissionType
+from apps.entities.flow import Edge, Flow, Step, StepPos
 from apps.entities.flow_topology import (
     EdgeItem,
     FlowItem,
@@ -21,6 +21,7 @@ from apps.entities.flow_topology import (
 from apps.entities.pool import AppFlow, AppPool
 from apps.manager.node import NodeManager
 from apps.models.mongo import MongoDB
+from apps.scheduler.pool.check import FileChecker
 from apps.scheduler.pool.loader.app import AppLoader
 from apps.scheduler.pool.loader.flow import FlowLoader
 from apps.utils.flow import generate_from_schema
@@ -351,7 +352,10 @@ class FlowManager:
             await FlowLoader().save(app_id, flow_id, flow_config)
             flow_config = await FlowLoader().load(app_id, flow_id)
             app_loader = AppLoader()
-            await app_loader.load(app_id,{"":""})
+            file_checker = FileChecker()
+            app_path = Path(config["SEMANTICS_DIR"]) / APP_DIR / app_id
+            await file_checker.diff_one(app_path)
+            await app_loader.load(app_id, file_checker.hashes[f"{APP_DIR}/{app_id}"])
             return flow_item
         except Exception as e:
             LOGGER.error(
@@ -370,7 +374,10 @@ class FlowManager:
             result = await FlowLoader().delete(app_id, flow_id)
             # 修改app内flow信息
             app_loader = AppLoader()
-            await app_loader.load(app_id, {"":""})
+            file_checker = FileChecker()
+            app_path = Path(config["SEMANTICS_DIR"]) / APP_DIR / app_id
+            await file_checker.diff_one(app_path)
+            await app_loader.load(app_id, file_checker.hashes[f"{APP_DIR}/{app_id}"])
             if result is None:
                 LOGGER.error("Delete flow from app pool failed")
                 return None
@@ -390,7 +397,10 @@ class FlowManager:
             flow.debug = debug
             await flow_loader.save(app_id=app_id,flow_id=flow_id,flow=flow)
             app_loader = AppLoader()
-            await app_loader.load(app_id, {"":""})
+            file_checker = FileChecker()
+            app_path = Path(config["SEMANTICS_DIR"]) / APP_DIR / app_id
+            await file_checker.diff_one(app_path)
+            await app_loader.load(app_id, file_checker.hashes[f"{APP_DIR}/{app_id}"])
             return True
         except Exception as e:
             LOGGER.error(f"Update flow debug from app pool failed: {e!s}")
