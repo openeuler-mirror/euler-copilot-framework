@@ -25,7 +25,7 @@ colorful_progress() {
     local progress=$((current*100/total))
     local completed=$((PROGRESS_WIDTH*current/total))
     local remaining=$((PROGRESS_WIDTH-completed))
-    
+
     printf "\r${BOLD}${BLUE}⟦${RESET}"
     printf "${BG_BLUE}${WHITE}%${completed}s${RESET}" | tr ' ' '▌'
     printf "${DIM}${BLUE}%${remaining}s${RESET}" | tr ' ' '·'
@@ -62,12 +62,12 @@ run_script_with_check() {
     fi
 
     print_step_title $step_number "$script_name"
-    
+
     # 获取绝对路径和执行目录
     local script_abs_path=$(realpath "$script_path")
     local script_dir=$(dirname "$script_abs_path")
     local script_base=$(basename "$script_abs_path")
-    
+
     echo -e "${DIM}${BLUE}🠖 脚本绝对路径：${YELLOW}${script_abs_path}${RESET}"
     echo -e "${DIM}${BLUE}🠖 执行工作目录：${YELLOW}${script_dir}${RESET}"
     echo -e "${DIM}${BLUE}🠖 开始执行时间：${YELLOW}$(date +'%Y-%m-%d %H:%M:%S')${RESET}"
@@ -108,14 +108,6 @@ run_script_with_check() {
 
 # 卸载所有组件
 uninstall_all() {
-    echo -e "\n${BOLD}${RED}⚠  警告：此操作将永久删除所有组件和数据！${RESET}"
-    read -p "$(echo -e "${YELLOW}确认要继续吗？(y/n) ${RESET}")" confirm
-
-    if [[ $confirm != "y" && $confirm != "Y" ]]; then
-        echo -e "${GREEN}取消卸载操作${RESET}"
-        return
-    fi
-
     echo -e "\n${CYAN}▸ 开始卸载所有Helm Release...${RESET}"
     local RELEASES
     RELEASES=$(helm list -n euler-copilot --short 2>/dev/null || true)
@@ -143,6 +135,18 @@ uninstall_all() {
         echo -e "${YELLOW}未找到需要清理的PVC${RESET}"
     fi
 
+    echo -e "\n${CYAN}▸ 清理Secret资源...${RESET}"
+    local secret_list
+    secret_list=$(kubectl get secret -n euler-copilot -o name 2>/dev/null || true)
+
+    if [ -n "$secret_list" ]; then
+        echo -e "${YELLOW}找到以下Secret资源：${RESET}"
+        echo "$secret_list" | awk '{print "  ➤ "$0}'
+        echo "$secret_list" | xargs -n 1 kubectl delete -n euler-copilot || echo -e "${RED}删除失败，继续执行...${RESET}"
+    else
+        echo -e "${YELLOW}未找到需要清理的Secret${RESET}"
+    fi
+
     echo -e "\n${BG_GREEN}${WHITE}${BOLD} ✓ 完成 ${RESET} ${GREEN}所有资源已清理完成${RESET}"
 }
 
@@ -163,8 +167,8 @@ start_deployment() {
     # 步骤配置（脚本路径 脚本名称 自动输入）
     local steps=(
         "../1-check-env/check_env.sh 环境检查 false"
-        "_conditional_tools_step 基础工具安装(k3s+helm) false"
-        "../3-install-ollama/install_ollama.sh Ollama部署 false"
+        "_conditional_tools_step 基础工具安装(k3s+helm) true"
+        "../3-install-ollama/install_ollama.sh Ollama部署 true"
         "../4-deploy-deepseek/deploy_deepseek.sh Deepseek模型部署 false"
         "../5-deploy-embedding/deploy-embedding.sh Embedding服务部署 false"
         "../6-install-databases/install_databases.sh 数据库集群部署 false"
@@ -198,7 +202,7 @@ handle_tools_step() {
         echo -e "${CYAN}🠖 检测到已安装 k3s 和 helm，执行环境清理...${RESET}"
         uninstall_all
     else
-        run_script_with_check "../2-install-tools/install_tools.sh" "基础工具安装" $current_step false
+        run_script_with_check "../2-install-tools/install_tools.sh" "基础工具安装" $current_step true
     fi
 }
 
