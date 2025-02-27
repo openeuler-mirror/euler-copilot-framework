@@ -37,7 +37,7 @@ spec:
       automountServiceAccountToken: false
       containers:
         - name: pgsql
-          image: {{ .Values.databases.pgsql.image | default (printf "%s/neocopilot/pgsql-empty:pgsql-%s" (.Values.globals.imageRegistry | default "hub.oepkgs.net") (ternary "arm" "x86" (eq (.Values.globals.arch | default "x86") "arm")) }}
+          image: {{ .Values.databases.pgsql.image | default (printf "%s/neocopilot/pgsql-empty:pg16-%s" (.Values.globals.imageRegistry | default "hub.oepkgs.net") (ternary "arm" "x86" (eq (.Values.globals.arch | default "x86") "arm"))) }}
           imagePullPolicy: {{ default "IfNotPresent" .Values.globals.imagePullPolicy }}
           ports:
             - containerPort: 5432
