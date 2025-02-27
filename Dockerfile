@@ -9,6 +9,6 @@ USER eulercopilot
 COPY --chown=1001:1001 --chmod=550 ./ /euler-copilot-frame/
 
 WORKDIR /euler-copilot-frame
-ENV PYTHONPATH /euler-copilot-frame
+ENV PYTHONPATH /euler-copilot-frame/assets/tiktoken
 
 CMD bash -c "python3 -m gunicorn -c apps/gunicorn.conf.py apps.main:app"
