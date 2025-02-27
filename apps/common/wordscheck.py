@@ -3,6 +3,7 @@
 Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 """
 import http
+import logging
 import re
 
 import aiofiles
@@ -10,8 +11,8 @@ import aiohttp
 import ray
 
 from apps.common.config import config
-from apps.constants import LOGGER
 
+logger = logging.getLogger("ray")
 
 @ray.remote
 class WordsCheck:
@@ -42,8 +43,8 @@ class WordsCheck:
                 if response.status == http.HTTPStatus.OK and re.search("ok", str(response.content)):
                     return 1
                 return 0
-        except Exception as e:
-            LOGGER.info("过滤敏感词错误：" + str(e))
+        except Exception:
+            logger.exception("[WordsCheck] 过滤敏感词错误")
             return -1
 
     async def init(self) -> None:

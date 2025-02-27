@@ -4,6 +4,7 @@
 Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 """
 import json
+import logging
 from typing import Any, Optional
 
 import aiohttp
@@ -12,10 +13,11 @@ from pydantic import BaseModel, Field
 from sqlalchemy import text
 
 from apps.common.config import config
-from apps.constants import LOGGER
 from apps.entities.scheduler import CallError, CallVars
 from apps.models.postgres import PostgreSQL
 from apps.scheduler.call.core import CoreCall
+
+logger = logging.getLogger("ray")
 
 
 class SQLOutput(BaseModel):
@@ -76,7 +78,7 @@ class SQL(CoreCall):
                     data={"response": await response.text()},
                 )
             result = json.loads(await response.text())
-            LOGGER.info(f"SQL工具返回的信息为：{result}")
+            logger.info("SQL工具返回的信息为：%s", result)
         await self._session.close()
 
         for item in result["sql_list"]:
@@ -89,8 +91,8 @@ class SQL(CoreCall):
                     message="数据库查询成功！",
                     dataset=dataset_list,
                 )
-            except Exception as e:  # noqa: PERF203
-                LOGGER.error(f"SQL查询错误，错误信息为：{e}，正在换用下一条SQL语句。")
+            except Exception:  # noqa: PERF203
+                logger.exception("SQL查询错误，正在换用下一条SQL语句。")
 
         raise CallError(
             message="SQL查询错误：SQL语句错误，数据库查询失败！",

@@ -7,6 +7,7 @@ from textwrap import dedent
 from typing import Union
 
 import ray
+from ray import actor
 
 from apps.common.config import config
 from apps.constants import LOGGER
@@ -24,7 +25,7 @@ from apps.entities.task import TaskBlock
 from apps.service import RAG
 
 
-async def push_init_message(task_id: str, queue: ray.ObjectRef, context_num: int, *, is_flow: bool = False) -> None:
+async def push_init_message(task_id: str, queue: actor.ActorHandle, context_num: int, *, is_flow: bool = False) -> None:
     """推送初始化消息"""
     task_actor = ray.get_actor("task")
     task: TaskBlock = await task_actor.get_task.remote(task_id)
@@ -58,7 +59,7 @@ async def push_init_message(task_id: str, queue: ray.ObjectRef, context_num: int
     await task_actor.set_task.remote(task_id, task)
 
 
-async def push_rag_message(task_id: str, queue: ray.ObjectRef, user_sub: str, rag_data: RAGQueryReq) -> None:
+async def push_rag_message(task_id: str, queue: actor.ActorHandle, user_sub: str, rag_data: RAGQueryReq) -> None:
     """推送RAG消息"""
     task_actor = ray.get_actor("task")
     full_answer = ""
@@ -73,7 +74,7 @@ async def push_rag_message(task_id: str, queue: ray.ObjectRef, user_sub: str, ra
     await task_actor.set_task.remote(task_id, task)
 
 
-async def _push_rag_chunk(task_id: str, queue: ray.ObjectRef, content: str) -> str:
+async def _push_rag_chunk(task_id: str, queue: actor.ActorHandle, content: str) -> str:
     """推送RAG单个消息块"""
     task_actor = ray.get_actor("task")
     task: TaskBlock = await task_actor.get_task.remote(task_id)
@@ -104,7 +105,7 @@ async def _push_rag_chunk(task_id: str, queue: ray.ObjectRef, content: str) -> s
         return ""
 
 
-async def push_document_message(task_id: str, queue: ray.ObjectRef, doc: Union[RecordDocument, Document]) -> None:
+async def push_document_message(task_id: str, queue: actor.ActorHandle, doc: Union[RecordDocument, Document]) -> None:
     """推送文档消息"""
     task_actor = ray.get_actor("task")
     task: TaskBlock = await task_actor.get_task.remote(task_id)

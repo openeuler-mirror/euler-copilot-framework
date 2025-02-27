@@ -2,9 +2,12 @@
 
 Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 """
-from apps.constants import LOGGER
+import logging
+
 from apps.entities.enum_var import PermissionType
 from apps.models.mongo import MongoDB
+
+logger = logging.getLogger("ray")
 
 
 class AppManager:
@@ -36,8 +39,8 @@ class AppManager:
 
             result = await app_collection.find_one(query)
             return (result is not None)
-        except Exception as e:
-            LOGGER.error(f"Validate user app access failed due to: {e}")
+        except Exception:
+            logger.exception("[AppManager] 验证用户应用访问失败")
             return False
 
     @staticmethod
@@ -57,6 +60,6 @@ class AppManager:
 
             result = await app_collection.find_one(query)
             return (result is not None)
-        except Exception as e:
-            LOGGER.error(f"Validate app belong to user failed due to: {e}")
+        except Exception:
+            logger.exception("[AppManager] 验证应用属于用户失败")
             return False

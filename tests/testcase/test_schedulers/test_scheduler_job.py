@@ -33,7 +33,7 @@ class TestSchedulerJob(unittest.TestCase):
         mock_query_userinfo_by_login_time.side_effect = Exception("An error occurred")
         DeleteUserCorn.delete_user()
         assert mock_query_userinfo_by_login_time.called
-        assert DeleteUserCorn.logger.info.called
+        assert DeleteUserCorn._logger.info.called
 
 
 if __name__ == '__main__':

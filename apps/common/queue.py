@@ -1,6 +1,7 @@
 """消息队列模块"""
 import asyncio
 import json
+import logging
 from collections.abc import AsyncGenerator
 from datetime import datetime, timezone
 from typing import Any
@@ -8,7 +9,6 @@ from typing import Any
 import ray
 from redis.exceptions import ResponseError
 
-from apps.constants import LOGGER
 from apps.entities.enum_var import EventType
 from apps.entities.message import (
     HeartbeatData,
@@ -19,6 +19,7 @@ from apps.entities.message import (
 from apps.entities.task import TaskBlock
 from apps.models.redis import RedisConnectionPool
 
+logger = logging.getLogger("ray")
 
 @ray.remote
 class MessageQueue:
@@ -86,8 +87,8 @@ class MessageQueue:
                 if not group_info[0]["pending"]:
                     break
                 await asyncio.sleep(0.1)
-            except Exception as e:
-                LOGGER.error(f"[Queue] Get group info failed: {e}")
+            except Exception:
+                logger.exception("[Queue] 获取组信息失败")
                 break
 
         await client.xadd(self._stream_name, {"data": json.dumps(message.model_dump(by_alias=True, exclude_none=True), ensure_ascii=False)})
@@ -100,7 +101,7 @@ class MessageQueue:
         try:
             await client.xgroup_create(self._stream_name, self._group_name, id="0", mkstream=True)
         except ResponseError:
-            LOGGER.warning(f"[Queue] Task {self._task_id} group {self._group_name} already exists.")
+            logger.warning("[Queue] 任务 %s 组 %s 已存在", self._task_id, self._group_name)
 
         while True:
             if self._close:
@@ -141,8 +142,8 @@ class MessageQueue:
                 group_info = await client.xinfo_groups(self._stream_name)
                 if group_info[0]["pending"]:
                     continue
-            except Exception as e:
-                LOGGER.error(f"[Queue] Redis流已结束： {e}")
+            except Exception:
+                logger.info("[Queue] Redis流已结束")
                 break
 
             # 添加心跳消息，得到ID

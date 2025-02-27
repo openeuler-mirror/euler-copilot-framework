@@ -3,14 +3,16 @@
 Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 """
 import asyncio
+import logging
 from typing import Optional
 
 import ray
 
-from apps.constants import LOGGER
 from apps.entities.flow import Flow
 from apps.entities.task import RequestDataApp
 from apps.llm.patterns import Select
+
+logger = logging.getLogger("ray")
 
 
 class PredifinedRAGFlow(Flow):
@@ -32,7 +34,7 @@ class FlowChooser:
 
     async def get_top_flow(self) -> str:
         """获取Top1 Flow"""
-        LOGGER.info(f"[FlowChooser] Judging top flow for task {self._task_id}...")
+        logger.info("[FlowChooser] 判断任务 %s 的Top1 Flow...", self._task_id)
         pool = ray.get_actor("pool")
         # 获取所选应用的所有Flow
         if not self._user_selected or not self._user_selected.app_id:
@@ -42,7 +44,7 @@ class FlowChooser:
         if not flow_list:
             return "KnowledgeBase"
 
-        LOGGER.info(f"[FlowChooser] Selecting top flow for task {self._task_id}...")
+        logger.info("[FlowChooser] 选择任务 %s 的Top1 Flow...", self._task_id)
         return await Select().generate(self._task_id, question=self._question, choices=flow_list)
 
 

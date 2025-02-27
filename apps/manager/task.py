@@ -2,13 +2,15 @@
 
 Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 """
+import logging
 from typing import Optional
 
-from apps.constants import LOGGER
 from apps.entities.collection import RecordGroup
 from apps.entities.task import FlowStepHistory, TaskData
 from apps.manager.record import RecordManager
 from apps.models.mongo import MongoDB
+
+logger = logging.getLogger("ray")
 
 
 class TaskManager:
@@ -20,7 +22,7 @@ class TaskManager:
         # 查询对话ID的最后一条问答组
         last_group = await RecordManager.query_record_group_by_conversation_id(conversation_id, 1)
         if not last_group or len(last_group) == 0:
-            LOGGER.error(f"No record_group found for conversation {conversation_id}.")
+            logger.error("[TaskManager] 没有找到对话 %s 的问答组", conversation_id)
             # 空对话或无效对话，新建Task
             return None
 
@@ -32,7 +34,7 @@ class TaskManager:
         task = await task_collection.find_one({"_id": task_id})
         if not task:
             # 任务不存在，新建Task
-            LOGGER.error(f"Task {task_id} not found.")
+            logger.error("[TaskManager] 任务 %s 不存在", task_id)
             return None
 
         task = TaskData.model_validate(task)
@@ -54,8 +56,8 @@ class TaskManager:
             record_group_obj = RecordGroup.model_validate(record_group)
             task = await task_collection.find_one({"_id": record_group_obj.task_id})
             return TaskData.model_validate(task)
-        except Exception as e:
-            LOGGER.error(f"[TaskManager] Get task by group_id failed: {e}")
+        except Exception:
+            logger.exception("[TaskManager] 获取组ID的最后一条问答组关联的任务失败")
             return None
 
     @staticmethod
@@ -82,8 +84,8 @@ class TaskManager:
 
             return flow_context_list
 
-        except Exception as e:
-            LOGGER.error(f"[TaskManager] Get flow history by record_id failed: {e}")
+        except Exception:
+            logger.exception("[TaskManager] 获取record_id的flow信息失败")
             return []
 
 
@@ -99,8 +101,8 @@ class TaskManager:
                 flow_context[history_obj.step_id] = history_obj
 
             return flow_context
-        except Exception as e:
-            LOGGER.error(f"[TaskManager] Get flow history by task_id failed: {e}")
+        except Exception:
+            logger.exception("[TaskManager] 获取task_id的flow信息失败")
             return {}
 
 
@@ -111,8 +113,8 @@ class TaskManager:
         try:
             flow_context_str = [flow.model_dump(by_alias=True) for flow in flow_context]
             await flow_context_collection.insert_many(flow_context_str)
-        except Exception as e:
-            LOGGER.error(f"[TaskManager] Create flow failed: {e}")
+        except Exception:
+            logger.exception("[TaskManager] 创建flow信息失败")
 
 
     @staticmethod
@@ -126,5 +128,5 @@ class TaskManager:
                 await task_collection.delete_many({"conversation_id": conversation_id}, session=session)
                 await flow_context_collection.delete_many({"task_id": {"$in": task_ids}}, session=session)
                 await session.commit_transaction()
-        except Exception as e:
-            LOGGER.error(f"[TaskManager] Delete tasks by conversation_id failed: {e}")
+        except Exception:
+            logger.exception("[TaskManager] 通过ConversationID删除Task信息失败")
