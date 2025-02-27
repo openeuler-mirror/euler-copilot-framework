@@ -3,11 +3,11 @@
 Copyright (c) Huawei Technologies Co., Ltd. 2024-2025. All rights reserved.
 """
 
+import logging
 import uuid
 from datetime import datetime, timezone
 from typing import Any, Optional
 
-from apps.constants import LOGGER
 from apps.entities.appcenter import AppCenterCardItem, AppData
 from apps.entities.collection import User
 from apps.entities.enum_var import SearchType
@@ -18,6 +18,7 @@ from apps.manager.flow import FlowManager
 from apps.models.mongo import MongoDB
 from apps.scheduler.pool.loader.app import AppLoader
 
+logger = logging.getLogger(__name__)
 
 class AppCenterManager:
     """应用中心管理器"""
@@ -68,8 +69,8 @@ class AppCenterManager:
                 for app in apps
             ], total_apps
 
-        except Exception as e:
-            LOGGER.error(f"[AppCenterManager] Get app list failed: {e}")
+        except Exception:
+            logger.exception("[AppCenterManager] 获取应用列表失败")
         return [], -1
 
     @staticmethod
@@ -115,8 +116,8 @@ class AppCenterManager:
                 )
                 for app in apps
             ], total_apps
-        except Exception as e:
-            LOGGER.error(f"[AppCenterManager] Get app list by user failed: {e}")
+        except Exception:
+            logger.exception("[AppCenterManager] 获取用户应用列表失败")
         return [], -1
 
     @staticmethod
@@ -165,8 +166,8 @@ class AppCenterManager:
                 )
                 for app in apps
             ], total_apps
-        except Exception as e:
-            LOGGER.error(f"[AppCenterManager] Get favorite app list failed: {e}")
+        except Exception:
+            logger.exception("[AppCenterManager] 获取用户收藏应用列表失败")
         return [], -1
 
     @staticmethod
@@ -208,9 +209,13 @@ class AppCenterManager:
                 users=data.permission.users or [],
             ),
         )
-        app_loader = AppLoader()
-        await app_loader.save(metadata, app_id)
-        return app_id
+        try:
+            app_loader = AppLoader()
+            await app_loader.save(metadata, app_id)
+            return app_id
+        except Exception:
+            logger.exception("[AppCenterManager] 创建应用失败")
+        return ""
 
     @staticmethod
     async def update_app(user_sub: str, app_id: str, data: AppData) -> None:
@@ -381,12 +386,12 @@ class AppCenterManager:
                 upsert=True,  # 如果 app_usage 字段或 app_id 不存在，则创建
             )
             if result.modified_count > 0 or result.upserted_id is not None:
-                LOGGER.info(f"[AppCenterManager] Updated recent app for user {user_sub}: {app_id}")
+                logger.info("[AppCenterManager] 更新用户最近使用应用: %s", user_sub)
                 return True
-            LOGGER.warning(f"[AppCenterManager] No changes made for user {user_sub}")
+            logger.warning("[AppCenterManager] 用户 %s 没有更新", user_sub)
             return False
-        except Exception as e:
-            LOGGER.error(f"[AppCenterManager] Failed to update recent app: {e}")
+        except Exception:
+            logger.exception("[AppCenterManager] 更新用户最近使用应用失败")
             return False
 
     @staticmethod
@@ -400,15 +405,15 @@ class AppCenterManager:
             app_collection = MongoDB.get_collection("app")
             db_data = await app_collection.find_one({"_id": app_id})
             if not db_data:
-                LOGGER.warning(f"[AppCenterManager] App not found: {app_id}")
+                logger.warning("[AppCenterManager] 应用不存在: %s", app_id)
                 return None
             app_data = AppPool.model_validate(db_data)
             if not app_data.flows or len(app_data.flows) == 0:
-                LOGGER.warning(f"[AppCenterManager] No flows found for app: {app_id}")
+                logger.warning("[AppCenterManager] 应用 %s 没有工作流", app_id)
                 return None
             return app_data.flows[0].id
-        except Exception as e:
-            LOGGER.error(f"[AppCenterManager] Get default flow id failed: {e}")
+        except Exception:
+            logger.exception("[AppCenterManager] 获取默认工作流ID失败")
         return None
 
     @staticmethod
@@ -451,8 +456,8 @@ class AppCenterManager:
             )
             apps = [AppPool.model_validate(doc) for doc in db_data]
             return apps, total_apps
-        except Exception as e:
-            LOGGER.info(f"[AppCenterManager] Search apps by filter failed: {e}")
+        except Exception:
+            logger.exception("[AppCenterManager] 根据过滤条件搜索应用失败")
         return [], -1
 
     @staticmethod
@@ -462,6 +467,6 @@ class AppCenterManager:
             user_collection = MongoDB.get_collection("user")
             user_data = User.model_validate(await user_collection.find_one({"_id": user_sub}))
             return user_data.fav_apps
-        except Exception as e:
-            LOGGER.info(f"[AppCenterManager] Get favorite app ids by user_sub failed: {e}")
+        except Exception:
+            logger.exception("[AppCenterManager] 获取用户收藏应用ID失败")
         return []

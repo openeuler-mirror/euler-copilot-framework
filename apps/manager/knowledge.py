@@ -2,10 +2,12 @@
 
 Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 """
+import logging
 from typing import Optional
 
-from apps.constants import LOGGER
 from apps.models.mongo import MongoDB
+
+logger = logging.getLogger(__name__)
 
 
 class KnowledgeBaseManager:
@@ -18,12 +20,12 @@ class KnowledgeBaseManager:
         try:
             user = await user_collection.find_one({"_id": user_sub}, {"kb_id": 1})
             if user is None:
-                LOGGER.error("[KnowledgeBaseManager] change kb_id error: user_sub not found")
+                logger.error("[KnowledgeBaseManager] 修改知识库ID失败: 用户不存在")
                 return False
             await user_collection.update_one({"_id": user_sub}, {"$set": {"kb_id": kb_id}})
             return True
-        except Exception as e:
-            LOGGER.error(f"[KnowledgeBaseManager] change kb_id error: {e}")
+        except Exception:
+            logger.exception("[KnowledgeBaseManager] 修改知识库ID失败")
             return False
 
     @staticmethod
@@ -33,9 +35,9 @@ class KnowledgeBaseManager:
         try:
             user_info = await user_collection.find_one({"_id": user_sub}, {"kb_id": 1})
             if not user_info:
-                LOGGER.error("[KnowledgeBaseManager] User not found: %s", user_sub)
+                logger.error("[KnowledgeBaseManager] 用户不存在: %s", user_sub)
                 return None
             return user_info["kb_id"]
-        except Exception as e:
-            LOGGER.error(f"[KnowledgeBaseManager] get kb_id error: {e}")
+        except Exception:
+            logger.exception("[KnowledgeBaseManager] 获取知识库ID失败")
             return None

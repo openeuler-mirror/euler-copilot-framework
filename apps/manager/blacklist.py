@@ -2,8 +2,9 @@
 
 Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 """
+import logging
+
 from apps.common.security import Security
-from apps.constants import LOGGER
 from apps.entities.collection import (
     Blacklist,
     Record,
@@ -11,6 +12,8 @@ from apps.entities.collection import (
     User,
 )
 from apps.models.mongo import MongoDB
+
+logger = logging.getLogger(__name__)
 
 
 class QuestionBlacklistManager:
@@ -24,12 +27,12 @@ class QuestionBlacklistManager:
             result = await blacklist_collection.find_one({"question": {"$regex": f"/{input_question}/"}, "is_audited": True}, {"_id": 1})
             if result:
                 # 用户输入的问题中包含黑名单问题的一部分，故拉黑
-                LOGGER.info("Question in blacklist.")
+                logger.info("[QuestionBlacklistManager] 问题在黑名单中")
                 return False
             return True
-        except Exception as e:
+        except Exception:
             # 访问数据库异常
-            LOGGER.info(f"Check question blacklist failed: {e}")
+            logger.exception("[QuestionBlacklistManager] 检查问题黑名单失败")
             return False
 
     @staticmethod
@@ -43,17 +46,17 @@ class QuestionBlacklistManager:
 
             if is_deletion:
                 await blacklist_collection.find_one_and_delete({"_id": blacklist_id})
-                LOGGER.info("Question deleted from blacklist.")
+                logger.info("[QuestionBlacklistManager] 问题从黑名单中删除")
                 return True
 
             # 修改
             await blacklist_collection.find_one_and_update({"_id": blacklist_id}, {"$set": {"question": question, "answer": answer}})
-            LOGGER.info("Question modified in blacklist.")
+            logger.info("[QuestionBlacklistManager] 问题在黑名单中修改")
             return True
 
-        except Exception as e:
+        except Exception:
             # 数据库操作异常
-            LOGGER.info(f"Change question blacklist failed: {e}")
+            logger.exception("[QuestionBlacklistManager] 修改问题黑名单失败")
             # 放弃执行后续操作
             return False
 
@@ -63,8 +66,8 @@ class QuestionBlacklistManager:
         try:
             blacklist_collection = MongoDB.get_collection("blacklist")
             return [Blacklist.model_validate(item) async for item in blacklist_collection.find({"is_audited": is_audited}).skip(offset).limit(limit)]
-        except Exception as e:
-            LOGGER.info(f"Query question blacklist failed: {e}")
+        except Exception:
+            logger.exception("[QuestionBlacklistManager] 查询问题黑名单失败")
             # 异常
             return []
 
@@ -80,8 +83,8 @@ class UserBlacklistManager:
             return [
                 user["_id"] async for user in user_collection.find({"credit": {"$lte": 0}}, {"_id": 1}).sort({"_id": 1}).skip(offset).limit(limit)
             ]
-        except Exception as e:
-            LOGGER.info(f"Query user blacklist failed: {e}")
+        except Exception:
+            logger.exception("[UserBlacklistManager] 查询用户黑名单失败")
             return []
 
     @staticmethod
@@ -91,11 +94,11 @@ class UserBlacklistManager:
             user_collection = MongoDB.get_collection("user")
             result = await user_collection.find_one({"user_sub": user_sub, "credit": {"$lte": 0}, "is_whitelisted": False}, {"_id": 1})
             if result is not None:
-                LOGGER.info("User blacklisted.")
+                logger.info("[UserBlacklistManager] 用户在黑名单中")
                 return True
             return False
-        except Exception as e:
-            LOGGER.info(f"Check user blacklist failed: {e}")
+        except Exception:
+            logger.exception("[UserBlacklistManager] 检查用户黑名单失败")
             return False
 
     @staticmethod
@@ -107,7 +110,7 @@ class UserBlacklistManager:
             result = await user_collection.find_one({"user_sub": user_sub}, {"_id": 0, "credit": 1})
             # 用户不存在
             if result is None:
-                LOGGER.info("User does not exist.")
+                logger.info("[UserBlacklistManager] 用户不存在")
                 return False
 
             result = User.model_validate(result)
@@ -116,10 +119,10 @@ class UserBlacklistManager:
                 return False
 
             if result.credit > 0 and credit_diff > 0:
-                LOGGER.info("User already unbanned.")
+                logger.info("[UserBlacklistManager] 用户已解禁")
                 return True
             if result.credit <= 0 and credit_diff < 0:
-                LOGGER.info("User already banned.")
+                logger.info("[UserBlacklistManager] 用户已封禁")
                 return True
 
             # 给当前用户的信用分加上偏移量
@@ -134,9 +137,9 @@ class UserBlacklistManager:
             # 更新用户信用分
             await user_collection.update_one({"user_sub": user_sub}, {"$set": {"credit": new_credit}})
             return True
-        except Exception as e:
+        except Exception:
             # 数据库错误
-            LOGGER.info(f"Change user blacklist failed: {e}")
+            logger.exception("[UserBlacklistManager] 修改用户黑名单失败")
             return False
 
 
@@ -158,7 +161,7 @@ class AbuseManager:
 
             record = await record.to_list(length=1)
             if not record:
-                LOGGER.info("Record invalid.")
+                logger.info("[AbuseManager] 举报记录不合法")
                 return False
 
             # 获得Record明文内容
@@ -170,7 +173,7 @@ class AbuseManager:
             blacklist_collection = MongoDB.get_collection("question_blacklist")
             query = await blacklist_collection.find_one({"_id": record_id})
             if query is not None:
-                LOGGER.info("Question has been reported before.")
+                logger.info("[AbuseManager] 问题已被举报过")
                 return True
 
             # 增加新条目
@@ -185,8 +188,8 @@ class AbuseManager:
 
             await blacklist_collection.insert_one(new_blacklist.model_dump(by_alias=True))
             return True
-        except Exception as e:
-            LOGGER.info(f"Change user abuse report failed: {e}")
+        except Exception:
+            logger.exception("[AbuseManager] 修改用户举报失败")
             return False
 
     @staticmethod
@@ -202,6 +205,6 @@ class AbuseManager:
                 {"$set": {"is_audited": True}},
             )
             return True
-        except Exception as e:
-            LOGGER.info(f"Audit user abuse report failed: {e}")
+        except Exception:
+            logger.exception("[AbuseManager] 审核用户举报失败")
             return False

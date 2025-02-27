@@ -2,6 +2,7 @@
 
 Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 """
+import logging
 from collections.abc import AsyncGenerator
 from typing import Optional
 
@@ -10,7 +11,9 @@ import tiktoken
 from openai import AsyncOpenAI
 
 from apps.common.config import config
-from apps.constants import LOGGER, REASONING_BEGIN_TOKEN, REASONING_END_TOKEN
+from apps.constants import REASONING_BEGIN_TOKEN, REASONING_END_TOKEN
+
+logger = logging.getLogger(__name__)
 
 
 class ReasoningLLM:
@@ -154,7 +157,7 @@ class ReasoningLLM:
                 yield reasoning_content
             yield result
 
-        LOGGER.info(f"推理LLM：{reasoning_content}\n\n{result}")
+        logger.info("[Reasoning] 推理内容: %s\n\n%s", reasoning_content, result)
 
         output_tokens = self._calculate_token_length([{"role": "assistant", "content": result}], pure_text=True)
         task = ray.get_actor("task")

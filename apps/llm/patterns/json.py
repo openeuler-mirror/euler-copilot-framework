@@ -3,13 +3,15 @@
 Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 """
 import json
+import logging
 from copy import deepcopy
 from typing import Any, Optional
 
 from apps.common.config import config
-from apps.constants import LOGGER
 from apps.llm.function import FunctionLLM
 from apps.llm.patterns.core import CorePattern
+
+logger = logging.getLogger(__name__)
 
 
 class Json(CorePattern):
@@ -180,7 +182,7 @@ class Json(CorePattern):
         )
 
         try:
-            LOGGER.info(f"[Json] FunctionCall Result：{result}")
+            logger.info("[Json] FunctionCall 结果: %s", result)
             result = json.loads(result)
         except json.JSONDecodeError as e:
             err = "JSON解析失败"

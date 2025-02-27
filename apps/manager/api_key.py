@@ -3,11 +3,13 @@
 Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 """
 import hashlib
+import logging
 import uuid
 from typing import Optional
 
-from apps.constants import LOGGER
 from apps.models.mongo import MongoDB
+
+logger = logging.getLogger(__name__)
 
 
 class ApiKeyManager:
@@ -26,8 +28,8 @@ class ApiKeyManager:
                 {"$set": {"api_key": api_key_hash}},
             )
             return api_key
-        except Exception as e:
-            LOGGER.info(f"Generate API key failed due to error: {e!s}")
+        except Exception:
+            logger.exception("[ApiKeyManager] 生成API Key失败")
             return None
 
     @staticmethod
@@ -41,8 +43,8 @@ class ApiKeyManager:
                 {"_id": user_sub},
                 {"$unset": {"api_key": ""}},
             )
-        except Exception as e:
-            LOGGER.info(f"Delete API key failed due to error: {e}")
+        except Exception:
+            logger.exception("[ApiKeyManager] 删除API Key失败")
             return False
         return True
 
@@ -53,8 +55,8 @@ class ApiKeyManager:
             user_collection = MongoDB.get_collection("user")
             user_data = await user_collection.find_one({"_id": user_sub}, {"_id": 0, "api_key": 1})
             return user_data is not None and ("api_key" in user_data and user_data["api_key"])
-        except Exception as e:
-            LOGGER.info(f"Check API key existence failed due to error: {e}")
+        except Exception:
+            logger.exception("[ApiKeyManager] 检查API Key是否存在失败")
             return False
 
     @staticmethod
@@ -65,8 +67,8 @@ class ApiKeyManager:
             user_collection = MongoDB.get_collection("user")
             user_data = await user_collection.find_one({"api_key": api_key_hash}, {"_id": 1})
             return user_data["_id"] if user_data else None
-        except Exception as e:
-            LOGGER.info(f"Get user info by API key failed due to error: {e}")
+        except Exception:
+            logger.exception("[ApiKeyManager] 根据API Key获取用户信息失败")
             return None
 
     @staticmethod
@@ -77,8 +79,8 @@ class ApiKeyManager:
             user_collection = MongoDB.get_collection("user")
             key_data = await user_collection.find_one({"api_key": api_key_hash}, {"_id": 1})
             return key_data is not None
-        except Exception as e:
-            LOGGER.info(f"Verify API key failed due to error: {e}")
+        except Exception:
+            logger.exception("[ApiKeyManager] 验证API Key失败")
             return False
 
     @staticmethod
@@ -94,7 +96,7 @@ class ApiKeyManager:
                 {"_id": user_sub},
                 {"$set": {"api_key": api_key_hash}},
             )
-        except Exception as e:
-            LOGGER.info(f"Update API key failed due to error: {e}")
+        except Exception:
+            logger.exception("[ApiKeyManager] 更新API Key失败")
             return None
         return api_key

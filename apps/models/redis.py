@@ -2,12 +2,13 @@
 
 Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 """
-from __future__ import annotations
+import logging
 
 from redis import asyncio as aioredis
 
 from apps.common.config import config
-from apps.constants import LOGGER
+
+logger = logging.getLogger(__name__)
 
 
 class RedisConnectionPool:
@@ -25,6 +26,6 @@ class RedisConnectionPool:
         try:
             return aioredis.Redis.from_pool(cls._redis_pool)
         except Exception as e:
-            LOGGER.error(f"Init redis connection failed: {e}")
-            msg = f"Init redis connection failed: {e}"
-            raise RuntimeError(msg) from e
+            error_msg = "[RedisConnectionPool] 初始化Redis连接失败"
+            logger.exception(error_msg)
+            raise RuntimeError(error_msg) from e

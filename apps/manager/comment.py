@@ -2,12 +2,13 @@
 
 Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 """
+import logging
 from typing import Optional
 
-from apps.constants import LOGGER
 from apps.entities.collection import RecordComment
 from apps.models.mongo import MongoDB
 
+logger = logging.getLogger(__name__)
 
 class CommentManager:
     """评论相关操作"""
@@ -30,8 +31,8 @@ class CommentManager:
             result = await result.to_list(length=1)
             if result:
                 return RecordComment.model_validate(result[0]["records"]["comment"])
-        except Exception as e:
-            LOGGER.info(f"Query comment failed due to error: {e}")
+        except Exception:
+            logger.exception("[CommentManager] 查询反馈失败")
         return None
 
     @staticmethod
@@ -46,6 +47,6 @@ class CommentManager:
             record_group_collection = MongoDB.get_collection("record_group")
             await record_group_collection.update_one({"_id": group_id, "records._id": record_id}, {"$set": {"records.$.comment": data.model_dump(by_alias=True)}})
             return True
-        except Exception as e:
-            LOGGER.info(f"Add comment failed due to error: {e}")
+        except Exception:
+            logger.exception("[CommentManager] 更新反馈失败")
             return False

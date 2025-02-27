@@ -2,7 +2,6 @@
 
 Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 """
-
 import random
 import traceback
 import uuid
@@ -25,7 +24,6 @@ from apps.entities.request_data import RequestData
 from apps.entities.response_data import ResponseData
 from apps.manager.appcenter import AppCenterManager
 from apps.manager.blacklist import QuestionBlacklistManager, UserBlacklistManager
-from apps.routers.mock import mock_data
 from apps.scheduler.scheduler.context import save_data
 from apps.service.activity import Activity
 
@@ -64,7 +62,7 @@ async def chat_generator(post_body: RequestData, user_sub: str, session_id: str)
 
         # 创建queue；由Scheduler进行关闭
         queue = MessageQueue.remote()
-        await queue.init.remote(task_id)  # type: ignore[attr-defined]
+        await queue.init.remote(task_id) # type: ignore[attr-defined]
 
         # 在单独Task中运行Scheduler，拉齐queue.get的时机
         randnum = random.randint(0, SCHEDULER_REPLICAS - 1)  # noqa: S311
@@ -72,7 +70,7 @@ async def chat_generator(post_body: RequestData, user_sub: str, session_id: str)
         scheduler = scheduler_actor.run.remote(task_id, queue, user_sub, post_body)
 
         # 处理每一条消息
-        async for event in queue.get.remote():  # type: ignore[attr-defined]
+        async for event in queue.get.remote(): # type: ignore[attr-defined]
             content = await event
             if content[:6] == "[DONE]":
                 break
@@ -130,16 +128,7 @@ async def chat(
 
     if post_body.app and post_body.app.app_id:
         await AppCenterManager.update_recent_app(user_sub, post_body.app.app_id)
-        if not post_body.app.flow_id:
-            flow_id = await AppCenterManager.get_default_flow_id(post_body.app.app_id)
-            post_body.app.flow_id = flow_id if flow_id else ""
-        res = mock_data(
-            post_body=post_body,
-            user_sub=user_sub,
-            session_id=session_id,
-        )
-    else:
-        res = chat_generator(post_body, user_sub, session_id)
+    res = chat_generator(post_body, user_sub, session_id)
     return StreamingResponse(
         content=res,
         media_type="text/event-stream",

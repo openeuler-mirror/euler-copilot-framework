@@ -3,6 +3,7 @@
 Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 """
 import base64
+import logging
 import uuid
 from typing import Optional
 
@@ -10,7 +11,6 @@ import asyncer
 import magic
 from fastapi import UploadFile
 
-from apps.constants import LOGGER
 from apps.entities.collection import (
     Conversation,
     Document,
@@ -21,6 +21,8 @@ from apps.entities.record import RecordDocument
 from apps.models.minio import MinioClient
 from apps.models.mongo import MongoDB
 from apps.service import KnowledgeBaseService
+
+logger = logging.getLogger(__name__)
 
 
 class DocumentManager:
@@ -81,8 +83,8 @@ class DocumentManager:
 
                 # 准备返回值
                 uploaded_files.append(doc_info)
-            except Exception as e:
-                LOGGER.error("[DocumentManager] Upload document failed: %s", e)
+            except Exception:
+                logger.exception("[DocumentManager] 上传文件失败")
 
         return uploaded_files
 
@@ -95,13 +97,13 @@ class DocumentManager:
         try:
             conv = await conv_collection.find_one({"_id": conversation_id, "user_sub": user_sub})
             if not conv:
-                LOGGER.error("[DocumentManager] Conversation not found: %s", conversation_id)
+                logger.error("[DocumentManager] 对话不存在: %s", conversation_id)
                 return []
 
             docs_ids = conv.get("unused_docs", [])
             return [Document(**doc) async for doc in doc_collection.find({"_id": {"$in": docs_ids}})]
-        except Exception as e:
-            LOGGER.error("[DocumentManager] Get unused files failed: %s", e)
+        except Exception:
+            logger.exception("[DocumentManager] 获取未使用文件失败")
             return []
 
     @classmethod
@@ -112,7 +114,7 @@ class DocumentManager:
         try:
             record_group = await record_group_collection.find_one({"_id": record_group_id, "user_sub": user_sub})
             if not record_group:
-                LOGGER.error("[DocumentManager] Record group not found: %s", record_group_id)
+                logger.error("[DocumentManager] 记录组不存在: %s", record_group_id)
                 return []
 
             doc_ids = RecordGroup.model_validate(record_group).docs
@@ -127,8 +129,8 @@ class DocumentManager:
                     associated=item[0].associated,
                 ) for item in zip(doc_ids, doc_infos)
             ]
-        except Exception as e:
-            LOGGER.error("[DocumentManager] Get used docs failed: %s", e)
+        except Exception:
+            logger.exception("[DocumentManager] 获取使用文件失败")
             return []
 
     @classmethod
@@ -150,8 +152,8 @@ class DocumentManager:
             docs = list(set(docs))
             # 返回文件详细信息
             return [Document.model_validate(doc) async for doc in docs_collection.find({"_id": {"$in": docs}})]
-        except Exception as e:
-            LOGGER.error("[DocumentManager] Get used docs failed: %s", e)
+        except Exception:
+            logger.exception("[DocumentManager] 获取使用文件失败")
             return []
 
     @classmethod
@@ -170,7 +172,7 @@ class DocumentManager:
                     doc_info = await doc_collection.find_one_and_delete({"_id": doc, "user_sub": user_sub}, session=session)
                     # 删除Document表内文件
                     if not doc_info:
-                        LOGGER.error("[DocumentManager] Document not found: %s", doc)
+                        logger.error("[DocumentManager] 文件不存在: %s", doc)
                         continue
 
                     # 删除MinIO内文件
@@ -184,8 +186,8 @@ class DocumentManager:
                         }, session=session)
                 await session.commit_transaction()
                 return True
-        except Exception as e:
-            LOGGER.error("[DocumentManager] Delete document failed: %s", e)
+        except Exception:
+            logger.exception("[DocumentManager] 删除文件失败")
             return False
 
     @classmethod
@@ -202,8 +204,8 @@ class DocumentManager:
                 await session.commit_transaction()
                 await KnowledgeBaseService.delete_doc_from_rag(doc_ids)
                 return doc_ids
-        except Exception as e:
-            LOGGER.error("[DocumentManager] Delete document by conversation id failed: %s", e)
+        except Exception:
+            logger.exception("[DocumentManager] 通过ConversationID删除文件失败")
             return []
 
 
@@ -223,7 +225,7 @@ class DocumentManager:
             # 查找Conversation中的unused_docs
             conversation = await conversation_collection.find_one({"user_sub": user_sub, "_id": conversation_id})
             if not conversation:
-                LOGGER.error("[DocumentManager] Conversation not found: %s", conversation_id)
+                logger.error("[DocumentManager] 对话不存在: %s", conversation_id)
                 return
 
             # 把unused_docs加入RecordGroup中，并与问题关联
@@ -234,8 +236,8 @@ class DocumentManager:
 
             # 把unused_docs从Conversation中删除
             await conversation_collection.update_one({"_id": conversation_id}, {"$set": {"unused_docs": []}})
-        except Exception as e:
-            LOGGER.error("[DocumentManager] Change doc status failed: %s", e)
+        except Exception:
+            logger.exception("[DocumentManager] 改变文件状态失败")
 
 
     @classmethod
@@ -246,7 +248,7 @@ class DocumentManager:
             for doc_id in doc_ids:
                 doc_info = RecordGroupDocument(_id=doc_id, associated="answer")
                 await record_group_collection.update_one({"_id": record_group_id, "user_sub": user_sub}, {"$push": {"docs": doc_info.model_dump(by_alias=True)}})
-        except Exception as e:
-            LOGGER.error("[DocumentManager] Save answer doc failed: %s", e)
+        except Exception:
+            logger.exception("[DocumentManager] 保存答案文件失败")
 
 

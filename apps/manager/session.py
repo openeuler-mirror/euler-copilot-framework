@@ -5,13 +5,15 @@ Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 import base64
 import hashlib
 import hmac
+import logging
 import secrets
 from typing import Any, Optional
 
 from apps.common.config import config
-from apps.constants import LOGGER
 from apps.manager.blacklist import UserBlacklistManager
 from apps.models.redis import RedisConnectionPool
+
+logger = logging.getLogger(__name__)
 
 
 class SessionManager:
@@ -40,8 +42,8 @@ class SessionManager:
                 pipe.hmset(session_id, data)
                 pipe.expire(session_id, config["SESSION_TTL"] * 60)
                 await pipe.execute()
-            except Exception as e:
-                LOGGER.error(f"Session error: {e}")
+            except Exception:
+                logger.exception("[SessionManager] 创建浏览器Session失败")
         return session_id
 
     @staticmethod
@@ -58,8 +60,8 @@ class SessionManager:
                 pipe.delete(session_id)
                 result = await pipe.execute()
                 return result[0] != 1
-            except Exception as e:
-                LOGGER.error(f"Delete session error: {e}")
+            except Exception:
+                logger.exception("[SessionManager] 删除浏览器Session失败")
                 return False
 
     @staticmethod
@@ -75,8 +77,8 @@ class SessionManager:
                 pipe.expire(session_id, config["SESSION_TTL"] * 60)
                 result = await pipe.execute()
                 ip = result[0].decode()
-            except Exception as e:
-                LOGGER.error(f"Read session error: {e}")
+            except Exception:
+                logger.exception("[SessionManager] 读取浏览器Session失败")
 
         if not ip or ip != session_ip:
             return await SessionManager.create_session(session_ip)
@@ -91,8 +93,8 @@ class SessionManager:
                 pipe.expire(session_id, config["SESSION_TTL"] * 60)
                 result = await pipe.execute()
                 return result[0]
-            except Exception as e:
-                LOGGER.error(f"User not in session: {e}")
+            except Exception:
+                logger.exception("[SessionManager] 用户不在Session中")
                 return False
 
     @staticmethod
@@ -104,21 +106,21 @@ class SessionManager:
                 pipe.expire(session_id, config["SESSION_TTL"] * 60)
                 result = await pipe.execute()
                 user_sub = result[0].decode()
-            except Exception as e:
-                LOGGER.error(f"Get user from session error: {e}")
+            except Exception:
+                logger.exception("[SessionManager] 从Session中获取用户失败")
                 return None
 
         # 查询黑名单
         if await UserBlacklistManager.check_blacklisted_users(user_sub):
-            LOGGER.error("User in session blacklisted.")
+            logger.error("用户在Session黑名单中")
             async with RedisConnectionPool.get_redis_connection().pipeline(transaction=True) as pipe:
                 try:
                     pipe.hdel(session_id, "user_sub")
                     pipe.expire(session_id, config["SESSION_TTL"] * 60)
                     await pipe.execute()
                     return None
-                except Exception as e:
-                    LOGGER.error(f"Delete user from session error: {e}")
+                except Exception:
+                    logger.exception("[SessionManager] 从Session中删除用户失败")
                     return None
 
         return user_sub
@@ -160,7 +162,7 @@ class SessionManager:
 
         first_part = base64.b64decode(token_msg[0]).hex()
         current_session_id = first_part[:32]
-        LOGGER.error(f"current_session_id: {current_session_id}, session_id: {session_id}")
+        logger.error("current_session_id: %s, session_id: %s", current_session_id, session_id)
         if current_session_id != session_id:
             return False
 
@@ -173,8 +175,8 @@ class SessionManager:
                 nonce = result[0].decode()
                 if nonce != current_nonce:
                     return False
-            except Exception as e:
-                LOGGER.error(f"Get csrf token from session error: {e}")
+            except Exception:
+                logger.exception("[SessionManager] 从Session中获取CSRF Token失败")
 
         jwt_key = base64.b64decode(config["JWT_KEY"])
         hmac_obj = hmac.new(key=jwt_key, msg=token_msg[0].encode("utf-8"), digestmod=hashlib.sha256)

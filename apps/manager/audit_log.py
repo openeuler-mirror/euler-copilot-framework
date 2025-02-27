@@ -2,10 +2,12 @@
 
 Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 """
-from apps.constants import LOGGER
+import logging
+
 from apps.entities.collection import Audit
 from apps.models.mongo import MongoDB
 
+logger = logging.getLogger(__name__)
 
 class AuditLogManager:
     """审计日志相关操作"""
@@ -21,6 +23,6 @@ class AuditLogManager:
             collection = MongoDB.get_collection("audit")
             await collection.insert_one(data.model_dump(by_alias=True))
             return True
-        except Exception as e:
-            LOGGER.info(f"Add audit log failed due to error: {e}")
+        except Exception:
+            logger.exception("[AuditLogManager] 添加审计日志失败")
             return False

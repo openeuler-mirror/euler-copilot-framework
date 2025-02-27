@@ -2,13 +2,13 @@
 
 Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 """
+import logging
 from datetime import datetime, timezone
 from typing import Union
 
 import ray
 
 from apps.common.security import Security
-from apps.constants import LOGGER
 from apps.entities.collection import Document, Record, RecordContent
 from apps.entities.record import RecordDocument
 from apps.entities.request_data import RequestData
@@ -17,6 +17,8 @@ from apps.llm.patterns.facts import Facts
 from apps.manager.document import DocumentManager
 from apps.manager.record import RecordManager
 from apps.manager.task import TaskManager
+
+logger = logging.getLogger(__name__)
 
 
 async def get_docs(user_sub: str, post_body: RequestData) -> tuple[Union[list[RecordDocument], list[Document]], list[str]]:
@@ -88,8 +90,8 @@ async def save_data(task_id: str, user_sub: str, post_body: RequestData, used_do
     # 加密Record数据
     try:
         encrypt_data, encrypt_config = Security.encrypt(task.record.content.model_dump_json(by_alias=True))
-    except Exception as e:
-        LOGGER.info(f"[Scheduler] Encryption failed: {e}")
+    except Exception:
+        logger.exception("[Scheduler] 问答对加密错误")
         return
 
     # 保存Flow信息
@@ -107,36 +109,36 @@ async def save_data(task_id: str, user_sub: str, post_body: RequestData, used_do
         # 修改metadata里面时间为实际运行时间
         task.record.metadata.time = round(datetime.now(timezone.utc).timestamp() - task.record.metadata.time, 2)
 
-        # 提取facts
-        # 记忆提取
-        facts = await generate_facts(task, post_body.question)
+    # 提取facts
+    # 记忆提取
+    facts = await generate_facts(task, post_body.question)
 
-        # 整理Record数据
-        record = Record(
-            record_id=task.record.id,
-            user_sub=user_sub,
-            data=encrypt_data,
-            key=encrypt_config,
-            facts=facts,
-            metadata=task.record.metadata,
-            created_at=task.record.created_at,
-            flow=task.new_context,
-        )
+    # 整理Record数据
+    record = Record(
+        record_id=task.record.id,
+        user_sub=user_sub,
+        data=encrypt_data,
+        key=encrypt_config,
+        facts=facts,
+        metadata=task.record.metadata,
+        created_at=task.record.created_at,
+        flow=task.new_context,
+    )
 
-        record_group = task.record.group_id
-        # 检查是否存在group_id
-        if not await RecordManager.check_group_id(record_group, user_sub):
-            record_group = await RecordManager.create_record_group(user_sub, post_body.conversation_id, task.record.task_id)
-            if not record_group:
-                LOGGER.error("[Scheduler] Create record group failed.")
-                return
+    record_group = task.record.group_id
+    # 检查是否存在group_id
+    if not await RecordManager.check_group_id(record_group, user_sub):
+        record_group = await RecordManager.create_record_group(user_sub, post_body.conversation_id, task.record.task_id)
+        if not record_group:
+            logger.error("[Scheduler] 创建问答组失败")
+            return
 
-        # 修改文件状态
-        await DocumentManager.change_doc_status(user_sub, post_body.conversation_id, record_group)
-        # 保存Record
-        await RecordManager.insert_record_data_into_record_group(user_sub, record_group, record)
-        # 保存与答案关联的文件
-        await DocumentManager.save_answer_doc(user_sub, record_group, used_docs)
+    # 修改文件状态
+    await DocumentManager.change_doc_status(user_sub, post_body.conversation_id, record_group)
+    # 保存Record
+    await RecordManager.insert_record_data_into_record_group(user_sub, record_group, record)
+    # 保存与答案关联的文件
+    await DocumentManager.save_answer_doc(user_sub, record_group, used_docs)
 
     # 保存Task
     await task_actor.save_task.remote(task_id)

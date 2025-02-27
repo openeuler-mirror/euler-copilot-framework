@@ -4,13 +4,15 @@ Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 """
 import asyncio
 import json
+import logging
 from collections import Counter
 from typing import Any, ClassVar, Optional
 
-from apps.constants import LOGGER
 from apps.llm.patterns.core import CorePattern
 from apps.llm.patterns.json import Json
 from apps.llm.reasoning import ReasoningLLM
+
+logger = logging.getLogger(__name__)
 
 
 class Select(CorePattern):
@@ -92,7 +94,7 @@ class Select(CorePattern):
 
     async def _generate_single_attempt(self, task_id: str, user_input: str, choice_list: list[str]) -> str:
         """使用ReasoningLLM进行单次尝试"""
-        LOGGER.info(f"[Select] Trying single attempt for task {task_id}...")
+        logger.info("[Select] 单次选择尝试: %s", task_id)
         messages = [
             {"role": "system", "content": self.system_prompt},
             {"role": "user", "content": user_input},
@@ -100,7 +102,7 @@ class Select(CorePattern):
         result = ""
         async for chunk in ReasoningLLM().call(task_id, messages, streaming=False):
             result += chunk
-        LOGGER.info(f"[Select] Result: {result}")
+        logger.info("[Select] 选择结果: %s", result)
 
         # 使用FunctionLLM进行参数提取
         schema = self.slot_schema
@@ -113,7 +115,7 @@ class Select(CorePattern):
 
     async def generate(self, task_id: str, **kwargs) -> str:  # noqa: ANN003
         """使用大模型做出选择"""
-        LOGGER.info(f"[Select] Selecting using LLM: {task_id}...")
+        logger.info("[Select] 使用LLM选择")
         max_try = 3
         result_list = []
 
@@ -132,5 +134,7 @@ class Select(CorePattern):
         result_list = await asyncio.gather(*result_coroutine)
 
         count = Counter(result_list)
-        LOGGER.info(f"[Select] Result: {count.most_common(1)[0][0]}")
-        return count.most_common(1)[0][0]
+        selected_choice = count.most_common(1)[0][0]
+
+        logger.info("[Select] 选择结果: %s", selected_choice)
+        return selected_choice

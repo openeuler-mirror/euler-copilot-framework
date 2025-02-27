@@ -2,15 +2,16 @@
 
 Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 """
+import logging
 from typing import Any
 
 import aiohttp
 from fastapi import status
 
 from apps.common.config import config
-from apps.constants import LOGGER
 from apps.models.redis import RedisConnectionPool
 
+logger = logging.getLogger(__name__)
 
 async def get_oidc_token(code: str) -> dict[str, Any]:
     """获取OIDC Token"""
@@ -32,7 +33,7 @@ async def get_oidc_token(code: str) -> dict[str, Any]:
         if resp.status != status.HTTP_200_OK:
             err = f"Get OIDC token error: {resp.status}, full output is: {await resp.text()}"
             raise RuntimeError(err)
-        LOGGER.info(f"full response is {await resp.text()}")
+        logger.info("[OIDC] 获取OIDC Token 完整响应: %s", await resp.text())
         result = await resp.json()
     return {
         "access_token": result["access_token"],
@@ -65,7 +66,7 @@ async def get_oidc_user(access_token: str, refresh_token: str) -> dict:
         if resp.status != status.HTTP_200_OK:
             err = f"Get OIDC user error: {resp.status}, full response is: {await resp.text()}"
             raise RuntimeError(err)
-        LOGGER.info(f"full response is {await resp.text()}")
+        logger.info("[OIDC] 获取OIDC用户 完整响应: %s", await resp.text())
         result = await resp.json()
 
     if not result["phone_number_verified"]:
@@ -97,7 +98,7 @@ async def get_local_oidc_token(code: str) -> dict[str, Any]:
         if resp.status != status.HTTP_200_OK:
             err = f"Get OIDC token error: {resp.status}, full response is: {await resp.text()}"
             raise RuntimeError(err)
-        LOGGER.info(f"full response is {await resp.text()}")
+        logger.info("[OIDC] 获取OIDC Token 完整响应: %s", await resp.text())
         result = await resp.json()
     return {
         "access_token": result["data"]["access_token"],
@@ -123,7 +124,7 @@ async def get_local_oidc_user(access_token: str, refresh_token: str) -> dict:
         if resp.status != status.HTTP_200_OK:
             err = f"Get OIDC user error: {resp.status}, full response is: {await resp.text()}"
             raise RuntimeError(err)
-        LOGGER.info(f"full response is {await resp.text()}")
+        logger.info("[OIDC] 获取OIDC用户 完整响应: %s", await resp.text())
         result = await resp.json()
     user_sub = result["data"]
     await set_redis_token(user_sub, access_token, refresh_token)

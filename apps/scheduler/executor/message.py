@@ -5,6 +5,7 @@ Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 from typing import Any
 
 import ray
+from ray import actor
 
 from apps.entities.enum_var import EventType, FlowOutputType
 from apps.entities.flow import Flow
@@ -20,7 +21,7 @@ from apps.entities.task import (
 from apps.manager.node import NodeManager
 
 
-async def push_step_input(task_id: str, queue: ray.ObjectRef, state: ExecutorState, input_data: dict[str, Any]) -> None:
+async def push_step_input(task_id: str, queue: actor.ActorHandle, state: ExecutorState, input_data: dict[str, Any]) -> None:
     """推送步骤输入"""
     task_actor = ray.get_actor("task")
     task: TaskBlock = await task_actor.get_task.remote(task_id)
@@ -41,7 +42,7 @@ async def push_step_input(task_id: str, queue: ray.ObjectRef, state: ExecutorSta
     await task_actor.set_task.remote(task_id, task)
 
 
-async def push_step_output(task_id: str, queue: ray.ObjectRef, state: ExecutorState, output: dict[str, Any]) -> None:
+async def push_step_output(task_id: str, queue: actor.ActorHandle, state: ExecutorState, output: dict[str, Any]) -> None:
     """推送步骤输出"""
     task_actor = ray.get_actor("task")
     task: TaskBlock = await task_actor.get_task.remote(task_id)
@@ -60,7 +61,7 @@ async def push_step_output(task_id: str, queue: ray.ObjectRef, state: ExecutorSt
     await task_actor.set_task.remote(task_id, task)
 
 
-async def push_flow_start(task_id: str, queue: ray.ObjectRef, state: ExecutorState, question: str) -> None:
+async def push_flow_start(task_id: str, queue: actor.ActorHandle, state: ExecutorState, question: str) -> None:
     """推送Flow开始"""
     task_actor = ray.get_actor("task")
     task: TaskBlock = await task_actor.get_task.remote(task_id)
@@ -100,7 +101,7 @@ async def assemble_flow_stop_content(state: ExecutorState, flow: Flow) -> FlowSt
     return content
 
 
-async def push_flow_stop(task_id: str, queue: ray.ObjectRef, state: ExecutorState, flow: Flow) -> None:
+async def push_flow_stop(task_id: str, queue: actor.ActorHandle, state: ExecutorState, flow: Flow) -> None:
     """推送Flow结束"""
     task_actor = ray.get_actor("task")
     task: TaskBlock = await task_actor.get_task.remote(task_id)
