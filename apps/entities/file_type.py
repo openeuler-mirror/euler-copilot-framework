@@ -78,7 +78,7 @@ class OpenAPI(BaseModel):
 
     openapi: str = Field(..., description="OpenAPI版本")
     info: OpenAPIInfo = Field(..., description="API的基本信息")
-    servers: list[OpenAPIServer] = Field(..., description="API的服务器地址")
+    servers: list[OpenAPIServer] = Field(..., description="API的服务器地址", min_length=1)
     paths: dict[str, OpenAPIPath] = Field(..., description="API的路径定义")
     components: Optional[OpenAPIComponents] = Field(None, description="API的组件定义")
     security: Optional[list[dict[str, list[str]]]] = Field(None, description="API的安全定义")
