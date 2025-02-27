@@ -209,13 +209,9 @@ class AppCenterManager:
                 users=data.permission.users or [],
             ),
         )
-        try:
-            app_loader = AppLoader()
-            await app_loader.save(metadata, app_id)
-            return app_id
-        except Exception:
-            logger.exception("[AppCenterManager] 创建应用失败")
-        return ""
+        app_loader = AppLoader()
+        await app_loader.save(metadata, app_id)
+        return app_id
 
     @staticmethod
     async def update_app(user_sub: str, app_id: str, data: AppData) -> None:
