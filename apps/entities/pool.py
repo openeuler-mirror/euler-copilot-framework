@@ -9,7 +9,7 @@ from typing import Any, Optional
 from pydantic import BaseModel, Field
 
 from apps.entities.appcenter import AppLink
-from apps.entities.enum_var import CallType
+from apps.entities.enum_var import CallType, PermissionType
 from apps.entities.flow import AppFlow, Permission
 
 
@@ -37,7 +37,7 @@ class ServicePool(BaseData):
     """
 
     author: str = Field(description="作者的用户ID")
-    permission: Permission = Field(description="服务可见性配置", default=Permission())
+    permission: Permission = Field(description="服务可见性配置", default=Permission(type=PermissionType.PUBLIC))
     hashes: dict[str, str] = Field(description="服务关联的 OpenAPI YAML 和元数据文件哈希")
 
 
