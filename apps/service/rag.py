@@ -13,7 +13,7 @@ from apps.common.config import config
 from apps.entities.rag_data import RAGQueryReq
 from apps.service import Activity
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("ray")
 
 class RAG:
     """调用RAG服务，获取知识库答案"""

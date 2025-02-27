@@ -18,7 +18,6 @@ from apps.entities.task import (
     FlowStepHistory,
     TaskBlock,
 )
-from apps.manager.node import NodeManager
 
 
 async def push_step_input(task_id: str, queue: actor.ActorHandle, state: ExecutorState, input_data: dict[str, Any]) -> None:
@@ -80,26 +79,24 @@ async def push_flow_start(task_id: str, queue: actor.ActorHandle, state: Executo
 
 async def assemble_flow_stop_content(state: ExecutorState, flow: Flow) -> FlowStopContent:
     """组装Flow结束消息"""
-    call_type = await NodeManager.get_node_call_id(state.step_id)
     if state.remaining_schema:
         # 如果当前Flow是填充步骤，则推送Schema
         content = FlowStopContent(
             type=FlowOutputType.SCHEMA,
             data=state.remaining_schema,
         )
-    elif call_type == "render":
-        # 如果当前Flow是图表，则推送Chart
-        chart_option = task.flow_context[state.step_id].output_data["output"]
-        content = FlowStopContent(
-            type=FlowOutputType.CHART,
-            data=chart_option,
-        )
     else:
-        # 如果当前Flow是其他类型，则推送空消息
         content = FlowStopContent()
 
     return content
 
+    # elif call_type == "render":
+    #     # 如果当前Flow是图表，则推送Chart
+    #     chart_option = task.flow_context[state.step_id].output_data["output"]
+    #     content = FlowStopContent(
+    #         type=FlowOutputType.CHART,
+    #         data=chart_option,
+    #     )
 
 async def push_flow_stop(task_id: str, queue: actor.ActorHandle, state: ExecutorState, flow: Flow) -> None:
     """推送Flow结束"""

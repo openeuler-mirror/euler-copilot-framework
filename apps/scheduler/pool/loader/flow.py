@@ -16,7 +16,7 @@ from apps.entities.enum_var import EdgeType
 from apps.entities.flow import Flow
 from apps.manager.node import NodeManager
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("ray")
 
 class FlowLoader:
     """工作流加载器"""

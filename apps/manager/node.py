@@ -9,7 +9,7 @@ from apps.entities.node import APINode
 from apps.entities.pool import CallPool, NodePool
 from apps.models.mongo import MongoDB
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("ray")
 NODE_TYPE_MAP = {
     "API": APINode,
 }

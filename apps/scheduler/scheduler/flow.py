@@ -12,7 +12,7 @@ from apps.entities.flow import Flow
 from apps.entities.task import RequestDataApp
 from apps.llm.patterns import Select
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("ray")
 
 
 class PredifinedRAGFlow(Flow):

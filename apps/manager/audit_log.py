@@ -7,7 +7,7 @@ import logging
 from apps.entities.collection import Audit
 from apps.models.mongo import MongoDB
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("ray")
 
 class AuditLogManager:
     """审计日志相关操作"""

@@ -8,7 +8,7 @@ from redis import asyncio as aioredis
 
 from apps.common.config import config
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("ray")
 
 
 class RedisConnectionPool:

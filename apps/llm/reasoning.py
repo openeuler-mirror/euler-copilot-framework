@@ -13,7 +13,7 @@ from openai import AsyncOpenAI
 from apps.common.config import config
 from apps.constants import REASONING_BEGIN_TOKEN, REASONING_END_TOKEN
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("ray")
 
 
 class ReasoningLLM:

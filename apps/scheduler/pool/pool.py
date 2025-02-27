@@ -22,7 +22,7 @@ from apps.scheduler.pool.loader import (
     ServiceLoader,
 )
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("ray")
 
 
 @ray.remote

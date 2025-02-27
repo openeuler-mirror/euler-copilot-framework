@@ -10,7 +10,7 @@ from apps.entities.collection import User
 from apps.manager.conversation import ConversationManager
 from apps.models.mongo import MongoDB
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("ray")
 
 
 class UserManager:

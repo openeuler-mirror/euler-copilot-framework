@@ -11,7 +11,7 @@ from apps.entities.collection import Conversation
 from apps.manager.task import TaskManager
 from apps.models.mongo import MongoDB
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("ray")
 
 
 class ConversationManager:

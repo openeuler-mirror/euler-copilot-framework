@@ -3,7 +3,6 @@
 Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 """
 import logging
-import traceback
 from typing import Any, Optional
 
 import ray
@@ -28,7 +27,7 @@ from apps.scheduler.executor.message import (
 )
 from apps.scheduler.slot.slot import Slot
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("ray")
 
 
 # 单个流的执行工具
@@ -258,6 +257,8 @@ class Executor(BaseModel):
             self.flow_state.step_id = "end"
         else:
             self.flow_state.step_id = next_nodes[0]
+
+        logger.info("[FlowExecutor] 下一步 %s", self.flow_state.step_id)
 
 
     async def run(self) -> None:

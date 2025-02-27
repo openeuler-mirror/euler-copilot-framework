@@ -19,7 +19,7 @@ from apps.entities.message import (
 from apps.entities.task import TaskBlock
 from apps.models.redis import RedisConnectionPool
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("ray")
 
 @ray.remote
 class MessageQueue:

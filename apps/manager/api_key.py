@@ -9,7 +9,7 @@ from typing import Optional
 
 from apps.models.mongo import MongoDB
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("ray")
 
 
 class ApiKeyManager:

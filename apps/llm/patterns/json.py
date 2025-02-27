@@ -11,7 +11,7 @@ from apps.common.config import config
 from apps.llm.function import FunctionLLM
 from apps.llm.patterns.core import CorePattern
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("ray")
 
 
 class Json(CorePattern):

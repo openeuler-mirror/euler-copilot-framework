@@ -13,7 +13,7 @@ from apps.common.config import config
 from apps.manager.blacklist import UserBlacklistManager
 from apps.models.redis import RedisConnectionPool
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("ray")
 
 
 class SessionManager:

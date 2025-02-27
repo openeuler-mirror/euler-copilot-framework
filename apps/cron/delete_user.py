@@ -13,7 +13,7 @@ from apps.manager.user import UserManager
 from apps.models.mongo import MongoDB
 from apps.service.knowledge_base import KnowledgeBaseService
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("ray")
 
 class DeleteUserCron:
     """删除30天未登录用户"""

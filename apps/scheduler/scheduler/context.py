@@ -18,7 +18,7 @@ from apps.manager.document import DocumentManager
 from apps.manager.record import RecordManager
 from apps.manager.task import TaskManager
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("ray")
 
 
 async def get_docs(user_sub: str, post_body: RequestData) -> tuple[Union[list[RecordDocument], list[Document]], list[str]]:

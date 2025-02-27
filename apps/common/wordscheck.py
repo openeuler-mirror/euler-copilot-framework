@@ -12,7 +12,7 @@ import ray
 
 from apps.common.config import config
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("ray")
 
 @ray.remote
 class WordsCheck:

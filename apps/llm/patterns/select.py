@@ -12,7 +12,7 @@ from apps.llm.patterns.core import CorePattern
 from apps.llm.patterns.json import Json
 from apps.llm.reasoning import ReasoningLLM
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("ray")
 
 
 class Select(CorePattern):

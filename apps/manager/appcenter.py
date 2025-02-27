@@ -18,7 +18,7 @@ from apps.manager.flow import FlowManager
 from apps.models.mongo import MongoDB
 from apps.scheduler.pool.loader.app import AppLoader
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("ray")
 
 class AppCenterManager:
     """应用中心管理器"""

@@ -28,7 +28,7 @@ from apps.entities.response_data import (
 )
 from apps.manager.service import ServiceCenterManager
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("ray")
 router = APIRouter(
     prefix="/api/service",
     tags=["service-center"],

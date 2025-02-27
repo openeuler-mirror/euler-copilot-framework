@@ -10,7 +10,7 @@ from apps.entities.task import FlowStepHistory, TaskData
 from apps.manager.record import RecordManager
 from apps.models.mongo import MongoDB
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("ray")
 
 
 class TaskManager:

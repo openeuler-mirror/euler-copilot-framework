@@ -22,7 +22,7 @@ from apps.models.minio import MinioClient
 from apps.models.mongo import MongoDB
 from apps.service import KnowledgeBaseService
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("ray")
 
 
 class DocumentManager:

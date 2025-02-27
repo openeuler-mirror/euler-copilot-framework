@@ -17,7 +17,7 @@ from apps.entities.scheduler import CallError, CallVars
 from apps.models.postgres import PostgreSQL
 from apps.scheduler.call.core import CoreCall
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("ray")
 
 
 class SQLOutput(BaseModel):

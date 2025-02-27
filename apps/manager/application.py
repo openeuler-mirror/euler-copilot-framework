@@ -7,7 +7,7 @@ import logging
 from apps.entities.enum_var import PermissionType
 from apps.models.mongo import MongoDB
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("ray")
 
 
 class AppManager:

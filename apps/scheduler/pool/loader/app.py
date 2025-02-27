@@ -22,7 +22,7 @@ from apps.scheduler.pool.check import FileChecker
 from apps.scheduler.pool.loader.flow import FlowLoader
 from apps.scheduler.pool.loader.metadata import MetadataLoader
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("ray")
 
 
 class AppLoader:

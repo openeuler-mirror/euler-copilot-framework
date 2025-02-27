@@ -10,7 +10,7 @@ from apps.entities.collection import Domain
 from apps.entities.request_data import PostDomainData
 from apps.models.mongo import MongoDB
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("ray")
 
 
 class DomainManager:

@@ -24,7 +24,7 @@ from apps.scheduler.scheduler.message import (
     push_rag_message,
 )
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("ray")
 
 
 @ray.remote

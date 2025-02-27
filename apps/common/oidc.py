@@ -11,7 +11,7 @@ from fastapi import status
 from apps.common.config import config
 from apps.models.redis import RedisConnectionPool
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("ray")
 
 async def get_oidc_token(code: str) -> dict[str, Any]:
     """获取OIDC Token"""
