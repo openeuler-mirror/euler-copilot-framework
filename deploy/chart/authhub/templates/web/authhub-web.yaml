@@ -56,7 +56,14 @@ spec:
       automountServiceAccountToken: false
       containers:
         - name: authhub-web
-          image: {{ if .Values.authhub.web.image }}{{ .Values.authhub.web.image }}{{ else }}{{ .Values.globals.imageRegistry | default "hub.oepkgs.net" }}/neocopilot/authhub-web:0.9.3-{{ .Values.globals.arch | default "x86" }}{{ end }}
+          image: {{- if .Values.authhub.web.image }}
+            {{- .Values.authhub.web.image }}
+          {{- else }}
+            {{- $registry := .Values.globals.imageRegistry | default "hub.oepkgs.net" }}
+            {{- $arch := .Values.globals.arch | default "x86" }}
+            {{- $suffix := ternary "arm" "x86" (eq $arch "arm") }}
+            {{- printf "%s/neocopilot/authhub-web:0.9.3-%s" $registry $suffix }}
+          {{- end }}
           imagePullPolicy: {{ default "IfNotPresent" .Values.globals.imagePullPolicy }}
           ports:
             - containerPort: 8000

@@ -44,7 +44,7 @@ install_basic_tools() {
 
     # 使用 pip 安装 requests
     echo "Installing requests with pip..."
-    pip install requests
+    pip install requests ruamel.yaml
 
     echo "All basic tools have been installed."
 }

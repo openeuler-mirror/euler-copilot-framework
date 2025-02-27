@@ -1,13 +1,36 @@
-import argparse
 import sys
+import argparse
+import subprocess
 
+# 尝试导入 YAML 库
 try:
     from ruamel.yaml import YAML
     from ruamel.yaml.comments import CommentedMap
     USING_RUAMEL = True
 except ImportError:
-    import yaml  # PyYAML
-    USING_RUAMEL = False
+    try:
+        import yaml  # 回退到 PyYAML
+        USING_RUAMEL = False
+    except ImportError:
+        print("未检测到 YAML 处理库，正在自动安装 ruamel.yaml...")
+        try:
+            # 优先尝试安装 ruamel.yaml
+            subprocess.check_call([sys.executable, '-m', 'pip', 'install', 'ruamel.yaml'])
+            from ruamel.yaml import YAML
+            from ruamel.yaml.comments import CommentedMap
+            USING_RUAMEL = True
+            print("ruamel.yaml 安装成功")
+        except Exception as e:
+            print(f"安装 ruamel.yaml 失败: {e}, 改为尝试安装 PyYAML")
+            try:
+                # 回退安装 PyYAML
+                subprocess.check_call([sys.executable, '-m', 'pip', 'install', 'PyYAML'])
+                import yaml
+                USING_RUAMEL = False
+                print("PyYAML 安装成功")
+            except Exception as e:
+                print(f"安装 PyYAML 也失败: {e}")
+                sys.exit(1)
 
 def parse_value(value):
     """智能转换值的类型"""

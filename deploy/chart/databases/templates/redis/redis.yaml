@@ -35,7 +35,14 @@ spec:
       automountServiceAccountToken: false
       containers:
         - name: redis
-          image: {{ if .Values.databases.redis.image }}{{ .Values.databases.redis.image }}{{ else }}{{ .Values.globals.imageRegistry | default "hub.oepkgs.net" }}/neocopilot/redis:7.4-alpine-{{ .Values.globals.arch | default "x86" }}{{ end }}
+          image: {{- if .Values.databases.redis.image }}
+            {{- .Values.databases.redis.image }}
+          {{- else }}
+            {{- $registry := .Values.globals.imageRegistry | default "hub.oepkgs.net" }}
+            {{- $arch := .Values.globals.arch | default "x86" }}
+            {{- $suffix := ternary "arm" "x86" (eq $arch "arm") }}
+            {{- printf "%s/neocopilot/redis:7.4-alpine-%s" $registry $suffix }}
+          {{- end }}
           imagePullPolicy: {{ default "IfNotPresent" .Values.globals.imagePullPolicy }}
           command:
             - redis-server

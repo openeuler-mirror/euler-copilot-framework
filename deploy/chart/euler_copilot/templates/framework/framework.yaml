@@ -38,7 +38,14 @@ spec:
         fsGroup: 1001
       containers:
         - name: framework
-          image: {{ if .Values.euler_copilot.framework.image }}{{ .Values.euler_copilot.framework.image }}{{ else }}{{ .Values.globals.imageRegistry | default "hub.oepkgs.net" }}/neocopilot/euler-copilot-framework:0.9.4-{{ .Values.globals.arch | default "x86" }}{{ end }}
+          image: {{- if .Values.euler_copilot.framework.image }}
+            {{- .Values.euler_copilot.framework.image }}
+          {{- else }}
+            {{- $registry := .Values.globals.imageRegistry | default "hub.oepkgs.net" }}
+            {{- $arch := .Values.globals.arch | default "x86" }}
+            {{- $suffix := ternary "arm" "x86" (eq $arch "arm") }}
+            {{- printf "%s/neocopilot/euler-copilot-framework:0.9.4-%s" $registry $suffix }}
+          {{- end }}
           imagePullPolicy: {{ default "IfNotPresent" .Values.globals.imagePullPolicy }}
           ports:
             - containerPort: 8002
@@ -80,7 +87,14 @@ spec:
               {{ toYaml .Values.euler_copilot.framework.resourceLimits | nindent 14 }}
       initContainers:
         - name: framework-copy
-          image: {{ if .Values.euler_copilot.secret_inject.image }}{{ .Values.euler_copilot.secret_inject.image }}{{ else }}{{ .Values.globals.imageRegistry | default "hub.oepkgs.net" }}/neocopilot/secret_inject:dev-{{ .Values.globals.arch | default "x86" }}{{ end }}
+          image: {{- if .Values.euler_copilot.secret_inject.image }}
+            {{- .Values.euler_copilot.secret_inject.image }}
+          {{- else }}
+            {{- $registry := .Values.globals.imageRegistry | default "hub.oepkgs.net" }}
+            {{- $arch := .Values.globals.arch | default "x86" }}
+            {{- $suffix := ternary "arm" "x86" (eq $arch "arm") }}
+            {{- printf "%s/neocopilot/secret_inject:dev-%s" $registry $suffix }}
+          {{- end }}
           imagePullPolicy: {{ default "IfNotPresent" .Values.globals.imagePullPolicy }}
           volumeMounts:
             - mountPath: /config/.env

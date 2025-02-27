@@ -37,7 +37,14 @@ spec:
       automountServiceAccountToken: false
       containers:
         - name: mysql
-          image: {{ if .Values.authhub.mysql.image }}{{ .Values.authhub.mysql.image }}{{ else }}{{ .Values.globals.imageRegistry | default "hub.oepkgs.net" }}/neocopilot/mysql:8-{{ .Values.globals.arch | default "x86" }}{{ end }}
+          image: {{- if .Values.authhub.mysql.image }}
+            {{- .Values.authhub.mysql.image }}
+          {{- else }}
+            {{- $registry := .Values.globals.imageRegistry | default "hub.oepkgs.net" }}
+            {{- $arch := .Values.globals.arch | default "x86" }}
+            {{- $suffix := ternary "arm" "x86" (eq $arch "arm") }}
+            {{- printf "%s/neocopilot/mysql:8-%s" $registry $suffix }}
+          {{- end }}
           imagePullPolicy: {{ default "IfNotPresent" .Values.globals.imagePullPolicy }}
           args:
             - "--character-set-server=utf8mb4"
