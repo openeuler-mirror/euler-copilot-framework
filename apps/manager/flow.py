@@ -2,10 +2,12 @@
 
 Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 """
+
 from typing import Optional
 
-from pymongo import ASCENDING
 from anyio import Path
+from pymongo import ASCENDING
+
 from apps.common.config import config
 from apps.constants import APP_DIR, LOGGER
 from apps.entities.enum_var import EdgeType, PermissionType
@@ -18,7 +20,6 @@ from apps.entities.flow_topology import (
     NodeServiceItem,
     PositionItem,
 )
-from apps.entities.pool import AppFlow, AppPool
 from apps.manager.node import NodeManager
 from apps.models.mongo import MongoDB
 from apps.scheduler.pool.check import FileChecker
@@ -56,13 +57,15 @@ class FlowManager:
                     ],
                 },
             ]
-            query = {"$and": [
-                {"_id": node_pool_record["service_id"]},
-                {"$or": match_conditions},
-            ]}
+            query = {
+                "$and": [
+                    {"_id": node_pool_record["service_id"]},
+                    {"$or": match_conditions},
+                ],
+            }
 
             result = await service_collection.count_documents(query)
-            return (result > 0)
+            return result > 0
         except Exception as e:
             LOGGER.error(f"Validate user node meta data access failed due to: {e}")
             return False
@@ -76,8 +79,7 @@ class FlowManager:
         """
         node_pool_collection = MongoDB.get_collection("node")  # 获取节点集合
         try:
-            cursor = node_pool_collection.find(
-                {"service_id": service_id}).sort("created_at", ASCENDING)
+            cursor = node_pool_collection.find({"service_id": service_id}).sort("created_at", ASCENDING)
 
             nodes_meta_data_items = []
             async for node_pool_record in cursor:
@@ -102,8 +104,7 @@ class FlowManager:
                 nodes_meta_data_items.append(node_meta_data_item)
             return nodes_meta_data_items
         except Exception as e:
-            LOGGER.error(
-                f"Get node metadatas by service_id failed due to: {e}")
+            LOGGER.error(f"Get node metadatas by service_id failed due to: {e}")
             return None
 
     @staticmethod
@@ -144,14 +145,7 @@ class FlowManager:
                 sort=[("created_at", ASCENDING)],
             )
             service_records = await service_records_cursor.to_list(length=None)
-            service_items = [
-                NodeServiceItem(
-                    serviceId="",
-                    name="系统",
-                    type="system",
-                    nodeMetaDatas=[]
-                )
-            ]
+            service_items = [NodeServiceItem(serviceId="", name="系统", type="system", nodeMetaDatas=[])]
             service_items += [
                 NodeServiceItem(
                     serviceId=record["_id"],
@@ -230,15 +224,13 @@ class FlowManager:
                 return None
             flow_record = app_record["flows"][0]
         except Exception as e:
-            LOGGER.error(
-                f"Get flow by app_id and flow_id failed due to: {e}")
+            LOGGER.error(f"Get flow by app_id and flow_id failed due to: {e}")
             return None
         try:
             if flow_record:
                 flow_config = await FlowLoader().load(app_id, flow_id)
                 if not flow_config:
-                    LOGGER.error(
-                        "Get flow config by app_id and flow_id failed")
+                    LOGGER.error("Get flow config by app_id and flow_id failed")
                     return None
                 focus_point = flow_record["focus_point"]
                 flow_item = FlowItem(
@@ -261,8 +253,7 @@ class FlowManager:
                         editable=True,
                         type=node_config.type,
                         parameters=node_config.params,
-                        position=PositionItem(
-                            x=node_config.pos.x, y=node_config.pos.y),
+                        position=PositionItem(x=node_config.pos.x, y=node_config.pos.y),
                     )
                     flow_item.nodes.append(node_item)
 
@@ -276,23 +267,28 @@ class FlowManager:
                     if len(tmp_list) == 2:
                         edge_from = tmp_list[0]
                         branch_id = tmp_list[1]
-                    flow_item.edges.append(EdgeItem(
-                        edgeId=edge_config.id,
-                        sourceNode=edge_from,
-                        targetNode=edge_config.edge_to,
-                        type=edge_config.edge_type.value if edge_config.edge_type else EdgeType.NORMAL.value,
-                        branchId=branch_id,
-                    ))
+                    flow_item.edges.append(
+                        EdgeItem(
+                            edgeId=edge_config.id,
+                            sourceNode=edge_from,
+                            targetNode=edge_config.edge_to,
+                            type=edge_config.edge_type.value if edge_config.edge_type else EdgeType.NORMAL.value,
+                            branchId=branch_id,
+                        ),
+                    )
                 return (flow_item, focus_point)
             return None
         except Exception as e:
-            LOGGER.error(
-                f"Get flow by app_id and flow_id failed due to: {e}")
+            LOGGER.error(f"Get flow by app_id and flow_id failed due to: {e}")
             return None
 
     @staticmethod
     async def put_flow_by_app_and_flow_id(
-            app_id: str, flow_id: str, flow_item: FlowItem, focus_point: PositionItem) -> Optional[FlowItem]:
+        app_id: str,
+        flow_id: str,
+        flow_item: FlowItem,
+        focus_point: PositionItem,
+    ) -> Optional[FlowItem]:
         """存储/更新flow的数据库数据和配置文件
 
         :param app_id: 应用的id
@@ -317,8 +313,7 @@ class FlowManager:
                 if "flows" in app_record and len(app_record["flows"]) != 0:
                     flow_record = app_record["flows"][0]
         except Exception as e:
-            LOGGER.error(
-                f"Get flow by app_id and flow_id failed due to: {e}")
+            LOGGER.error(f"Get flow by app_id and flow_id failed due to: {e}")
             return None
         try:
             flow_config = Flow(
@@ -334,14 +329,13 @@ class FlowManager:
                     node=node_item.node_meta_data_id,
                     name=node_item.name,
                     description=node_item.description,
-                    pos=StepPos(x=node_item.position.x,
-                                y=node_item.position.y),
+                    pos=StepPos(x=node_item.position.x, y=node_item.position.y),
                     params=node_item.parameters,
                 )
             for edge_item in flow_item.edges:
                 edge_from = edge_item.source_node
                 if edge_item.branch_id:
-                    edge_from = edge_from+"."+edge_item.branch_id
+                    edge_from = edge_from + "." + edge_item.branch_id
                 edge_config = Edge(
                     id=edge_item.edge_id,
                     edge_from=edge_from,
@@ -358,8 +352,7 @@ class FlowManager:
             await app_loader.load(app_id, file_checker.hashes[f"{APP_DIR}/{app_id}"])
             return flow_item
         except Exception as e:
-            LOGGER.error(
-                f"Put flow by app_id and flow_id failed due to: {e}")
+            LOGGER.error(f"Put flow by app_id and flow_id failed due to: {e}")
             return None
 
     @staticmethod
@@ -383,8 +376,7 @@ class FlowManager:
                 return None
             return flow_id
         except Exception as e:
-            LOGGER.error(
-                f"Delete flow by app_id and flow_id failed due to: {e}")
+            LOGGER.error(f"Delete flow by app_id and flow_id failed due to: {e}")
             return None
 
     @staticmethod
@@ -395,7 +387,7 @@ class FlowManager:
             if flow is None:
                 return False
             flow.debug = debug
-            await flow_loader.save(app_id=app_id,flow_id=flow_id,flow=flow)
+            await flow_loader.save(app_id=app_id, flow_id=flow_id, flow=flow)
             app_loader = AppLoader()
             file_checker = FileChecker()
             app_path = Path(config["SEMANTICS_DIR"]) / APP_DIR / app_id
