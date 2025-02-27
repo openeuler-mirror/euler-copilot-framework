@@ -58,6 +58,8 @@ class AppLoader:
                 err = f"[AppLoader] 工作流 {flow_file} 加载失败"
                 LOGGER.error(err)
                 raise ValueError(err)
+            if not flow.debug:
+                metadata.published = False
             new_flows.append(
                 AppFlow(
                     id=flow_file.stem,
@@ -67,8 +69,6 @@ class AppLoader:
                     debug=flow.debug,
                 ),
             )
-            if not new_flows[-1].debug:
-                metadata.published = False
         metadata.flows = new_flows
         try:
             metadata = AppMetadata.model_validate(metadata)
