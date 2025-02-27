@@ -43,7 +43,7 @@ spec:
             {{- $registry := .Values.globals.imageRegistry | default "hub.oepkgs.net" }}
             {{- $arch := .Values.globals.arch | default "x86" }}
             {{- $suffix := ternary "arm" "x86" (eq $arch "arm") }}
-            {{- printf "%s/neocopilot/pgsqle-empty:pg16-%s" $registry $suffix }}
+            {{- printf "%s/neocopilot/pgsql-empty:pg16-%s" $registry $suffix }}
           {{- end }}
           imagePullPolicy: {{ default "IfNotPresent" .Values.globals.imagePullPolicy }}
           ports:
