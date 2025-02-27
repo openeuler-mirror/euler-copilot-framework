@@ -343,8 +343,35 @@ class FlowManager:
                     edge_type=EdgeType(edge_item.type) if edge_item.type else EdgeType.NORMAL,
                 )
                 flow_config.edges.append(edge_config)
-            await FlowLoader().save(app_id, flow_id, flow_config)
-            flow_config = await FlowLoader().load(app_id, flow_id)
+            flow_loader = FlowLoader()
+            old_flow = await flow_loader.load(app_id, flow_id)
+            # 比较old_flow和flow_config的内容除了node.pos以外是否相同
+            # TODO: clean_code, 提取成函数
+            debuged = False
+            if type(old_flow) is Flow:
+                debuged = old_flow.debug
+                if debuged is True:
+                    debuged = True
+                    if len(flow_config.steps) != len(old_flow.steps):
+                        debuged = False
+                    if len(flow_config.edges) != len(old_flow.edges):
+                        debuged = False
+                    for _id, step in flow_config.steps.items():
+                        if _id not in old_flow.steps:
+                            debuged = False
+                        else:
+                            old_flow.steps[_id].pos = step.pos
+                            old_flow.steps[_id].description = step.description
+                            old_flow.steps[_id].name = step.name
+                            old_flow.steps[_id].type = step.type
+                            if old_flow.steps[_id] != step:
+                                debuged = False
+                    for _id in flow_config.edges:
+                        if _id not in old_flow.edges:
+                            debuged = False
+            flow_config.debug = debuged
+            await flow_loader.save(app_id, flow_id, flow_config)
+            flow_config = await flow_loader.load(app_id, flow_id)
             app_loader = AppLoader()
             file_checker = FileChecker()
             app_path = Path(config["SEMANTICS_DIR"]) / APP_DIR / app_id
