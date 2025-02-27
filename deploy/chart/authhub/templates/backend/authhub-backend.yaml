@@ -37,7 +37,7 @@ spec:
       automountServiceAccountToken: false
       containers:
         - name: authhub-backend
-          image: {{ .Values.authhub.backend.image | default (printf "%s/neocopilot/authhub:0.9.3-%s" (.Values.globals.imageRegistry | default "hub.oepkgs.net") (ternary "arm" "x86" (eq (.Values.globals.arch | default "x86") "arm")) }}
+          image: {{ .Values.authhub.backend.image | default (printf "%s/neocopilot/authhub:0.9.3-%s" (.Values.globals.imageRegistry | default "hub.oepkgs.net") (ternary "arm" "x86" (eq (.Values.globals.arch | default "x86") "arm"))) }}
           imagePullPolicy: {{ default "IfNotPresent" .Values.globals.imagePullPolicy }}
           ports:
             - containerPort: 11120
@@ -61,7 +61,7 @@ spec:
               {{ toYaml .Values.authhub.backend.resourceLimits | nindent 14 }}
       initContainers:
         - name: authhub-backend-copy-secret
-          image: {{ .Values.authhub.secret_inject.image | default (printf "%s/neocopilot/secret_inject:dev-%s" (.Values.globals.imageRegistry | default "hub.oepkgs.net") (ternary "arm" "x86" (eq (.Values.globals.arch | default "x86") "arm")) }}
+          image: {{ .Values.authhub.secret_inject.image | default (printf "%s/neocopilot/secret_inject:dev-%s" (.Values.globals.imageRegistry | default "hub.oepkgs.net") (ternary "arm" "x86" (eq (.Values.globals.arch | default "x86") "arm"))) }}
           imagePullPolicy: {{ default "IfNotPresent" .Values.globals.imagePullPolicy }}
           volumeMounts:
             - mountPath: /secrets/mysql-password
