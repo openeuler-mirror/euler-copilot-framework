@@ -244,6 +244,12 @@ class FlowManager:
                     debug=flow_config.debug,
                 )
                 for node_id, node_config in flow_config.steps.items():
+                    input_parameters = node_config.params
+                    _, output_parameters = await NodeManager.get_node_params(node_config.node)
+                    parameters = {
+                        "input_parameters": input_parameters,
+                        "output_parameters": output_parameters
+                    }
                     node_item = NodeItem(
                         nodeId=node_id,
                         nodeMetaDataId=node_config.node,
@@ -252,8 +258,9 @@ class FlowManager:
                         enable=True,
                         editable=True,
                         type=node_config.type,
-                        parameters=node_config.params,
-                        position=PositionItem(x=node_config.pos.x, y=node_config.pos.y),
+                        parameters=parameters,
+                        position=PositionItem(
+                            x=node_config.pos.x, y=node_config.pos.y),
                     )
                     flow_item.nodes.append(node_item)
 
@@ -329,8 +336,9 @@ class FlowManager:
                     node=node_item.node_meta_data_id,
                     name=node_item.name,
                     description=node_item.description,
-                    pos=StepPos(x=node_item.position.x, y=node_item.position.y),
-                    params=node_item.parameters,
+                    pos=StepPos(x=node_item.position.x,
+                                y=node_item.position.y),
+                    params=node_item.parameters.get('input_paramteters', {}),
                 )
             for edge_item in flow_item.edges:
                 edge_from = edge_item.source_node
