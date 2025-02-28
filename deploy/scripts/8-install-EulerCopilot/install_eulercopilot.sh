@@ -64,9 +64,7 @@ get_network_ip() {
     echo "$host"
 }
 
-
-# 获取client info
-get_client_info() {
+get_client_info_auto() {
     # 自动生成客户端名称（格式：client_随机8位字符）
     local client_name="client_$(openssl rand -hex 4 | cut -c1-8)"
     
@@ -75,22 +73,23 @@ get_client_info() {
         echo "$client_name"  # 客户端名称（使用随机生成值）
         echo ""             # client_url（回车使用默认）
         echo ""             # redirect_urls（回车使用默认）
-    } | python3 "${DEPLOY_DIR}/scripts/9-other-script/get_client_id_and_secret.py" > client_info.tmp
+    } | python3 "${DEPLOY_DIR}/scripts/9-other-script/get_client_id_and_secret.py" > client_info.tmp 2>&1
 
     # 检查Python脚本执行结果
     if [ $? -ne 0 ]; then
         echo -e "${RED}错误：Python脚本执行失败${NC}"
-        exit 1
+        cat client_info.tmp
+    #    rm -f client_info.tmp
     fi
 
     # 提取凭证信息（保持原有逻辑）
     client_id=$(grep "client_id: " client_info.tmp | awk '{print $2}')
     client_secret=$(grep "client_secret: " client_info.tmp | awk '{print $2}')
+    #rm -f client_info.tmp
 
     # 验证结果（保持原有逻辑）
     if [ -z "$client_id" ] || [ -z "$client_secret" ]; then
         echo -e "${RED}错误：无法获取有效的客户端凭证${NC}" >&2
-        exit 1
     fi
 
     # 输出结果（保持原有格式）
@@ -100,8 +99,7 @@ get_client_info() {
     echo -e "${GREEN}==============================${NC}"
 }
 
-
-get_client_info_input() {
+get_client_info_manual() {
 
     # 非交互模式直接使用默认值
     if [ -t 0 ]; then  # 仅在交互式终端显示提示
@@ -276,11 +274,9 @@ main() {
     local arch host
     arch=$(get_architecture) || exit 1
     host=$(get_network_ip) || exit 1
-    if get_client_info; then
-	echo -e "${GREEN}已成功获取client info${NC}"
-    else
-        get_client_info_input	    
+    if not get_client_info_auto; then
 	echo -e "${YELLOW}需要手动登录Authhub域名并创建应用，获取client信息${NC}"
+        get_client_info_manual	    
     fi
     get_domain_input
     check_directories
