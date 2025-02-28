@@ -6,7 +6,7 @@ from typing import Any, Optional
 
 from pydantic import BaseModel, Field
 
-from apps.entities.enum_var import EdgeType, NodeType
+from apps.entities.enum_var import EdgeType
 
 
 class NodeMetaDataItem(BaseModel):
@@ -52,7 +52,7 @@ class NodeItem(BaseModel):
     service_id: str = Field(alias="serviceId", default="")
     node_meta_data_id: str = Field(alias="nodeMetaDataId", default="")
     name: str = Field(default="")
-    type: str = Field(default=NodeType.NORMAL.value)
+    type: str = Field(default="Empty")
     description: str = Field(default="")
     enable: bool = Field(default=True)
     parameters: dict[str, Any] = Field(default={})
