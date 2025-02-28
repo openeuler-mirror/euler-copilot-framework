@@ -44,7 +44,7 @@ class FlowLoader:
         if "start" not in flow_yaml["steps"] or "end" not in flow_yaml["steps"]:
             err = f"工作流必须包含开始和结束节点：{flow_path!s}"
             logger.error(err)
-            raise ValueError(err)
+            return None
 
         logger.info("[FlowLoader] 解析工作流 %s 应用 %s 的边...", flow_id, app_id)
         for edge in flow_yaml["edges"]:
