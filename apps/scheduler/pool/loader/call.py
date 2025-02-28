@@ -47,11 +47,11 @@ class CallLoader:
         return call_metadata
 
 
-    async def _load_single_call_dir(self, call_name: str) -> list[CallPool]:
+    async def _load_single_call_dir(self, call_dir_name: str) -> list[CallPool]:
         """加载单个Call package"""
         call_metadata = []
 
-        call_dir = Path(config["SEMANTICS_DIR"]) / CALL_DIR / call_name
+        call_dir = Path(config["SEMANTICS_DIR"]) / CALL_DIR / call_dir_name
         if not (call_dir / "__init__.py").exists():
             LOGGER.info(msg=f"模块{call_dir}不存在__init__.py文件，尝试自动创建。")
             try:
@@ -62,16 +62,16 @@ class CallLoader:
 
         # 载入子包
         try:
-            call_package = importlib.import_module("call." + call_name)
+            call_package = importlib.import_module("call." + call_dir_name)
         except Exception as e:
-            err = f"载入模块call.{call_name}失败：{e}。"
+            err = f"载入模块call.{call_dir_name}失败：{e}。"
             raise RuntimeError(err) from e
 
-        sys.modules["call." + call_name] = call_package
+        sys.modules["call." + call_dir_name] = call_package
 
         # 已载入包，处理包中每个工具
         if not hasattr(call_package, "__all__"):
-            err = f"模块call.{call_name}不符合模块要求，无法处理。"
+            err = f"模块call.{call_dir_name}不符合模块要求，无法处理。"
             LOGGER.info(msg=err)
             raise ValueError(err)
 
@@ -79,11 +79,11 @@ class CallLoader:
             try:
                 call_cls = getattr(call_package, call_id)
             except Exception as e:
-                err = f"载入工具call.{call_name}.{call_id}失败：{e}；跳过载入。"
+                err = f"载入工具call.{call_dir_name}.{call_id}失败：{e}；跳过载入。"
                 LOGGER.info(msg=err)
                 continue
 
-            cls_path = f"{call_package.service}::call.{call_name}.{call_id}"
+            cls_path = f"{call_package.service}::call.{call_dir_name}.{call_id}"
             cls_hash = shake_128(cls_path.encode()).hexdigest(8)
             call_metadata.append(
                 CallPool(
@@ -91,7 +91,7 @@ class CallLoader:
                     type=CallType.PYTHON,
                     name=call_cls.name,
                     description=call_cls.description,
-                    path=f"python::call.{call_name}::{call_id}",
+                    path=f"python::call.{call_dir_name}::{call_id}",
                 ),
             )
 

@@ -2,6 +2,7 @@
 
 Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 """
+import logging
 from typing import Any, ClassVar, Literal
 
 import aiohttp
@@ -11,6 +12,8 @@ from pydantic import BaseModel, Field
 from apps.common.config import config
 from apps.entities.scheduler import CallError, CallVars
 from apps.scheduler.call.core import CoreCall
+
+logger = logging.getLogger("ray")
 
 
 class RAGOutput(BaseModel):
@@ -36,7 +39,7 @@ class RAG(CoreCall, ret_type=RAGOutput):
             "kb_sn": self.knowledge_base,
             "top_k": self.top_k,
             "retrieval_mode": self.retrieval_mode,
-            "question": syscall_vars.question,
+            "content": syscall_vars.question,
         }
 
         url = config["RAG_HOST"].rstrip("/") + "/chunk/get"
@@ -60,7 +63,10 @@ class RAG(CoreCall, ret_type=RAGOutput):
                 return RAGOutput(
                     corpus=corpus,
                 )
+
             text = await response.text()
+            logger.error("[RAG] 调用失败：%s", text)
+
             raise CallError(
                 message=f"rag调用失败：{text}",
                 data={

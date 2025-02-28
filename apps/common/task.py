@@ -65,7 +65,7 @@ class Task:
             metadata=RecordMetadata(
                 input_tokens=0,
                 output_tokens=0,
-                time=0,
+                time_cost=0,
                 feature={},
             ),
             createdAt=round(datetime.now(timezone.utc).timestamp(), 3),

@@ -52,11 +52,11 @@ class MessageQueue:
             return
 
         # 计算当前Step时间
-        step_time = round((datetime.now(timezone.utc).timestamp() - task.record.metadata.time), 3)
+        step_time = round((datetime.now(timezone.utc).timestamp() - task.record.metadata.time_cost), 3)
         metadata = MessageMetadata(
-            time=step_time,
-            input_tokens=task.record.metadata.input_tokens,
-            output_tokens=task.record.metadata.output_tokens,
+            timeCost=step_time,
+            inputTokens=task.record.metadata.input_tokens,
+            outputTokens=task.record.metadata.output_tokens,
         )
 
         if task.flow_state:
@@ -65,6 +65,7 @@ class MessageQueue:
                 appId=task.flow_state.app_id,
                 flowId=task.flow_state.name,
                 stepId=task.flow_state.step_id,
+                stepName=task.flow_state.step_name,
                 stepStatus=task.flow_state.status,
             )
         else:

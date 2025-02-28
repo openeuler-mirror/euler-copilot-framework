@@ -71,7 +71,7 @@ class FlowManager:
             return False
 
     @staticmethod
-    async def get_node_meta_datas_by_service_id(service_id: str) -> Optional[list[NodeMetaDataItem]]:
+    async def get_node_id_by_service_id(service_id: str) -> Optional[list[NodeMetaDataItem]]:
         """serviceId获取service的接口数据，并将接口转换为节点元数据
 
         :param service_id: 服务id
@@ -157,7 +157,7 @@ class FlowManager:
                 for record in service_records
             ]
             for service_item in service_items:
-                node_meta_datas = await FlowManager.get_node_meta_datas_by_service_id(service_item.service_id)
+                node_meta_datas = await FlowManager.get_node_id_by_service_id(service_item.service_id)
                 if node_meta_datas is None:
                     node_meta_datas = []
                 service_item.node_meta_datas = node_meta_datas

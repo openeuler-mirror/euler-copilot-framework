@@ -2,7 +2,6 @@
 
 Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 """
-import asyncio
 import logging
 from typing import Optional
 
@@ -34,18 +33,21 @@ class FlowChooser:
 
     async def get_top_flow(self) -> str:
         """获取Top1 Flow"""
-        logger.info("[FlowChooser] 判断任务 %s 的Top1 Flow...", self._task_id)
         pool = ray.get_actor("pool")
         # 获取所选应用的所有Flow
         if not self._user_selected or not self._user_selected.app_id:
             return "KnowledgeBase"
 
-        flow_list = await asyncio.gather(pool.get_flow_list.remote(self._user_selected.app_id))[0]
+        flow_list = await pool.get_flow_metadata.remote(self._user_selected.app_id)
         if not flow_list:
             return "KnowledgeBase"
 
-        logger.info("[FlowChooser] 选择任务 %s 的Top1 Flow...", self._task_id)
-        return await Select().generate(self._task_id, question=self._question, choices=flow_list)
+        logger.info("[FlowChooser] 选择任务 %s 最合适的Flow", self._task_id)
+        choices = [{
+            "name": flow.id,
+            "description": f"{flow.name}, {flow.description}",
+        } for flow in flow_list]
+        return await Select().generate(self._task_id, question=self._question, choices=choices)
 
 
     async def choose_flow(self) -> Optional[RequestDataApp]:

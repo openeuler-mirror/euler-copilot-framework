@@ -124,7 +124,11 @@ class FlowLoader:
         }
 
         async with aiofiles.open(flow_path, mode="w", encoding="utf-8") as f:
-            await f.write(yaml.dump(flow_dict, allow_unicode=True, sort_keys=False))
+            await f.write(yaml.dump(
+                flow_dict,
+                allow_unicode=True,
+                sort_keys=False,
+            ))
 
     async def delete(self, app_id: str, flow_id: str) -> bool:
         """删除指定工作流文件"""

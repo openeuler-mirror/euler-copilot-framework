@@ -38,13 +38,11 @@ class AppLoader:
         metadata = await MetadataLoader().load_one(metadata_path)
         if not metadata:
             err = f"[AppLoader] 元数据不存在: {metadata_path}"
-            logger.error(err)
             raise ValueError(err)
         metadata.hashes = hashes
 
         if not isinstance(metadata, AppMetadata):
             err = f"[AppLoader] 元数据类型错误: {metadata_path}"
-            logger.error(err)
             raise TypeError(err)
 
         # 加载工作流
@@ -59,7 +57,6 @@ class AppLoader:
             flow = await flow_loader.load(app_id, flow_file.stem)
             if not flow:
                 err = f"[AppLoader] 工作流 {flow_file} 加载失败"
-                logger.error(err)
                 raise ValueError(err)
             if not flow.debug:
                 metadata.published = False
@@ -100,7 +97,7 @@ class AppLoader:
         await self.load(app_id, file_checker.hashes[f"{APP_DIR}/{app_id}"])
 
 
-    async def delete(self, app_id: str) -> None:
+    async def delete(self, app_id: str, *, is_reload: bool = False) -> None:
         """删除App，并更新数据库
 
         :param app_id: 应用 ID
@@ -131,9 +128,10 @@ class AppLoader:
 
         await session.aclose()
 
-        app_path = Path(config["SEMANTICS_DIR"]) / APP_DIR / app_id
-        if await app_path.exists():
-            shutil.rmtree(str(app_path), ignore_errors=True)
+        if not is_reload:
+            app_path = Path(config["SEMANTICS_DIR"]) / APP_DIR / app_id
+            if await app_path.exists():
+                shutil.rmtree(str(app_path), ignore_errors=True)
 
 
     async def _update_db(self, metadata: AppMetadata) -> None:
