@@ -166,12 +166,12 @@ async def update_service(  # noqa: PLR0911
                     result={},
                 ).model_dump(exclude_none=True, by_alias=True),
             )
-        except PermissionError as e:
+        except PermissionError:
             return JSONResponse(
                 status_code=status.HTTP_403_FORBIDDEN,
                 content=ResponseData(
                     code=status.HTTP_403_FORBIDDEN,
-                    message=str(e),
+                    message="UNAUTHORIZED",
                     result={},
                 ).model_dump(exclude_none=True, by_alias=True),
             )
@@ -187,6 +187,15 @@ async def update_service(  # noqa: PLR0911
             )
     try:
         name, apis = await ServiceCenterManager.get_service_apis(service_id)
+    except ValueError:
+        return JSONResponse(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            content=ResponseData(
+                code=status.HTTP_400_BAD_REQUEST,
+                message="INVALID_SERVICE_ID",
+                result={},
+            ).model_dump(exclude_none=True, by_alias=True),
+        )
     except Exception:
         logger.exception("[ServiceCenter] 获取服务API失败")
         return JSONResponse(
@@ -214,21 +223,21 @@ async def get_service_detail(
     if edit:
         try:
             name, data = await ServiceCenterManager.get_service_data(user_sub, service_id)
-        except ValueError as e:
+        except ValueError:
             return JSONResponse(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 content=ResponseData(
                     code=status.HTTP_400_BAD_REQUEST,
-                    message=str(e),
+                    message="INVALID_SERVICE_ID",
                     result={},
                 ).model_dump(exclude_none=True, by_alias=True),
             )
-        except PermissionError as e:
+        except PermissionError:
             return JSONResponse(
                 status_code=status.HTTP_403_FORBIDDEN,
                 content=ResponseData(
                     code=status.HTTP_403_FORBIDDEN,
-                    message=str(e),
+                    message="UNAUTHORIZED",
                     result={},
                 ).model_dump(exclude_none=True, by_alias=True),
             )
@@ -278,21 +287,21 @@ async def delete_service(
     """删除服务"""
     try:
         await ServiceCenterManager.delete_service(user_sub, service_id)
-    except ValueError as e:
+    except ValueError:
         return JSONResponse(
             status_code=status.HTTP_400_BAD_REQUEST,
             content=ResponseData(
                 code=status.HTTP_400_BAD_REQUEST,
-                message=str(e),
+                message="INVALID_SERVICE_ID",
                 result={},
             ).model_dump(exclude_none=True, by_alias=True),
         )
-    except PermissionError as e:
+    except PermissionError:
         return JSONResponse(
             status_code=status.HTTP_403_FORBIDDEN,
             content=ResponseData(
                 code=status.HTTP_403_FORBIDDEN,
-                message=str(e),
+                message="UNAUTHORIZED",
                 result={},
             ).model_dump(exclude_none=True, by_alias=True),
         )
