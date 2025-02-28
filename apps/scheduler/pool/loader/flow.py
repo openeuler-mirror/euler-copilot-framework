@@ -23,6 +23,9 @@ class FlowLoader:
         """从文件系统中加载【单个】工作流"""
         LOGGER.info(f"[FlowLoader] Loading flow {flow_id} for app {app_id}...")
         flow_path = Path(config["SEMANTICS_DIR"]) / "app" / app_id / "flow" / f"{flow_id}.yaml"
+        if not await flow_path.exists():
+            LOGGER.warning(f"[FlowLoader] Flow file {flow_path} does not exist.")
+            return None
         async with aiofiles.open(flow_path, encoding="utf-8") as f:
             flow_yaml = yaml.safe_load(await f.read())
 
@@ -55,7 +58,7 @@ class FlowLoader:
                     LOGGER.error(err)
                     raise ValueError(err) from e
 
-        LOGGER.info(f"[FlowLoader] Parsing steps of flow {flow_id} for app {app_id}...")
+        LOGGER.info(f"[FlowLoader] Parsing steps of flow {flow_id } for app {app_id}...")
         for key, step in flow_yaml["steps"].items():
             if key == "start":
                 step["name"] = "开始"
