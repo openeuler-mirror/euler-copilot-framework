@@ -60,7 +60,7 @@ class FlowLoader:
                 except KeyError as e:
                     err = f"Invalid edge type {edge['type']}"
                     logger.exception(err)
-                    raise ValueError(err) from e
+                    return None
 
         logger.info("[FlowLoader] 解析工作流 %s 应用 %s 的步骤...", flow_id, app_id)
         for key, step in flow_yaml["steps"].items():
