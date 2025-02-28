@@ -251,6 +251,12 @@ class FlowManager:
                     debug=flow_config.debug,
                 )
                 for node_id, node_config in flow_config.steps.items():
+                    input_parameters = node_config.params
+                    _, output_parameters = await NodeManager.get_node_params(node_config.node)
+                    parameters = {
+                        "input_parameters": input_parameters,
+                        "output_parameters": output_parameters
+                    }
                     node_item = NodeItem(
                         nodeId=node_id,
                         nodeMetaDataId=node_config.node,
@@ -259,7 +265,7 @@ class FlowManager:
                         enable=True,
                         editable=True,
                         type=node_config.type,
-                        parameters=node_config.params,
+                        parameters=parameters,
                         position=PositionItem(
                             x=node_config.pos.x, y=node_config.pos.y),
                     )
@@ -335,7 +341,7 @@ class FlowManager:
                     description=node_item.description,
                     pos=StepPos(x=node_item.position.x,
                                 y=node_item.position.y),
-                    params=node_item.parameters,
+                    params=node_item.parameters.get('input_paramteters', {}),
                 )
             for edge_item in flow_item.edges:
                 edge_from = edge_item.source_node
@@ -446,25 +452,25 @@ class FlowManager:
         try:
             app_pool_collection = MongoDB.get_collection("app")
             result = await app_pool_collection.find_one(
-                {"_id": app_id,"flows.id": flow_id}  # 使用关键字参数 array_filters
+                {"_id": app_id, "flows.id": flow_id}  # 使用关键字参数 array_filters
             )
             if result is None:
                 LOGGER.error("Update flow debug from app pool failed")
                 return False
             app_pool = AppPool(
-                    _id=result["_id"],  # 使用 alias="_id" 自动映射
-                    name=result.get("name", ""),
-                    description=result.get("description", ""),
-                    created_at=result.get("created_at", None),
-                    author=result.get("author", ""),
-                    icon=result.get("icon", ""),
-                    published=result.get("published", False),
-                    links=[AppLink(**link) for link in result.get("links", [])],
-                    first_questions=result.get("first_questions", []),
-                    history_len=result.get("history_len", 3),
-                    permission=Permission(**result.get("permission", {})),
-                    flows=[AppFlow(**flow) for flow in result.get("flows", [])],
-                )
+                _id=result["_id"],  # 使用 alias="_id" 自动映射
+                name=result.get("name", ""),
+                description=result.get("description", ""),
+                created_at=result.get("created_at", None),
+                author=result.get("author", ""),
+                icon=result.get("icon", ""),
+                published=result.get("published", False),
+                links=[AppLink(**link) for link in result.get("links", [])],
+                first_questions=result.get("first_questions", []),
+                history_len=result.get("history_len", 3),
+                permission=Permission(**result.get("permission", {})),
+                flows=[AppFlow(**flow) for flow in result.get("flows", [])],
+            )
             metadata = AppMetadata(
                 id=app_pool.id,
                 name=app_pool.name,
@@ -487,7 +493,7 @@ class FlowManager:
             if flow is None:
                 return False
             flow.debug = debug
-            await flow_loader.save(app_id=app_id,flow_id=flow_id,flow=flow)
+            await flow_loader.save(app_id=app_id, flow_id=flow_id, flow=flow)
             app_loader = AppLoader()
             await app_loader.save(metadata, app_id)
             return True
