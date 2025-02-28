@@ -52,7 +52,7 @@ class NodeItem(BaseModel):
     service_id: str = Field(alias="serviceId", default="")
     node_meta_data_id: str = Field(alias="nodeMetaDataId", default="")
     name: str = Field(default="")
-    type: str = Field(default="normal")
+    type: str = Field(default="empty")
     description: str = Field(default="")
     enable: bool = Field(default=True)
     parameters: dict[str, Any] = Field(default={})
