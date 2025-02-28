@@ -47,7 +47,7 @@ async def push_init_message(task_id: str, queue: actor.ActorHandle, context_num:
 
     # 保存必要信息到Task
     created_at = round(datetime.now(timezone.utc).timestamp(), 2)
-    task.record.metadata.time = created_at
+    task.record.metadata.time_cost = created_at
     task.record.metadata.feature = feature.model_dump(exclude_none=True, by_alias=True)
 
     # 推送初始化消息

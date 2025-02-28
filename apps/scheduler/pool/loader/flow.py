@@ -25,6 +25,9 @@ class FlowLoader:
         """从文件系统中加载【单个】工作流"""
         logger.info("[FlowLoader] 加载工作流 %s 应用 %s...", flow_id, app_id)
         flow_path = Path(config["SEMANTICS_DIR"]) / "app" / app_id / "flow" / f"{flow_id}.yaml"
+        if not await flow_path.exists():
+            logger.error(f"[FlowLoader] Flow file {flow_path} does not exist.")
+            return None
         async with aiofiles.open(flow_path, encoding="utf-8") as f:
             flow_yaml = yaml.safe_load(await f.read())
 
@@ -41,7 +44,7 @@ class FlowLoader:
         if "start" not in flow_yaml["steps"] or "end" not in flow_yaml["steps"]:
             err = f"工作流必须包含开始和结束节点：{flow_path!s}"
             logger.error(err)
-            raise ValueError(err)
+            return None
 
         logger.info("[FlowLoader] 解析工作流 %s 应用 %s 的边...", flow_id, app_id)
         for edge in flow_yaml["edges"]:
@@ -57,7 +60,7 @@ class FlowLoader:
                 except KeyError as e:
                     err = f"Invalid edge type {edge['type']}"
                     logger.exception(err)
-                    raise ValueError(err) from e
+                    return None
 
         logger.info("[FlowLoader] 解析工作流 %s 应用 %s 的步骤...", flow_id, app_id)
         for key, step in flow_yaml["steps"].items():
@@ -121,7 +124,11 @@ class FlowLoader:
         }
 
         async with aiofiles.open(flow_path, mode="w", encoding="utf-8") as f:
-            await f.write(yaml.dump(flow_dict, allow_unicode=True, sort_keys=False))
+            await f.write(yaml.dump(
+                flow_dict,
+                allow_unicode=True,
+                sort_keys=False,
+            ))
 
     async def delete(self, app_id: str, flow_id: str) -> bool:
         """删除指定工作流文件"""

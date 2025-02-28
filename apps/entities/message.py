@@ -24,6 +24,7 @@ class MessageFlow(BaseModel):
     app_id: str = Field(description="插件ID", alias="appId")
     flow_id: str = Field(description="Flow ID", alias="flowId")
     step_id: str = Field(description="当前步骤ID", alias="stepId")
+    step_name: str = Field(description="当前步骤名称", alias="stepName")
     step_status: StepStatus = Field(description="当前步骤状态", alias="stepStatus")
 
 

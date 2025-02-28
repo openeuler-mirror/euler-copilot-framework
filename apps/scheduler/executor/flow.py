@@ -2,6 +2,7 @@
 
 Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 """
+import asyncio
 import logging
 from typing import Any, Optional
 
@@ -65,11 +66,12 @@ class Executor(BaseModel):
                 status=StepStatus.RUNNING,
                 app_id=str(self.post_body_app.app_id),
                 step_id="start",
+                step_name="开始",
                 ai_summary="",
                 filled_data=self.post_body_app.params,
             )
         # 是否结束运行
-        self._stop = False
+        self._can_continue = True
 
 
     async def _check_cls(self, call_cls: Any) -> bool:
@@ -79,14 +81,15 @@ class Executor(BaseModel):
             flag = False
         if not hasattr(call_cls, "description") or not isinstance(call_cls.description, str):
             flag = False
-        if not hasattr(call_cls, "exec") or not callable(call_cls.exec):
+        if not callable(call_cls) or not asyncio.iscoroutinefunction(call_cls.__call__):
             flag = False
         return flag
 
 
+    # TODO
     async def _run_error(self, step: FlowError) -> dict[str, Any]:
         """运行错误处理步骤"""
-        pass
+        return {}
 
 
     async def _get_call_cls(self, node_id: str) -> Optional[type[CoreCall]]:
@@ -107,15 +110,15 @@ class Executor(BaseModel):
         # 从Pool中获取对应的Call
         pool = ray.get_actor("pool")
         try:
-            call_cls: type[CoreCall] = await pool.get_call.remote(call_id, self.flow_state.app_id)
+            call_cls: type[CoreCall] = await pool.get_call.remote(call_id)
         except Exception:
             logger.exception("[FlowExecutor] 载入工具%s时发生错误", node_id)
             self.flow_state.status = StepStatus.ERROR
             return None
 
         # 检查Call合法性
-        if not self._check_cls(call_cls):
-            logger.error("[FlowExecutor] 工具%s不符合Call标准要求", node_id)
+        if not await self._check_cls(call_cls):
+            logger.error("[FlowExecutor] 工具 %s 不符合Call标准要求", node_id)
             self.flow_state.status = StepStatus.ERROR
             return None
 
@@ -145,7 +148,7 @@ class Executor(BaseModel):
 
         # 如果还有未填充的部分，则返回False
         if remaining_schema:
-            self._stop = True
+            self._can_continue = False
             self.flow_state.status = StepStatus.RUNNING
             # 推送空输入输出
             await push_step_input(self.task.record.task_id, self.queue, self.flow_state, self.flow)
@@ -156,6 +159,7 @@ class Executor(BaseModel):
         return True, slot_data
 
 
+    # TODO
     async def _get_last_output(self, task: TaskBlock) -> Optional[dict[str, Any]]:
         """获取上一步的输出"""
         return None
@@ -185,22 +189,19 @@ class Executor(BaseModel):
         return result_data
 
 
-    async def _run_step(self, step_data: Step) -> None:
+    async def _run_step(self, step_id: str, step_data: Step) -> None:
         """运行单个步骤"""
         logger.info("[FlowExecutor] 运行步骤 %s", step_data.name)
         # 更新State
-        self.flow_state.step_id = step_data.name
+        self.flow_state.step_id = step_id
         self.flow_state.status = StepStatus.RUNNING
 
-        # Call类型为none，跳过执行
+        # 特殊类型的Node，跳过执行
         node_id = step_data.node
-        if node_id in ("none", "start", "end"):
-            return
-
         # 获取并验证Call类
         call_cls = await self._get_call_cls(node_id)
         if call_cls is None:
-            logger.error("[FlowExecutor] Node%s对应的工具不存在", node_id)
+            logger.error("[FlowExecutor] Node %s 对应的工具不存在", node_id)
             return
 
         # 准备系统变量
@@ -224,7 +225,7 @@ class Executor(BaseModel):
 
         # TODO: 处理slots
         # can_continue, slot_data = await self._process_slots(call_obj)
-        # if not can_continue:
+        # if not self._can_continue:
         #     return
 
         # 推送步骤输入
@@ -238,8 +239,19 @@ class Executor(BaseModel):
         return
 
 
+    async def _handle_last_step(self) -> None:
+        """处理最后一步"""
+        # 如果当前步骤为结束，则直接返回
+        if self.flow_state.step_id == "end":
+            return
+
+
     async def _handle_next_step(self) -> None:
         """处理下一步"""
+        # 如果当前步骤为结束，则直接返回
+        if self.flow_state.step_id == "end":
+            return
+
         next_nodes = []
         # 遍历Edges，查找下一个节点
         for edge in self.flow.edges:
@@ -255,10 +267,16 @@ class Executor(BaseModel):
         # 处理下一步
         if not next_nodes:
             self.flow_state.step_id = "end"
+            self.flow_state.step_name = "结束"
         else:
             self.flow_state.step_id = next_nodes[0]
+            self.flow_state.step_name = next_nodes[0]
+            # self.flow_state.step_name = self.flow.steps[next_nodes[0]].name
 
         logger.info("[FlowExecutor] 下一步 %s", self.flow_state.step_id)
+        # 如果是最后一步，设置停止标志
+        if self.flow_state.step_id == "end":
+            self._can_continue = False
 
 
     async def run(self) -> None:
@@ -270,36 +288,21 @@ class Executor(BaseModel):
         # 推送Flow开始
         await push_flow_start(self.task.record.task_id, self.queue, self.flow_state, self.question)
 
-        while not self._stop:
+        while self._can_continue:
             # 当前步骤不存在
             if self.flow_state.step_id not in self.flow.steps:
-                logger.error("[FlowExecutor] 当前步骤%s不存在", self.flow_state.step_id)
-                break
+                logger.error("[FlowExecutor] 当前步骤 %s 不存在", self.flow_state.step_id)
+                self.flow_state.status = StepStatus.ERROR
 
             if self.flow_state.status == StepStatus.ERROR:
                 # 当前步骤为错误处理步骤
                 logger.warning("[FlowExecutor] Executor出错，执行错误处理步骤")
                 step = self.flow.on_error
+                await self._run_error(step)
             else:
+                # 当前步骤为正常步骤
                 step = self.flow.steps[self.flow_state.step_id]
-
-            # 当前步骤空白
-            if not step:
-                break
-
-            # 判断当前是否为最后一步
-            if self.flow_state.step_id == "end":
-                break
-
-            # 运行步骤
-            if isinstance(step, FlowError):
-                result = await self._run_error(step)
-            else:
-                result = await self._run_step(step)
-
-            # 如果停止，则结束执行
-            if self._stop:
-                break
+                await self._run_step(self.flow_state.step_id, step)
 
             # 处理下一步
             await self._handle_next_step()

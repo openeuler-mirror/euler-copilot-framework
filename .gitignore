@@ -11,3 +11,4 @@ apps/utils/init
 *.bak
 apps/embedding
 logs
+.git-credentials

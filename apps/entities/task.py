@@ -36,7 +36,8 @@ class ExecutorState(BaseModel):
     description: str = Field(description="执行器描述")
     status: StepStatus = Field(description="执行器状态")
     # 附加信息
-    step_id: str = Field(description="当前步骤名称")
+    step_id: str = Field(description="当前步骤ID")
+    step_name: str = Field(description="当前步骤名称")
     app_id: str = Field(description="应用ID")
     # 运行时数据
     ai_summary: str = Field(description="大模型的思考内容", default="")

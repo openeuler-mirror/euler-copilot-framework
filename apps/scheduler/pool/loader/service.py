@@ -4,6 +4,7 @@ Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 """
 
 import asyncio
+import shutil
 
 import ray
 from anyio import Path
@@ -77,7 +78,8 @@ class ServiceLoader:
         await file_checker.diff_one(service_path)
         await self.load(service_id, file_checker.hashes[f"{SERVICE_DIR}/{service_id}"])
 
-    async def delete(self, service_id: str) -> None:
+
+    async def delete(self, service_id: str, *, is_reload: bool = False) -> None:
         """删除Service，并更新数据库"""
         service_collection = MongoDB.get_collection("service")
         node_collection = MongoDB.get_collection("node")
@@ -96,6 +98,11 @@ class ServiceLoader:
         except Exception as e:
             err = f"[ServiceLoader] 删除数据库失败：{e}"
             LOGGER.error(err)
+
+        if not is_reload:
+            path = Path(config["SEMANTICS_DIR"]) / SERVICE_DIR / service_id
+            if await path.exists():
+                shutil.rmtree(path)
 
         await session.aclose()
 

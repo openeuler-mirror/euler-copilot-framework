@@ -112,9 +112,9 @@ class Audit(BaseModel):
 class RecordMetadata(BaseModel):
     """Record表子项：Record的元信息"""
 
-    input_tokens: int
-    output_tokens: int
-    time: float
+    input_tokens: int = Field(default=0, alias="inputTokens")
+    output_tokens: int = Field(default=0, alias="outputTokens")
+    time_cost: float = Field(default=0, alias="timeCost")
     feature: dict[str, Any] = {}
 
 

@@ -107,7 +107,7 @@ async def save_data(task_id: str, user_sub: str, post_body: RequestData, used_do
         await TaskManager.create_flows(history_data)
 
         # 修改metadata里面时间为实际运行时间
-        task.record.metadata.time = round(datetime.now(timezone.utc).timestamp() - task.record.metadata.time, 2)
+        task.record.metadata.time_cost = round(datetime.now(timezone.utc).timestamp() - task.record.metadata.time_cost, 2)
 
     # 提取facts
     # 记忆提取

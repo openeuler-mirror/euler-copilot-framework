@@ -10,25 +10,11 @@ from fastapi import status
 from pydantic import BaseModel, Field
 
 from apps.constants import LOGGER
+from apps.entities.enum_var import ContentType, HTTPMethod
 from apps.entities.scheduler import CallError, CallVars
 from apps.manager.token import TokenManager
 from apps.scheduler.call.core import CoreCall
 from apps.scheduler.slot.slot import Slot
-
-
-class _APIParams(BaseModel):
-    """API调用工具的参数"""
-
-    url: str = Field(description="API接口的完整URL")
-    method: Literal[
-        "get", "post", "put", "delete", "patch",
-    ] = Field(description="API接口的HTTP Method")
-    content_type: Literal[
-        "application/json", "application/x-www-form-urlencoded", "multipart/form-data",
-    ] = Field(description="API接口的Content-Type")
-    timeout: int = Field(description="工具超时时间", default=300)
-    body: dict[str, Any] = Field(description="已知的部分请求体", default={})
-    auth: dict[str, Any] = Field(description="API鉴权信息", default={})
 
 
 class APIOutput(BaseModel):
@@ -45,6 +31,13 @@ class API(CoreCall, ret_type=APIOutput):
     name: ClassVar[str] = "HTTP请求"
     description: ClassVar[str] = "向某一个API接口发送HTTP请求，获取数据。"
 
+    url: str = Field(description="API接口的完整URL")
+    method: HTTPMethod = Field(description="API接口的HTTP Method")
+    content_type: ContentType = Field(description="API接口的Content-Type")
+    timeout: int = Field(description="工具超时时间", default=300, gt=30)
+    body: dict[str, Any] = Field(description="已知的部分请求体", default={})
+    auth: dict[str, Any] = Field(description="API鉴权信息", default={})
+
 
     async def __call__(self, syscall_vars: CallVars, **_kwargs: Any) -> APIOutput:
         """调用API，然后返回LLM解析后的数据"""
@@ -60,12 +53,11 @@ class API(CoreCall, ret_type=APIOutput):
 
     async def _make_api_call(self, data: Optional[dict], files: aiohttp.FormData):  # noqa: ANN202, C901
         # 获取必要参数
-        params: _APIParams = getattr(self, "_params")
         syscall_vars: CallVars = getattr(self, "_syscall_vars")
 
-        if params.content_type != "form":
+        if self.content_type != "form":
             req_header = {
-                "Content-Type": "application/json",
+                "Content-Type": ContentType.JSON.value,
             }
         else:
             req_header = {}
@@ -75,36 +67,36 @@ class API(CoreCall, ret_type=APIOutput):
         if data is None:
             data = {}
 
-        if params.auth is not None and "type" in params.auth:
-            if params.auth["type"] == "header":
-                req_header.update(params.auth["args"])
-            elif params.auth["type"] == "cookie":
-                req_cookie.update(params.auth["args"])
-            elif params.auth["type"] == "params":
-                req_params.update(params.auth["args"])
-            elif params.auth["type"] == "oidc":
+        if self.auth is not None and "type" in self.auth:
+            if self.auth["type"] == "header":
+                req_header.update(self.auth["args"])
+            elif self.auth["type"] == "cookie":
+                req_cookie.update(self.auth["args"])
+            elif self.auth["type"] == "params":
+                req_params.update(self.auth["args"])
+            elif self.auth["type"] == "oidc":
                 token = await TokenManager.get_plugin_token(
-                    params.auth["domain"],
+                    self.auth["domain"],
                     syscall_vars.session_id,
-                    params.auth["access_token_url"],
-                    int(params.auth["token_expire_time"]),
+                    self.auth["access_token_url"],
+                    int(self.auth["token_expire_time"]),
                 )
                 req_header.update({"access-token": token})
 
-        if params.method in ["get", "delete"]:
+        if self.method in ["get", "delete"]:
             req_params.update(data)
-            return self._session.request(params.method, params.url, params=req_params, headers=req_header, cookies=req_cookie,
-                                    timeout=params.timeout)
+            return self._session.request(self.method, self.url, params=req_params, headers=req_header, cookies=req_cookie,
+                                    timeout=self.timeout)
 
-        if params.method in ["post", "put", "patch"]:
-            if self._data_type == "form":
+        if self.method in ["post", "put", "patch"]:
+            if self.content_type == "form":
                 form_data = files
                 for key, val in data.items():
                     form_data.add_field(key, val)
-                return self._session.request(params.method, params.url, data=form_data, headers=req_header, cookies=req_cookie,
-                                         timeout=params.timeout)
-            return self._session.request(params.method, params.url, json=data, headers=req_header, cookies=req_cookie,
-                                     timeout=params.timeout)
+                return self._session.request(self.method, self.url, data=form_data, headers=req_header, cookies=req_cookie,
+                                         timeout=self.timeout)
+            return self._session.request(self.method, self.url, json=data, headers=req_header, cookies=req_cookie,
+                                     timeout=self.timeout)
 
         err = "Method not implemented."
         raise NotImplementedError(err)

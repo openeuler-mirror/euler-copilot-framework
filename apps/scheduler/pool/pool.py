@@ -12,7 +12,7 @@ from anyio import Path
 from apps.constants import APP_DIR, SERVICE_DIR
 from apps.entities.enum_var import MetadataType
 from apps.entities.flow import Flow
-from apps.entities.pool import AppFlow
+from apps.entities.pool import AppFlow, CallPool
 from apps.models.mongo import MongoDB
 from apps.scheduler.pool.check import FileChecker
 from apps.scheduler.pool.loader import (
@@ -46,7 +46,7 @@ class Pool:
 
         # 批量删除
         for service in changed_service:
-            await service_loader.delete(service)
+            await service_loader.delete(service, is_reload=True)
         for service in deleted_service:
             await service_loader.delete(service)
 
@@ -63,7 +63,7 @@ class Pool:
 
         # 批量删除App
         for app in changed_app:
-            await app_loader.delete(app)
+            await app_loader.delete(app, is_reload=True)
         for app in deleted_app:
             await app_loader.delete(app)
 
@@ -74,6 +74,7 @@ class Pool:
                 await app_loader.load(app, checker.hashes[hash_key])
 
 
+    # TODO
     async def save(self, *, is_deletion: bool = False) -> None:
         """保存【单个】资源"""
         pass
@@ -102,11 +103,20 @@ class Pool:
         return await flow_loader.load(app_id, flow_id)
 
 
-    async def get_call(self, call_path: str) -> Any:
-        """拿到Call的信息"""
-        call_path_split = call_path.split("::")
+    async def get_call(self, call_id: str) -> Any:
+        """[Exception] 拿到Call的信息"""
+        # 从MongoDB里拿到数据
+        call_collection = MongoDB.get_collection("call")
+        call_db_data = await call_collection.find_one({"_id": call_id})
+        if not call_db_data:
+            err = f"[Pool] Call{call_id}不存在"
+            logger.error(err)
+            raise ValueError(err)
+
+        call_metadata = CallPool.model_validate(call_db_data)
+        call_path_split = call_metadata.path.split("::")
         if not call_path_split:
-            err = f"[Pool] Call路径{call_path}不合法"
+            err = f"[Pool] Call路径{call_metadata.path}不合法"
             logger.error(err)
             raise ValueError(err)
 
@@ -116,7 +126,7 @@ class Pool:
                 call_module = importlib.import_module(call_path_split[1])
                 return getattr(call_module, call_path_split[2])
             except Exception as e:
-                err = f"[Pool] 获取Call{call_path}类失败"
+                err = f"[Pool] 获取Call{call_metadata.path}类失败"
                 logger.exception(err)
                 raise RuntimeError(err) from e
         return None

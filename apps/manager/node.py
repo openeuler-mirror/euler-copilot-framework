@@ -6,7 +6,7 @@ import ray
 from pydantic import BaseModel
 
 from apps.entities.node import APINode
-from apps.entities.pool import CallPool, NodePool
+from apps.entities.pool import NodePool
 from apps.models.mongo import MongoDB
 
 logger = logging.getLogger("ray")
@@ -83,27 +83,13 @@ class NodeManager:
             raise ValueError(err) from e
 
         call_id = node_data.call_id
-        # 查找Node对应的Call信息
-        call_collection = MongoDB().get_collection("call")
-        call = await call_collection.find_one({"_id": call_id})
-        if not call:
-            err = f"[NodeManager] Call {call_id} not found."
-            logger.error(err)
-            raise ValueError(err)
-
-        try:
-            call_data = CallPool.model_validate(call)
-        except Exception as e:
-            err = "[NodeManager] 获取Call数据失败"
-            logger.exception(err)
-            raise ValueError(err) from e
 
         # 查找Call信息
-        logger.info("[NodeManager] 获取Call %s", call_data.path)
+        logger.info("[NodeManager] 获取Call %s", call_id)
         pool = ray.get_actor("pool")
-        call_class: type[BaseModel] = await pool.get_call.remote(call_data.path)
+        call_class: type[BaseModel] = await pool.get_call.remote(call_id)
         if not call_class:
-            err = f"[NodeManager] Call {call_data.path} not found"
+            err = f"[NodeManager] Call {call_id} 不存在"
             logger.error(err)
             raise ValueError(err)
 

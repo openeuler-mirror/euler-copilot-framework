@@ -23,7 +23,7 @@ class Select(CorePattern):
             <instruction>
                 根据历史对话（包括工具调用结果）和用户问题，从给出的选项列表中，选出最符合要求的那一项。
                 在输出之前，请先思考，并使用“<think>”标签给出思考过程。
-                结果需要使用JSON格式输出，输出格式为：{ "choice": "选项名称" }
+                结果需要使用JSON格式输出，输出格式为：{{ "choice": "选项名称" }}
             </instruction>
 
             <example>
@@ -31,7 +31,7 @@ class Select(CorePattern):
                     <question>使用天气API，查询明天杭州的天气信息</question>
 
                     <options>
-                        <item>[API] 请求特定API，获得返回的JSON数据</item>
+                        <item>[API] HTTP请求，获得返回的JSON数据</item>
                         <item>[SQL] 查询数据库，获得数据库表中的数据</item>
                     </options>
                 </input>
@@ -43,7 +43,7 @@ class Select(CorePattern):
                 </reasoning>
 
                 <output>
-                    { "choice": "API" }
+                    {{ "choice": "API" }}
                 </output>
             </example>
         </instructions>
@@ -123,6 +123,7 @@ class Select(CorePattern):
         data_str = json.dumps(kwargs.get("data", {}), ensure_ascii=False)
 
         choice_prompt, choices_list = self._choices_to_prompt(kwargs["choices"])
+        logger.info("[Select] 选项列表: %s", choice_prompt)
         user_input = self.user_prompt.format(
             question=kwargs["question"],
             background=background,

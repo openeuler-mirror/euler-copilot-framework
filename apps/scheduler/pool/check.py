@@ -41,12 +41,14 @@ class FileChecker:
 
         return hashes
 
+
     async def diff_one(self, path: Path, previous_hashes: Optional[dict[str, str]] = None) -> bool:
         """检查文件是否发生变化"""
         self._resource_path = path
         path_diff = self._resource_path.relative_to(config["SEMANTICS_DIR"])
         self.hashes[path_diff.as_posix()] = await self.check_one(path)
         return self.hashes[path_diff.as_posix()] != previous_hashes
+
 
     async def diff(self, check_type: MetadataType) -> tuple[list[str], list[str]]:
         """生成更新列表和删除列表"""

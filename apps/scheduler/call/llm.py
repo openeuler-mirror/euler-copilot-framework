@@ -95,4 +95,5 @@ class LLM(CoreCall, ret_type=LLMNodeOutput):
         except Exception as e:
             raise CallError(message=f"大模型调用失败：{e!s}", data={}) from e
 
+        result = result.strip().strip("\n")
         return LLMNodeOutput(message=result)

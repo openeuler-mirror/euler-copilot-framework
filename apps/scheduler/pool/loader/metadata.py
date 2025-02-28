@@ -61,6 +61,7 @@ class MetadataLoader:
 
         return metadata
 
+
     async def save_one(
         self,
         metadata_type: MetadataType,
@@ -96,5 +97,10 @@ class MetadataLoader:
         else:
             data = metadata
 
-        yaml_data = yaml.safe_dump(jsonable_encoder(data))
-        await resource_path.write_text(yaml_data)
+        # 使用UTF-8保存YAML，忽略部分乱码
+        yaml_dict = yaml.dump(
+            jsonable_encoder(data, exclude={"hashes"}),
+            allow_unicode=True,
+            sort_keys=False,
+        )
+        await resource_path.write_text(yaml_dict)
