@@ -78,6 +78,8 @@ run_sub_script() {
             ;;
         9)
             echo "正在返回主菜单..."
+	    echo "按任意键继续..."
+            read -r -n 1 -s
             return 2  # 特殊返回码表示返回上级菜单
             ;;
         *)
@@ -154,10 +156,9 @@ while true; do
     case $main_choice in
         0)
             run_script_with_check "./0-one-click-deploy/one-click-deploy.sh" "一键自动部署"
-            echo -e "\n\033[33m请手动登录Authhub完成后续配置："
-            echo "1. 访问Authhub管理界面"
-            echo "2. 创建新的应用授权"
-            echo "3. 更新EulerCopilot的配置文件\033[0m"
+	    echo "按任意键继续..."
+	    read -r -n 1 -s
+	    return 2
             ;;
         1)
             manual_deployment_loop
