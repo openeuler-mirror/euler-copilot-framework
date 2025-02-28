@@ -144,8 +144,8 @@ function check_ram {
 }
 
 function check_disk {
-    local DISK_THRESHOLD=50000
-    local PERCENT_THRESHOLD=85
+    local DISK_THRESHOLD=10000  # 修改为10G（单位：MB）
+    local PERCENT_THRESHOLD=70
 
     read -r available size <<< $(df -m /var/lib | awk 'NR==2{print $4,$2}')
     echo -e "${COLOR_INFO}[Info] 磁盘可用空间: ${available}MB, 总大小: ${size}MB${COLOR_RESET}"

@@ -202,7 +202,7 @@ After=network-online.target
 
 [Service]
 Environment="OLLAMA_MODELS=/var/lib/ollama/.ollama/models"
-Environment=1"OLLAMA_HOST=0.0.0.0:11434"
+Environment="OLLAMA_HOST=0.0.0.0:11434"
 ExecStart=$OLLAMA_BIN_PATH serve
 User=ollama
 Group=ollama
