@@ -79,13 +79,12 @@ get_client_info_auto() {
     if [ $? -ne 0 ]; then
         echo -e "${RED}错误：Python脚本执行失败${NC}"
         cat client_info.tmp
-    #    rm -f client_info.tmp
     fi
 
     # 提取凭证信息（保持原有逻辑）
     client_id=$(grep "client_id: " client_info.tmp | awk '{print $2}')
     client_secret=$(grep "client_secret: " client_info.tmp | awk '{print $2}')
-    #rm -f client_info.tmp
+    rm -f client_info.tmp
 
     # 验证结果（保持原有逻辑）
     if [ -z "$client_id" ] || [ -z "$client_secret" ]; then
