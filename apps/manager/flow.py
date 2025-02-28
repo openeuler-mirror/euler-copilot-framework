@@ -242,8 +242,11 @@ class FlowManager:
                     debug=flow_config.debug,
                 )
                 for node_id, node_config in flow_config.steps.items():
-                    input_parameters = node_config.params
-                    _, output_parameters = await NodeManager.get_node_params(node_config.node)
+                    if node_config.node not in ("Empty"):
+                        input_parameters = node_config.params
+                        _, output_parameters = await NodeManager.get_node_params(node_config.node)
+                    else:
+                        input_parameters, output_parameters = {},{}
                     parameters = {
                         "input_parameters": input_parameters,
                         "output_parameters": output_parameters
