@@ -2,13 +2,14 @@
 
 Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 """
-import traceback
+import logging
 from typing import Any, Optional
 
 import ray
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
+from ray import actor
 
-from apps.constants import LOGGER, STEP_HISTORY_SIZE
+from apps.constants import STEP_HISTORY_SIZE
 from apps.entities.enum_var import StepStatus
 from apps.entities.flow import Flow, FlowError, Step
 from apps.entities.request_data import RequestDataApp
@@ -26,30 +27,29 @@ from apps.scheduler.executor.message import (
 )
 from apps.scheduler.slot.slot import Slot
 
+logger = logging.getLogger("ray")
+
 
 # 单个流的执行工具
 class Executor(BaseModel):
     """用于执行工作流的Executor"""
 
-    name: str = Field(description="Flow名称")
-    description: str = Field(description="Flow描述")
-
     flow: Flow = Field(description="工作流数据")
     task: TaskBlock = Field(description="任务信息")
-    queue: ray.ObjectRef = Field(description="消息队列")
     question: str = Field(description="用户输入")
-    context: str = Field(description="上下文", default="")
+    queue: actor.ActorHandle = Field(description="消息队列")
     post_body_app: RequestDataApp = Field(description="请求体中的app信息")
     executor_background: ExecutorBackground = Field(description="Executor的背景信息")
 
-    class Config:
-        """Pydantic配置"""
-
-        arbitrary_types_allowed = True
-
+    model_config = ConfigDict(
+        arbitrary_types_allowed=True,
+        extra="allow",
+    )
+    """Pydantic配置"""
 
     async def load_state(self) -> None:
         """从数据库中加载FlowExecutor的状态"""
+        logger.info("[FlowExecutor] 加载Executor状态")
         # 尝试恢复State
         if self.task.flow_state:
             self.flow_state = self.task.flow_state
@@ -91,11 +91,16 @@ class Executor(BaseModel):
 
     async def _get_call_cls(self, node_id: str) -> Optional[type[CoreCall]]:
         """获取并验证Call类"""
+        # 检查flow_state是否为空
+        if not self.flow_state:
+            logger.error("[FlowExecutor] flow_state为空")
+            return None
+
         # 获取对应Node的call_id
         try:
             call_id = await NodeManager.get_node_call_id(node_id)
-        except Exception as e:
-            LOGGER.error(f"[FlowExecutor] 获取工具{node_id}的call_id时发生错误：{e}。\n{traceback.format_exc()}")
+        except Exception:
+            logger.exception("[FlowExecutor] 获取工具%s的call_id时发生错误", node_id)
             self.flow_state.status = StepStatus.ERROR
             return None
 
@@ -103,14 +108,14 @@ class Executor(BaseModel):
         pool = ray.get_actor("pool")
         try:
             call_cls: type[CoreCall] = await pool.get_call.remote(call_id, self.flow_state.app_id)
-        except Exception as e:
-            LOGGER.error(f"[FlowExecutor] 载入工具{node_id}时发生错误：{e}。\n{traceback.format_exc()}")
+        except Exception:
+            logger.exception("[FlowExecutor] 载入工具%s时发生错误", node_id)
             self.flow_state.status = StepStatus.ERROR
             return None
 
         # 检查Call合法性
         if not self._check_cls(call_cls):
-            LOGGER.error(f"[FlowExecutor] 工具{node_id}不符合Call标准要求。")
+            logger.error("[FlowExecutor] 工具%s不符合Call标准要求", node_id)
             self.flow_state.status = StepStatus.ERROR
             return None
 
@@ -159,20 +164,20 @@ class Executor(BaseModel):
     async def _execute_call(self, call_obj: Any, sys_vars: CallVars, node_id: str) -> dict[str, Any]:
         """执行Call并处理结果"""
         if not call_obj:
-            LOGGER.error(f"[FlowExecutor] 工具{node_id}不存在。")
+            logger.error("[FlowExecutor] 工具%s不存在", node_id)
             return {}
 
         try:
             result: BaseModel = await call_obj(sys_vars)
-        except Exception as e:
-            LOGGER.error(f"[FlowExecutor] 执行工具{node_id}时发生错误：{e!s}\n{traceback.format_exc()}")
+        except Exception:
+            logger.exception("[FlowExecutor] 执行工具%s时发生错误", node_id)
             self.flow_state.status = StepStatus.ERROR
             return {}
 
         try:
             result_data = result.model_dump(exclude_none=True, by_alias=True)
-        except Exception as e:
-            LOGGER.error(f"[FlowExecutor] 无法处理工具{node_id}返回值：{e!s}\n{traceback.format_exc()}")
+        except Exception:
+            logger.exception("[FlowExecutor] 无法处理工具%s返回值", node_id)
             self.flow_state.status = StepStatus.ERROR
             return {}
 
@@ -182,18 +187,20 @@ class Executor(BaseModel):
 
     async def _run_step(self, step_data: Step) -> None:
         """运行单个步骤"""
+        logger.info("[FlowExecutor] 运行步骤 %s", step_data.name)
         # 更新State
         self.flow_state.step_id = step_data.name
         self.flow_state.status = StepStatus.RUNNING
 
         # Call类型为none，跳过执行
         node_id = step_data.node
-        if node_id == "none":
+        if node_id in ("none", "start", "end"):
             return
 
         # 获取并验证Call类
         call_cls = await self._get_call_cls(node_id)
         if call_cls is None:
+            logger.error("[FlowExecutor] Node%s对应的工具不存在", node_id)
             return
 
         # 准备系统变量
@@ -210,9 +217,8 @@ class Executor(BaseModel):
         # 初始化Call
         try:
             call_obj = call_cls.model_validate(step_data.params)
-        except Exception as e:
-            err = f"[FlowExecutor] 初始化工具{node_id}时发生错误：{e!s}\n{traceback.format_exc()}"
-            LOGGER.error(err)
+        except Exception:
+            logger.exception("[FlowExecutor] 初始化工具 %s 时发生错误", call_cls.name)
             self.flow_state.status = StepStatus.ERROR
             return
 
@@ -252,22 +258,27 @@ class Executor(BaseModel):
         else:
             self.flow_state.step_id = next_nodes[0]
 
+        logger.info("[FlowExecutor] 下一步 %s", self.flow_state.step_id)
+
 
     async def run(self) -> None:
         """运行流，返回各步骤结果，直到无法继续执行
 
         数据通过向Queue发送消息的方式传输
         """
+        logger.info("[FlowExecutor] 运行工作流")
         # 推送Flow开始
         await push_flow_start(self.task.record.task_id, self.queue, self.flow_state, self.question)
 
         while not self._stop:
             # 当前步骤不存在
             if self.flow_state.step_id not in self.flow.steps:
+                logger.error("[FlowExecutor] 当前步骤%s不存在", self.flow_state.step_id)
                 break
 
             if self.flow_state.status == StepStatus.ERROR:
                 # 当前步骤为错误处理步骤
+                logger.warning("[FlowExecutor] Executor出错，执行错误处理步骤")
                 step = self.flow.on_error
             else:
                 step = self.flow.steps[self.flow_state.step_id]

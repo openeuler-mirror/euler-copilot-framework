@@ -1,6 +1,7 @@
 import unittest
 
-from apps.entities.plugin import *
+from apps.entities.flow import Step
+from apps.entities.scheduler import *
 
 
 class TestToolData(unittest.TestCase):

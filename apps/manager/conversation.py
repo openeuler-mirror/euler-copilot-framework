@@ -2,14 +2,16 @@
 
 Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 """
+import logging
 import uuid
 from datetime import datetime, timezone
 from typing import Any, Optional
 
-from apps.constants import LOGGER
 from apps.entities.collection import Conversation
 from apps.manager.task import TaskManager
 from apps.models.mongo import MongoDB
+
+logger = logging.getLogger("ray")
 
 
 class ConversationManager:
@@ -21,8 +23,8 @@ class ConversationManager:
         try:
             conv_collection = MongoDB.get_collection("conversation")
             return [Conversation(**conv) async for conv in conv_collection.find({"user_sub": user_sub,"debug": False}).sort({"created_at": 1})]
-        except Exception as e:
-            LOGGER.info(f"[ConversationManager] Get conversation by user_sub failed: {e}")
+        except Exception:
+            logger.exception("[ConversationManager] 通过用户ID获取对话失败")
         return []
 
     @staticmethod
@@ -34,8 +36,8 @@ class ConversationManager:
             if not result:
                 return None
             return Conversation.model_validate(result)
-        except Exception as e:
-            LOGGER.info(f"[ConversationManager] Get conversation by conversation_id failed: {e}")
+        except Exception:
+            logger.exception("[ConversationManager] 通过ConversationID获取对话失败")
             return None
 
     @staticmethod
@@ -68,8 +70,8 @@ class ConversationManager:
                     )
                     await session.commit_transaction()
                 return conv
-        except Exception as e:
-            LOGGER.info(f"[ConversationManager] Add conversation by user_sub failed: {e}")
+        except Exception:
+            logger.exception("[ConversationManager] 新建对话失败")
             return None
 
     @staticmethod
@@ -82,8 +84,8 @@ class ConversationManager:
                 {"$set": data},
             )
             return result.modified_count > 0
-        except Exception as e:
-            LOGGER.info(f"[ConversationManager] Update conversation by conversation_id failed: {e}")
+        except Exception:
+            logger.exception("[ConversationManager] 更新对话失败")
             return False
 
     @staticmethod
@@ -103,6 +105,6 @@ class ConversationManager:
                 await session.commit_transaction()
             await TaskManager.delete_tasks_by_conversation_id(conversation_id)
             return True
-        except Exception as e:
-            LOGGER.info(f"[ConversationManager] Delete conversation by conversation_id failed: {e}")
+        except Exception:
+            logger.exception("[ConversationManager] 删除对话失败")
             return False

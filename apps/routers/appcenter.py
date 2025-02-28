@@ -3,12 +3,12 @@
 Copyright (c) Huawei Technologies Co., Ltd. 2024-2025. All rights reserved.
 """
 
+import logging
 from typing import Annotated, Optional, Union
 
 from fastapi import APIRouter, Body, Depends, Path, Query, status
 from fastapi.responses import JSONResponse
 
-from apps.constants import LOGGER
 from apps.dependency.csrf import verify_csrf_token
 from apps.dependency.user import get_user, verify_user
 from apps.entities.appcenter import AppFlowInfo, AppPermissionData
@@ -28,6 +28,7 @@ from apps.entities.response_data import (
 )
 from apps.manager.appcenter import AppCenterManager
 
+logger = logging.getLogger("ray")
 router = APIRouter(
     prefix="/api/app",
     tags=["appcenter"],
@@ -103,28 +104,28 @@ async def create_or_update_application(
     if app_id:  # 更新应用
         try:
             await AppCenterManager.update_app(user_sub, app_id, request)
-        except ValueError as e:
-            LOGGER.error(msg=f"[AppCenter] 更新应用请求无效：{e!s}")
+        except ValueError:
+            logger.exception("[AppCenter] 更新应用请求无效")
             return JSONResponse(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 content=ResponseData(
                     code=status.HTTP_400_BAD_REQUEST,
-                    message=str(e),
+                    message="BAD_REQUEST",
                     result={},
                 ).model_dump(exclude_none=True, by_alias=True),
             )
-        except PermissionError as e:
-            LOGGER.error(msg=f"[AppCenter] 更新应用鉴权失败：{e!s}")
+        except PermissionError:
+            logger.exception("[AppCenter] 更新应用鉴权失败")
             return JSONResponse(
                 status_code=status.HTTP_403_FORBIDDEN,
                 content=ResponseData(
                     code=status.HTTP_403_FORBIDDEN,
-                    message=str(e),
+                    message="UNAUTHORIZED",
                     result={},
                 ).model_dump(exclude_none=True, by_alias=True),
             )
-        except Exception as e:
-            LOGGER.error(msg=f"[AppCenter] 更新应用失败：{e}")
+        except Exception:
+            logger.exception("[AppCenter] 更新应用失败")
             return JSONResponse(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 content=ResponseData(
@@ -136,8 +137,8 @@ async def create_or_update_application(
     else:  # 创建应用
         try:
             app_id = await AppCenterManager.create_app(user_sub, request)
-        except Exception as e:
-            LOGGER.error(msg=f"[AppCenter] 创建应用失败：{e}")
+        except Exception:
+            logger.exception("[AppCenter] 创建应用失败")
             return JSONResponse(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 content=ResponseData(
@@ -164,8 +165,8 @@ async def get_recently_used_applications(
     """获取最近使用的应用"""
     try:
         recent_apps = await AppCenterManager.get_recently_used_apps(count, user_sub)
-    except Exception as e:
-        LOGGER.error(msg=f"[AppCenter] 获取最近使用的应用失败：{e}")
+    except Exception:
+        logger.exception("[AppCenter] 获取最近使用的应用失败")
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             content=ResponseData(
@@ -191,8 +192,8 @@ async def get_application(
     """获取应用详情"""
     try:
         app_data = await AppCenterManager.fetch_app_data_by_id(app_id)
-    except ValueError as e:
-        LOGGER.error(msg=f"[AppCenter] 获取应用详情请求无效：{e!s}")
+    except ValueError:
+        logger.exception("[AppCenter] 获取应用详情请求无效")
         return JSONResponse(
             status_code=status.HTTP_400_BAD_REQUEST,
             content=ResponseData(
@@ -201,8 +202,8 @@ async def get_application(
                 result={},
             ).model_dump(exclude_none=True, by_alias=True),
         )
-    except Exception as e:
-        LOGGER.error(msg=f"[AppCenter] 获取应用详情失败：{e}")
+    except Exception:
+        logger.exception("[AppCenter] 获取应用详情失败")
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             content=ResponseData(
@@ -256,28 +257,28 @@ async def delete_application(
     """删除应用"""
     try:
         await AppCenterManager.delete_app(app_id, user_sub)
-    except ValueError as e:
-        LOGGER.error(msg=f"[AppCenter] 删除应用请求无效：{e!s}")
+    except ValueError:
+        logger.exception("[AppCenter] 删除应用请求无效")
         return JSONResponse(
             status_code=status.HTTP_400_BAD_REQUEST,
             content=ResponseData(
                 code=status.HTTP_400_BAD_REQUEST,
-                message=str(e),
+                message="INVALID_APP_ID",
                 result={},
             ).model_dump(exclude_none=True, by_alias=True),
         )
-    except PermissionError as e:
-        LOGGER.error(msg=f"[AppCenter] 删除应用鉴权失败：{e!s}")
+    except PermissionError:
+        logger.exception("[AppCenter] 删除应用鉴权失败")
         return JSONResponse(
             status_code=status.HTTP_403_FORBIDDEN,
             content=ResponseData(
                 code=status.HTTP_403_FORBIDDEN,
-                message=str(e),
+                message="UNAUTHORIZED",
                 result={},
             ).model_dump(exclude_none=True, by_alias=True),
         )
-    except Exception as e:
-        LOGGER.error(msg=f"[AppCenter] 删除应用失败：{e}")
+    except Exception:
+        logger.exception("[AppCenter] 删除应用失败")
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             content=ResponseData(
@@ -304,28 +305,28 @@ async def publish_application(
     """发布应用"""
     try:
         await AppCenterManager.publish_app(app_id, user_sub)
-    except ValueError as e:
-        LOGGER.error(msg=f"[AppCenter] 发布应用请求无效：{e!s}")
+    except ValueError:
+        logger.exception("[AppCenter] 发布应用请求无效")
         return JSONResponse(
             status_code=status.HTTP_400_BAD_REQUEST,
             content=ResponseData(
                 code=status.HTTP_400_BAD_REQUEST,
-                message=str(e),
+                message="BAD_REQUEST",
                 result={},
             ).model_dump(exclude_none=True, by_alias=True),
         )
-    except PermissionError as e:
-        LOGGER.error(msg=f"[AppCenter] 发布应用鉴权失败：{e!s}")
+    except PermissionError:
+        logger.exception("[AppCenter] 发布应用鉴权失败")
         return JSONResponse(
             status_code=status.HTTP_403_FORBIDDEN,
             content=ResponseData(
                 code=status.HTTP_403_FORBIDDEN,
-                message=str(e),
+                message="UNAUTHORIZED",
                 result={},
             ).model_dump(exclude_none=True, by_alias=True),
         )
-    except Exception as e:
-        LOGGER.error(msg=f"[AppCenter] 发布应用失败：{e}")
+    except Exception:
+        logger.exception("[AppCenter] 发布应用失败")
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             content=ResponseData(
@@ -353,18 +354,18 @@ async def modify_favorite_application(
     """更改应用收藏状态"""
     try:
         await AppCenterManager.modify_favorite_app(app_id, user_sub, favorited=request.favorited)
-    except ValueError as e:
-        LOGGER.error(msg=f"[AppCenter] 修改收藏状态请求无效：{e!s}")
+    except ValueError:
+        logger.exception("[AppCenter] 修改收藏状态请求无效")
         return JSONResponse(
             status_code=status.HTTP_400_BAD_REQUEST,
             content=ResponseData(
                 code=status.HTTP_400_BAD_REQUEST,
-                message=str(e),
+                message="BAD_REQUEST",
                 result={},
             ).model_dump(exclude_none=True, by_alias=True),
         )
-    except Exception as e:
-        LOGGER.error(msg=f"[AppCenter] 修改收藏状态失败：{e}")
+    except Exception:
+        logger.exception("[AppCenter] 修改收藏状态失败")
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             content=ResponseData(

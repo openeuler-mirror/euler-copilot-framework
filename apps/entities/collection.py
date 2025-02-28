@@ -72,7 +72,6 @@ class Conversation(BaseModel):
     user_sub: str
     title: str = NEW_CHAT
     created_at: float = Field(default_factory=lambda: round(datetime.now(tz=timezone.utc).timestamp(), 3))
-    is_debug: bool = False
     app_id: Optional[str] = Field(default="")
     tasks: list[str] = []
     unused_docs: list[str] = []

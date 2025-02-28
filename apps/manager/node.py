@@ -1,14 +1,15 @@
 """Node管理器"""
+import logging
 from typing import Any
 
 import ray
 from pydantic import BaseModel
 
-from apps.constants import LOGGER
 from apps.entities.node import APINode
 from apps.entities.pool import CallPool, NodePool
 from apps.models.mongo import MongoDB
 
+logger = logging.getLogger("ray")
 NODE_TYPE_MAP = {
     "API": APINode,
 }
@@ -34,7 +35,7 @@ class NodeManager:
         # 查询 Node 集合获取对应的 name
         node_doc = await node_collection.find_one({"_id": node_id}, {"name": 1})
         if not node_doc:
-            LOGGER.error(f"Node {node_id} not found")
+            logger.error("[NodeManager] Node %s not found", node_id)
             return ""
         return node_doc["name"]
 
@@ -66,19 +67,19 @@ class NodeManager:
     async def get_node_params(node_id: str) -> tuple[dict[str, Any], dict[str, Any]]:
         """获取Node数据"""
         # 查找Node信息
-        LOGGER.info(f"[NodeManager] Getting node {node_id}...")
+        logger.info("[NodeManager] 获取节点 %s", node_id)
         node_collection = MongoDB().get_collection("node")
         node = await node_collection.find_one({"_id": node_id})
         if not node:
             err = f"[NodeManager] Node {node_id} not found."
-            LOGGER.error(err)
+            logger.error(err)
             raise ValueError(err)
 
         try:
             node_data = NodePool.model_validate(node)
         except Exception as e:
-            err = f"[NodeManager] Get node data error: {e}"
-            LOGGER.error(err)
+            err = "[NodeManager] 获取节点数据失败"
+            logger.exception(err)
             raise ValueError(err) from e
 
         call_id = node_data.call_id
@@ -87,27 +88,27 @@ class NodeManager:
         call = await call_collection.find_one({"_id": call_id})
         if not call:
             err = f"[NodeManager] Call {call_id} not found."
-            LOGGER.error(err)
+            logger.error(err)
             raise ValueError(err)
 
         try:
             call_data = CallPool.model_validate(call)
         except Exception as e:
-            err = f"[NodeManager] Get call data error: {e}"
-            LOGGER.error(err)
+            err = "[NodeManager] 获取Call数据失败"
+            logger.exception(err)
             raise ValueError(err) from e
 
         # 查找Call信息
-        LOGGER.info(f"[NodeManager] Getting call {call_data.path}...")
+        logger.info("[NodeManager] 获取Call %s", call_data.path)
         pool = ray.get_actor("pool")
         call_class: type[BaseModel] = await pool.get_call.remote(call_data.path)
         if not call_class:
             err = f"[NodeManager] Call {call_data.path} not found"
-            LOGGER.error(err)
+            logger.error(err)
             raise ValueError(err)
 
         # 返回参数Schema
         return (
             NodeManager.merge_params_schema(call_class.model_json_schema(), node_data.known_params or {}),
-            call_class.ret_type.model_json_schema(),
+            call_class.ret_type.model_json_schema(), # type: ignore[attr-defined]
         )

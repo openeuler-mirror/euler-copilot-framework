@@ -110,15 +110,26 @@ class ServiceCenterManager:
         """创建服务"""
         service_id = str(uuid.uuid4())
         # 校验 OpenAPI 规范的 JSON Schema
-        ServiceCenterManager._validate_service_data(data)
+        validated_data = ServiceCenterManager._validate_service_data(data)
+        # 检查是否存在相同服务
+        service_collection = MongoDB.get_collection("service")
+        db_service = await service_collection.find_one(
+            {
+                "name": validated_data.info.title,
+                "description": validated_data.info.description,
+            },
+        )
+        if db_service:
+            msg = "Service with this name already exists"
+            raise ValueError(msg)
         # 存入数据库
         service_metadata = ServiceMetadata(
             id=service_id,
-            name=data["info"]["title"],
-            description=data["info"]["description"],
-            version=data["info"]["version"],
+            name=validated_data.info.title,
+            description=validated_data.info.description,
+            version=validated_data.info.version,
             author=user_sub,
-            api=ServiceApiConfig(server=data["servers"][0]["url"]),
+            api=ServiceApiConfig(server=validated_data.servers[0].url),
         )
         service_loader = ServiceLoader()
         await service_loader.save(service_id, service_metadata, data)
@@ -143,15 +154,15 @@ class ServiceCenterManager:
             msg = "Permission denied"
             raise PermissionError(msg)
         # 校验 OpenAPI 规范的 JSON Schema
-        ServiceCenterManager._validate_service_data(data)
+        validated_data = ServiceCenterManager._validate_service_data(data)
         # 存入数据库
         service_metadata = ServiceMetadata(
             id=service_id,
-            name=data["info"]["title"],
-            description=data["info"]["description"],
-            version=data["info"]["version"],
+            name=validated_data.info.title,
+            description=validated_data.info.description,
+            version=validated_data.info.version,
             author=user_sub,
-            api=ServiceApiConfig(server=data["servers"][0]["url"]),
+            api=ServiceApiConfig(server=validated_data.servers[0].url),
         )
         service_loader = ServiceLoader()
         await service_loader.save(service_id, service_metadata, data)
@@ -179,7 +190,9 @@ class ServiceCenterManager:
             api_list.append(
                 ServiceApiData(
                     name=node.name,
-                    path="test path",
+                    path=f"{node.known_params['method'].upper()} {node.known_params['url']}"
+                    if node.known_params and "method" in node.known_params and "url" in node.known_params
+                    else "",
                     description=node.description,
                 ),
             )
@@ -296,7 +309,7 @@ class ServiceCenterManager:
         return user_data.fav_services
 
     @staticmethod
-    def _validate_service_data(data: dict[str, Any]) -> None:
+    def _validate_service_data(data: dict[str, Any]) -> OpenAPI:
         """验证服务数据"""
         # 验证数据是否为空
         if not data:
@@ -304,7 +317,7 @@ class ServiceCenterManager:
             raise ValueError(msg)
         # 校验 OpenAPI 规范的 JSON Schema
         try:
-            OpenAPI.model_validate(data)
+            return OpenAPI.model_validate(data)
         except ValidationError as e:
             msg = f"Data does not conform to OpenAPI standard: {e.message}"
             raise ValueError(msg) from e

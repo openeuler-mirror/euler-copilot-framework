@@ -5,6 +5,8 @@ Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 
 from __future__ import annotations
 
+import logging
+
 import ray
 from apscheduler.schedulers.background import BackgroundScheduler
 from fastapi import FastAPI
@@ -65,6 +67,9 @@ app.include_router(document.router)
 app.include_router(knowledge.router)
 app.include_router(flow.router)
 app.include_router(user.router)
+# 初始化logger
+logger = logging.getLogger("ray")
+logger.setLevel(logging.INFO)
 # 初始化后台定时任务
 scheduler = BackgroundScheduler()
 scheduler.start()

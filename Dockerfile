@@ -9,6 +9,7 @@ USER eulercopilot
 COPY --chown=1001:1001 --chmod=550 ./ /euler-copilot-frame/
 
 WORKDIR /euler-copilot-frame
-ENV PYTHONPATH /euler-copilot-frame
+ENV PYTHONPATH=/euler-copilot-frame
+ENV TIKTOKEN_CACHE_DIR=/euler-copilot-frame/assets/tiktoken
 
-CMD bash -c "python3 apps/main.py"
+CMD ["bash", "-c", "python3 apps/main.py"]

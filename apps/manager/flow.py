@@ -2,14 +2,16 @@
 
 Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 """
+
 from typing import Optional
 
+from anyio import Path
 from pymongo import ASCENDING
 
-from apps.constants import LOGGER
-from apps.entities.appcenter import AppLink
-from apps.entities.enum_var import EdgeType, MetadataType, PermissionType
-from apps.entities.flow import AppMetadata, Edge, Flow, Permission, Step, StepPos
+from apps.common.config import config
+from apps.constants import APP_DIR, LOGGER
+from apps.entities.enum_var import EdgeType, PermissionType
+from apps.entities.flow import Edge, Flow, Step, StepPos
 from apps.entities.flow_topology import (
     EdgeItem,
     FlowItem,
@@ -18,9 +20,9 @@ from apps.entities.flow_topology import (
     NodeServiceItem,
     PositionItem,
 )
-from apps.entities.pool import AppFlow, AppPool
 from apps.manager.node import NodeManager
 from apps.models.mongo import MongoDB
+from apps.scheduler.pool.check import FileChecker
 from apps.scheduler.pool.loader.app import AppLoader
 from apps.scheduler.pool.loader.flow import FlowLoader
 from apps.utils.flow import generate_from_schema
@@ -55,13 +57,15 @@ class FlowManager:
                     ],
                 },
             ]
-            query = {"$and": [
-                {"_id": node_pool_record["service_id"]},
-                {"$or": match_conditions},
-            ]}
+            query = {
+                "$and": [
+                    {"_id": node_pool_record["service_id"]},
+                    {"$or": match_conditions},
+                ],
+            }
 
             result = await service_collection.count_documents(query)
-            return (result > 0)
+            return result > 0
         except Exception as e:
             LOGGER.error(f"Validate user node meta data access failed due to: {e}")
             return False
@@ -75,8 +79,7 @@ class FlowManager:
         """
         node_pool_collection = MongoDB.get_collection("node")  # 获取节点集合
         try:
-            cursor = node_pool_collection.find(
-                {"service_id": service_id}).sort("created_at", ASCENDING)
+            cursor = node_pool_collection.find({"service_id": service_id}).sort("created_at", ASCENDING)
 
             nodes_meta_data_items = []
             async for node_pool_record in cursor:
@@ -101,8 +104,7 @@ class FlowManager:
                 nodes_meta_data_items.append(node_meta_data_item)
             return nodes_meta_data_items
         except Exception as e:
-            LOGGER.error(
-                f"Get node metadatas by service_id failed due to: {e}")
+            LOGGER.error(f"Get node metadatas by service_id failed due to: {e}")
             return None
 
     @staticmethod
@@ -143,14 +145,7 @@ class FlowManager:
                 sort=[("created_at", ASCENDING)],
             )
             service_records = await service_records_cursor.to_list(length=None)
-            service_items = [
-                NodeServiceItem(
-                    serviceId="",
-                    name="系统",
-                    type="system",
-                    nodeMetaDatas=[]
-                )
-            ]
+            service_items = [NodeServiceItem(serviceId="", name="系统", type="system", nodeMetaDatas=[])]
             service_items += [
                 NodeServiceItem(
                     serviceId=record["_id"],
@@ -229,15 +224,13 @@ class FlowManager:
                 return None
             flow_record = app_record["flows"][0]
         except Exception as e:
-            LOGGER.error(
-                f"Get flow by app_id and flow_id failed due to: {e}")
+            LOGGER.error(f"Get flow by app_id and flow_id failed due to: {e}")
             return None
         try:
             if flow_record:
                 flow_config = await FlowLoader().load(app_id, flow_id)
                 if not flow_config:
-                    LOGGER.error(
-                        "Get flow config by app_id and flow_id failed")
+                    LOGGER.error("Get flow config by app_id and flow_id failed")
                     return None
                 focus_point = flow_record["focus_point"]
                 flow_item = FlowItem(
@@ -281,23 +274,28 @@ class FlowManager:
                     if len(tmp_list) == 2:
                         edge_from = tmp_list[0]
                         branch_id = tmp_list[1]
-                    flow_item.edges.append(EdgeItem(
-                        edgeId=edge_config.id,
-                        sourceNode=edge_from,
-                        targetNode=edge_config.edge_to,
-                        type=edge_config.edge_type.value if edge_config.edge_type else EdgeType.NORMAL.value,
-                        branchId=branch_id,
-                    ))
+                    flow_item.edges.append(
+                        EdgeItem(
+                            edgeId=edge_config.id,
+                            sourceNode=edge_from,
+                            targetNode=edge_config.edge_to,
+                            type=edge_config.edge_type.value if edge_config.edge_type else EdgeType.NORMAL.value,
+                            branchId=branch_id,
+                        ),
+                    )
                 return (flow_item, focus_point)
             return None
         except Exception as e:
-            LOGGER.error(
-                f"Get flow by app_id and flow_id failed due to: {e}")
+            LOGGER.error(f"Get flow by app_id and flow_id failed due to: {e}")
             return None
 
     @staticmethod
     async def put_flow_by_app_and_flow_id(
-            app_id: str, flow_id: str, flow_item: FlowItem, focus_point: PositionItem) -> Optional[FlowItem]:
+        app_id: str,
+        flow_id: str,
+        flow_item: FlowItem,
+        focus_point: PositionItem,
+    ) -> Optional[FlowItem]:
         """存储/更新flow的数据库数据和配置文件
 
         :param app_id: 应用的id
@@ -322,8 +320,7 @@ class FlowManager:
                 if "flows" in app_record and len(app_record["flows"]) != 0:
                     flow_record = app_record["flows"][0]
         except Exception as e:
-            LOGGER.error(
-                f"Get flow by app_id and flow_id failed due to: {e}")
+            LOGGER.error(f"Get flow by app_id and flow_id failed due to: {e}")
             return None
         try:
             flow_config = Flow(
@@ -346,7 +343,7 @@ class FlowManager:
             for edge_item in flow_item.edges:
                 edge_from = edge_item.source_node
                 if edge_item.branch_id:
-                    edge_from = edge_from+"."+edge_item.branch_id
+                    edge_from = edge_from + "." + edge_item.branch_id
                 edge_config = Edge(
                     id=edge_item.edge_id,
                     edge_from=edge_from,
@@ -354,53 +351,43 @@ class FlowManager:
                     edge_type=EdgeType(edge_item.type) if edge_item.type else EdgeType.NORMAL,
                 )
                 flow_config.edges.append(edge_config)
-            await FlowLoader().save(app_id, flow_id, flow_config)
-            flow_config = await FlowLoader().load(app_id, flow_id)
-            # 修改app内flow信息
-            app_collection = MongoDB.get_collection("app")
-            result = await app_collection.find_one({"_id": app_id})
-            app_pool = AppPool.model_validate(result)
-            metadata = AppMetadata(
-                type=MetadataType.APP,
-                id=app_pool.id,
-                icon=app_pool.icon,
-                name=app_pool.name,
-                description=app_pool.description,
-                version="1.0",
-                author=app_pool.author,
-                hashes=app_pool.hashes,
-                published=app_pool.published,
-                links=app_pool.links,
-                first_questions=app_pool.first_questions,
-                history_len=app_pool.history_len,
-                permission=app_pool.permission,
-                flows=app_pool.flows,
-            )
-            if flow_record:
-                for flow in metadata.flows:
-                    if flow.id == flow_id:
-                        flow.name = flow_item.name
-                        flow.description = flow_item.description
-                        flow.path = ""
-                        flow.focus_point = PositionItem(x=focus_point.x, y=focus_point.y)
-            else:
-                new_flow = AppFlow(
-                    id=flow_id,
-                    name=flow_item.name,
-                    description=flow_item.description,
-                    path="",
-                    focus_point=PositionItem(x=focus_point.x, y=focus_point.y),
-                )
-                metadata.flows.append(new_flow)
+            flow_loader = FlowLoader()
+            old_flow = await flow_loader.load(app_id, flow_id)
+            # 比较old_flow和flow_config的内容除了node.pos以外是否相同
+            # TODO: clean_code, 提取成函数
+            debuged = False
+            if type(old_flow) is Flow:
+                debuged = old_flow.debug
+                if debuged is True:
+                    debuged = True
+                    if len(flow_config.steps) != len(old_flow.steps):
+                        debuged = False
+                    if len(flow_config.edges) != len(old_flow.edges):
+                        debuged = False
+                    for _id, step in flow_config.steps.items():
+                        if _id not in old_flow.steps:
+                            debuged = False
+                        else:
+                            old_flow.steps[_id].pos = step.pos
+                            old_flow.steps[_id].description = step.description
+                            old_flow.steps[_id].name = step.name
+                            old_flow.steps[_id].type = step.type
+                            if old_flow.steps[_id] != step:
+                                debuged = False
+                    for _id in flow_config.edges:
+                        if _id not in old_flow.edges:
+                            debuged = False
+            flow_config.debug = debuged
+            await flow_loader.save(app_id, flow_id, flow_config)
+            flow_config = await flow_loader.load(app_id, flow_id)
             app_loader = AppLoader()
-            await app_loader.save(metadata, app_id)
-            if result is None:
-                LOGGER.error("Add flow failed")
-                return None
+            file_checker = FileChecker()
+            app_path = Path(config["SEMANTICS_DIR"]) / APP_DIR / app_id
+            await file_checker.diff_one(app_path)
+            await app_loader.load(app_id, file_checker.hashes[f"{APP_DIR}/{app_id}"])
             return flow_item
         except Exception as e:
-            LOGGER.error(
-                f"Put flow by app_id and flow_id failed due to: {e}")
+            LOGGER.error(f"Put flow by app_id and flow_id failed due to: {e}")
             return None
 
     @staticmethod
@@ -414,80 +401,22 @@ class FlowManager:
         try:
             result = await FlowLoader().delete(app_id, flow_id)
             # 修改app内flow信息
-            app_collection = MongoDB.get_collection("app")
-            result = await app_collection.find_one({"_id": app_id})
-            app_pool = AppPool.model_validate(result)
-            metadata = AppMetadata(
-                type=MetadataType.APP,
-                id=app_pool.id,
-                icon=app_pool.icon,
-                name=app_pool.name,
-                description=app_pool.description,
-                version="1.0",
-                author=app_pool.author,
-                hashes=app_pool.hashes,
-                published=app_pool.published,
-                links=app_pool.links,
-                first_questions=app_pool.first_questions,
-                history_len=app_pool.history_len,
-                permission=app_pool.permission,
-                flows=app_pool.flows,
-            )
-            for flow in metadata.flows:
-                if flow.id == flow_id:
-                    metadata.flows.remove(flow)
             app_loader = AppLoader()
-            await app_loader.save(metadata, app_id)
+            file_checker = FileChecker()
+            app_path = Path(config["SEMANTICS_DIR"]) / APP_DIR / app_id
+            await file_checker.diff_one(app_path)
+            await app_loader.load(app_id, file_checker.hashes[f"{APP_DIR}/{app_id}"])
             if result is None:
                 LOGGER.error("Delete flow from app pool failed")
                 return None
             return flow_id
         except Exception as e:
-            LOGGER.error(
-                f"Delete flow by app_id and flow_id failed due to: {e}")
+            LOGGER.error(f"Delete flow by app_id and flow_id failed due to: {e}")
             return None
 
     @staticmethod
     async def updata_flow_debug_by_app_and_flow_id(app_id: str, flow_id: str, debug: bool) -> bool:
         try:
-            app_pool_collection = MongoDB.get_collection("app")
-            result = await app_pool_collection.find_one(
-                {"_id": app_id, "flows.id": flow_id}  # 使用关键字参数 array_filters
-            )
-            if result is None:
-                LOGGER.error("Update flow debug from app pool failed")
-                return False
-            app_pool = AppPool(
-                _id=result["_id"],  # 使用 alias="_id" 自动映射
-                name=result.get("name", ""),
-                description=result.get("description", ""),
-                created_at=result.get("created_at", None),
-                author=result.get("author", ""),
-                icon=result.get("icon", ""),
-                published=result.get("published", False),
-                links=[AppLink(**link) for link in result.get("links", [])],
-                first_questions=result.get("first_questions", []),
-                history_len=result.get("history_len", 3),
-                permission=Permission(**result.get("permission", {})),
-                flows=[AppFlow(**flow) for flow in result.get("flows", [])],
-            )
-            metadata = AppMetadata(
-                id=app_pool.id,
-                name=app_pool.name,
-                description=app_pool.description,
-                author=app_pool.author,
-                icon=app_pool.id,
-                published=app_pool.published,
-                links=app_pool.links,
-                first_questions=app_pool.first_questions,
-                history_len=app_pool.history_len,
-                permission=app_pool.permission,
-                flows=app_pool.flows,
-                version="1.0",
-            )
-            for flows in metadata.flows:
-                if flows.id == flow_id:
-                    flows.debug = debug
             flow_loader = FlowLoader()
             flow = await flow_loader.load(app_id, flow_id)
             if flow is None:
@@ -495,7 +424,10 @@ class FlowManager:
             flow.debug = debug
             await flow_loader.save(app_id=app_id, flow_id=flow_id, flow=flow)
             app_loader = AppLoader()
-            await app_loader.save(metadata, app_id)
+            file_checker = FileChecker()
+            app_path = Path(config["SEMANTICS_DIR"]) / APP_DIR / app_id
+            await file_checker.diff_one(app_path)
+            await app_loader.load(app_id, file_checker.hashes[f"{APP_DIR}/{app_id}"])
             return True
         except Exception as e:
             LOGGER.error(f"Update flow debug from app pool failed: {e!s}")

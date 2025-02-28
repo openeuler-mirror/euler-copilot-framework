@@ -2,13 +2,15 @@
 
 Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 """
+import logging
 from datetime import datetime, timezone
 from typing import Optional
 
-from apps.constants import LOGGER
 from apps.entities.collection import User
 from apps.manager.conversation import ConversationManager
 from apps.models.mongo import MongoDB
+
+logger = logging.getLogger("ray")
 
 
 class UserManager:
@@ -27,8 +29,8 @@ class UserManager:
                 _id=user_sub,
             ).model_dump(by_alias=True))
             return True
-        except Exception as e:
-            LOGGER.info(f"Add userinfo failed due to error: {e}")
+        except Exception:
+            logger.exception("[UserManager] 增加用户失败")
             return False
 
     @staticmethod
@@ -41,8 +43,8 @@ class UserManager:
         try:
             user_collection = MongoDB.get_collection("user")
             result = [user["_id"] async for user in user_collection.find({}, {"_id": 1})]
-        except Exception as e:
-            LOGGER.info(f"Get all user_sub failed due to error: {e}")
+        except Exception:
+            logger.exception("[UserManager] 获取所有用户失败")
         return result
 
     @staticmethod
@@ -56,8 +58,8 @@ class UserManager:
             user_collection = MongoDB.get_collection("user")
             user_data = await user_collection.find_one({"_id": user_sub})
             return User(**user_data) if user_data else None
-        except Exception as e:
-            LOGGER.info(f"Get userinfo by user_sub failed due to error: {e}")
+        except Exception:
+            logger.exception("[UserManager] 获取用户信息失败")
             return None
 
     @staticmethod
@@ -82,8 +84,8 @@ class UserManager:
             user_collection = MongoDB.get_collection("user")
             result = await user_collection.update_one({"_id": user_sub}, update_dict)
             return result.modified_count > 0
-        except Exception as e:
-            LOGGER.info(f"Update userinfo by user_sub failed due to error: {e}")
+        except Exception:
+            logger.exception("[UserManager] 更新用户信息失败")
             return False
 
     @staticmethod
@@ -96,8 +98,8 @@ class UserManager:
         try:
             user_collection = MongoDB.get_collection("user")
             return [user["_id"] async for user in user_collection.find({"login_time": {"$lt": login_time}}, {"_id": 1})]
-        except Exception as e:
-            LOGGER.info(f"Get userinfo by login_time failed due to error: {e}")
+        except Exception:
+            logger.exception("[UserManager] 根据登录时间获取用户信息失败")
             return []
 
     @staticmethod
@@ -117,6 +119,6 @@ class UserManager:
             for conv_id in result.conversations:
                 await ConversationManager.delete_conversation_by_conversation_id(user_sub, conv_id)
             return True
-        except Exception as e:
-            LOGGER.info(f"Delete userinfo by user_sub failed due to error: {e}")
+        except Exception:
+            logger.exception("[UserManager] 删除用户信息失败")
             return False

@@ -3,16 +3,17 @@
 Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 """
 import json
+import logging
 from collections.abc import AsyncGenerator
 
 import aiohttp
 from fastapi import status
 
 from apps.common.config import config
-from apps.constants import LOGGER
 from apps.entities.rag_data import RAGQueryReq
 from apps.service import Activity
 
+logger = logging.getLogger("ray")
 
 class RAG:
     """调用RAG服务，获取知识库答案"""
@@ -33,7 +34,7 @@ class RAG:
             url, headers=headers, data=payload, ssl=False,
         ) as response:
             if response.status != status.HTTP_200_OK:
-                LOGGER.error(f"RAG服务返回错误码: {response.status}\n{await response.text()}")
+                logger.error("[RAG] RAG服务返回错误码: %s\n%s", response.status, await response.text())
                 return
 
             async for line in response.content:
