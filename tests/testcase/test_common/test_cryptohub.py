@@ -2,8 +2,8 @@
 
 import unittest
 from unittest.mock import MagicMock, patch
-from apps.common.security import Security
-from apps.utils.cryptohub import CryptoHub
+
+from apps.common.cryptohub import CryptoHub
 
 
 class TestCryptoHub(unittest.TestCase):

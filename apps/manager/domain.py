@@ -2,13 +2,15 @@
 
 Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 """
+import logging
 from datetime import datetime, timezone
 from typing import Optional
 
-from apps.constants import LOGGER
 from apps.entities.collection import Domain
 from apps.entities.request_data import PostDomainData
 from apps.models.mongo import MongoDB
+
+logger = logging.getLogger("ray")
 
 
 class DomainManager:
@@ -23,8 +25,8 @@ class DomainManager:
         try:
             domain_collection = MongoDB.get_collection("domain")
             return [Domain(**domain) async for domain in domain_collection.find()]
-        except Exception as e:
-            LOGGER.info(f"Get domain by domain_name failed: {e}")
+        except Exception:
+            logger.exception("[DomainManager] 获取领域失败")
             return []
 
     @staticmethod
@@ -40,8 +42,8 @@ class DomainManager:
             if domain_data:
                 return Domain(**domain_data)
             return None
-        except Exception as e:
-            LOGGER.info(f"Get domain by domain_name failed: {e}")
+        except Exception:
+            logger.exception("[DomainManager] 通过领域名称获取领域失败")
             return None
 
     @staticmethod
@@ -59,8 +61,8 @@ class DomainManager:
             domain_collection = MongoDB.get_collection("domain")
             await domain_collection.insert_one(domain.model_dump(by_alias=True))
             return True
-        except Exception as e:
-            LOGGER.info(f"Add domain failed due to error: {e}")
+        except Exception:
+            logger.exception("[DomainManager] 添加领域失败")
             return False
 
     @staticmethod
@@ -81,8 +83,8 @@ class DomainManager:
                 {"$set": update_dict},
             )
             return Domain(name=domain_data.domain_name, **update_dict)
-        except Exception as e:
-            LOGGER.info(f"Update domain by domain_name failed due to error: {e}")
+        except Exception:
+            logger.exception("[DomainManager] 更新领域失败")
             return None
 
     @staticmethod
@@ -96,6 +98,6 @@ class DomainManager:
             domain_collection = MongoDB.get_collection("domain")
             await domain_collection.delete_one({"name": domain_data.domain_name})
             return True
-        except Exception as e:
-            LOGGER.info(f"Delete domain by domain_name failed due to error: {e}")
+        except Exception:
+            logger.exception("[DomainManager] 通过领域名称删除领域失败")
             return False

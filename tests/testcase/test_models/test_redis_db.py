@@ -1,17 +1,25 @@
-# Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
+"""测试Redis客户端
 
-import unittest
-from unittest.mock import patch, MagicMock
+Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
+"""
 import os
+import unittest
+from unittest.mock import MagicMock, patch
+
 import redis
+
 from apps.models.redis import RedisConnectionPool
 
+config = {
+    "REDIS_HOST": "localhost",
+    "REDIS_PORT": "6379",
+    "REDIS_PWD": "password",
+}
 
 class TestRedisConnectionPool(unittest.TestCase):
 
-    @patch('apps.models.redis_db.redis.ConnectionPool')
-    @patch('apps.models.redis_db.CryptoHub.query_plaintext_by_config_name', return_value='password')
-    @patch.dict(os.environ, {'REDIS_HOST': 'localhost', 'REDIS_PORT': '6379', 'REDIS_PWD': 'password'})
+    @patch("apps.models.redis_db.redis.ConnectionPool")
+    @patch("apps.models.redis_db.CryptoHub.query_plaintext_by_config_name", return_value='password')
     def test_get_redis_pool(self, mock_query_plaintext, connection_pool):
         mock_connection_pool = MagicMock()
         connection_pool.return_value = mock_connection_pool

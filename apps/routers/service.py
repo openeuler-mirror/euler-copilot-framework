@@ -3,12 +3,12 @@
 Copyright (c) Huawei Technologies Co., Ltd. 2024-2025. All rights reserved.
 """
 
+import logging
 from typing import Annotated, Optional, Union
 
 from fastapi import APIRouter, Body, Depends, Path, Query, status
 from fastapi.responses import JSONResponse
 
-from apps.constants import LOGGER
 from apps.dependency.csrf import verify_csrf_token
 from apps.dependency.user import get_user, verify_user
 from apps.entities.enum_var import SearchType
@@ -28,6 +28,7 @@ from apps.entities.response_data import (
 )
 from apps.manager.service import ServiceCenterManager
 
+logger = logging.getLogger("ray")
 router = APIRouter(
     prefix="/api/service",
     tags=["service-center"],
@@ -83,8 +84,8 @@ async def get_service_list(  # noqa: PLR0913
                 page,
                 page_size,
             )
-    except Exception as e:
-        LOGGER.error(f"[ServiceCenter] Get service list error: {e}")
+    except Exception:
+        logger.exception("[ServiceCenter] 获取服务列表失败")
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             content=ResponseData(
@@ -134,8 +135,8 @@ async def update_service(  # noqa: PLR0911
                     result={},
                 ).model_dump(exclude_none=True, by_alias=True),
             )
-        except Exception as e:
-            LOGGER.error(f"[ServiceCenter] Create service failed: {e}")
+        except Exception:
+            logger.exception("[ServiceCenter] 创建服务失败")
             return JSONResponse(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 content=ResponseData(
@@ -174,8 +175,8 @@ async def update_service(  # noqa: PLR0911
                     result={},
                 ).model_dump(exclude_none=True, by_alias=True),
             )
-        except Exception as e:
-            LOGGER.error(f"[ServiceCenter] Update service failed: {e}")
+        except Exception:
+            logger.exception("[ServiceCenter] 更新服务失败")
             return JSONResponse(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 content=ResponseData(
@@ -186,8 +187,8 @@ async def update_service(  # noqa: PLR0911
             )
     try:
         name, apis = await ServiceCenterManager.get_service_apis(service_id)
-    except Exception as e:
-        LOGGER.error(f"[ServiceCenter] Get service apis failed: {e}")
+    except Exception:
+        logger.exception("[ServiceCenter] 获取服务API失败")
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             content=ResponseData(
@@ -231,8 +232,8 @@ async def get_service_detail(
                     result={},
                 ).model_dump(exclude_none=True, by_alias=True),
             )
-        except Exception as e:
-            LOGGER.error(f"[ServiceCenter] Get service data error: {e}")
+        except Exception:
+            logger.exception("[ServiceCenter] 获取服务数据失败")
             return JSONResponse(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 content=ResponseData(
@@ -254,8 +255,8 @@ async def get_service_detail(
                     result={},
                 ).model_dump(exclude_none=True, by_alias=True),
             )
-        except Exception as e:
-            LOGGER.error(f"[ServiceCenter] Get service apis error: {e}")
+        except Exception:
+            logger.exception("[ServiceCenter] 获取服务API失败")
             return JSONResponse(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 content=ResponseData(
@@ -295,8 +296,8 @@ async def delete_service(
                 result={},
             ).model_dump(exclude_none=True, by_alias=True),
         )
-    except Exception as e:
-        LOGGER.error(f"[ServiceCenter] Delete service error: {e}")
+    except Exception:
+        logger.exception("[ServiceCenter] 删除服务失败")
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             content=ResponseData(
@@ -337,8 +338,8 @@ async def modify_favorite_service(
                 result={},
             ).model_dump(exclude_none=True, by_alias=True),
         )
-    except Exception as e:
-        LOGGER.error(f"[ServiceCenter] Modify favorite service error: {e}")
+    except Exception:
+        logger.exception("[ServiceCenter] 修改服务收藏状态失败")
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             content=ResponseData(

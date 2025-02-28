@@ -24,10 +24,10 @@ SERVICE_DIR = "service"
 APP_DIR = "app"
 # 语义接口目录中工作流子目录
 FLOW_DIR = "flow"
-# 日志记录器
-LOGGER = logging.getLogger("ray")
 # Scheduler进程数
 SCHEDULER_REPLICAS = 4
+# 日志记录器
+LOGGER = logging.getLogger("ray")
 
 REASONING_BEGIN_TOKEN = [
     "<think>",
