@@ -17,6 +17,10 @@ DIM='\033[2m'
 
 # 进度条宽度
 PROGRESS_WIDTH=50
+NAMESPACE="euler-copilot"
+TIMEOUT=300   # 最大等待时间（秒）
+INTERVAL=10   # 检查间隔（秒）
+
 
 # 带颜色输出的进度条函数
 colorful_progress() {
@@ -110,14 +114,14 @@ run_script_with_check() {
 uninstall_all() {
     echo -e "\n${CYAN}▸ 开始卸载所有Helm Release...${RESET}"
     local RELEASES
-    RELEASES=$(helm list -n euler-copilot --short 2>/dev/null || true)
+    RELEASES=$(helm list -n $NAMESPACE --short 2>/dev/null || true)
 
     if [ -n "$RELEASES" ]; then
         echo -e "${YELLOW}找到以下Helm Release：${RESET}"
         echo "$RELEASES" | awk '{print "  ➤ "$0}'
         for release in $RELEASES; do
             echo -e "${BLUE}正在删除: ${release}${RESET}"
-            helm uninstall "$release" -n euler-copilot || echo -e "${RED}删除失败，继续执行...${RESET}"
+            helm uninstall "$release" -n $NAMESPACE || echo -e "${RED}删除失败，继续执行...${RESET}"
         done
     else
         echo -e "${YELLOW}未找到需要清理的Helm Release${RESET}"
@@ -125,24 +129,24 @@ uninstall_all() {
 
     echo -e "\n${CYAN}▸ 清理持久化存储...${RESET}"
     local pvc_list
-    pvc_list=$(kubectl get pvc -n euler-copilot -o name 2>/dev/null || true)
+    pvc_list=$(kubectl get pvc -n $NAMESPACE -o name 2>/dev/null || true)
 
     if [ -n "$pvc_list" ]; then
         echo -e "${YELLOW}找到以下PVC资源：${RESET}"
         echo "$pvc_list" | awk '{print "  ➤ "$0}'
-        echo "$pvc_list" | xargs -n 1 kubectl delete -n euler-copilot || echo -e "${RED}删除失败，继续执行...${RESET}"
+        echo "$pvc_list" | xargs -n 1 kubectl delete -n $NAMESPACE || echo -e "${RED}删除失败，继续执行...${RESET}"
     else
         echo -e "${YELLOW}未找到需要清理的PVC${RESET}"
     fi
 
     echo -e "\n${CYAN}▸ 清理Secret资源...${RESET}"
     local secret_list
-    secret_list=$(kubectl get secret -n euler-copilot -o name 2>/dev/null || true)
+    secret_list=$(kubectl get secret -n $NAMESPACE -o name 2>/dev/null || true)
 
     if [ -n "$secret_list" ]; then
         echo -e "${YELLOW}找到以下Secret资源：${RESET}"
         echo "$secret_list" | awk '{print "  ➤ "$0}'
-        echo "$secret_list" | xargs -n 1 kubectl delete -n euler-copilot || echo -e "${RED}删除失败，继续执行...${RESET}"
+        echo "$secret_list" | xargs -n 1 kubectl delete -n $NAMESPACE || echo -e "${RED}删除失败，继续执行...${RESET}"
     else
         echo -e "${YELLOW}未找到需要清理的Secret${RESET}"
     fi
@@ -173,19 +177,20 @@ start_deployment() {
         "../5-deploy-embedding/deploy-embedding.sh Embedding服务部署 false"
         "../6-install-databases/install_databases.sh 数据库集群部署 false"
         "../7-install-authhub/install_authhub.sh Authhub部署 true"
-        "../8-install-EulerCopilot/install_eulercopilot.sh EulerCopilot部署 true"
+	"_conditional_eulercopilot_step EulerCopilot部署 true"
     )
 
     for step in "${steps[@]}"; do
         local script_path=$(echo "$step" | awk '{print $1}')
         local script_name=$(echo "$step" | awk '{sub($1 OFS, ""); print $1}')
         local auto_input=$(echo "$step" | awk '{print $NF}')
-
-        # 特殊处理条件步骤
-        if [[ "$script_path" == "_conditional_tools_step" ]]; then
+	if [[ "$script_path" == "_conditional_tools_step" ]]; then
             handle_tools_step $current_step
-        else
-            run_script_with_check "$script_path" "$script_name" $current_step $auto_input
+        elif [[ "$script_path" == "_conditional_eulercopilot_step" ]]; then
+            handle_eulercopilot_step $current_step
+	    sleep 60
+        elif ! run_script_with_check "$script_path" "$script_name" $current_step $auto_input; then
+            echo "Error: Script execution failed"
         fi
 
         colorful_progress $current_step $total_steps
@@ -193,6 +198,7 @@ start_deployment() {
     done
 
     show_completion
+
 }
 
 # 处理工具安装步骤
@@ -206,14 +212,22 @@ handle_tools_step() {
     fi
 }
 
+# 处理工具安装步骤
+handle_eulercopilot_step() {
+    local current_step=$1
+    sleep 60
+    run_script_with_check "../8-install-EulerCopilot/install_eulercopilot.sh" "EulerCopilot部署" $current_step true
+    
+}
+
 # 显示完成信息
 show_completion() {
     echo -e "\n\n${BOLD}${GREEN}$(printf '✦%.0s' $(seq 1 $(tput cols)))${RESET}"
     echo -e "${BOLD}${WHITE}                  部署成功完成                  ${RESET}"
     echo -e "${BOLD}${GREEN}$(printf '✦%.0s' $(seq 1 $(tput cols)))${RESET}"
     echo -e "${YELLOW}请通过以下方式验证部署："
-    echo -e "  ➤ 检查所有Pod状态: kubectl get pods -n euler-copilot"
-    echo -e "  ➤ 查看服务端点: kubectl get svc -n euler-copilot"
+    echo -e "  ➤ 检查所有Pod状态: kubectl get pods -n $NAMESPACE"
+    echo -e "  ➤ 查看服务端点: kubectl get svc -n $NAMESPACE"
     echo -e "  ➤ 访问Web界面: https://www.eulercopilot.local${RESET}"
 }
 
