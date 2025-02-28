@@ -99,11 +99,30 @@ def get_client_secret(auth_hub_url, user_token):
         response = requests.get(url, headers=headers, timeout=10)
         response.raise_for_status()
         apps_data = response.json()
-        
-        # 确保响应结构正确
+
         if "data" in apps_data and "applications" in apps_data["data"]:
             for app in apps_data["data"]["applications"]:
-                if app.get("client_metadata", {}).get("client_name") == "EulerCopilot":
+                # 调试输出应用信息（取消注释查看完整数据结构）
+                print("调试应用信息:", json.dumps(app, indent=2))  # <- 重要调试信息
+
+                # 处理client_metadata字段的多种类型
+                client_metadata = app.get("client_metadata") or {}
+                if isinstance(client_metadata, str):  # 如果是字符串则解析
+                    try:
+                        client_metadata = json.loads(client_metadata)
+                    except json.JSONDecodeError:
+                        client_metadata = {}
+                elif not isinstance(client_metadata, dict):  # 非字典类型处理
+                    client_metadata = {}
+
+                # 检查client_name的位置（根据实际情况调整）
+                target_name = (
+                    client_metadata.get("client_name") 
+                    or app.get("client_name") 
+                    or app.get("client_info", {}).get("client_name")
+                )
+                
+                if target_name == "EulerCopilot":
                     return {
                         "client_id": app["client_info"]["client_id"],
                         "client_secret": app["client_info"]["client_secret"]
@@ -113,7 +132,7 @@ def get_client_secret(auth_hub_url, user_token):
             print("错误：应用列表响应结构异常")
             print("完整响应：", json.dumps(apps_data, indent=2))
             sys.exit(1)
-            
+
     except requests.exceptions.RequestException as e:
         print(f"获取客户端凭证失败：{str(e)}")
         sys.exit(1)

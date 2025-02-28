@@ -64,6 +64,8 @@ get_network_ip() {
     echo "$host"
 }
 
+
+# 获取client info
 get_client_info() {
     # 自动生成客户端名称（格式：client_随机8位字符）
     local client_name="client_$(openssl rand -hex 4 | cut -c1-8)"
@@ -78,15 +80,12 @@ get_client_info() {
     # 检查Python脚本执行结果
     if [ $? -ne 0 ]; then
         echo -e "${RED}错误：Python脚本执行失败${NC}"
-        cat client_info.tmp
-        rm -f client_info.tmp
         exit 1
     fi
 
     # 提取凭证信息（保持原有逻辑）
-    client_id=$(grep "client_id: " client_info.tmp | awk '{print $8}')
+    client_id=$(grep "client_id: " client_info.tmp | awk '{print $2}')
     client_secret=$(grep "client_secret: " client_info.tmp | awk '{print $2}')
-    #rm -f client_info.tmp
 
     # 验证结果（保持原有逻辑）
     if [ -z "$client_id" ] || [ -z "$client_secret" ]; then
@@ -101,7 +100,28 @@ get_client_info() {
     echo -e "${GREEN}==============================${NC}"
 }
 
-get_user_input() {
+
+get_client_info_input() {
+
+    # 非交互模式直接使用默认值
+    if [ -t 0 ]; then  # 仅在交互式终端显示提示
+        echo -e "${BLUE}请输入 Client ID: 域名（端点信息：Client ID）： ${NC}"
+        read -p "> " input_id
+        [ -n "$input_id" ] && client_id=$input_id
+
+        echo -e "${BLUE}请输入 Client Secret: 域名（端点信息：Client Secret）：${NC}"
+        read -p "> " input_secret
+        [ -n "$input_secret" ] && client_secret=$input_secret
+    fi
+
+    # 统一验证域名格式
+    echo -e "${GREEN}使用配置："
+    echo "Client ID: $client_id"
+    echo "Client Secret: $client_secret"
+
+}
+# # 处理域名
+get_domain_input() {
     # 从环境变量读取或使用默认值
     eulercopilot_domain=${EULERCOPILOT_DOMAIN:-"www.eulercopilot.local"}
     authhub_domain=${AUTHHUB_DOMAIN:-"authhub.eulercopilot.local"}
@@ -130,9 +150,10 @@ get_user_input() {
 
     echo -e "${GREEN}使用配置："
     echo "EulerCopilot域名: $eulercopilot_domain"
-    echo "Authhub域名:     $authhub_domain${NC}"
+    echo "Authhub域名:     $authhub_domain"
 }
 
+# 检查语义接口是否存在
 check_directories() {
     echo -e "${BLUE}检查语义接口目录是否存在...${NC}" >&2
     if [ -d "${PLUGINS_DIR}" ]; then
@@ -147,6 +168,7 @@ check_directories() {
     fi
 }
 
+# 检查是否存在已经部署的EulerCopilot
 check_and_delete_existing_deployment() {
     echo -e "${YELLOW}检查是否存在已部署的euler-copilot...${NC}" >&2
     if helm list -n euler-copilot --short | grep -q "^euler-copilot$"; then
@@ -163,6 +185,7 @@ check_and_delete_existing_deployment() {
     fi
 }
 
+# 修改配置文件
 modify_yaml() {
     local host=$1
     echo -e "${BLUE}开始修改YAML配置文件...${NC}" >&2
@@ -187,6 +210,7 @@ modify_yaml() {
     echo -e "${GREEN}YAML文件修改成功！${NC}" >&2
 }
 
+# 检查目录
 enter_chart_directory() {
     echo -e "${BLUE}进入Chart目录...${NC}" >&2
     cd "${DEPLOY_DIR}/chart/" || {
@@ -195,6 +219,7 @@ enter_chart_directory() {
     }
 }
 
+# 执行安装
 execute_helm_install() {
     local arch=$1
     echo -e "${BLUE}开始部署EulerCopilot（架构: $arch）...${NC}" >&2
@@ -207,6 +232,7 @@ execute_helm_install() {
     echo -e "${GREEN}Helm安装EulerCopilot成功！${NC}" >&2
 }
 
+# 检查pod状态
 check_pods_status() {
     echo -e "${BLUE}==> 等待初始化就绪（30秒）...${NC}" >&2
     sleep 30
@@ -250,8 +276,13 @@ main() {
     local arch host
     arch=$(get_architecture) || exit 1
     host=$(get_network_ip) || exit 1
-    get_client_info
-    get_user_input
+    if get_client_info; then
+	echo -e "${GREEN}已成功获取client info${NC}"
+    else
+        get_client_info_input	    
+	echo -e "${YELLOW}需要手动登录Authhub域名并创建应用，获取client信息${NC}"
+    fi
+    get_domain_input
     check_directories
     check_and_delete_existing_deployment
     modify_yaml "$host"
@@ -275,11 +306,13 @@ main() {
     echo -e "系统架构:\t$(uname -m) (识别为: ${arch})"
     echo -e "插件目录:\t${PLUGINS_DIR}"
     echo -e "Chart目录:\t${DEPLOY_DIR}/chart/${NC}"
-    echo
+    echo -e ""
     echo -e "${BLUE}操作指南："
     echo -e "1. 查看集群状态: kubectl get all -n euler-copilot"
     echo -e "2. 查看实时日志: kubectl logs -n euler-copilot -f deployment/euler-copilot"
-    echo -e "3. 添加域名解析（示例）:"
+    echo -e "3. 查看POD状态：kubectl get pods -n euler-copilot"
+    echo -e "4. 查看数据库并使用base64密码：kubectl edit secret euler-copilot-system -n euler-copilot"
+    echo -e "5. 添加域名解析（示例）:"
     echo -e "   ${host} ${eulercopilot_domain}"
     echo -e "   ${host} ${authhub_domain}${NC}"
 }

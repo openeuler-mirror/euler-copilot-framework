@@ -106,34 +106,38 @@ helm_install() {
 }
 
 check_pods_status() {
-    echo -e "${BLUE}==> 等待初始化就绪（30秒）...${NC}"
+    echo -e "${BLUE}==> 等待初始化就绪（30秒）...${NC}" >&2
     sleep 30
 
     local timeout=300
     local start_time=$(date +%s)
 
-    echo -e "${BLUE}开始监控Authhub Pod状态（总超时时间300秒）...${NC}"
+    echo -e "${BLUE}开始监控Pod状态（总超时时间300秒）...${NC}" >&2
 
     while true; do
         local current_time=$(date +%s)
         local elapsed=$((current_time - start_time))
 
         if [ $elapsed -gt $timeout ]; then
-            echo -e "${RED}错误：部署超时！${NC}"
-            kubectl get pods -n euler-copilot --selector=app.kubernetes.io/instance=authhub
+            echo -e "${YELLOW}警告：部署超时！请检查以下资源：${NC}" >&2
+            kubectl get pods -n euler-copilot -o wide
+            echo -e "\n${YELLOW}建议检查：${NC}"
+            echo "1. 查看未就绪Pod的日志: kubectl logs -n euler-copilot <pod-name>"
+            echo "2. 检查PVC状态: kubectl get pvc -n euler-copilot"
+            echo "3. 检查Service状态: kubectl get svc -n euler-copilot"
             return 1
         fi
 
-        # 检查所有属于authhub的Pod状态
-        local not_running=$(kubectl get pods -n euler-copilot --selector=app.kubernetes.io/instance=authhub -o jsonpath='{range .items[*]}{.metadata.name} {.status.phase}{"\n"}{end}' | grep -v "Running")
+        local not_running=$(kubectl get pods -n euler-copilot -o jsonpath='{range .items[*]}{.metadata.name} {.status.phase} {.status.conditions[?(@.type=="Ready")].status}{"\n"}{end}' \
+            | awk '$2 != "Running" || $3 != "True" {print $1 " " $2}')
 
         if [ -z "$not_running" ]; then
-            echo -e "${GREEN}所有Authhub Pod已正常运行！${NC}"
-            kubectl get pods -n euler-copilot --selector=app.kubernetes.io/instance=authhub
+            echo -e "${GREEN}所有Pod已正常运行！${NC}" >&2
+            kubectl get pods -n euler-copilot -o wide
             return 0
         else
             echo "等待Pod就绪（已等待 ${elapsed} 秒）..."
-            echo "当前异常Pod："
+            echo "当前未就绪Pod："
             echo "$not_running" | awk '{print "  - " $1 " (" $2 ")"}'
             sleep 10
         fi
