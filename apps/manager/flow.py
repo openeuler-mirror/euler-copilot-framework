@@ -93,8 +93,8 @@ class FlowManager:
                     LOGGER.error(f"[FlowManeger] generate_from_schema failed {e}")
                     continue
                 node_meta_data_item = NodeMetaDataItem(
-                    nodeMetaDataId=node_pool_record["_id"],
-                    type=node_pool_record["call_id"],
+                    nodeId=node_pool_record["_id"],
+                    callId=node_pool_record["call_id"],
                     name=node_pool_record["name"],
                     description=node_pool_record["description"],
                     editable=True,
@@ -121,8 +121,6 @@ class FlowManager:
             fav_services = []
             if user_record:
                 fav_services = user_record.get("fav_services", [])
-            else:
-                return []
             match_conditions = [
                 {"author": user_sub},
                 {
@@ -185,8 +183,8 @@ class FlowManager:
                 "output_parameters": node_pool_record["output_schema"],
             }
             return NodeMetaDataItem(
-                nodeMetaDataId=node_pool_record["_id"],
-                type=node_pool_record["call_id"],
+                nodeId=node_pool_record["_id"],
+                callId=node_pool_record["call_id"],
                 name=node_pool_record["name"],
                 description=node_pool_record["description"],
                 editable=True,
@@ -244,20 +242,23 @@ class FlowManager:
                     debug=flow_config.debug,
                 )
                 for node_id, node_config in flow_config.steps.items():
-                    input_parameters = node_config.params
-                    _, output_parameters = await NodeManager.get_node_params(node_config.node)
+                    if node_config.node not in ("Empty"):
+                        input_parameters = node_config.params
+                        _, output_parameters = await NodeManager.get_node_params(node_config.node)
+                    else:
+                        input_parameters, output_parameters = {},{}
                     parameters = {
                         "input_parameters": input_parameters,
                         "output_parameters": output_parameters
                     }
                     node_item = NodeItem(
-                        nodeId=node_id,
-                        nodeMetaDataId=node_config.node,
+                        stepId=node_id,
+                        nodeId=node_config.node,
                         name=node_config.name,
                         description=node_config.description,
                         enable=True,
                         editable=True,
-                        type=node_config.type,
+                        callId=node_config.type,
                         parameters=parameters,
                         position=PositionItem(
                             x=node_config.pos.x, y=node_config.pos.y),
@@ -331,9 +332,9 @@ class FlowManager:
                 debug=False,
             )
             for node_item in flow_item.nodes:
-                flow_config.steps[node_item.node_id] = Step(
-                    type=node_item.type,
-                    node=node_item.node_meta_data_id,
+                flow_config.steps[node_item.step_id] = Step(
+                    type=node_item.call_id,
+                    node=node_item.node_id,
                     name=node_item.name,
                     description=node_item.description,
                     pos=StepPos(x=node_item.position.x,
