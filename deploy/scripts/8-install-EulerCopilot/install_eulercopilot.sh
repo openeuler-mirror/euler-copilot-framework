@@ -9,8 +9,10 @@ YELLOW='\e[33m'
 BLUE='\e[34m'
 NC='\e[0m' # 恢复默认颜色
 
+NAMESPACE="euler-copilot"
 DEPLOY_DIR="/home/euler-copilot-framework/deploy"
 PLUGINS_DIR="/home/eulercopilot/semantics"
+
 
 # 获取系统架构
 get_architecture() {
@@ -64,7 +66,7 @@ get_network_ip() {
     echo "$host"
 }
 
-get_client_info() {
+get_client_info_auto() {
     # 自动生成客户端名称（格式：client_随机8位字符）
     local client_name="client_$(openssl rand -hex 4 | cut -c1-8)"
     
@@ -73,25 +75,22 @@ get_client_info() {
         echo "$client_name"  # 客户端名称（使用随机生成值）
         echo ""             # client_url（回车使用默认）
         echo ""             # redirect_urls（回车使用默认）
-    } | python3 "${DEPLOY_DIR}/scripts/9-other-script/get_client_id_and_secret.py" > client_info.tmp
+    } | python3 "${DEPLOY_DIR}/scripts/9-other-script/get_client_id_and_secret.py" > client_info.tmp 2>&1
 
     # 检查Python脚本执行结果
     if [ $? -ne 0 ]; then
         echo -e "${RED}错误：Python脚本执行失败${NC}"
         cat client_info.tmp
-        rm -f client_info.tmp
-        exit 1
     fi
 
     # 提取凭证信息（保持原有逻辑）
-    client_id=$(grep "client_id: " client_info.tmp | awk '{print $8}')
+    client_id=$(grep "client_id: " client_info.tmp | awk '{print $2}')
     client_secret=$(grep "client_secret: " client_info.tmp | awk '{print $2}')
-    #rm -f client_info.tmp
+    rm -f client_info.tmp
 
     # 验证结果（保持原有逻辑）
     if [ -z "$client_id" ] || [ -z "$client_secret" ]; then
         echo -e "${RED}错误：无法获取有效的客户端凭证${NC}" >&2
-        exit 1
     fi
 
     # 输出结果（保持原有格式）
@@ -101,7 +100,28 @@ get_client_info() {
     echo -e "${GREEN}==============================${NC}"
 }
 
-get_user_input() {
+get_client_info_manual() {
+
+    # 非交互模式直接使用默认值
+    if [ -t 0 ]; then  # 仅在交互式终端显示提示
+        echo -e "${BLUE}请输入 Client ID: 域名（端点信息：Client ID）： ${NC}"
+        read -p "> " input_id
+        [ -n "$input_id" ] && client_id=$input_id
+
+        echo -e "${BLUE}请输入 Client Secret: 域名（端点信息：Client Secret）：${NC}"
+        read -p "> " input_secret
+        [ -n "$input_secret" ] && client_secret=$input_secret
+    fi
+
+    # 统一验证域名格式
+    echo -e "${GREEN}使用配置："
+    echo "Client ID: $client_id"
+    echo "Client Secret: $client_secret"
+
+}
+
+# # 处理域名
+get_domain_input() {
     # 从环境变量读取或使用默认值
     eulercopilot_domain=${EULERCOPILOT_DOMAIN:-"www.eulercopilot.local"}
     authhub_domain=${AUTHHUB_DOMAIN:-"authhub.eulercopilot.local"}
@@ -130,9 +150,10 @@ get_user_input() {
 
     echo -e "${GREEN}使用配置："
     echo "EulerCopilot域名: $eulercopilot_domain"
-    echo "Authhub域名:     $authhub_domain${NC}"
+    echo "Authhub域名:     $authhub_domain"
 }
 
+# 检查语义接口是否存在
 check_directories() {
     echo -e "${BLUE}检查语义接口目录是否存在...${NC}" >&2
     if [ -d "${PLUGINS_DIR}" ]; then
@@ -147,22 +168,24 @@ check_directories() {
     fi
 }
 
+# 检查是否存在已经部署的EulerCopilot
 check_and_delete_existing_deployment() {
-    echo -e "${YELLOW}检查是否存在已部署的euler-copilot...${NC}" >&2
-    if helm list -n euler-copilot --short | grep -q "^euler-copilot$"; then
-        echo -e "${YELLOW}发现已存在的euler-copilot部署，正在删除...${NC}" >&2
-        helm uninstall -n euler-copilot euler-copilot || {
-            echo -e "${RED}错误：删除旧版euler-copilot失败${NC}" >&2
+    echo -e "${YELLOW}检查是否存在已部署的 EulerCopilot...${NC}" >&2
+    if helm list -n $NAMESPACE --short | grep -q "^$NAMESPACE$"; then
+        echo -e "${YELLOW}发现已存在的 EulerCopilot 部署，正在删除...${NC}" >&2
+        helm uninstall -n $NAMESPACE $NAMESPACE || {
+            echo -e "${RED}错误：删除旧版 EulerCopilot 失败${NC}" >&2
             exit 1
         }
 
         echo -e "${YELLOW}等待旧部署清理完成（10秒）...${NC}" >&2
         sleep 10
     else
-        echo -e "${GREEN}未找到已存在的euler-copilot部署，继续安装...${NC}" >&2
+        echo -e "${GREEN}未找到已存在的 EulerCopilot 部署，继续安装...${NC}" >&2
     fi
 }
 
+# 修改配置文件
 modify_yaml() {
     local host=$1
     echo -e "${BLUE}开始修改YAML配置文件...${NC}" >&2
@@ -187,6 +210,7 @@ modify_yaml() {
     echo -e "${GREEN}YAML文件修改成功！${NC}" >&2
 }
 
+# 检查目录
 enter_chart_directory() {
     echo -e "${BLUE}进入Chart目录...${NC}" >&2
     cd "${DEPLOY_DIR}/chart/" || {
@@ -195,18 +219,20 @@ enter_chart_directory() {
     }
 }
 
+# 执行安装
 execute_helm_install() {
     local arch=$1
     echo -e "${BLUE}开始部署EulerCopilot（架构: $arch）...${NC}" >&2
 
     enter_chart_directory
-    helm upgrade --install euler-copilot -n euler-copilot ./euler_copilot --set globals.arch=$arch --create-namespace || {
+    helm upgrade --install $NAMESPACE -n $NAMESPACE ./euler_copilot --set globals.arch=$arch --create-namespace || {
         echo -e "${RED}Helm 安装 EulerCopilot 失败！${NC}" >&2
         exit 1
     }
-    echo -e "${GREEN}Helm安装EulerCopilot成功！${NC}" >&2
+    echo -e "${GREEN}Helm安装 EulerCopilot 成功！${NC}" >&2
 }
 
+# 检查pod状态
 check_pods_status() {
     echo -e "${BLUE}==> 等待初始化就绪（30秒）...${NC}" >&2
     sleep 30
@@ -222,20 +248,20 @@ check_pods_status() {
 
         if [ $elapsed -gt $timeout ]; then
             echo -e "${YELLOW}警告：部署超时！请检查以下资源：${NC}" >&2
-            kubectl get pods -n euler-copilot -o wide
+            kubectl get pods -n $NAMESPACE -o wide
             echo -e "\n${YELLOW}建议检查：${NC}"
-            echo "1. 查看未就绪Pod的日志: kubectl logs -n euler-copilot <pod-name>"
-            echo "2. 检查PVC状态: kubectl get pvc -n euler-copilot"
-            echo "3. 检查Service状态: kubectl get svc -n euler-copilot"
+            echo "1. 查看未就绪Pod的日志: kubectl logs -n $NAMESPACE <pod-name>"
+            echo "2. 检查PVC状态: kubectl get pvc -n $NAMESPACE"
+            echo "3. 检查Service状态: kubectl get svc -n $NAMESPACE"
             return 1
         fi
 
-        local not_running=$(kubectl get pods -n euler-copilot -o jsonpath='{range .items[*]}{.metadata.name} {.status.phase} {.status.conditions[?(@.type=="Ready")].status}{"\n"}{end}' \
+        local not_running=$(kubectl get pods -n $NAMESPACE -o jsonpath='{range .items[*]}{.metadata.name} {.status.phase} {.status.conditions[?(@.type=="Ready")].status}{"\n"}{end}' \
             | awk '$2 != "Running" || $3 != "True" {print $1 " " $2}')
 
         if [ -z "$not_running" ]; then
             echo -e "${GREEN}所有Pod已正常运行！${NC}" >&2
-            kubectl get pods -n euler-copilot -o wide
+            kubectl get pods -n $NAMESPACE -o wide
             return 0
         else
             echo "等待Pod就绪（已等待 ${elapsed} 秒）..."
@@ -250,8 +276,12 @@ main() {
     local arch host
     arch=$(get_architecture) || exit 1
     host=$(get_network_ip) || exit 1
-    get_client_info
-    get_user_input
+
+    if ! get_client_info_auto; then
+	echo -e "${YELLOW}需要手动登录Authhub域名并创建应用，获取client信息${NC}"
+        get_client_info_manual
+    fi
+    get_domain_input
     check_directories
     check_and_delete_existing_deployment
     modify_yaml "$host"
@@ -260,7 +290,7 @@ main() {
     if check_pods_status; then
         echo -e "${GREEN}所有组件已就绪！${NC}"
     else
-        echo -e "${YELLOW}注意：部分组件尚未就绪，请根据上述建议进行排查${NC}" >&2
+        echo -e "${YELLOW}注意：部分组件尚未就绪，建议进行排查${NC}" >&2
     fi
 
     # 最终部署信息输出
@@ -275,13 +305,16 @@ main() {
     echo -e "系统架构:\t$(uname -m) (识别为: ${arch})"
     echo -e "插件目录:\t${PLUGINS_DIR}"
     echo -e "Chart目录:\t${DEPLOY_DIR}/chart/${NC}"
-    echo
+    echo -e ""
     echo -e "${BLUE}操作指南："
-    echo -e "1. 查看集群状态: kubectl get all -n euler-copilot"
-    echo -e "2. 查看实时日志: kubectl logs -n euler-copilot -f deployment/euler-copilot"
-    echo -e "3. 添加域名解析（示例）:"
+    echo -e "1. 查看集群状态: kubectl get all -n $NAMESPACE"
+    echo -e "2. 查看实时日志: kubectl logs -n $NAMESPACE -f deployment/$NAMESPACE"
+    echo -e "3. 查看POD状态：kubectl get pods -n $NAMESPACE"
+    echo -e "4. 查看数据库并使用base64密码：kubectl edit secret $NAMESPACE-system -n $NAMESPACE"
+    echo -e "5. 添加域名解析（示例）:"
     echo -e "   ${host} ${eulercopilot_domain}"
     echo -e "   ${host} ${authhub_domain}${NC}"
 }
 
 main
+
