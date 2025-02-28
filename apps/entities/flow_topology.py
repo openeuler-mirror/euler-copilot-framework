@@ -12,8 +12,8 @@ from apps.entities.enum_var import EdgeType
 class NodeMetaDataItem(BaseModel):
     """节点元数据类"""
 
-    node_meta_data_id: str = Field(alias="nodeMetaDataId")
-    type: str
+    node_id: str = Field(alias="nodeId")
+    call_id: str = Field(alias="callId")
     name: str
     description: str
     parameters: Optional[dict[str, Any]]
@@ -48,11 +48,11 @@ class DependencyItem(BaseModel):
 class NodeItem(BaseModel):
     """请求/响应中的节点变量类"""
 
-    node_id: str = Field(alias="nodeId", default="")
+    step_id: str = Field(alias="stepId", default="")
     service_id: str = Field(alias="serviceId", default="")
-    node_meta_data_id: str = Field(alias="nodeMetaDataId", default="")
+    node_id: str = Field(alias="nodeId", default="")
     name: str = Field(default="")
-    type: str = Field(default="Empty")
+    call_id: str = Field(alias="callId",default="Empty")
     description: str = Field(default="")
     enable: bool = Field(default=True)
     parameters: dict[str, Any] = Field(default={})
@@ -64,7 +64,7 @@ class NodeItem(BaseModel):
 class EdgeItem(BaseModel):
     """请求/响应中的边变量类"""
 
-    edge_id: str = Field(alias="edgeId")
+    edge_id: str = Field(alias="edgeId") 
     source_node: str = Field(alias="sourceNode")
     target_node: str = Field(alias="targetNode")
     type: str = Field(default=EdgeType.NORMAL.value)
