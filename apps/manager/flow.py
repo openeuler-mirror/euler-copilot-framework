@@ -339,7 +339,7 @@ class FlowManager:
                     description=node_item.description,
                     pos=StepPos(x=node_item.position.x,
                                 y=node_item.position.y),
-                    params=node_item.parameters.get('input_paramteters', {}),
+                    params=node_item.parameters.get('input_parameters', {}),
                 )
             for edge_item in flow_item.edges:
                 edge_from = edge_item.source_node
