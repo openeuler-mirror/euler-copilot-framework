@@ -30,8 +30,10 @@ from apps.dependency import (
     verify_csrf_token,
     verify_user,
 )
+from apps.entities.pool import AppPool
 from apps.entities.request_data import MockRequestData, RequestData
 from apps.entities.scheduler import CallError
+from apps.manager.appcenter import AppCenterManager
 from apps.manager.flow import FlowManager
 from apps.scheduler.pool.loader.flow import FlowLoader
 from apps.scheduler.scheduler.context import save_data
@@ -223,6 +225,10 @@ async def mock_data(
     session_id: str,
 ):
     try:
+        if post_body.app and post_body.app.app_id and not post_body.app.flow_id:
+            app = await AppCenterManager.fetch_app_data_by_id(post_body.app.app_id)
+            if type(app) is AppPool and type(app.flows) is list:
+                post_body.app.flow_id = app.flows[0].id
         # await Activity.set_active(user_sub)
 
         # # 生成group_id
