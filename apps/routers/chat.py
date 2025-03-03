@@ -24,6 +24,7 @@ from apps.entities.request_data import RequestData
 from apps.entities.response_data import ResponseData
 from apps.manager.appcenter import AppCenterManager
 from apps.manager.blacklist import QuestionBlacklistManager, UserBlacklistManager
+from apps.routers.mock import mock_data
 from apps.scheduler.scheduler.context import save_data
 from apps.service.activity import Activity
 
@@ -127,8 +128,10 @@ async def chat(
         raise HTTPException(status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail="Too many requests")
 
     if post_body.app and post_body.app.app_id:
-        await AppCenterManager.update_recent_app(user_sub, post_body.app.app_id)
-    res = chat_generator(post_body, user_sub, session_id)
+        # await AppCenterManager.update_recent_app(user_sub, post_body.app.app_id)
+        res = mock_data(post_body, user_sub, session_id)
+    else:
+        res = chat_generator(post_body, user_sub, session_id)
     return StreamingResponse(
         content=res,
         media_type="text/event-stream",
