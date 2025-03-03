@@ -258,7 +258,7 @@ async def mock_data(
                     "stepStatus": "pending",
                 },
                 "content": {},
-                "metadata": {"inputTokens": 200, "outputTokens": 50, "time_cost": 0.5},
+                "metadata": {"inputTokens": 200, "outputTokens": 50, "timeCost": 0.5},
             },
             {
                 "event": "init",
@@ -274,7 +274,7 @@ async def mock_data(
                         "context_num": 2,
                     },
                 },
-                "metadata": {"input_tokens": 200, "output_tokens": 50, "time_cost": 0.5},
+                "metadata": {"input_tokens": 200, "output_tokens": 50, "timeCost": 0.5},
             },
         ]
         sample_input = {  # 开始节点
@@ -294,7 +294,7 @@ async def mock_data(
             "metadata": {
                 "inputTokens": 200,
                 "outputTokens": 50,
-                "time_cost": 0.5,
+                "timeCost": 0.5,
             },
         }
         sample_output = {  # 开始节点
@@ -314,7 +314,7 @@ async def mock_data(
             "metadata": {
                 "inputTokens": 200,
                 "outputTokens": 50,
-                "time_cost": 0.5,
+                "timeCost": 0.5,
             },
         }
         messages = []
@@ -322,7 +322,7 @@ async def mock_data(
             messages.append(message)
         for message in messages:
             if message["event"] == "step.output":
-                t = message["metadata"]["time_cost"]
+                t = message["metadata"]["timeCost"]
                 time.sleep(t)
             elif message["event"] == "text.add":
                 t = random.uniform(0.15, 0.2)
@@ -348,35 +348,24 @@ async def mock_data(
             while now_flow_item != "end":
                 if last_item == now_flow_item:
                     break
-                # 如果超过10s强制退出
-                if time.time() - start_time > 10:
-                    break
                 last_item = now_flow_item
                 for edge in flow.edges:
                     if edge.edge_from.split(".")[0] == now_flow_item:
                         sample_input["flow"]["stepId"] = now_flow_item
                         sample_input["flow"]["stepName"], sample_input["content"] = mapp[now_flow_item]
-                        sample_input["content"] = (
-                            sample_input["content"]["input_parameters"]
-                            if now_flow_item != "start"
-                            else sample_input["content"]
-                        )
+                        sample_input["content"] = sample_input["content"]
                         if "content" in sample_input and type(sample_input["content"]) == dict:
                             for key, value in sample_input["content"].items():
                                 if key in params:
                                     sample_input["content"][key] = params[key]
                                 else:
                                     params[key] = value
-                        time.sleep(sample_input["metadata"]["time_cost"])
+                        time.sleep(sample_input["metadata"]["timeCost"])
                         yield "data: " + json.dumps(sample_input, ensure_ascii=False) + "\n\n"
-                        sample_output["metadata"]["time_cost"] = random.uniform(1.5, 3.5)
+                        sample_output["metadata"]["timeCost"] = random.uniform(1.5, 3.5)
                         sample_output["flow"]["stepId"] = now_flow_item
                         sample_output["flow"]["stepName"], sample_output["content"] = mapp[now_flow_item]
-                        sample_output["content"] = (
-                            sample_output["content"]["output_parameters"]
-                            if now_flow_item != "start"
-                            else sample_output["content"]
-                        )
+                        sample_output["content"] = sample_output["content"]
                         if sample_output["flow"]["stepName"] == "知识库":
                             sample_output["content"] = await call_rag(params)
                         if sample_output["flow"]["stepName"] == "大模型":
@@ -385,7 +374,7 @@ async def mock_data(
                         if "content" in sample_output and isinstance(sample_output["content"], dict):
                             for key, value in sample_output["content"].items():
                                 params[key] = copy.deepcopy(value)
-                        time.sleep(sample_output["metadata"]["time_cost"])
+                        time.sleep(sample_output["metadata"]["timeCost"])
                         if sample_output["flow"]["stepName"] == "知识库":
                             for i in range(len(sample_output["content"]["chunk_list"])):
                                 sample_output["content"]["chunk_list"][i] = sample_output["content"]["chunk_list"][i].replace("\n", "")[:100] + "..."
@@ -400,7 +389,7 @@ async def mock_data(
             sample_output["content"]={}
             sample_output["flow"]["stepId"] = now_flow_item
             sample_output["flow"]["stepName"] = "结束"
-            sample_output["metadata"]["time_cost"] = random.uniform(0.5, 1.5)
+            sample_output["metadata"]["timeCost"] = random.uniform(0.5, 1.5)
             yield "data: " + json.dumps(sample_output, ensure_ascii=False) + "\n\n"
         if appId and flowId:
             await FlowManager.updata_flow_debug_by_app_and_flow_id(appId, flowId, True)
@@ -413,7 +402,7 @@ async def mock_data(
                 "taskId": "eb717bc7-3435-4172-82d1-6b69e62f3fd6",
                 "flow": {"stepStatus": "success"},
                 "content": {},
-                "metadata": {"inputTokens": 0, "outputTokens": 0, "time_cost": random.uniform(0.5, 1.5)},
+                "metadata": {"inputTokens": 0, "outputTokens": 0, "timeCost": random.uniform(0.5, 1.5)},
             },
         ]
         messages = []
@@ -421,7 +410,7 @@ async def mock_data(
             messages.append(message)
             for message in messages:
                 if message["event"] == "step.output":
-                    t = message["metadata"]["time_cost"]
+                    t = message["metadata"]["timeCost"]
                     time.sleep(t)
                 elif message["event"] == "text.add":
                     t = random.uniform(0.15, 0.2)
@@ -499,7 +488,7 @@ async def call_llm(params: dict = {}):
         "model": params.get("model", config["LLM_MODEL"]),  # 默认模型
         "messages": params.get(
             "messages",
-            [{"role": "system", "content": prompt}, {"role": "user", "content": user_call + str(chunk_list)}],
+            [{"role": "system", "content": prompt}, {"role": "user", "content": user_call + str(chunk_list) + "\n\n如果没有任何信息则回答知识库没有查询到相关信息"}],
         ),  # 消息列表
         "stream": params.get("stream", False),  # 是否流式返回
         "n": params.get("n", 1),  # 返回的候选答案数量
