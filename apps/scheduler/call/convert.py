@@ -38,7 +38,7 @@ class Convert(CoreCall):
     description: str = "从上一步的工具的原始JSON返回结果中，提取特定字段的信息。"
 
 
-    async def __call__(self, _slot_data: dict[str, Any]) -> _ConvertOutput:
+    async def exec(self, _slot_data: dict[str, Any]) -> _ConvertOutput:
         """调用Convert工具
 
         :param _slot_data: 经用户确认后的参数（目前未使用）

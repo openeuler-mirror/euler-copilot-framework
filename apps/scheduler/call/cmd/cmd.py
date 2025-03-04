@@ -27,6 +27,6 @@ class Cmd(CoreCall):
     name: str = "cmd"
     description: str = "根据BTDL描述文件，生成命令。"
 
-    async def __call__(self, _slot_data: dict[str, Any]) -> _CmdOutput:
+    async def exec(self, _slot_data: dict[str, Any]) -> _CmdOutput:
         """调用Cmd工具"""
         pass

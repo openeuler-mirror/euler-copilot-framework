@@ -5,7 +5,6 @@ Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 from pathlib import Path
 
 import yaml
-
 from file_copy import copy
 from job import job
 

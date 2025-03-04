@@ -15,6 +15,7 @@ from apps.constants import APP_DIR, FLOW_DIR
 from apps.entities.enum_var import EdgeType
 from apps.entities.flow import Flow
 from apps.manager.node import NodeManager
+from apps.scheduler.yaml import str_presenter
 
 logger = logging.getLogger("ray")
 
@@ -124,6 +125,7 @@ class FlowLoader:
         }
 
         async with aiofiles.open(flow_path, mode="w", encoding="utf-8") as f:
+            yaml.add_representer(str, str_presenter)
             await f.write(yaml.dump(
                 flow_dict,
                 allow_unicode=True,

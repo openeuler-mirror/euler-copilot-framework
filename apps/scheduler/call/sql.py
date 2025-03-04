@@ -41,7 +41,7 @@ class SQL(CoreCall):
         self._session = aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(300))
 
 
-    async def __call__(self, _slot_data: dict[str, Any]) -> SQLOutput:
+    async def exec(self, _slot_data: dict[str, Any]) -> SQLOutput:
         """运行SQL工具"""
         # 获取必要参数
         syscall_vars: CallVars = getattr(self, "_syscall_vars")

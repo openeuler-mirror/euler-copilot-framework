@@ -146,7 +146,8 @@ class ReasoningLLM:
                     yield reason
 
                 # 推送text
-                yield text
+                if text:
+                    yield text
 
             # 整理结果
             reasoning_content += reason

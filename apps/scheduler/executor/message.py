@@ -12,6 +12,7 @@ from apps.entities.flow import Flow
 from apps.entities.message import (
     FlowStartContent,
     FlowStopContent,
+    TextAddContent,
 )
 from apps.entities.task import (
     ExecutorState,
@@ -98,14 +99,28 @@ async def assemble_flow_stop_content(state: ExecutorState, flow: Flow) -> FlowSt
     #         data=chart_option,
     #     )
 
-async def push_flow_stop(task_id: str, queue: actor.ActorHandle, state: ExecutorState, flow: Flow) -> None:
+async def push_flow_stop(task_id: str, queue: actor.ActorHandle, state: ExecutorState, flow: Flow, final_answer: str) -> None:
     """推送Flow结束"""
     task_actor = ray.get_actor("task")
     task: TaskBlock = await task_actor.get_task.remote(task_id)
     # 设置state
     task.flow_state = state
+    # 保存最终输出
+    task.record.content.answer = final_answer
     content = await assemble_flow_stop_content(state, flow)
 
     # 推送Stop消息
     await queue.push_output.remote(task, event_type=EventType.FLOW_STOP, data=content.model_dump(exclude_none=True, by_alias=True)) # type: ignore[attr-defined]
     await task_actor.set_task.remote(task_id, task)
+
+
+async def push_text_output(task_id: str, queue: actor.ActorHandle, text: str) -> None:
+    """推送文本输出"""
+    task_actor = ray.get_actor("task")
+    task: TaskBlock = await task_actor.get_task.remote(task_id)
+
+    content = TextAddContent(
+        text=text,
+    )
+    # 推送消息
+    await queue.push_output.remote(task, event_type=EventType.TEXT_ADD, data=content.model_dump(exclude_none=True, by_alias=True)) # type: ignore[attr-defined]

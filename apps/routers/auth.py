@@ -176,7 +176,7 @@ async def oidc_redirect(action: Annotated[str, Query()] = "login"):  # noqa: ANN
     ).model_dump(exclude_none=True, by_alias=True))
 
 
-# TODO(zwt): OIDC主动触发logout
+# TODO: OIDC主动触发logout
 # 002
 @router.post("/logout", response_model=ResponseData)
 async def oidc_logout(token: str):  # noqa: ANN201

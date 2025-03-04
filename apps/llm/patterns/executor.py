@@ -2,11 +2,9 @@
 
 Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 """
-from collections.abc import AsyncGenerator
-from textwrap import dedent
 from typing import Any, Optional
 
-from apps.entities.scheduler import ExecutorBackground as ExecutorBackgroundEntity
+from apps.entities.scheduler import ExecutorBackground
 from apps.llm.patterns.core import CorePattern
 from apps.llm.reasoning import ReasoningLLM
 
@@ -31,7 +29,7 @@ class ExecutorThought(CorePattern):
         <tool>
             <name>{tool_name}</name>
             <description>{tool_description}</description>
-                <output>{tool_output}</output>
+            <output>{tool_output}</output>
         </tool>
 
         <thought>
@@ -85,19 +83,24 @@ class ExecutorSummary(CorePattern):
 
     user_prompt: str = r"""
         <instructions>
-            <instruction>
-                根据，结合给定的AI助手思考过程，生成一个完整的背景总结。这个总结将用于后续对话的上下文理解。
-                生成总结的要求如下：
-                1. 突出重要信息点，例如时间、地点、人物、事件等。
-                2. 下面给出的事实条目若与历史记录有关，则可以在生成总结时作为已知信息。
-                3. 确保信息准确性，不得编造信息。
-        4. 总结应少于1000个字。
+            根据给定的AI助手思考过程和关键事实，生成一个三句话背景总结。这个总结将用于后续对话的上下文理解。
 
-        思考过程（在<thought>标签中）：
-        {thought}
+            生成总结的要求如下：
+            1. 突出重要信息点，例如时间、地点、人物、事件等。
+            2. “关键事实”中的内容可在生成总结时作为已知信息。
+            3. 输出时请不要包含XML标签，确保信息准确性，不得编造信息。
+            4. 总结应少于3句话，应少于300个字。
 
-        关键事实（在<facts>标签中）：
-        {facts}
+            AI助手思考过程将在<thought>标签中给出，关键事实将在<facts>标签中给出。
+        </instructions>
+
+        <thought>
+            {thought}
+        </thought>
+
+        <facts>
+            {facts}
+        </facts>
 
         现在，请开始生成背景总结：
     """
@@ -109,12 +112,7 @@ class ExecutorSummary(CorePattern):
 
     async def generate(self, task_id: str, **kwargs) -> str:  # noqa: ANN003
         """进行初始背景生成"""
-        background: ExecutorBackgroundEntity = kwargs["background"]
-
-        # 转化字符串
-        messages = []
-        for item in background.conversation:
-            messages += [{"role": item["role"], "content": item["content"]}]
+        background: ExecutorBackground = kwargs["background"]
 
         facts_str = "<facts>\n"
         for item in background.facts:
@@ -138,67 +136,3 @@ class ExecutorSummary(CorePattern):
             result += chunk
 
         return result
-
-
-class FinalThought(CorePattern):
-    """使用大模型生成Executor的最终结果"""
-
-    user_prompt: str = r"""
-        <instruction>
-            你是AI智能助手，请回答用户的问题并满足以下要求：
-
-            1. 使用中文回答问题，不要使用其他语言。
-            2. 回答应当语气友好、通俗易懂，并包含尽可能完整的信息。
-            3. 回答时应结合思考过程。
-            4. 输出时请不要包含XML标签，不要编造任何信息。
-
-            用户的问题将在<question>标签中给出，你之前的思考过程将在<thought>标签中给出。
-        </instruction>
-
-        <question>
-            {question}
-        </question>
-
-        <thought>
-            {thought}{output}
-        </thought>
-
-        现在，请根据以上信息进行回答：
-    """
-    """用户提示词"""
-
-
-    def __init__(self, system_prompt: Optional[str] = None, user_prompt: Optional[str] = None) -> None:
-        """初始化ExecutorResult模式"""
-        super().__init__(system_prompt, user_prompt)
-
-
-    async def generate(self, task_id: str, **kwargs) -> AsyncGenerator[str, Any]:  # noqa: ANN003
-        """进行ExecutorResult生成"""
-        question: str = kwargs["question"]
-        thought: str = kwargs["thought"]
-        final_output: dict[str, Any] = kwargs.get("final_output", {})
-
-        # 如果final_output不为空，则将final_output转换为字符串
-        if final_output:
-            final_output_str = dedent(f"""
-                工具提供了{final_output['type']}类型数据：`{final_output['data']}`。\
-                这些数据已经使用恰当的办法向用户进行了展示，所以无需重复。\
-                若类型为“schema”，说明用户的问题缺少回答所需的必要信息。\
-                我需要根据schema的具体内容分析缺失哪些信息，并提示用户补充。
-            """)
-        else:
-            final_output_str = ""
-
-        user_input = self.user_prompt.format(
-            question=question,
-            thought=thought,
-            output=final_output_str,
-        )
-        messages = [
-            {"role": "system", "content": ""},
-            {"role": "user", "content": user_input},
-        ]
-
-        async for chunk in ReasoningLLM().call(task_id, messages, streaming=True, temperature=0.7):
-            yield chunk
