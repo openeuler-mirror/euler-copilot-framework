@@ -89,18 +89,28 @@ get_ollama_url() {
   echo "https://repo.oepkgs.net/openEuler/rpm/openEuler-24.03-LTS/contrib/oedp/$version/ollama-linux-$ARCH.tgz"
 }
 
-# 安装Ollama核心
+# 安装Ollama
 install_ollama() {
   log "INFO" "步骤3/8：安装Ollama核心..."
   local install_url=$(get_ollama_url)
   local tmp_file="/tmp/ollama-${ARCH}.tgz"
+  local extract_dir="/tmp/ollama-extract"
 
+  # 清理旧安装
   if [ -x "$OLLAMA_BIN_PATH" ]; then
     log "WARNING" "发现已存在的Ollama安装，版本: $($OLLAMA_BIN_PATH --version)"
     read -p "是否重新安装？[y/N] " -n 1 -r
     echo
-    [[ $REPLY =~ ^[Yy]$ ]] || return 0
+    if [[ $REPLY =~ ^[Yy]$ ]]; then
+      log "INFO" "清理旧安装..."
+      rm -f "$OLLAMA_BIN_PATH"
+    else
+      return 0
+    fi
   fi
+
+  # 确保目标目录存在
+  mkdir -p "${OLLAMA_BIN_PATH%/*}"
 
   log "INFO" "下载安装包: $install_url"
   if ! wget --show-progress -q -O "$tmp_file" "$install_url"; then
@@ -108,15 +118,46 @@ install_ollama() {
     exit 1
   fi
 
-  log "INFO" "解压文件到系统目录"
-  if ! tar -xzf "$tmp_file" -C "${OLLAMA_BIN_PATH%/*}"; then
+  # 验证压缩包完整性
+  if ! tar -tzf "$tmp_file" &>/dev/null; then
+    log "ERROR" "压缩包损坏或格式不正确"
+    exit 1
+  fi
+
+  # 创建临时解压目录
+  mkdir -p "$extract_dir"
+  
+  log "INFO" "解压文件到临时目录..."
+  if ! tar -xzf "$tmp_file" -C "$extract_dir"; then
     log "ERROR" "解压失败，可能原因：\n1.文件损坏\n2.磁盘空间不足\n3.权限问题"
     exit 1
   fi
 
+  # 查找可执行文件（处理可能的子目录结构）
+  local extracted_bin=$(find "$extract_dir" -type f -name ollama -executable -print -quit)
+  
+  if [ -z "$extracted_bin" ]; then
+    log "ERROR" "在压缩包中未找到可执行文件，压缩包结构可能已变更"
+    log "DEBUG" "压缩包内容列表："
+    tar -tzf "$tmp_file" | while read -r line; do
+      log "DEBUG" "-> $line"
+    done
+    exit 1
+  fi
+
+  log "INFO" "移动文件到系统目录: $OLLAMA_BIN_PATH"
+  mv -f "$extracted_bin" "$OLLAMA_BIN_PATH"
+  
+  # 权限设置
   chmod +x "$OLLAMA_BIN_PATH"
-  rm -f "$tmp_file"
-  log "SUCCESS" "Ollama核心安装完成，版本: $($OLLAMA_BIN_PATH --version)"
+  rm -rf "$tmp_file" "$extract_dir"
+  
+  if [ ! -x "$OLLAMA_BIN_PATH" ]; then
+    log "ERROR" "安装后验证失败：可执行文件不存在"
+    exit 1
+  fi
+  
+  log "SUCCESS" "Ollama核心安装完成，版本: $($OLLAMA_BIN_PATH --version || echo '未知')"
 }
 
 fix_user() {
