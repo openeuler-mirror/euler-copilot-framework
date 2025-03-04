@@ -44,7 +44,7 @@ install_basic_tools() {
 
     # 使用 pip 安装 requests
     echo "Installing requests with pip..."
-    pip install requests
+    pip install requests ruamel.yaml
 
     echo "All basic tools have been installed."
 }
@@ -112,16 +112,27 @@ function install_helm {
     return 0
 }
 
-
 function set_kubeconfig() {
-    if ! grep -Fxq "export KUBECONFIG=/etc/rancher/k3s/k3s.yaml" /root/.bashrc; then
-        echo "export KUBECONFIG=/etc/rancher/k3s/k3s.yaml" >> /root/.bashrc
-        echo -e "\033[32m[Success] KUBECONFIG 环境变量已设置完成\033[0m"
-    else
-        echo -e "[Info] KUBECONFIG 已设置, 跳过环境变量步骤"
+    local bashrc_file="/root/.bashrc"
+    local kubeconfig_line="export KUBECONFIG=/etc/rancher/k3s/k3s.yaml"
+
+    # 检查是否存在且可执行
+    if [ ! -f "/etc/rancher/k3s/k3s.yaml" ]; then
+        echo -e "\033[31m[Error] k3s.yaml 文件不存在，请先安装 k3s\033[0m"
+        return 1
     fi
 
-    source /root/.bashrc
+    # 检查是否需要添加配置
+    if ! grep -Fxq "$kubeconfig_line" "$bashrc_file"; then
+        echo "$kubeconfig_line" | sudo tee -a "$bashrc_file" >/dev/null
+        echo -e "\033[32m[Success] KUBECONFIG 已写入 $bashrc_file\033[0m"
+    else
+        echo -e "[Info] KUBECONFIG 已存在，无需修改"
+    fi
+
+    # 直接为当前 Shell 设置环境变量（临时生效）
+    export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
+    echo -e "\033[33m[Tips] 当前会话已临时生效，永久生效需重新登录或执行：source $bashrc_file\033[0m"
 }
 
 function check_k3s_status() {
