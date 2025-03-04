@@ -2,7 +2,7 @@
 
 ## 准备工作
 
-+ 提前安装 [openEuler Copilot System 命令行（智能 Shell）客户端](../../../使用指南/命令行客户端/命令行助手使用指南.md)
++ 提前安装 [EulerCopilot 命令行（智能 Shell）客户端](../../../使用指南/命令行客户端/命令行助手使用指南.md)
 
 + 修改 /xxxx/xxxx/values.yaml 文件的 `euler-copilot-tune` 部分，将 `enable` 字段改为 `True`
 
