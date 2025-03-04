@@ -39,7 +39,7 @@ class API(CoreCall, ret_type=APIOutput):
     auth: dict[str, Any] = Field(description="API鉴权信息", default={})
 
 
-    async def __call__(self, syscall_vars: CallVars, **_kwargs: Any) -> APIOutput:
+    async def exec(self, syscall_vars: CallVars, **_kwargs: Any) -> APIOutput:
         """调用API，然后返回LLM解析后的数据"""
         self._session = aiohttp.ClientSession()
         try:

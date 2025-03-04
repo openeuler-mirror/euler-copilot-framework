@@ -33,23 +33,27 @@ class RAG(CoreCall, ret_type=RAGOutput):
     retrieval_mode: Literal["chunk", "full_text"] = Field(description="检索模式", default="chunk")
 
 
-    async def __call__(self, syscall_vars: CallVars, **_kwargs: Any) -> RAGOutput:
-        """调用RAG工具"""
-        params_dict = {
+    async def init(self, syscall_vars: CallVars, **_kwargs: Any) -> dict[str, Any]:
+        """初始化RAG工具"""
+        self._params_dict = {
             "kb_sn": self.knowledge_base,
             "top_k": self.top_k,
             "retrieval_mode": self.retrieval_mode,
             "content": syscall_vars.question,
         }
 
-        url = config["RAG_HOST"].rstrip("/") + "/chunk/get"
-        headers = {
+        self._url = config["RAG_HOST"].rstrip("/") + "/chunk/get"
+        self._headers = {
             "Content-Type": "application/json",
         }
 
+        return self._params_dict
+
+
+    async def exec(self) -> dict[str, Any]:
+        """调用RAG工具"""
         # 发送 GET 请求
-        session = aiohttp.ClientSession()
-        async with session.post(url, headers=headers, json=params_dict) as response:
+        async with aiohttp.ClientSession() as session, session.post(self._url, headers=self._headers, json=self._params_dict) as response:
             # 检查响应状态码
             if response.status == status.HTTP_200_OK:
                 result = await response.json()
@@ -62,7 +66,7 @@ class RAG(CoreCall, ret_type=RAGOutput):
 
                 return RAGOutput(
                     corpus=corpus,
-                )
+                ).model_dump(exclude_none=True, by_alias=True)
 
             text = await response.text()
             logger.error("[RAG] 调用失败：%s", text)
@@ -70,7 +74,7 @@ class RAG(CoreCall, ret_type=RAGOutput):
             raise CallError(
                 message=f"rag调用失败：{text}",
                 data={
-                    "question": syscall_vars.question,
+                    "question": self._params_dict["content"],
                     "status": response.status,
                     "text": text,
                 },

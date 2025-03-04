@@ -19,6 +19,7 @@ from apps.scheduler.openapi import (
     ReducedOpenAPISpec,
     reduce_openapi_spec,
 )
+from apps.scheduler.yaml import str_presenter
 
 
 @ray.remote
@@ -164,6 +165,7 @@ class OpenAPILoader:
         """在文件系统上保存Service，并更新数据库"""
 
         try:
+            yaml.add_representer(str, str_presenter)
             yaml_data = yaml.safe_dump(yaml_dict)
             await yaml_path.write_text(yaml_data)
         except Exception as e:

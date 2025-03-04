@@ -18,6 +18,11 @@ class Empty(CoreCall, ret_type=EmptyData):
     description: ClassVar[str] = "空白节点，用于占位"
 
 
-    async def __call__(self, _syscall_vars: CallVars, **_kwargs: Any) -> EmptyData:
-        """空Call"""
-        return EmptyData()
+    async def init(self, _syscall_vars: CallVars, **_kwargs: Any) -> dict[str, Any]:
+        """初始化"""
+        return {}
+
+
+    async def exec(self) -> dict[str, Any]:
+        """执行"""
+        return EmptyData().model_dump()

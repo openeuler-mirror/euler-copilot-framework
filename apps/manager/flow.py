@@ -417,6 +417,13 @@ class FlowManager:
 
     @staticmethod
     async def updata_flow_debug_by_app_and_flow_id(app_id: str, flow_id: str, debug: bool) -> bool:
+        """更新flow的debug状态
+
+        :param app_id: 应用的id
+        :param flow_id: 流的id
+        :param debug: 是否开启debug
+        :return: 是否更新成功
+        """
         try:
             flow_loader = FlowLoader()
             flow = await flow_loader.load(app_id, flow_id)

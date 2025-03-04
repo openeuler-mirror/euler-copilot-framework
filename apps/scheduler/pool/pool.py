@@ -74,7 +74,7 @@ class Pool:
                 await app_loader.load(app, checker.hashes[hash_key])
 
 
-    # TODO
+    # TODO: 使用统一的保存入口
     async def save(self, *, is_deletion: bool = False) -> None:
         """保存【单个】资源"""
         pass

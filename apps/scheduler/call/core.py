@@ -3,9 +3,10 @@
 所有Call类必须继承此类，并实现所有方法。
 Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 """
+from collections.abc import AsyncGenerator
 from typing import Any, ClassVar
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from apps.entities.scheduler import CallVars
 
@@ -16,6 +17,11 @@ class CoreCall(BaseModel):
     name: ClassVar[str] = Field(description="Call的名称")
     description: ClassVar[str] = Field(description="Call的描述")
 
+    model_config = ConfigDict(
+        arbitrary_types_allowed=True,
+        extra="allow",
+    )
+
     ret_type: ClassVar[type[BaseModel]]
 
     def __init_subclass__(cls, ret_type: type[BaseModel], **kwargs: Any) -> None:
@@ -23,12 +29,17 @@ class CoreCall(BaseModel):
         super().__init_subclass__(**kwargs)
         cls.ret_type = ret_type
 
-    class Config:
-        """Pydantic 配置类"""
 
-        arbitrary_types_allowed = True
-
-
-    async def __call__(self, syscall_vars: CallVars, **kwargs: Any) -> type[BaseModel]:
-        """Call类实例的调用方法"""
+    async def init(self, syscall_vars: CallVars, **_kwargs: Any) -> dict[str, Any]:
+        """初始化Call类，并返回Call的输入"""
         raise NotImplementedError
+
+
+    async def exec(self) -> dict[str, Any]:
+        """Call类实例的非流式输出方法"""
+        raise NotImplementedError
+
+
+    async def stream(self) -> AsyncGenerator[str, None]:
+        """Call类实例的流式输出方法"""
+        yield ""
