@@ -8,12 +8,13 @@ import logging
 import ray
 from ray import actor
 
-from apps.entities.enum_var import EventType
+from apps.entities.enum_var import EventType, StepStatus
 from apps.entities.rag_data import RAGQueryReq
 from apps.entities.request_data import RequestData
 from apps.entities.scheduler import ExecutorBackground
 from apps.entities.task import SchedulerResult, TaskBlock
 from apps.manager.appcenter import AppCenterManager
+from apps.manager.flow import FlowManager
 from apps.manager.user import UserManager
 from apps.scheduler.executor.flow import Executor
 from apps.scheduler.scheduler.context import get_context, get_docs
@@ -38,7 +39,7 @@ class Scheduler:
         """运行调度器"""
         task_actor = ray.get_actor("task")
         try:
-            task = await task_actor.get_task.remote(task_id)
+            task: TaskBlock = await task_actor.get_task.remote(task_id)
         except Exception:
             logger.exception("[Scheduler] 任务 %s 不存在", task_id)
             await queue.close.remote() # type: ignore[attr-defined]
@@ -72,16 +73,16 @@ class Scheduler:
 
         # 如果是智能问答，直接执行
         if not post_body.app or post_body.app.app_id == "":
-            await push_init_message(task_id, queue, 3, is_flow=False)
+            task = await push_init_message(task, queue, 3, is_flow=False)
             await asyncio.sleep(0.1)
             for doc in docs:
                 # 保存使用的文件ID
                 used_docs.append(doc.id)
-                await push_document_message(task_id, queue, doc)
+                task = await push_document_message(task, queue, doc)
                 await asyncio.sleep(0.1)
 
             # 保存有数据的最后一条消息
-            await push_rag_message(task_id, queue, user_sub, rag_data)
+            task = await push_rag_message(task, queue, user_sub, rag_data)
         else:
             # 查找对应的App元数据
             app_data = await AppCenterManager.fetch_app_data_by_id(post_body.app.app_id)
@@ -94,7 +95,7 @@ class Scheduler:
             context, facts = await get_context(user_sub, post_body, app_data.history_len)
 
             # 需要执行Flow
-            await push_init_message(task_id, queue, app_data.history_len, is_flow=True)
+            task = await push_init_message(task, queue, app_data.history_len, is_flow=True)
             # 组装上下文
             executor_background = ExecutorBackground(
                 conversation=context,
@@ -102,8 +103,8 @@ class Scheduler:
             )
             await self.run_executor(task, queue, post_body, executor_background)
 
-        # 发送结束消息
-        task = await task_actor.get_task.remote(task_id)
+        # 更新Task，发送结束消息
+        task = await task_actor.set_task.remote(task_id, task)
         await queue.push_output.remote(task, event_type=EventType.DONE, data={}) # type: ignore[attr-defined]
         # 关闭Queue
         await queue.close.remote() # type: ignore[attr-defined]
@@ -129,7 +130,8 @@ class Scheduler:
         # 如果用户选了特定的Flow
         if post_body.app.flow_id:
             logger.info("[Scheduler] 获取工作流定义")
-            flow_data = await pool_actor.get_flow.remote(post_body.app.app_id, post_body.app.flow_id)
+            flow_id = post_body.app.flow_id
+            flow_data = await pool_actor.get_flow.remote(post_body.app.app_id, flow_id)
         else:
             # 如果用户没有选特定的Flow，则根据语义选择一个Flow
             logger.info("[Scheduler] 选择最合适的流")
@@ -159,4 +161,11 @@ class Scheduler:
         logger.info("[Scheduler] 运行Executor")
         await flow_exec.load_state()
         await flow_exec.run()
+
+        # 更新Task
+        task_actor = ray.get_actor("task")
+        task = await task_actor.get_task.remote(task.record.task_id)
+        # 如果状态正常，则更新Flow的debug状态
+        if task.flow_state and task.flow_state.status == StepStatus.SUCCESS:
+            await FlowManager.update_flow_debug_by_app_and_flow_id(post_body.app.app_id, flow_id, debug=False)
         return

@@ -63,9 +63,9 @@ class Task:
                 answer="",
             ),
             metadata=RecordMetadata(
-                input_tokens=0,
-                output_tokens=0,
-                time_cost=0,
+                inputTokens=0,
+                outputTokens=0,
+                timeCost=0,
                 feature={},
             ),
             createdAt=round(datetime.now(timezone.utc).timestamp(), 3),

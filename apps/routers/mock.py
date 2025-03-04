@@ -398,7 +398,7 @@ async def mock_data(
             sample_output["metadata"]["timeCost"] = random.uniform(0.5, 1.5)
             yield "data: " + json.dumps(sample_output, ensure_ascii=False) + "\n\n"
         if appId and flowId:
-            await FlowManager.updata_flow_debug_by_app_and_flow_id(appId, flowId, True)
+            await FlowManager.update_flow_debug_by_app_and_flow_id(appId, flowId, debug=True)
         end_message = [
             {  # flow结束
                 "event": "flow.stop",
