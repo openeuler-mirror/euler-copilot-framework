@@ -416,7 +416,7 @@ class FlowManager:
             return None
 
     @staticmethod
-    async def updata_flow_debug_by_app_and_flow_id(app_id: str, flow_id: str, debug: bool) -> bool:
+    async def update_flow_debug_by_app_and_flow_id(app_id: str, flow_id: str, *, debug: bool) -> bool:
         """更新flow的debug状态
 
         :param app_id: 应用的id

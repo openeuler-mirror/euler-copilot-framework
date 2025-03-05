@@ -35,24 +35,29 @@ class _SuggestionOutputItem(BaseModel):
     flow_description: str
 
 
-class _SuggestionOutput(BaseModel):
+class SuggestionOutput(BaseModel):
     """问题推荐结果"""
 
     output: list[_SuggestionOutputItem]
 
 
-class Suggestion(metaclass=CoreCall, param_cls=_SuggestInput, output_cls=_SuggestionOutput):
+class Suggestion(CoreCall, ret_type=SuggestionOutput):
     """问题推荐"""
 
     name: str = "suggest"
     description: str = "问题推荐"
 
 
-    async def __call__(self, _slot_data: dict[str, Any]) -> _SuggestionOutput:
-        """运行问题推荐"""
-        sys_vars: CallVars = getattr(self, "_syscall_vars")
-        params: _SuggestInput = getattr(self, "_params")
+    async def init(self, syscall_vars: CallVars, **_kwargs: Any) -> dict[str, Any]:
+        """初始化"""
+        self._question = syscall_vars.question
+        return {
+            "question": self._question,
+        }
 
+
+    async def exec(self) -> dict[str, Any]:
+        """运行问题推荐"""
         # 获取当前任务
         task = await Task.get_task(sys_vars.task_id)
 

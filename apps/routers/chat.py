@@ -51,13 +51,13 @@ async def chat_generator(post_body: RequestData, user_sub: str, session_id: str)
         group_id = str(uuid.uuid4()) if not post_body.group_id else post_body.group_id
 
         # 创建或还原Task
-        task_pool = ray.get_actor("task")
-        task = await task_pool.get_task.remote(session_id=session_id, post_body=post_body)
+        task_actor = ray.get_actor("task")
+        task = await task_actor.get_task.remote(session_id=session_id, post_body=post_body)
         task_id = task.record.task_id
 
         task.record.group_id = group_id
         post_body.group_id = group_id
-        await task_pool.set_task.remote(task_id, task)
+        await task_actor.set_task.remote(task_id, task)
 
         # 创建queue；由Scheduler进行关闭
         queue = MessageQueue.remote()
@@ -80,7 +80,7 @@ async def chat_generator(post_body: RequestData, user_sub: str, session_id: str)
         result = await scheduler
 
         # 获取最终答案
-        task = await task_pool.get_task.remote(task_id)
+        task = await task_actor.get_task.remote(task_id)
         answer_text = task.record.content.answer
         if not answer_text:
             LOGGER.error(msg="Answer is empty")

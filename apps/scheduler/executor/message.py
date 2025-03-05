@@ -2,9 +2,9 @@
 
 Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 """
+from datetime import datetime, timezone
 from typing import Any
 
-import ray
 from ray import actor
 
 from apps.entities.enum_var import EventType, FlowOutputType
@@ -21,10 +21,8 @@ from apps.entities.task import (
 )
 
 
-async def push_step_input(task_id: str, queue: actor.ActorHandle, state: ExecutorState, input_data: dict[str, Any]) -> None:
+async def push_step_input(task: TaskBlock, queue: actor.ActorHandle, state: ExecutorState, input_data: dict[str, Any]) -> TaskBlock:
     """推送步骤输入"""
-    task_actor = ray.get_actor("task")
-    task: TaskBlock = await task_actor.get_task.remote(task_id)
     # 更新State
     task.flow_state = state
     # 更新FlowContext
@@ -36,16 +34,16 @@ async def push_step_input(task_id: str, queue: actor.ActorHandle, state: Executo
         input_data=state.filled_data,
         output_data={},
     )
+    # 步骤开始，重置时间
+    task.record.metadata.time_cost = round(datetime.now(timezone.utc).timestamp(), 2)
 
     # 推送消息
     await queue.push_output.remote(task, event_type=EventType.STEP_INPUT, data=input_data) # type: ignore[attr-defined]
-    await task_actor.set_task.remote(task_id, task)
+    return task
 
 
-async def push_step_output(task_id: str, queue: actor.ActorHandle, state: ExecutorState, output: dict[str, Any]) -> None:
+async def push_step_output(task: TaskBlock, queue: actor.ActorHandle, state: ExecutorState, output: dict[str, Any]) -> TaskBlock:
     """推送步骤输出"""
-    task_actor = ray.get_actor("task")
-    task: TaskBlock = await task_actor.get_task.remote(task_id)
     # 更新State
     task.flow_state = state
 
@@ -58,13 +56,11 @@ async def push_step_output(task_id: str, queue: actor.ActorHandle, state: Execut
 
     # 推送消息
     await queue.push_output.remote(task, event_type=EventType.STEP_OUTPUT, data=output) # type: ignore[attr-defined]
-    await task_actor.set_task.remote(task_id, task)
+    return task
 
 
-async def push_flow_start(task_id: str, queue: actor.ActorHandle, state: ExecutorState, question: str) -> None:
+async def push_flow_start(task: TaskBlock, queue: actor.ActorHandle, state: ExecutorState, question: str) -> TaskBlock:
     """推送Flow开始"""
-    task_actor = ray.get_actor("task")
-    task: TaskBlock = await task_actor.get_task.remote(task_id)
     # 设置state
     task.flow_state = state
 
@@ -75,7 +71,7 @@ async def push_flow_start(task_id: str, queue: actor.ActorHandle, state: Executo
     )
     # 推送消息
     await queue.push_output.remote(task, event_type=EventType.FLOW_START, data=content.model_dump(exclude_none=True, by_alias=True)) # type: ignore[attr-defined]
-    await task_actor.set_task.remote(task_id, task)
+    return task
 
 
 async def assemble_flow_stop_content(state: ExecutorState, flow: Flow) -> FlowStopContent:
@@ -99,10 +95,8 @@ async def assemble_flow_stop_content(state: ExecutorState, flow: Flow) -> FlowSt
     #         data=chart_option,
     #     )
 
-async def push_flow_stop(task_id: str, queue: actor.ActorHandle, state: ExecutorState, flow: Flow, final_answer: str) -> None:
+async def push_flow_stop(task: TaskBlock, queue: actor.ActorHandle, state: ExecutorState, flow: Flow, final_answer: str) -> TaskBlock:
     """推送Flow结束"""
-    task_actor = ray.get_actor("task")
-    task: TaskBlock = await task_actor.get_task.remote(task_id)
     # 设置state
     task.flow_state = state
     # 保存最终输出
@@ -111,14 +105,11 @@ async def push_flow_stop(task_id: str, queue: actor.ActorHandle, state: Executor
 
     # 推送Stop消息
     await queue.push_output.remote(task, event_type=EventType.FLOW_STOP, data=content.model_dump(exclude_none=True, by_alias=True)) # type: ignore[attr-defined]
-    await task_actor.set_task.remote(task_id, task)
+    return task
 
 
-async def push_text_output(task_id: str, queue: actor.ActorHandle, text: str) -> None:
+async def push_text_output(task: TaskBlock, queue: actor.ActorHandle, text: str) -> None:
     """推送文本输出"""
-    task_actor = ray.get_actor("task")
-    task: TaskBlock = await task_actor.get_task.remote(task_id)
-
     content = TextAddContent(
         text=text,
     )

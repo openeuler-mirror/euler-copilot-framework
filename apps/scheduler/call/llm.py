@@ -36,6 +36,20 @@ LLM_DEFAULT_PROMPT = dedent(
         </context>
     """,
     ).strip("\n")
+LLM_CONTEXT_PROMPT = dedent(
+    r"""
+        以下是对用户和AI间对话的简短总结：
+        {{ summary }}
+
+        你作为AI，在回答用户的问题前，需要获取必要信息。为此，你调用了以下工具，并获得了输出：
+        <tool_data>
+            {% for tool in history_data %}
+                <name>{{ tool.step_id }}</name>
+                <output>{{ tool.output_data }}</output>
+            {% endfor %}
+        </tool_data>
+    """,
+    ).strip("\n")
 
 
 class LLMNodeOutput(BaseModel):
@@ -52,37 +66,47 @@ class LLM(CoreCall, ret_type=LLMNodeOutput):
 
     temperature: float = Field(description="大模型温度（随机化程度）", default=0.7)
     enable_context: bool = Field(description="是否启用上下文", default=True)
+    step_history_size: int = Field(description="上下文信息中包含的步骤历史数量", default=3)
     system_prompt: str = Field(description="大模型系统提示词", default="")
     user_prompt: str = Field(description="大模型用户提示词", default=LLM_DEFAULT_PROMPT)
 
 
     async def _prepare_message(self, syscall_vars: CallVars) -> list[dict[str, Any]]:
         """准备消息"""
+        # 创建共享的 Environment 实例
+        env = SandboxedEnvironment(
+            loader=BaseLoader(),
+            autoescape=select_autoescape(),
+            trim_blocks=True,
+            lstrip_blocks=True,
+        )
+
+        # 上下文信息
+        step_history = list(syscall_vars.history.values())[-self.step_history_size:]
+        if self.enable_context:
+            context_tmpl = env.from_string(LLM_CONTEXT_PROMPT)
+            context_prompt = context_tmpl.render(
+                summary=syscall_vars.summary,
+                history_data=step_history,
+            )
+        else:
+            context_prompt = "无背景信息。"
+
         # 参数
         time = datetime.now(tz=pytz.timezone("Asia/Shanghai")).strftime("%Y-%m-%d %H:%M:%S")
         formatter = {
             "time": time,
-            "context": syscall_vars.summary,
+            "context": context_prompt,
             "question": syscall_vars.question,
         }
 
         try:
             # 准备系统提示词
-            system_tmpl = SandboxedEnvironment(
-                loader=BaseLoader(),
-                autoescape=select_autoescape(),
-                trim_blocks=True,
-                lstrip_blocks=True,
-            ).from_string(self.system_prompt)
+            system_tmpl = env.from_string(self.system_prompt)
             system_input = system_tmpl.render(**formatter)
 
             # 准备用户提示词
-            user_tmpl = SandboxedEnvironment(
-                loader=BaseLoader(),
-                autoescape=select_autoescape(),
-                trim_blocks=True,
-                lstrip_blocks=True,
-            ).from_string(self.user_prompt)
+            user_tmpl = env.from_string(self.user_prompt)
             user_input = user_tmpl.render(**formatter)
         except Exception as e:
             raise CallError(message=f"用户提示词渲染失败：{e!s}", data={}) from e

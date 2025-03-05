@@ -3,6 +3,7 @@
 Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 """
 import logging
+import re
 
 from apps.common.security import Security
 from apps.entities.collection import (
@@ -24,7 +25,7 @@ class QuestionBlacklistManager:
         """给定问题，查找问题是否在黑名单里"""
         try:
             blacklist_collection = MongoDB.get_collection("blacklist")
-            result = await blacklist_collection.find_one({"question": {"$regex": f"/{input_question}/"}, "is_audited": True}, {"_id": 1})
+            result = await blacklist_collection.find_one({"question": {"$regex": f"/{re.escape(input_question)}/i"}, "is_audited": True}, {"_id": 1})
             if result:
                 # 用户输入的问题中包含黑名单问题的一部分，故拉黑
                 logger.info("[QuestionBlacklistManager] 问题在黑名单中")

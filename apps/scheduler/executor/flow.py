@@ -11,17 +11,16 @@ import ray
 from pydantic import BaseModel, ConfigDict, Field
 from ray import actor
 
-from apps.constants import STEP_HISTORY_SIZE
 from apps.entities.enum_var import StepStatus
 from apps.entities.flow import Flow, FlowError, Step
 from apps.entities.request_data import RequestDataApp
 from apps.entities.scheduler import CallVars, ExecutorBackground
-from apps.entities.task import ExecutorState, FlowStepHistory, TaskBlock
+from apps.entities.task import ExecutorState, TaskBlock
 from apps.llm.patterns.executor import ExecutorSummary
 from apps.manager.node import NodeManager
 from apps.manager.task import TaskManager
 from apps.scheduler.call.core import CoreCall
-from apps.scheduler.call.llm import LLM, LLMNodeOutput
+from apps.scheduler.call.llm import LLM
 from apps.scheduler.executor.message import (
     push_flow_start,
     push_flow_stop,
@@ -143,9 +142,9 @@ class Executor(BaseModel):
             self._can_continue = False
             self.flow_state.status = StepStatus.RUNNING
             # 推送空输入输出
-            await push_step_input(self.task.record.task_id, self.queue, self.flow_state, {})
+            self.task = await push_step_input(self.task, self.queue, self.flow_state, {})
             self.flow_state.status = StepStatus.PARAM
-            await push_step_output(self.task.record.task_id, self.queue, self.flow_state, {})
+            self.task = await push_step_output(self.task, self.queue, self.flow_state, {})
             return False, None
 
         return True, slot_data
@@ -163,7 +162,7 @@ class Executor(BaseModel):
         if is_final_answer and isinstance(call_obj, LLM):
             # 最后一步 & 是大模型步骤，直接流式输出
             async for chunk in call_obj.stream():
-                await push_text_output(self.task.record.task_id, self.queue, chunk)
+                await push_text_output(self.task, self.queue, chunk)
                 self._final_answer += chunk
             self.flow_state.status = StepStatus.SUCCESS
             return {
@@ -176,7 +175,7 @@ class Executor(BaseModel):
             if call_obj.name == "Convert":
                 # 如果是Convert，直接输出转换之后的结果
                 self._final_answer += result["message"]
-                await push_text_output(self.task.record.task_id, self.queue, self._final_answer)
+                await push_text_output(self.task, self.queue, self._final_answer)
                 self.flow_state.status = StepStatus.SUCCESS
                 return {
                     "message": self._final_answer,
@@ -196,12 +195,10 @@ class Executor(BaseModel):
     async def _run_step(self, step_id: str, step_data: Step) -> None:
         """运行单个步骤"""
         logger.info("[FlowExecutor] 运行步骤 %s", step_data.name)
-        # 获取task
-        task_actor = ray.get_actor("task")
-        task: TaskBlock = await task_actor.get_task.remote(self.task.record.task_id)
+
         # State写入ID和运行状态
         self.flow_state.step_id = step_id
-        self.flow_state.step_name = step_id    # FIXME: Step需要加名称和描述字段
+        self.flow_state.step_name = step_data.name
         self.flow_state.status = StepStatus.RUNNING
 
         # 查找下一个步骤；判断是否是end前最后一步
@@ -213,13 +210,12 @@ class Executor(BaseModel):
         call_cls = await self._get_call_cls(node_id)
 
         # 准备系统变量
-        history = list(self.task.flow_context.values())[-STEP_HISTORY_SIZE:]
         sys_vars = CallVars(
             question=self.question,
             task_id=self.task.record.task_id,
             flow_id=self.post_body_app.flow_id,
             session_id=self.task.session_id,
-            history=history,
+            history=self.task.flow_context,
             summary=self.flow_state.ai_summary,
         )
 
@@ -232,23 +228,10 @@ class Executor(BaseModel):
         # if not self._can_continue:
         #     return
 
-        # 推送步骤输入
-        await push_step_input(self.task.record.task_id, self.queue, self.flow_state, input_data)
-
         # 执行Call并获取结果
+        self.task = await push_step_input(self.task, self.queue, self.flow_state, input_data)
         result_data = await self._execute_call(call_obj, is_final_answer=is_final_answer)
-        task.flow_context[step_id] = FlowStepHistory(
-            task_id=self.task.record.task_id,
-            flow_id=self.post_body_app.flow_id,
-            step_id=step_id,
-            status=self.flow_state.status,
-            input_data=input_data,
-            output_data=result_data,
-        )
-        await task_actor.set_task.remote(self.task.record.task_id, task)
-
-        # 推送输出
-        await push_step_output(self.task.record.task_id, self.queue, self.flow_state, result_data)
+        self.task = await push_step_output(self.task, self.queue, self.flow_state, result_data)
 
         # 更新下一步
         self.flow_state.step_id = next_step
@@ -288,7 +271,7 @@ class Executor(BaseModel):
         """
         logger.info("[FlowExecutor] 运行工作流")
         # 推送Flow开始消息
-        await push_flow_start(self.task.record.task_id, self.queue, self.flow_state, self.question)
+        self.task = await push_flow_start(self.task, self.queue, self.flow_state, self.question)
 
         # 如果允许继续运行Flow
         while self._can_continue:
@@ -308,4 +291,8 @@ class Executor(BaseModel):
                 await self._run_step(self.flow_state.step_id, step)
 
         # 推送Flow停止消息
-        await push_flow_stop(self.task.record.task_id, self.queue, self.flow_state, self.flow, self._final_answer)
+        self.task = await push_flow_stop(self.task, self.queue, self.flow_state, self.flow, self._final_answer)
+
+        # 更新全局的Task
+        task_actor = ray.get_actor("task")
+        await task_actor.set_task.remote(self.task.record.task_id, self.task)
