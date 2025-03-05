@@ -1,10 +1,10 @@
-{{- if .Values.euler_copilot.rag_web.enabled }}
+{{- if .Values.euler_copilot.rag_web.enabled -}}
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: rag-web-config-{{ .Release.Name }}
+  name: rag-web-config
   namespace: {{ .Release.Namespace }}
 data:
   .env: |-
 {{ tpl (.Files.Get "configs/rag-web/.env") . | indent 4 }}
-{{- end }}
+{{- end -}}

@@ -17,7 +17,6 @@ class Json(CorePattern):
 
     system_prompt: str = r"""
         Extract parameter data from conversations using given JSON Schema definitions.
-        Conversations tags: "<conversation>" and "</conversation>".
         Schema tags: "<tool_call>" and "</tool_call>".
         The output must be valid JSON without any additional formatting or comments.
 

@@ -29,8 +29,8 @@ class CorePattern(ABC):
         if user_prompt is not None:
             self.user_prompt = user_prompt
 
-        if not self.system_prompt or not self.user_prompt:
-            err = "必须设置系统提示词和用户提示词！"
+        if not self.user_prompt:
+            err = "必须设置用户提示词！"
             raise ValueError(err)
 
         self.system_prompt = dedent(self.system_prompt).strip("\n")

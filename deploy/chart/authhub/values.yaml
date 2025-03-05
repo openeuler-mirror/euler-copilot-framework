@@ -1,101 +1,76 @@
 # 全局设置
 globals:
-  # [必填] 镜像仓库
-  imageRegistry: "hub.oepkgs.net/neocopilot"
-  # [必填] 镜像拉取策略
-  imagePullPolicy: IfNotPresent
-  # [必填] AuthHub部署域名
-  # 需要修改为AuthHub域名。单机部署时，服务基于Host进行区分，无法使用IP地址
-  domain: ""
-  # [必填] 副本数
-  replicaCount: 1
-  # [必填] databases chart的信息
-  databases:
-    # [必填] helm安装时的release name
-    app_name: "databases"
-    # [必填] helm安装时的namespace
-    app_namespace: "euler-copilot"
-    # [必填] redis密码
-    redis: "admin123"
+  # 节点架构：默认是x86
+  # 节点设置：["x86", "arm"]
+  arch:
+  # 镜像拉取策略；默认为IfNotPresent
+  imagePullPolicy:
+  # 副本数，默认为1
+  replicaCount:
+  # 存储类名称；默认为local-path
+  storageClassName:
+
+storage:
+  # MySQL持久化存储大小，默认为10Gi
+  mysql:
+
+domain:
+  # AuthHub域名，默认为authhub.eulercopilot.local。单机部署时，服务基于Host进行区分，无法使用IP地址
+  authhub:
 
 # 部署AuthHub本地鉴权服务
 authhub:
+  # 配置文件工具
+  secret_inject:
+    # 镜像设置；默认为hub.oepkgs.net/neocopilot/secret_inject:dev-x86
+    # 镜像标签：["dev-x86", "dev-arm"]
+    image:
+
   web:
     # [必填] 是否部署AuthHub前端服务
     enabled: true
-    # 镜像设置
+    # 镜像设置；默认为hub.oepkgs.net/neocopilot/authhub-web:0.9.3-x86
+    # 镜像标签：["0.9.3-x86", "0.9.3-arm"]
     image:
-      # 镜像仓库。留空则使用全局设置。
-      registry: ""
-      # [必填] 镜像名
-      name: authhub-web
-      # [必填] 镜像Tag, 为0.9.3-x86或0.9.3-arm
-      tag: "0.9.3-x86"
-      # 拉取策略。留空则使用全局设置。
-      imagePullPolicy: ""
-    # [必填] 容器根目录只读
-    readOnly: false
     # 性能限制设置
-    resources: {}
+    resourceLimits: {}
     # Service设置
     service:
-      # [必填] Service类型，ClusterIP或NodePort
-      type: ClusterIP
-      # 当类型为nodePort时，填写主机的端口号
-      nodePort: ""
+      # Service类型，例如NodePort
+      type:
+      # 当类型为NodePort时，填写主机的端口号
+      nodePort:
     # Ingress设置
     ingress:
-      # [必填] 是否启用Ingress
-      enabled: true
-      # [必填] URI前缀
-      prefix: /
+      # Ingress前缀，默认为/
+      prefix:
+
   backend:
     # [必填] 是否部署AuthHub后端服务
     enabled: true
-    # 镜像设置
+    # 镜像设置；默认为hub.oepkgs.net/neocopilot/authhub:0.9.3-x86
+    # 镜像标签：["0.9.3-x86", "0.9.3-arm"]
     image:
-      # 镜像仓库。留空则使用全局设置。
-      registry: ""
-      # [必填] 镜像名
-      name: authhub
-      # 镜像Tag,为0.9.3-x86或0.9.3-arm
-      tag: "0.9.3-x86"
-      # 拉取策略。留空则使用全局设置。
-      imagePullPolicy: ""
-    # [必填] 容器根目录只读
-    readOnly: false
     # 性能限制设置
-    resources: {}
+    resourceLimits: {}
     # Service设置
     service:
-      # [必填] Service类型，ClusterIP或NodePort
-      type: ClusterIP
-      # 当类型为nodePort时，填写主机的端口号
-      nodePort: ""
+      # Service类型，例如NodePort
+      type:
+      # 当类型为NodePort时，填写主机的端口号
+      nodePort:
+
   mysql:
     # [必填] 是否启用MySQL
     enabled: true
-    # 镜像设置
+    # 镜像设置；默认为hub.oepkgs.net/neocopilot/mysql:8-x86
+    # 镜像标签：["8-x86", "8-arm"]
     image:
-      # 镜像仓库。留空则使用全局设置。
-      registry: ""
-      # [必填] 镜像名
-      name: mysql
-      # [必填] 镜像Tag,为8-x86或8-arm
-      tag: "8-x86"
-      # 拉取策略。留空则使用全局设置。
-      imagePullPolicy: ""
-    # [必填] 容器根目录只读
-    readOnly: false
     # 性能限制设置
-    resources: {}
+    resourceLimits: {}
     # Service设置
     service:
-      # [必填] Service类型，ClusterIP或NodePort
-      type: ClusterIP
-      # 当类型为nodePort时，填写主机的端口号
-      nodePort: ""
-    # [必填] 密码
-    password: "admin123"
-    # [必填] 持久化存储大小
-    persistentVolumeSize: 10Gi
+      # Service类型，例如NodePort
+      type:
+      # 当类型为NodePort时，填写主机的端口号
+      nodePort:

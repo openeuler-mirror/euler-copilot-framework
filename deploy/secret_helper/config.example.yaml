@@ -1,0 +1,14 @@
+copy:
+  - from: /config
+    to: /config-rw
+    mode:
+      uid: 1000
+      gid: 1000
+      mode: "0o750"
+
+  - from: /etc/config
+    to: /config-rw/secret
+    mode:
+      uid: 1000
+      gid: 1000
+      mode: "0o750"

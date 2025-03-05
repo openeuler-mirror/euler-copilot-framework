@@ -1,0 +1,7 @@
+copy:
+  - from: /config
+    to: /config-rw
+    mode:
+      uid: 0
+      gid: 0
+      mode: "0o650"

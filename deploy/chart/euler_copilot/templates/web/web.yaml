@@ -1,0 +1,110 @@
+{{- if .Values.euler_copilot.web.enabled -}}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: web-service
+  namespace: {{ .Release.Namespace }}
+spec:
+  type: {{ default "ClusterIP" .Values.euler_copilot.web.service.type }}
+  selector:
+    app: web
+  ports:
+    - port: 8080
+      targetPort: 8080
+      nodePort: {{ default nil .Values.euler_copilot.web.service.nodePort }}
+
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: web-ingress
+  namespace: {{ .Release.Namespace }}
+spec:
+  rules:
+  - host: {{ default "www.eulercopilot.local" .Values.domain.euler_copilot }}
+    http:
+      paths:
+      - path: {{ default "/" .Values.euler_copilot.web.ingress.prefix }}
+        pathType: Prefix
+        backend:
+          service:
+            name: web-service
+            port:
+              number: 8080
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web-deploy
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: web
+spec:
+  selector:
+    matchLabels:
+      app: web
+  template:
+    metadata:
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/web/web-config.yaml") . | sha256sum }}
+      labels:
+        app: web
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        fsGroup: 1001
+      containers:
+        - name: web
+          image: {{ .Values.euler_copilot.web.image | default (printf "%s/neocopilot/euler-copilot-web:0.9.4-%s" (.Values.globals.imageRegistry | default "hub.oepkgs.net") (ternary "arm" "x86" (eq (.Values.globals.arch | default "x86") "arm"))) }}
+          imagePullPolicy: {{ default "IfNotPresent" .Values.globals.imagePullPolicy }}
+          ports:
+            - containerPort: 8080
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 8080
+              scheme: HTTP
+            failureThreshold: 5
+            initialDelaySeconds: 60
+            periodSeconds: 90
+          env:
+            - name: TZ
+              value: "Asia/Shanghai"
+          volumeMounts:
+            - mountPath: /config
+              name: web-config-volume
+            - mountPath: /var/lib/nginx/tmp
+              name: web-tmp
+            - mountPath: /home/eulercopilot/.env
+              name: web-env-volume
+              subPath: .env
+          resources:
+            requests:
+              cpu: 0.05
+              memory: 64Mi
+            limits:
+              {{ toYaml .Values.euler_copilot.web.resourceLimits | nindent 14 }}
+          securityContext:
+            readOnlyRootFilesystem: {{ default false .Values.euler_copilot.web.readOnly }}
+            capabilities:
+              drop:
+                - ALL
+            runAsUser: 1001
+            runAsGroup: 1001
+            runAsNonRoot: true
+            allowPrivilegeEscalation: false
+      restartPolicy: Always
+      volumes:
+        - name: web-config-volume
+          emptyDir:
+            medium: Memory
+        - name: web-env-volume
+          configMap:
+            name: web-config
+        - name: web-tmp
+          emptyDir:
+            medium: Memory
+{{- end -}}

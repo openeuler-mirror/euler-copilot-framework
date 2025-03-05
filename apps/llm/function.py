@@ -1,4 +1,4 @@
-"""用于FunctionCall的大模型
+"""FunctionCall的大模型调用
 
 Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 """
@@ -28,18 +28,30 @@ class FunctionLLM:
         - vllm
         """
         if config["SCHEDULER_BACKEND"] == "sglang":
-            self._client = sglang.RuntimeEndpoint(config["SCHEDULER_URL"], api_key=config["SCHEDULER_API_KEY"])
+            if not config["SCHEDULER_API_KEY"]:
+                self._client = sglang.RuntimeEndpoint(config["SCHEDULER_URL"])
+            else:
+                self._client = sglang.RuntimeEndpoint(config["SCHEDULER_URL"], api_key=config["SCHEDULER_API_KEY"])
             self._client.chat_template = get_chat_template("chatml")
             sglang.set_default_backend(self._client)
-        if config["SCHEDULER_BACKEND"] == "vllm":
-            self._client = openai.AsyncOpenAI(
-                base_url=config["SCHEDULER_URL"],
-                api_key=config["SCHEDULER_API_KEY"],
-            )
+        if config["SCHEDULER_BACKEND"] == "vllm" or config["SCHEDULER_BACKEND"] == "openai":
+            if not config["SCHEDULER_API_KEY"]:
+                self._client = openai.AsyncOpenAI(base_url=config["SCHEDULER_URL"])
+            else:
+                self._client = openai.AsyncOpenAI(
+                    base_url=config["SCHEDULER_URL"],
+                    api_key=config["SCHEDULER_API_KEY"],
+                )
         if config["SCHEDULER_BACKEND"] == "ollama":
-            self._client = ollama.AsyncClient(
-                host=config["SCHEDULER_URL"],
-            )
+            if not config["SCHEDULER_API_KEY"]:
+                self._client = ollama.AsyncClient(host=config["SCHEDULER_URL"])
+            else:
+                self._client = ollama.AsyncClient(
+                    host=config["SCHEDULER_URL"],
+                    headers={
+                        "Authorization": f"Bearer {config['SCHEDULER_API_KEY']}",
+                    },
+                )
 
     @staticmethod
     @sglang.function
@@ -102,6 +114,47 @@ class FunctionLLM:
         async for chunk in chat:
             result += chunk.choices[0].delta.content or ""
         return result
+
+
+    async def _call_openai(self, messages: list[dict[str, Any]], schema: dict[str, Any], max_tokens: int, temperature: float) -> str:
+        """调用openai模型生成JSON
+
+        :param messages: 历史消息列表
+        :param schema: 输出JSON Schema
+        :param max_tokens: 最大Token长度
+        :param temperature: 大模型温度
+        :return: 生成的JSON
+        """
+        model = config["SCHEDULER_MODEL"]
+        if not model:
+            err_msg = "未设置FuntionCall所用模型！"
+            raise ValueError(err_msg)
+
+        param = {
+            "model": model,
+            "messages": messages,
+            "max_tokens": max_tokens,
+            "temperature": temperature,
+        }
+
+        if schema:
+            tool_data = {
+                "type": "function",
+                "function": {
+                    "name": "output",
+                    "description": "Call the function to get the output",
+                    "parameters": schema,
+                },
+            }
+            param["tools"] = [tool_data]
+            param["tool_choice"] = "required"
+
+        response = await self._client.chat.completions.create(**param) # type: ignore[]
+        try:
+            ans = response.choices[0].message.tool_calls[0].function.arguments or ""
+        except IndexError:
+            ans = ""
+        return ans
 
 
     async def _call_ollama(self, messages: list[dict[str, Any]], schema: dict[str, Any], max_tokens: int, temperature: float) -> str:

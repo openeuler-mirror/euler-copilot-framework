@@ -1,0 +1,77 @@
+{{- if .Values.databases.redis.enabled -}}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis-db
+  namespace: {{ .Release.Namespace }}
+spec:
+  type: {{ default "ClusterIP" .Values.databases.redis.service.type }}
+  selector:
+    app: redis
+  ports:
+    - port: 6379
+      targetPort: 6379
+      nodePort: {{ default nil .Values.databases.redis.service.nodePort }}
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis-deploy
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: redis
+spec:
+  replicas: {{ default 1 .Values.globals.replicaCount }}
+  selector:
+    matchLabels:
+      app: redis
+  template:
+    metadata:
+      labels:
+        app: redis
+    spec:
+      automountServiceAccountToken: false
+      containers:
+        - name: redis
+          image: {{ .Values.databases.redis.image | default (printf "%s/neocopilot/redis:7.4-alpine-%s" (.Values.globals.imageRegistry | default "hub.oepkgs.net") (ternary "arm" "x86" (eq (.Values.globals.arch | default "x86") "arm"))) }}
+          imagePullPolicy: {{ default "IfNotPresent" .Values.globals.imagePullPolicy }}
+          command:
+            - redis-server
+            - --requirepass $(REDIS_PASSWORD)
+          ports:
+            - containerPort: 6379
+              protocol: TCP
+          livenessProbe:
+            exec:
+              command:
+                - sh
+                - -c
+                - redis-cli -a $REDIS_PASSWORD ping
+            failureThreshold: 5
+            initialDelaySeconds: 60
+            periodSeconds: 90
+          env:
+            - name: TZ
+              value: "Asia/Shanghai"
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: euler-copilot-database
+                  key: redis-password
+          volumeMounts:
+            - mountPath: /tmp
+              name: redis-tmp
+          resources:
+            requests:
+              cpu: 0.1
+              memory: 64Mi
+            limits:
+              {{ toYaml .Values.databases.redis.resourceLimits | nindent 14 }}
+      restartPolicy: Always
+      volumes:
+        - name: redis-tmp
+          emptyDir:
+            medium: Memory
+{{- end -}}

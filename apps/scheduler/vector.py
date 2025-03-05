@@ -27,15 +27,26 @@ def _get_embedding(text: list[str]) -> list[np.ndarray]:
     :param text: 待向量化文本（多条文本组成List）
     :return: 文本对应的向量（顺序与text一致，也为List）
     """
-    api = config["VECTORIZE_HOST"].rstrip("/") + "/embedding"
+    api = config["EMBEDDING_URL"].rstrip("/") + "/embeddings"
+
+    headers = {
+        "Authorization": f"Bearer {config['EMBEDDING_KEY']}",
+    }
+    data = {
+       "encoding_format": "float",
+       "input": text,
+       "model": config["EMBEDDING_MODEL"],
+    }
+
     response = requests.post(
         api,
-        json={"texts": text},
+        json=data,
+        headers=headers,
         verify=False,  # noqa: S501
         timeout=30,
     )
 
-    return [np.array(vec) for vec in response.json()]
+    return [np.array(item["embedding"]) for item in response.json()["data"]]
 
 
 # 模块内部类，不应在模块外部使用

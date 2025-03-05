@@ -1,0 +1,119 @@
+{{- if .Values.euler_copilot.rag.enabled -}}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: rag-service
+  namespace: {{ .Release.Namespace }}
+spec:
+  type: {{ default "ClusterIP" .Values.euler_copilot.rag.service.type }}
+  selector:
+    app: rag
+  ports:
+    - port: 9988
+      targetPort: 9988
+      nodePort: {{ default nil .Values.euler_copilot.rag.service.nodePort }}
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: rag-deploy
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: rag
+spec:
+  replicas: {{ default 1 .Values.globals.replicaCount }}
+  selector:
+    matchLabels:
+      app: rag
+  template:
+    metadata:
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/rag/rag-config.yaml") . | sha256sum }}
+      labels:
+        app: rag
+    spec:
+      automountServiceAccountToken: false
+      containers:
+        - name: rag
+          image: {{ .Values.euler_copilot.rag.image | default (printf "%s/neocopilot/data_chain_back_end:0.9.4-%s" (.Values.globals.imageRegistry | default "hub.oepkgs.net") (ternary "arm" "x86" (eq (.Values.globals.arch | default "x86") "arm"))) }}
+          imagePullPolicy: {{ default "IfNotPresent" .Values.globals.imagePullPolicy }}
+          ports:
+            - containerPort: 9988
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /health_check
+              port: 9988
+              scheme: HTTP
+            failureThreshold: 5
+            initialDelaySeconds: 60
+            periodSeconds: 90
+          env:
+            - name: TZ
+              value: "Asia/Shanghai"
+          volumeMounts:
+            - mountPath: /rag-service/data_chain/common
+              name: rag-shared
+          resources:
+            requests:
+              cpu: 0.25
+              memory: 512Mi
+            limits:
+              {{ toYaml .Values.euler_copilot.rag.resourceLimits | nindent 14 }}
+      initContainers:
+        - name: rag-copy-secret
+          image: {{ .Values.euler_copilot.secret_inject.image | default (printf "%s/neocopilot/secret_inject:dev-%s" (.Values.globals.imageRegistry | default "hub.oepkgs.net") (ternary "arm" "x86" (eq (.Values.globals.arch | default "x86") "arm"))) }}
+          imagePullPolicy: {{ default "IfNotPresent" .Values.globals.imagePullPolicy }}
+          volumeMounts:
+            - mountPath: /config/.env
+              name: rag-config-vl
+              subPath: .env
+            - mountPath: /config/stop_words.txt
+              name: rag-config-vl
+              subPath: stop_words.txt
+            - mountPath: /config/prompt.yaml
+              name: rag-config-vl
+              subPath: prompt.yaml
+            - mountPath: /app/config.yaml
+              name: rag-config-vl
+              subPath: copy-config.yaml
+            - mountPath: /config-rw
+              name: rag-shared
+            - mountPath: /secrets/redis-password
+              name: database-secret
+              subPath: redis-password
+            - mountPath: /secrets/minio-password
+              name: database-secret
+              subPath: minio-password
+            - mountPath: /secrets/pgsql-password
+              name: database-secret
+              subPath: pgsql-password
+            - mountPath: /secrets/halfKey1
+              name: system-secret
+              subPath: halfKey1
+            - mountPath: /secrets/halfKey2
+              name: system-secret
+              subPath: halfKey2
+            - mountPath: /secrets/halfKey3
+              name: system-secret
+              subPath: halfKey3
+            - mountPath: /secrets/csrfKey
+              name: system-secret
+              subPath: csrfKey
+      volumes:
+        - name: rag-config-vl
+          configMap:
+            name: rag-config
+        - name: database-secret
+          secret:
+            secretName: euler-copilot-database
+        - name: system-secret
+          secret:
+            secretName: euler-copilot-system
+        - name: rag-shared
+          emptyDir:
+            medium: Memory
+{{- end -}}
+

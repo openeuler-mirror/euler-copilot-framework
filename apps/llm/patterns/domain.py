@@ -12,47 +12,22 @@ from apps.llm.reasoning import ReasoningLLM
 class Domain(CorePattern):
     """从问答中提取领域信息"""
 
-    system_prompt: str = r"""
-        Your task is: Extract feature tags and categories from given conversations.
-        Tags and categories will be used in a recommendation system to offer search keywords to users.
-
-        Conversations will be given between "<conversation>" and "</conversation>" tags.
-
-        EXAMPLE 1
-
-        CONVERSATION:
-        <conversation>
-        User: What is the weather in Beijing?
-        Assistant: It is sunny in Beijing.
-        </conversation>
-
-        OUTPUT:
-        Beijing, weather
-        END OF EXAMPLE 1
-
-
-        EXAMPLE 2
-
-        CONVERSATION:
-        <conversation>
-        User: Check CVEs on host 1 from 2024-01-01 to 2024-01-07.
-        Assistant: There are 3 CVEs on host 1 from 2024-01-01 to 2024-01-07, including CVE-2024-0001, CVE-2024-0002, and CVE-2024-0003.
-        </conversation>
-
-        OUTPUT:
-        CVE, host 1, Cybersecurity
-
-        END OF EXAMPLE 2
-    """
-    """系统提示词"""
-
     user_prompt: str = r"""
-        CONVERSATION:
-        <conversation>
-        {conversation}
-        </conversation>
+        根据对话上文，提取推荐系统所需的关键词标签，要求：
+        1. 实体名词、技术术语、时间范围、地点、产品等关键信息均可作为关键词标签
+        2. 至少一个关键词与对话的话题有关
+        3. 标签需精简，不得重复，不得超过10个字
 
-        OUTPUT:
+        ==示例==
+        样例对话：
+        用户：北京天气如何？
+        助手：北京今天晴。
+
+        样例输出：
+        ["北京", "天气"]
+        ==结束示例==
+
+        输出结果：
     """
     """用户提示词"""
 
@@ -75,10 +50,9 @@ class Domain(CorePattern):
 
     async def generate(self, task_id: str, **kwargs) -> list[str]:  # noqa: ANN003
         """从问答中提取领域信息"""
-        messages = [
-            {"role": "system", "content": self.system_prompt},
-            {"role": "user", "content": self.user_prompt.format(conversation=kwargs["conversation"])},
-        ]
+        messages = [{"role": "system", "content": ""}]
+        messages += kwargs["conversation"]
+        messages += [{"role": "user", "content": self.user_prompt}]
 
         result = ""
         async for chunk in ReasoningLLM().call(task_id, messages, streaming=False):
