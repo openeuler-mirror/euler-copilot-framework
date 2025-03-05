@@ -15,7 +15,7 @@ from apps.constants import LOGGER, SERVICE_DIR
 from apps.entities.collection import User
 from apps.entities.enum_var import SearchType
 from apps.entities.file_type import OpenAPI
-from apps.entities.flow import ServiceApiConfig, ServiceMetadata
+from apps.entities.flow import Permission, PermissionType, ServiceApiConfig, ServiceMetadata
 from apps.entities.pool import NodePool, ServicePool
 from apps.entities.response_data import ServiceApiData, ServiceCardItem
 from apps.models.mongo import MongoDB
@@ -130,6 +130,7 @@ class ServiceCenterManager:
             version=validated_data.info.version,
             author=user_sub,
             api=ServiceApiConfig(server=validated_data.servers[0].url),
+            permission=Permission(type=PermissionType.PUBLIC),  # 默认公开
         )
         service_loader = ServiceLoader()
         await service_loader.save(service_id, service_metadata, data)
