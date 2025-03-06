@@ -1,4 +1,4 @@
-# openEuler Copilot System
+# EulerCopilot
 
 ## 部署顺序
 

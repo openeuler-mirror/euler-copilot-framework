@@ -17,7 +17,7 @@ class CallVars(BaseModel):
 
     summary: str = Field(description="上下文信息")
     question: str = Field(description="改写后的用户输入")
-    history: list[FlowStepHistory] = Field(description="Executor中历史工具的结构化数据", default=[])
+    history: dict[str, FlowStepHistory] = Field(description="Executor中历史工具的结构化数据", default=[])
     task_id: str = Field(description="任务ID")
     flow_id: str = Field(description="Flow ID")
     session_id: str = Field(description="当前用户的Session ID")
