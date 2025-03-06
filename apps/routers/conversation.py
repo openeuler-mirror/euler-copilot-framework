@@ -50,7 +50,9 @@ async def create_new_conversation(
 ) -> Optional[Conversation]:
     """判断并创建新对话"""
     create_new = False
-    if not conv_list or debug is True:
+    if debug:
+        create_new = True
+    if not conv_list:
         create_new = True
     else:
         last_conv = conv_list[-1]
@@ -132,8 +134,6 @@ async def add_conversation(  # noqa: ANN201
     # 尝试创建新对话
     try:
         app_id = appId if appId else ""
-        if appId:
-            conversations = []
         debug = debug if debug is not None else False
         new_conv = await create_new_conversation(user_sub, conversations,
                                                 app_id=app_id, debug=debug)
