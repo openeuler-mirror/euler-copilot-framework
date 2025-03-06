@@ -167,5 +167,5 @@ class Scheduler:
         task = await task_actor.get_task.remote(task.record.task_id)
         # 如果状态正常，则更新Flow的debug状态
         if task.flow_state and task.flow_state.status == StepStatus.SUCCESS:
-            await FlowManager.update_flow_debug_by_app_and_flow_id(post_body.app.app_id, flow_id, debug=False)
+            await FlowManager.update_flow_debug_by_app_and_flow_id(post_body.app.app_id, flow_id, debug=True)
         return

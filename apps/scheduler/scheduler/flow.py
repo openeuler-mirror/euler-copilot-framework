@@ -7,7 +7,8 @@ from typing import Optional
 
 import ray
 
-from apps.entities.flow import Flow
+from apps.constants import RAG_ANSWER_PROMPT
+from apps.entities.flow import Flow, FlowError, Step
 from apps.entities.task import RequestDataApp
 from apps.llm.patterns import Select
 
@@ -19,6 +20,44 @@ class PredifinedRAGFlow(Flow):
 
     name: str = "KnowledgeBase"
     description: str = "当上述工具无法直接解决用户问题时，使用知识库进行回答。"
+    on_error: FlowError = FlowError(use_llm=True)
+    steps: dict[str, Step] = ({  # noqa: RUF012
+        "start": Step(
+            name="start",
+            description="开始",
+            type="Empty",
+            node="Empty",
+        ),
+        "rag": Step(
+            name="查询知识库",
+            description="根据用户问题，查询知识库",
+            type="RAG",
+            node="RAG",
+            params={
+                "kb_sn": "default",
+                "top_k": 5,
+                "retrieval_mode": "chunk",
+            },
+        ),
+        "llm": Step(
+            name="使用大模型",
+            description="调用大模型，生成答案",
+            type="LLM",
+            node="LLM",
+            params={
+                "temperature": 0.7,
+                "enable_context": True,
+                "system_prompt": "",
+                "user_prompt": RAG_ANSWER_PROMPT,
+            },
+        ),
+        "end": Step(
+            name="end",
+            description="结束",
+            type="Empty",
+            node="Empty",
+        ),
+    })
 
 
 class FlowChooser:

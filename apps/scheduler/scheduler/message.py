@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 from textwrap import dedent
 from typing import Union
 
+import ray
 from ray import actor
 
 from apps.common.config import config
@@ -59,10 +60,13 @@ async def push_init_message(task: TaskBlock, queue: actor.ActorHandle, context_n
 async def push_rag_message(task: TaskBlock, queue: actor.ActorHandle, user_sub: str, rag_data: RAGQueryReq) -> TaskBlock:
     """推送RAG消息"""
     full_answer = ""
+    task_actor = ray.get_actor("task")
 
     async for chunk in RAG.get_rag_result(user_sub, rag_data):
         task, chunk_content = await _push_rag_chunk(task, queue, chunk)
         full_answer += chunk_content
+        # FIXME: 这里由于后面没有其他消息，所以只能每个trunk更新task
+        await task_actor.set_task.remote(task.record.task_id, task)
 
     # 保存答案
     task.record.content.answer = full_answer

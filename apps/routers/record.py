@@ -61,9 +61,9 @@ async def get_record(conversation_id: str, user_sub: Annotated[str, Depends(get_
                 conversationId=conversation_id,
                 content=record_data,
                 metadata=record.metadata if record.metadata else RecordMetadata(
-                    input_tokens=0,
-                    output_tokens=0,
-                    time_cost=0,
+                    inputTokens=0,
+                    outputTokens=0,
+                    timeCost=0,
                 ),
                 createdAt=record.created_at,
             )

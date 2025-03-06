@@ -104,4 +104,4 @@ class RenderStyle(CorePattern):
         ]
 
         # 使用FunctionLLM模型进行提取参数
-        return await Json().generate(task_id, conversation=messages, spec=self.slot_schema)
+        return await Json().generate("", conversation=messages, spec=self.slot_schema)

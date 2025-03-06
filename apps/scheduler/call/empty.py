@@ -1,4 +1,7 @@
-"""空Call"""
+"""空白Call
+
+Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
+"""
 from typing import Any, ClassVar
 
 from pydantic import BaseModel

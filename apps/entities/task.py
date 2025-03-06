@@ -49,6 +49,7 @@ class TaskBlock(BaseModel):
     """内存中的Task块，不存储在数据库中"""
 
     session_id: str = Field(description="浏览器会话ID")
+    user_sub: str = Field(description="用户ID", default="")
     record: RecordData = Field(description="当前任务执行过程关联的Record")
     flow_state: Optional[ExecutorState] = Field(description="Flow的状态", default=None)
     flow_context: dict[str, FlowStepHistory] = Field(description="Flow的执行信息", default={})

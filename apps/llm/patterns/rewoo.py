@@ -100,24 +100,35 @@ class InitPlan(CorePattern):
         return result
 
 
-# class PlanEvaluator:
-#     system_prompt = """You are a plan evaluator. Your task is: for the given user objective and your original plan, \
-#
-#
-#     """
-#     user_prompt = """"""
-#
-#     def __init__(self, system_prompt: Union[str, None] = None, user_prompt: Union[str, None] = None):
-#         if system_prompt is not None:
-#             self.system_prompt = system_prompt
-#         if user_prompt is not None:
-#             self.user_prompt = user_prompt
-#
-#     @staticmethod
-#     @sglang.function
-#     def _plan(s):
-#         pass
-#
-#     def generate(self, **kwargs) -> str:
-#         pass
+class PlanEvaluator(CorePattern):
+    """计划评估器"""
 
+    system_prompt = ""
+    """系统提示词"""
+    user_prompt = """"""
+    """用户提示词"""
+
+    def __init__(self, system_prompt: Optional[str] = None, user_prompt: Optional[str] = None) -> None:
+        """初始化Prompt"""
+        super().__init__(system_prompt, user_prompt)
+
+    async def generate(self, **_kwargs) -> str:
+        """生成计划评估结果"""
+        pass
+
+
+class RePlanner(CorePattern):
+    """重新规划器"""
+
+    system_prompt = ""
+    """系统提示词"""
+    user_prompt = """"""
+    """用户提示词"""
+
+    def __init__(self, system_prompt: Optional[str] = None, user_prompt: Optional[str] = None) -> None:
+        """初始化Prompt"""
+        super().__init__(system_prompt, user_prompt)
+
+    async def generate(self, **_kwargs) -> str:
+        """生成重新规划结果"""
+        pass

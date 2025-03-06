@@ -22,7 +22,8 @@ class CoreCall(BaseModel):
         extra="allow",
     )
 
-    ret_type: ClassVar[type[BaseModel]]
+    ret_type: ClassVar[type[BaseModel]] = Field(description="Call的返回类型")
+    print_result: ClassVar[bool] = Field(description="是否将Call的结果展示给用户", default=False)
 
     def __init_subclass__(cls, ret_type: type[BaseModel], **kwargs: Any) -> None:
         """初始化子类"""
