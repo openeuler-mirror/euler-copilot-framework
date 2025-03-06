@@ -25,12 +25,14 @@ class FactsCall(CoreCall, ret_type=FactsOutput):
 
     async def init(self, syscall_vars: CallVars, **kwargs: Any) -> dict[str, Any]:
         """初始化工具"""
+        # 组装必要变量
         self._message = {
             "question": syscall_vars.question,
             "answer": kwargs["answer"],
         }
         self._task_id = syscall_vars.task_id
         self._user_sub = syscall_vars.user_sub
+
         return {
             "message": self._message,
             "task_id": self._task_id,
@@ -46,4 +48,5 @@ class FactsCall(CoreCall, ret_type=FactsOutput):
         domain_list = await Domain().generate(self._task_id, message=self._message)
         for domain in domain_list:
             await UserDomainManager.update_user_domain_by_user_sub_and_domain_name(self._user_sub, domain)
+
         return FactsOutput(output=facts).model_dump(exclude_none=True, by_alias=True)

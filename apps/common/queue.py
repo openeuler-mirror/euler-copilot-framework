@@ -53,6 +53,8 @@ class MessageQueue:
 
         # 计算当前Step时间
         step_time = round((datetime.now(timezone.utc).timestamp() - task.record.metadata.time_cost), 3)
+        step_time = max(step_time, 0)
+
         metadata = MessageMetadata(
             timeCost=step_time,
             inputTokens=task.record.metadata.input_tokens,
