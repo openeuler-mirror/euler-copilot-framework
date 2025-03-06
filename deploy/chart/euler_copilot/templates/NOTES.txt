@@ -1,5 +1,5 @@
 感谢您使用Euler Copilot！
-当前为Euler Copilot 0.9.4版本。
+当前为Euler Copilot 0.9.5版本。
 当前Chart的功能为：Euler Copilot核心组件部署。
 
 更多项目动态和分享会议，请关注openEuler sig-intelligence：https://www.openeuler.org/en/sig/sig-detail/?name=sig-intelligence

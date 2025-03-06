@@ -56,7 +56,7 @@ spec:
       automountServiceAccountToken: false
       containers:
         - name: rag-web
-          image: {{ default "hub.oepkgs.net/neocopilot/data_chain_web:0.9.3-x86" .Values.euler_copilot.rag_web.image }}
+          image: {{ .Values.euler_copilot.rag_web.image | default (printf "%s/neocopilot/data_chain_web:0.9.5-%s" (.Values.globals.imageRegistry | default "hub.oepkgs.net") (ternary "arm" "x86" (eq (.Values.globals.arch | default "x86") "arm"))) }}
           imagePullPolicy: {{ default "IfNotPresent" .Values.globals.imagePullPolicy }}
           ports:
             - containerPort: 9888
