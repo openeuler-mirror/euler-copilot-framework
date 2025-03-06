@@ -3,7 +3,7 @@
 Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 """
 import logging
-from typing import Any, ClassVar, Literal
+from typing import Any, ClassVar, Literal, Optional
 
 import aiohttp
 from fastapi import status
@@ -28,7 +28,7 @@ class RAG(CoreCall, ret_type=RAGOutput):
     name: ClassVar[str] = "知识库"
     description: ClassVar[str] = "查询知识库，从文档中获取必要信息"
 
-    knowledge_base: str = Field(description="知识库的id", alias="kb_sn", default=None)
+    knowledge_base: Optional[str] = Field(description="知识库的id", alias="kb_sn", default=None)
     top_k: int = Field(description="返回的答案数量(经过整合以及上下文关联)", default=5)
     retrieval_mode: Literal["chunk", "full_text"] = Field(description="检索模式", default="chunk")
 
