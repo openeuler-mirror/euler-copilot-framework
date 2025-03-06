@@ -21,6 +21,20 @@ from apps.entities.task import (
 )
 
 
+# FIXME: 临时使用截断规避前端问题
+def truncate_data(data: Any) -> Any:
+    """截断数据"""
+    if isinstance(data, dict):
+        return {k: truncate_data(v) for k, v in data.items()}
+    if isinstance(data, list):
+        return [truncate_data(v) for v in data]
+    if isinstance(data, str):
+        if len(data) > 300:
+            return data[:300] + "..."
+        return data
+    return data
+
+
 async def push_step_input(task: TaskBlock, queue: actor.ActorHandle, state: ExecutorState, input_data: dict[str, Any]) -> TaskBlock:
     """推送步骤输入"""
     # 更新State
@@ -38,7 +52,7 @@ async def push_step_input(task: TaskBlock, queue: actor.ActorHandle, state: Exec
     task.record.metadata.time_cost = round(datetime.now(timezone.utc).timestamp(), 2)
 
     # 推送消息
-    await queue.push_output.remote(task, event_type=EventType.STEP_INPUT, data=input_data) # type: ignore[attr-defined]
+    await queue.push_output.remote(task, event_type=EventType.STEP_INPUT, data=truncate_data(input_data)) # type: ignore[attr-defined]
     return task
 
 
@@ -55,7 +69,7 @@ async def push_step_output(task: TaskBlock, queue: actor.ActorHandle, state: Exe
     task.new_context.append(task.flow_context[state.step_id].id)
 
     # 推送消息
-    await queue.push_output.remote(task, event_type=EventType.STEP_OUTPUT, data=output) # type: ignore[attr-defined]
+    await queue.push_output.remote(task, event_type=EventType.STEP_OUTPUT, data=truncate_data(output)) # type: ignore[attr-defined]
     return task
 
 

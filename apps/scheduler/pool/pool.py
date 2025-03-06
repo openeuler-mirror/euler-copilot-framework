@@ -9,7 +9,8 @@ from typing import Any, Optional
 import ray
 from anyio import Path
 
-from apps.constants import APP_DIR, SERVICE_DIR
+from apps.common.config import config
+from apps.constants import APP_DIR, CALL_DIR, SERVICE_DIR
 from apps.entities.enum_var import MetadataType
 from apps.entities.flow import Flow
 from apps.entities.pool import AppFlow, CallPool
@@ -29,8 +30,26 @@ logger = logging.getLogger("ray")
 class Pool:
     """资源池"""
 
+    @staticmethod
+    async def check_dir() -> None:
+        """检查文件夹是否存在"""
+        root_dir = config["SEMANTICS_DIR"] + "/"
+        if not await Path(root_dir + APP_DIR).exists():
+            logger.warning("[Pool] App目录%s不存在，创建中", root_dir + APP_DIR)
+            await Path(root_dir + APP_DIR).mkdir(parents=True, exist_ok=True)
+        if not await Path(root_dir + SERVICE_DIR).exists():
+            logger.warning("[Pool] Service目录%s不存在，创建中", root_dir + SERVICE_DIR)
+            await Path(root_dir + SERVICE_DIR).mkdir(parents=True, exist_ok=True)
+        if not await Path(root_dir + CALL_DIR).exists():
+            logger.warning("[Pool] Call目录%s不存在，创建中", root_dir + CALL_DIR)
+            await Path(root_dir + CALL_DIR).mkdir(parents=True, exist_ok=True)
+
+
     async def init(self) -> None:
         """加载全部文件系统内的资源"""
+        # 检查文件夹是否存在
+        await self.check_dir()
+
         # 加载Call
         logger.info("[Pool] 载入Call")
         await CallLoader().load()

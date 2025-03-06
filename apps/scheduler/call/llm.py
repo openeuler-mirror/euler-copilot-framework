@@ -5,7 +5,6 @@ Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 import logging
 from collections.abc import AsyncGenerator
 from datetime import datetime
-from textwrap import dedent
 from typing import Any, ClassVar
 
 import pytz
@@ -13,45 +12,12 @@ from jinja2 import BaseLoader, select_autoescape
 from jinja2.sandbox import SandboxedEnvironment
 from pydantic import BaseModel, Field
 
+from apps.constants import LLM_CONTEXT_PROMPT, LLM_DEFAULT_PROMPT
 from apps.entities.scheduler import CallError, CallVars
 from apps.llm.reasoning import ReasoningLLM
 from apps.scheduler.call.core import CoreCall
 
 logger = logging.getLogger("ray")
-LLM_DEFAULT_PROMPT = dedent(
-    r"""
-        <instructions>
-            你是一个乐于助人的智能助手。请结合给出的背景信息, 回答用户的提问。
-            当前时间：{{ time }}，可以作为时间参照。
-            用户的问题将在<user_question>中给出，上下文背景信息将在<context>中给出。
-            注意：输出不要包含任何XML标签，不要编造任何信息。若你认为用户提问与背景信息无关，请忽略背景信息直接作答。
-        </instructions>
-
-        <user_question>
-            {{ question }}
-        </user_question>
-
-        <context>
-            {{ context }}
-        </context>
-    """,
-    ).strip("\n")
-LLM_CONTEXT_PROMPT = dedent(
-    r"""
-        以下是对用户和AI间对话的简短总结：
-        {{ summary }}
-
-        你作为AI，在回答用户的问题前，需要获取必要信息。为此，你调用了以下工具，并获得了输出：
-        <tool_data>
-            {% for tool in history_data %}
-                <name>{{ tool.step_id }}</name>
-                <output>{{ tool.output_data }}</output>
-            {% endfor %}
-        </tool_data>
-    """,
-    ).strip("\n")
-
-
 class LLMNodeOutput(BaseModel):
     """定义LLM工具调用的输出"""
 

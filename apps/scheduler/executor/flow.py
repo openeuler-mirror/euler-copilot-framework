@@ -20,6 +20,7 @@ from apps.llm.patterns.executor import ExecutorSummary
 from apps.manager.node import NodeManager
 from apps.manager.task import TaskManager
 from apps.scheduler.call.core import CoreCall
+from apps.scheduler.call.empty import Empty
 from apps.scheduler.call.llm import LLM
 from apps.scheduler.executor.message import (
     push_flow_start,
@@ -101,6 +102,10 @@ class Executor(BaseModel):
         if not self.flow_state:
             err = "[FlowExecutor] flow_state为空"
             raise ValueError(err)
+
+        # 特判
+        if node_id == "Empty":
+            return Empty
 
         # 获取对应Node的call_id
         call_id = await NodeManager.get_node_call_id(node_id)
@@ -217,6 +222,7 @@ class Executor(BaseModel):
             session_id=self.task.session_id,
             history=self.task.flow_context,
             summary=self.flow_state.ai_summary,
+            user_sub=self.task.user_sub,
         )
 
         # 初始化Call
@@ -269,6 +275,7 @@ class Executor(BaseModel):
 
         数据通过向Queue发送消息的方式传输
         """
+        task_actor = ray.get_actor("task")
         logger.info("[FlowExecutor] 运行工作流")
         # 推送Flow开始消息
         self.task = await push_flow_start(self.task, self.queue, self.flow_state, self.question)
@@ -290,9 +297,11 @@ class Executor(BaseModel):
                 step = self.flow.steps[self.flow_state.step_id]
                 await self._run_step(self.flow_state.step_id, step)
 
+            # 步骤结束，更新全局的Task
+            await task_actor.set_task.remote(self.task.record.task_id, self.task)
+
         # 推送Flow停止消息
         self.task = await push_flow_stop(self.task, self.queue, self.flow_state, self.flow, self._final_answer)
 
         # 更新全局的Task
-        task_actor = ray.get_actor("task")
         await task_actor.set_task.remote(self.task.record.task_id, self.task)

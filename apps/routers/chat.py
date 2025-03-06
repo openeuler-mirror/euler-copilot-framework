@@ -55,6 +55,7 @@ async def chat_generator(post_body: RequestData, user_sub: str, session_id: str)
         task = await task_actor.get_task.remote(session_id=session_id, post_body=post_body)
         task_id = task.record.task_id
 
+        task.user_sub = user_sub
         task.record.group_id = group_id
         post_body.group_id = group_id
         await task_actor.set_task.remote(task_id, task)

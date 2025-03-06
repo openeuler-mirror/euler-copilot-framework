@@ -4,7 +4,7 @@ Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 """
 import logging
 from collections.abc import AsyncGenerator
-from typing import Optional
+from typing import ClassVar, Optional
 
 import ray
 import tiktoken
@@ -19,7 +19,7 @@ logger = logging.getLogger("ray")
 class ReasoningLLM:
     """调用用于问答的大模型"""
 
-    _encoder = tiktoken.get_encoding("cl100k_base")
+    _encoder: ClassVar[tiktoken.Encoding] = tiktoken.get_encoding("cl100k_base")
 
     def __init__(self) -> None:
         """判断配置文件里用了哪种大模型；初始化大模型客户端"""
@@ -34,18 +34,20 @@ class ReasoningLLM:
             base_url=config["LLM_URL"],
         )
 
-    def _calculate_token_length(self, messages: list[dict[str, str]], *, pure_text: bool = False) -> int:
+    @classmethod
+    def _calculate_token_length(cls, messages: list[dict[str, str]], *, pure_text: bool = False) -> int:
         """使用ChatGPT的cl100k tokenizer，估算Token消耗量"""
         result = 0
         if not pure_text:
             result += 3 * (len(messages) + 1)
 
         for msg in messages:
-            result += len(self._encoder.encode(msg["content"]))
+            result += len(cls._encoder.encode(msg["content"]))
 
         return result
 
-    def _validate_messages(self, messages: list[dict[str, str]]) -> list[dict[str, str]]:
+    @staticmethod
+    def _validate_messages(messages: list[dict[str, str]]) -> list[dict[str, str]]:
         """验证消息格式是否正确"""
         if messages[0]["role"] != "system":
             # 添加默认系统消息
