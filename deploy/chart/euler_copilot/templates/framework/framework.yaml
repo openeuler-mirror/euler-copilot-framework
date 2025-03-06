@@ -42,7 +42,7 @@ spec:
         fsGroup: 1001
       containers:
         - name: framework
-          image: {{ default "hub.oepkgs.net/neocopilot/euler-copilot-framework:0.9.3-x86" .Values.euler_copilot.framework.image }}
+          image: {{ .Values.euler_copilot.framework.image | default (printf "%s/neocopilot/euler-copilot-framework:0.9.5-%s" (.Values.globals.imageRegistry | default "hub.oepkgs.net") (ternary "arm" "x86" (eq (.Values.globals.arch | default "x86") "arm"))) 
           imagePullPolicy: {{ default "IfNotPresent" .Values.globals.imagePullPolicy }}
           ports:
             - containerPort: 8002
@@ -86,7 +86,7 @@ spec:
               {{ toYaml .Values.euler_copilot.framework.resourceLimits | nindent 14 }}
       initContainers:
         - name: framework-copy
-          image: {{ default "hub.oepkgs.net/neocopilot/secret_inject:x86" .Values.euler_copilot.secret_inject.image }}
+          image: {{ .Values.euler_copilot.secret_inject.image | default (printf "%s/neocopilot/secret_inject:dev-%s" (.Values.globals.imageRegistry | default "hub.oepkgs.net") (ternary "arm" "x86" (eq (.Values.globals.arch | default "x86") "arm"))) }}
           imagePullPolicy: {{ default "IfNotPresent" .Values.globals.imagePullPolicy }}
           volumeMounts:
             - mountPath: /config/.env
