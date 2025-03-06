@@ -8,7 +8,15 @@ BLUE='\033[34m'
 NC='\033[0m'
 
 
-chart_dir="/home/euler-copilot-framework/deploy/chart"
+SCRIPT_PATH="$(
+  cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1
+  pwd
+)/$(basename "${BASH_SOURCE[0]}")"
+
+CHART_DIR="$(
+  canonical_path=$(readlink -f "$SCRIPT_PATH" 2>/dev/null || echo "$SCRIPT_PATH")
+  dirname "$(dirname "$(dirname "$canonical_path")")"
+)/chart"
 
 # 获取系统架构
 get_architecture() {
@@ -87,11 +95,11 @@ delete_pvcs() {
 
 helm_install() {
     echo -e "${BLUE}==> 进入部署目录...${NC}"
-    [ ! -d "$chart_dir" ] && {
-        echo -e "${RED}错误：部署目录不存在 $chart_dir${NC}"
+    [ ! -d "$CHART_DIR" ] && {
+        echo -e "${RED}错误：部署目录不存在 $CHART_DIR${NC}"
         return 1
     }
-    cd "$chart_dir"
+    cd "$CHART_DIR"
 
     echo -e "${BLUE}正在安装 databases...${NC}"
     helm upgrade --install databases --set globals.arch=$arch -n euler-copilot ./databases || {

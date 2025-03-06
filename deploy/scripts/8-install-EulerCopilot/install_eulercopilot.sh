@@ -10,8 +10,17 @@ BLUE='\e[34m'
 NC='\e[0m' # 恢复默认颜色
 
 NAMESPACE="euler-copilot"
-DEPLOY_DIR="/home/euler-copilot-framework/deploy"
 PLUGINS_DIR="/home/eulercopilot/semantics"
+
+SCRIPT_PATH="$(
+  cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1
+  pwd
+)/$(basename "${BASH_SOURCE[0]}")"
+
+DEPLOY_DIR="$(
+  canonical_path=$(readlink -f "$SCRIPT_PATH" 2>/dev/null || echo "$SCRIPT_PATH")
+  dirname "$(dirname "$(dirname "$canonical_path")")"
+)"
 
 
 # 获取系统架构
