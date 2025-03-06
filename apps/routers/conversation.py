@@ -50,7 +50,9 @@ async def create_new_conversation(
 ) -> Optional[Conversation]:
     """判断并创建新对话"""
     create_new = False
-    if not conv_list or debug is True:
+    if debug:
+        create_new = True
+    if not conv_list:
         create_new = True
     else:
         last_conv = conv_list[-1]
