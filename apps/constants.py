@@ -26,7 +26,7 @@ APP_DIR = "app"
 # 语义接口目录中工作流子目录
 FLOW_DIR = "flow"
 # Scheduler进程数
-SCHEDULER_REPLICAS = 4
+SCHEDULER_REPLICAS = 2
 # 日志记录器
 LOGGER = logging.getLogger("ray")
 

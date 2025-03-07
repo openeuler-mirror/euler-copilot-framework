@@ -2,6 +2,7 @@
 
 Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 """
+import logging
 from typing import Any, Optional, Union
 
 import yaml
@@ -9,13 +10,15 @@ from anyio import Path
 from fastapi.encoders import jsonable_encoder
 
 from apps.common.config import config
-from apps.constants import APP_DIR, LOGGER, SERVICE_DIR
+from apps.constants import APP_DIR, SERVICE_DIR
 from apps.entities.enum_var import MetadataType
 from apps.entities.flow import (
     AppMetadata,
     ServiceMetadata,
 )
 from apps.scheduler.yaml import str_presenter
+
+logger = logging.getLogger("ray")
 
 
 class MetadataLoader:
@@ -34,8 +37,8 @@ class MetadataLoader:
             # 提取metadata的类型
             metadata_type = metadata_dict["type"]
         except Exception as e:
-            err = f"metadata.yaml读取失败: {e}"
-            LOGGER.error(err)
+            err = "[MetadataLoader] metadata.yaml读取失败"
+            logger.exception(err)
             raise RuntimeError(err) from e
 
         # 尝试匹配格式
@@ -44,20 +47,20 @@ class MetadataLoader:
                 app_id = file_path.parent.name
                 metadata = AppMetadata(id=app_id, **metadata_dict)
             except Exception as e:
-                err = f"App metadata.yaml格式错误: {e}"
-                LOGGER.error(err)
+                err = "[MetadataLoader] App metadata.yaml格式错误"
+                logger.exception(err)
                 raise RuntimeError(err) from e
         elif metadata_type == MetadataType.SERVICE.value:
             try:
                 service_id = file_path.parent.name
                 metadata = ServiceMetadata(id=service_id, **metadata_dict)
             except Exception as e:
-                err = f"Service metadata.yaml格式错误: {e}"
-                LOGGER.error(err)
+                err = "[MetadataLoader] Service metadata.yaml格式错误"
+                logger.exception(err)
                 raise RuntimeError(err) from e
         else:
-            err = f"metadata.yaml类型错误: {metadata_type}"
-            LOGGER.error(err)
+            err = f"[MetadataLoader] metadata.yaml类型错误: {metadata_type}"
+            logger.error(err)
             raise RuntimeError(err)
 
         return metadata
@@ -81,8 +84,8 @@ class MetadataLoader:
         elif metadata_type == MetadataType.SERVICE.value:
             resource_path = Path(config["SEMANTICS_DIR"]) / SERVICE_DIR / resource_id / "metadata.yaml"
         else:
-            err = f"metadata_type类型错误: {metadata_type}"
-            LOGGER.error(err)
+            err = f"[MetadataLoader] metadata_type类型错误: {metadata_type}"
+            logger.error(err)
             raise RuntimeError(err)
 
         # 保存元数据
@@ -92,8 +95,8 @@ class MetadataLoader:
                 metadata_class: type[Union[AppMetadata, ServiceMetadata]] = class_dict[metadata_type]
                 data = metadata_class(**metadata)
             except Exception as e:
-                err = f"metadata.yaml格式错误: {e}"
-                LOGGER.error(err)
+                err = "[MetadataLoader] metadata.yaml格式错误"
+                logger.exception(err)
                 raise RuntimeError(err) from e
         else:
             data = metadata

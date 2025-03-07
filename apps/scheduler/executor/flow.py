@@ -38,6 +38,7 @@ logger = logging.getLogger("ray")
 class Executor(BaseModel):
     """用于执行工作流的Executor"""
 
+    flow_id: str = Field(description="Flow ID")
     flow: Flow = Field(description="工作流数据")
     task: TaskBlock = Field(description="任务信息")
     question: str = Field(description="用户输入")
@@ -51,6 +52,7 @@ class Executor(BaseModel):
     )
     """Pydantic配置"""
 
+
     async def load_state(self) -> None:
         """从数据库中加载FlowExecutor的状态"""
         logger.info("[FlowExecutor] 加载Executor状态")
@@ -61,7 +63,7 @@ class Executor(BaseModel):
         else:
             # 创建ExecutorState
             self.flow_state = ExecutorState(
-                name=str(self.flow.name),
+                flow_id=str(self.flow_id),
                 description=str(self.flow.description),
                 status=StepStatus.RUNNING,
                 app_id=str(self.post_body_app.app_id),

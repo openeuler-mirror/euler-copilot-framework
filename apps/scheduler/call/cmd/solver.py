@@ -6,7 +6,7 @@ import copy
 import re
 from typing import Any
 
-from apps.llm.patterns.json import Json
+from apps.llm.patterns.json_gen import Json
 from apps.scheduler.call.cmd.assembler import CommandlineAssembler
 
 

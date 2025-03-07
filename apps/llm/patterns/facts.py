@@ -2,7 +2,7 @@
 from typing import Any, ClassVar, Optional
 
 from apps.llm.patterns.core import CorePattern
-from apps.llm.patterns.json import Json
+from apps.llm.patterns.json_gen import Json
 from apps.llm.reasoning import ReasoningLLM
 
 

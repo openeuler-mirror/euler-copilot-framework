@@ -8,15 +8,10 @@ import json
 import random
 import time
 import traceback
-import uuid
 from collections.abc import AsyncGenerator
-from datetime import datetime
-from textwrap import dedent
-from typing import Annotated, Any, AsyncGenerator, Optional
+from typing import Annotated, Any, Optional
 
 import aiohttp
-import ray
-import tiktoken
 from fastapi import APIRouter, Depends, status
 from fastapi.responses import StreamingResponse
 from openai import AsyncOpenAI
@@ -31,19 +26,15 @@ from apps.dependency import (
     verify_user,
 )
 from apps.entities.pool import AppPool
-from apps.entities.request_data import MockRequestData, RequestData
+from apps.entities.request_data import RequestData
 from apps.entities.scheduler import CallError
 from apps.manager.appcenter import AppCenterManager
 from apps.manager.flow import FlowManager
 from apps.scheduler.pool.loader.flow import FlowLoader
-from apps.scheduler.scheduler.context import save_data
-from apps.service.activity import Activity
 
 
 class ReasoningLLM:
     """调用用于问答的大模型"""
-
-    _encoder = tiktoken.get_encoding("cl100k_base")
 
     def __init__(self) -> None:
         """判断配置文件里用了哪种大模型；初始化大模型客户端"""
@@ -57,17 +48,6 @@ class ReasoningLLM:
             api_key=config["LLM_KEY"],
             base_url=config["LLM_URL"],
         )
-
-    def _calculate_token_length(self, messages: list[dict[str, str]], *, pure_text: bool = False) -> int:
-        """使用ChatGPT的cl100k tokenizer，估算Token消耗量"""
-        result = 0
-        if not pure_text:
-            result += 3 * (len(messages) + 1)
-
-        for msg in messages:
-            result += len(self._encoder.encode(msg["content"]))
-
-        return result
 
     def _validate_messages(self, messages: list[dict[str, str]]) -> list[dict[str, str]]:
         """验证消息格式是否正确"""
@@ -242,8 +222,6 @@ async def mock_data(
         # task.record.group_id = group_id
         # post_body.group_id = group_id
         # await task_pool.set_task.remote(task_id, task)
-
-        _encoder = tiktoken.get_encoding("cl100k_base")
 
         question = post_body.question
         conversationId = post_body.conversation_id
@@ -523,7 +501,6 @@ class _LLMOutput(BaseModel):
 
 
 async def call_llm_stream(params: dict[str, Any] = {}):
-    _encoder = tiktoken.get_encoding("cl100k_base")
     prompt = "你是EulerCopilot，我们向你问了一个问题，需要你完成这个问题，我们会给出对应的信息"
     question = params.get("question", "")
     content = f"问题：{question}\n" + "信息：" + str(params.get("chunk_list", ""))

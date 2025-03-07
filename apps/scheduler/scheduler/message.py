@@ -2,6 +2,7 @@
 
 Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 """
+import logging
 from datetime import datetime, timezone
 from textwrap import dedent
 from typing import Union
@@ -10,7 +11,6 @@ import ray
 from ray import actor
 
 from apps.common.config import config
-from apps.constants import LOGGER
 from apps.entities.collection import Document
 from apps.entities.enum_var import EventType
 from apps.entities.message import (
@@ -23,6 +23,8 @@ from apps.entities.rag_data import RAGEventData, RAGQueryReq
 from apps.entities.record import RecordDocument
 from apps.entities.task import TaskBlock
 from apps.service import RAG
+
+logger = logging.getLogger("ray")
 
 
 async def push_init_message(task: TaskBlock, queue: actor.ActorHandle, context_num: int, *, is_flow: bool = False) -> TaskBlock:
@@ -96,8 +98,8 @@ async def _push_rag_chunk(task: TaskBlock, queue: actor.ActorHandle, content: st
             data=TextAddContent(text=content_obj.content).model_dump(exclude_none=True, by_alias=True),
         )
         return task, content_obj.content
-    except Exception as e:
-        LOGGER.error(f"[Scheduler] RAG服务返回错误数据: {e!s}\n{content}")
+    except Exception:
+        logger.exception("[Scheduler] RAG服务返回错误数据")
         return task, ""
 
 

@@ -2,6 +2,7 @@
 
 Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 """
+import logging
 from typing import Annotated, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
@@ -9,7 +10,6 @@ from fastapi.responses import JSONResponse, RedirectResponse
 
 from apps.common.config import config
 from apps.common.oidc import get_oidc_token, get_oidc_user
-from apps.constants import LOGGER
 from apps.dependency import get_user, verify_csrf_token, verify_user
 from apps.entities.collection import Audit
 from apps.entities.response_data import (
@@ -28,6 +28,7 @@ router = APIRouter(
     prefix="/api/auth",
     tags=["auth"],
 )
+logger = logging.getLogger("ray")
 
 
 @router.get("/login")
@@ -48,7 +49,7 @@ async def oidc_login(request: Request, code: str, redirect_index: Optional[str] 
         user_info = await get_oidc_user(token["access_token"], token["refresh_token"])
         user_sub: Optional[str] = user_info.get("user_sub", None)
     except Exception as e:
-        LOGGER.error(f"User login failed: {e}")
+        logger.exception("[Auth] 用户登录失败")
         if "auth error" in str(e):
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="auth error") from e
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="User login failed.") from e
@@ -58,7 +59,7 @@ async def oidc_login(request: Request, code: str, redirect_index: Optional[str] 
         user_host = request.client.host
 
     if not user_sub:
-        LOGGER.error("OIDC no user_sub associated.")
+        logger.error("[Auth] OIDC 没有关联用户")
         data = Audit(
             http_method="get",
             module="auth",
@@ -73,8 +74,8 @@ async def oidc_login(request: Request, code: str, redirect_index: Optional[str] 
     try:
         current_session = request.cookies["ECSESSION"]
         await SessionManager.delete_session(current_session)
-    except Exception as e:
-        LOGGER.error(f"Change session failed: {e}")
+    except Exception:
+        logger.exception("[Auth] 切换session失败")
 
     current_session = await SessionManager.create_session(user_host, extra_keys={
         "user_sub": user_sub,

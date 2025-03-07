@@ -3,6 +3,7 @@
 Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 """
 
+import logging
 from hashlib import shake_128
 from typing import Any
 
@@ -10,7 +11,6 @@ import ray
 import yaml
 from anyio import Path
 
-from apps.constants import LOGGER
 from apps.entities.enum_var import ContentType, HTTPMethod
 from apps.entities.flow import ServiceMetadata
 from apps.entities.node import APINode, APINodeInput, APINodeOutput
@@ -20,6 +20,8 @@ from apps.scheduler.openapi import (
     reduce_openapi_spec,
 )
 from apps.scheduler.yaml import str_presenter
+
+logger = logging.getLogger("ray")
 
 
 @ray.remote
@@ -63,8 +65,8 @@ class OpenAPILoader:
         try:
             method = HTTPMethod[spec.method.upper()]
         except KeyError as e:
-            err = f"HTTP方法{spec.method}不支持。"
-            LOGGER.error(msg=err)
+            err = f"[OpenAPILoader] HTTP方法{spec.method}不支持。"
+            logger.exception(err)
             raise RuntimeError(err) from e
 
         url = service_metadata.api.server.rstrip("/") + spec.uri
@@ -80,8 +82,8 @@ class OpenAPILoader:
             )
             known_params["content_type"]=content_type
             if content_type is None:
-                err = f"接口{spec.name}的Content-Type不支持"
-                LOGGER.error(msg=err)
+                err = f"[OpenAPILoader] 接口{spec.name}的Content-Type不支持"
+                logger.error(err)
                 raise RuntimeError(err)
 
         try:
@@ -94,16 +96,15 @@ class OpenAPILoader:
                 else None,
             )
         except KeyError:
-            err = f"接口{spec.name}请求体定义错误"
-            LOGGER.error(msg=err)
+            logger.exception("[OpenAPILoader] 接口 %s 请求体定义错误", spec.name)
 
         try:
             out = APINodeOutput(
                 resp_schema=spec.spec["responses"]["200"]["content"]["application/json"]["schema"],
             )
         except KeyError:
-            err = f"接口{spec.name}不存在响应体定义"
-            LOGGER.error(msg=err)
+            err = f"[OpenAPILoader] 接口{spec.name}不存在响应体定义"
+            logger.exception(err)
             out = APINodeOutput()
 
         known_params = {
@@ -148,16 +149,16 @@ class OpenAPILoader:
         try:
             spec = await self._read_yaml(yaml_path)
         except Exception as e:
-            err = f"加载OpenAPI文档{yaml_path}失败：{e}"
-            LOGGER.error(msg=err)
+            err = f"[OpenAPILoader] 加载OpenAPI文档{yaml_path}失败"
+            logger.exception(err)
             raise RuntimeError(err) from e
 
         yaml_filename = yaml_path.name
         try:
             return await self._process_spec(service_id, yaml_filename, spec, service_metadata)
         except Exception as e:
-            err = f"处理OpenAPI文档{yaml_filename}失败：{e}"
-            LOGGER.error(msg=err)
+            err = f"[OpenAPILoader] 处理OpenAPI文档{yaml_filename}失败"
+            logger.exception(err)
             raise RuntimeError(err) from e
 
     async def save_one(self, yaml_path: Path, yaml_dict: dict[str, Any]) -> None:
@@ -171,6 +172,6 @@ class OpenAPILoader:
         except Exception as e:
             if await yaml_path.exists():
                 await yaml_path.unlink()
-            err = f"保存OpenAPI文档{yaml_path}失败：{e}"
-            LOGGER.error(msg=err)
+            err = f"[OpenAPILoader] 保存OpenAPI文档{yaml_path}失败"
+            logger.exception(err)
             raise RuntimeError(err) from e

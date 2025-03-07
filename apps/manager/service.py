@@ -3,6 +3,7 @@
 Copyright (c) Huawei Technologies Co., Ltd. 2024-2025. All rights reserved.
 """
 
+import logging
 import uuid
 from typing import Any, Optional
 
@@ -11,15 +12,22 @@ from anyio import Path
 from jsonschema import ValidationError
 
 from apps.common.config import config
-from apps.constants import LOGGER, SERVICE_DIR
+from apps.constants import SERVICE_DIR
 from apps.entities.collection import User
 from apps.entities.enum_var import SearchType
 from apps.entities.file_type import OpenAPI
-from apps.entities.flow import Permission, PermissionType, ServiceApiConfig, ServiceMetadata
+from apps.entities.flow import (
+    Permission,
+    PermissionType,
+    ServiceApiConfig,
+    ServiceMetadata,
+)
 from apps.entities.pool import NodePool, ServicePool
 from apps.entities.response_data import ServiceApiData, ServiceCardItem
 from apps.models.mongo import MongoDB
 from apps.scheduler.pool.loader.service import ServiceLoader
+
+logger = logging.getLogger("ray")
 
 
 class ServiceCenterManager:
@@ -260,12 +268,12 @@ class ServiceCenterManager:
         db_service = await service_collection.find_one({"_id": service_id})
         if not db_service:
             msg = f"[ServiceCenterManager] Service not found: {service_id}"
-            LOGGER.warning(msg)
+            logger.warning(msg)
             raise ValueError(msg)
         db_user = await user_collection.find_one({"_id": user_sub})
         if not db_user:
             msg = f"[ServiceCenterManager] User not found: {user_sub}"
-            LOGGER.warning(msg)
+            logger.warning(msg)
             raise ValueError(msg)
         user_data = User.model_validate(db_user)
         already_favorited = service_id in user_data.fav_services
@@ -297,7 +305,7 @@ class ServiceCenterManager:
         skip = (page - 1) * page_size
         db_services = await service_collection.find(search_conditions).skip(skip).limit(page_size).to_list()
         if not db_services and total > 0:
-            LOGGER.warning(f"[ServiceCenterManager] No services found for conditions: {search_conditions}")
+            logger.warning("[ServiceCenterManager] 没有找到符合条件的服务: %s", search_conditions)
             return [], -1
         service_pools = [ServicePool.model_validate(db_service) for db_service in db_services]
         return service_pools, total

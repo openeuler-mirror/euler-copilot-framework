@@ -4,10 +4,9 @@ Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 """
 import logging
 from collections.abc import AsyncGenerator
-from typing import ClassVar, Optional
+from typing import Optional
 
 import ray
-import tiktoken
 from openai import AsyncOpenAI
 
 from apps.common.config import config
@@ -18,8 +17,6 @@ logger = logging.getLogger("ray")
 
 class ReasoningLLM:
     """调用用于问答的大模型"""
-
-    _encoder: ClassVar[tiktoken.Encoding] = tiktoken.get_encoding("cl100k_base")
 
     def __init__(self) -> None:
         """判断配置文件里用了哪种大模型；初始化大模型客户端"""
@@ -34,18 +31,6 @@ class ReasoningLLM:
             base_url=config["LLM_URL"],
         )
 
-    @classmethod
-    def _calculate_token_length(cls, messages: list[dict[str, str]], *, pure_text: bool = False) -> int:
-        """使用ChatGPT的cl100k tokenizer，估算Token消耗量"""
-        result = 0
-        if not pure_text:
-            result += 3 * (len(messages) + 1)
-
-        for msg in messages:
-            result += len(cls._encoder.encode(msg["content"]))
-
-        return result
-
     @staticmethod
     def _validate_messages(messages: list[dict[str, str]]) -> list[dict[str, str]]:
         """验证消息格式是否正确"""
@@ -59,11 +44,12 @@ class ReasoningLLM:
 
         return messages
 
-    async def call(self, task_id: str, messages: list[dict[str, str]],  # noqa: C901
+    async def call(self, task_id: str, messages: list[dict[str, str]],  # noqa: C901, PLR0912, PLR0913, PLR0915
                    max_tokens: Optional[int] = None, temperature: Optional[float] = None,
                    *, streaming: bool = True, result_only: bool = True) -> AsyncGenerator[str, None]:
         """调用大模型，分为流式和非流式两种"""
-        input_tokens = self._calculate_token_length(messages)
+        token_actor = ray.get_actor("token")
+        input_tokens = await token_actor.calculate_token_length.remote(messages)
         try:
 
             msg_list = self._validate_messages(messages)
@@ -162,6 +148,6 @@ class ReasoningLLM:
 
         logger.info("[Reasoning] 推理内容: %s\n\n%s", reasoning_content, result)
 
-        output_tokens = self._calculate_token_length([{"role": "assistant", "content": result}], pure_text=True)
+        output_tokens = await token_actor.calculate_token_length.remote([{"role": "assistant", "content": result}], pure_text=True)
         task = ray.get_actor("task")
         await task.update_token_summary.remote(task_id, input_tokens, output_tokens)

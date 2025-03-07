@@ -2,16 +2,17 @@
 
 Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 """
-import traceback
+import logging
 import uuid
 from typing import Literal, Optional
 
-from apps.constants import LOGGER
 from apps.entities.collection import (
     Record,
     RecordGroup,
 )
 from apps.models.mongo import MongoDB
+
+logger = logging.getLogger("ray")
 
 
 class RecordManager:
@@ -36,8 +37,8 @@ class RecordManager:
                 await record_group_collection.insert_one(record_group.model_dump(by_alias=True), session=session)
                 # Conversation里面加一个ID
                 await conversation_collection.update_one({"_id": conversation_id}, {"$push": {"record_groups": group_id}}, session=session)
-        except Exception as e:
-            LOGGER.info(f"Create record group failed: {e}")
+        except Exception:
+            logger.exception("[RecordManager] 创建问答组失败")
             return None
 
         return group_id
@@ -53,8 +54,8 @@ class RecordManager:
                 {"$push": {"records": record.model_dump(by_alias=True)}},
             )
             return record.record_id
-        except Exception as e:
-            LOGGER.info(f"Insert encrypted data failed: {e!s}\n{traceback.format_exc()}")
+        except Exception:
+            logger.exception("[RecordManager] 插入加密问答对失败")
             return None
 
     @staticmethod
@@ -88,13 +89,13 @@ class RecordManager:
                 ])
                 record = await record.to_list(length=1)
                 if not record:
-                    LOGGER.info(f"Record group {record_group_id} has no record.")
+                    logger.info("[RecordManager] 问答组 %s 没有问答对", record_group_id)
                     continue
 
                 records.append(Record.model_validate(record[0]["records"]))
             return records
-        except Exception as e:
-            LOGGER.info(f"Query encrypted data by conversation_id failed: {e}")
+        except Exception:
+            logger.exception("[RecordManager] 查询加密问答对失败")
             return []
 
     @staticmethod
@@ -114,8 +115,8 @@ class RecordManager:
 
             records = await record_group_collection.aggregate(pipeline)
             return [RecordGroup.model_validate(record) async for record in records]
-        except Exception as e:
-            LOGGER.info(f"Query record group by conversation_id failed: {e}")
+        except Exception:
+            logger.exception("[RecordManager] 查询问答组失败")
             return []
 
     @staticmethod
@@ -129,8 +130,8 @@ class RecordManager:
             record_group_collection = MongoDB.get_collection("record_group")
             record_data = await record_group_collection.find_one({"_id": group_id, "user_sub": user_sub, "records._id": record_id})
             return bool(record_data)
-        except Exception as e:
-            LOGGER.info(f"Query encrypted data by group_id failed: {e}")
+        except Exception:
+            logger.exception("[RecordManager] 验证记录是否在组中失败")
             return False
 
     @staticmethod
@@ -140,6 +141,6 @@ class RecordManager:
         try:
             result = await record_group_collection.find_one({"_id": group_id, "user_sub": user_sub})
             return bool(result)
-        except Exception as e:
-            LOGGER.info(f"Group_id {group_id} not found: {e}")
+        except Exception:
+            logger.exception("[RecordManager] 检查group_id失败")
             return False

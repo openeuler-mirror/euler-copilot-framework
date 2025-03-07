@@ -8,7 +8,6 @@ import uuid
 from typing import Optional
 
 import asyncer
-import magic
 from fastapi import UploadFile
 
 from apps.entities.collection import (
@@ -35,7 +34,10 @@ class DocumentManager:
 
         # 获取文件MIME
         file = document.file
+
+        import magic
         mime = magic.from_buffer(file.read(), mime=True)
+
         file.seek(0)
 
         # 上传到MinIO

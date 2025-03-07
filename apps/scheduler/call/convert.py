@@ -17,37 +17,34 @@ from apps.entities.scheduler import CallVars
 from apps.scheduler.call.core import CoreCall
 
 
-class _ConvertParam(BaseModel):
-    """校验Convert Call需要的额外参数"""
-
-    text: Optional[str] = Field(description="对生成的文字信息进行格式化，没有则不改动；jinja2语法", default=None)
-    data: Optional[str] = Field(description="对生成的原始数据（JSON）进行格式化，没有则不改动；jsonnet语法", default=None)
-
-
-class _ConvertOutput(BaseModel):
+class ConvertOutput(BaseModel):
     """定义Convert工具的输出"""
 
     text: str = Field(description="格式化后的文字信息")
     data: dict = Field(description="格式化后的结果")
 
 
-class Convert(CoreCall):
+class Convert(CoreCall, ret_type=ConvertOutput):
     """Convert 工具，用于对生成的文字信息和原始数据进行格式化"""
 
     name: str = "convert"
     description: str = "从上一步的工具的原始JSON返回结果中，提取特定字段的信息。"
 
+    text_template: Optional[str] = Field(description="自然语言信息的格式化模板，jinja2语法", default=None)
+    data_template: Optional[str] = Field(description="原始数据的格式化模板，jsonnet语法", default=None)
 
-    async def exec(self, _slot_data: dict[str, Any]) -> _ConvertOutput:
+
+    async def init(self, syscall_vars: CallVars, **_kwargs: Any) -> dict[str, Any]:
+        """初始化工具"""
+        return {}
+
+
+    async def exec(self) -> ConvertOutput:
         """调用Convert工具
 
         :param _slot_data: 经用户确认后的参数（目前未使用）
         :return: 提取出的字段
         """
-        # 获取必要参数
-        params: _ConvertParam = getattr(self, "_params")
-        syscall_vars: CallVars = getattr(self, "_syscall_vars")
-        last_output = syscall_vars.history[-1].output_data
         # 判断用户是否给了值
         time = datetime.now(tz=pytz.timezone("Asia/Shanghai")).strftime("%Y-%m-%d %H:%M:%S")
         if params.text is None:
@@ -76,7 +73,7 @@ class Convert(CoreCall):
             """)
             result_data = json.loads(_jsonnet.evaluate_snippet(data_template, params.data), ensure_ascii=False)
 
-        return _ConvertOutput(
+        return ConvertOutput(
             text=result_message,
             data=result_data,
         )

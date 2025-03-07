@@ -83,7 +83,7 @@ class ExecutorSummary(CorePattern):
 
     user_prompt: str = r"""
         <instructions>
-            根据给定的AI助手思考过程和关键事实，生成一个三句话背景总结。这个总结将用于后续对话的上下文理解。
+            根据给定的对话记录和关键事实，生成一个三句话背景总结。这个总结将用于后续对话的上下文理解。
 
             生成总结的要求如下：
             1. 突出重要信息点，例如时间、地点、人物、事件等。
@@ -91,12 +91,10 @@ class ExecutorSummary(CorePattern):
             3. 输出时请不要包含XML标签，确保信息准确性，不得编造信息。
             4. 总结应少于3句话，应少于300个字。
 
-            AI助手思考过程将在<thought>标签中给出，关键事实将在<facts>标签中给出。
+            对话记录将在<conversation>标签中给出，关键事实将在<facts>标签中给出。
         </instructions>
 
-        <thought>
-            {thought}
-        </thought>
+        {conversation}
 
         <facts>
             {facts}
@@ -119,20 +117,15 @@ class ExecutorSummary(CorePattern):
             facts_str += f"- {item}\n"
         facts_str += "</facts>"
 
-        if not background.thought:
-            background.thought = "<thought>\n这是新的对话，我还没有思考过。\n</thought>"
-        else:
-            background.thought = f"<thought>\n{background.thought}\n</thought>"
-
-        messages += [
+        messages = [
             {"role": "user", "content": self.user_prompt.format(
                 facts=facts_str,
-                thought=background.thought,
+                conversation=background.conversation,
             )},
         ]
 
         result = ""
-        async for chunk in ReasoningLLM().call(task_id, messages, streaming=False, temperature=1.0):
+        async for chunk in ReasoningLLM().call(task_id, messages, streaming=False, temperature=0.7):
             result += chunk
 
         return result

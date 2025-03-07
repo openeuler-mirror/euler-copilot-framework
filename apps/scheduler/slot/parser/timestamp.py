@@ -2,14 +2,16 @@
 
 Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 """
+import logging
 from datetime import datetime
 from typing import Any, Union
 
 import pytz
 from jsonschema import TypeChecker
 
-from apps.constants import LOGGER
 from apps.entities.enum_var import SlotType
+
+logger = logging.getLogger("ray")
 
 
 class SlotTimestampParser:
@@ -24,8 +26,8 @@ class SlotTimestampParser:
         try:
             timestamp_int = int(data)
             return datetime.fromtimestamp(timestamp_int, tz=pytz.timezone("Asia/Shanghai")).strftime("%Y-%m-%d %H:%M:%S")
-        except Exception as e:
-            LOGGER.error(f"Timestamp解析失败: {data}; 错误: {e!s}")
+        except Exception:
+            logger.exception("[SlotTimestampParser] Timestamp解析失败")
             return str(data)
 
 

@@ -4,6 +4,7 @@ Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 """
 
 import asyncio
+import logging
 import shutil
 
 import ray
@@ -13,7 +14,7 @@ from sqlalchemy import delete
 from sqlalchemy.dialects.postgresql import insert
 
 from apps.common.config import config
-from apps.constants import LOGGER, SERVICE_DIR
+from apps.constants import SERVICE_DIR
 from apps.entities.flow import Permission, ServiceMetadata
 from apps.entities.pool import NodePool, ServicePool
 from apps.entities.vector import NodePoolVector, ServicePoolVector
@@ -22,6 +23,8 @@ from apps.models.postgres import PostgreSQL
 from apps.scheduler.pool.check import FileChecker
 from apps.scheduler.pool.loader.metadata import MetadataLoader, MetadataType
 from apps.scheduler.pool.loader.openapi import OpenAPILoader
+
+logger = logging.getLogger("ray")
 
 
 class ServiceLoader:
@@ -33,8 +36,8 @@ class ServiceLoader:
         # 载入元数据
         metadata = await MetadataLoader().load_one(service_path / "metadata.yaml")
         if not isinstance(metadata, ServiceMetadata):
-            err = f"[ServiceLoader] 元数据类型错误: {service_path / 'metadata.yaml'}"
-            LOGGER.error(err)
+            err = f"[ServiceLoader] 元数据类型错误: {service_path}/metadata.yaml"
+            logger.error(err)
             raise TypeError(err)
         metadata.hashes = hashes
 
@@ -45,14 +48,14 @@ class ServiceLoader:
                 openapi_loader.load_one.remote(service_id, yaml_path, metadata)  # type: ignore[arg-type]
                 async for yaml_path in (service_path / "openapi").rglob("*.yaml")
             ]
-        except Exception as e:
-            LOGGER.error(f"[ServiceLoader] 服务 {service_id} 文件损坏: {e}")
+        except Exception:
+            logger.exception("[ServiceLoader] 服务 %s 文件损坏", service_id)
             return
         try:
             data = await asyncio.gather(*nodes)
             nodes = data[0]
-        except Exception as e:
-            LOGGER.error(f"[ServiceLoader] 服务 {service_id} 获取Node列表失败: {e}")
+        except Exception:
+            logger.exception("[ServiceLoader] 服务 %s 获取Node列表失败", service_id)
             return
         # 更新数据库
         nodes = [NodePool(**node.model_dump(exclude_none=True, by_alias=True)) for node in nodes]
@@ -86,18 +89,16 @@ class ServiceLoader:
         try:
             await service_collection.delete_one({"_id": service_id})
             await node_collection.delete_many({"service_id": service_id})
-        except Exception as e:
-            err = f"[ServiceLoader] 删除Service失败：{e}"
-            LOGGER.error(err)
+        except Exception:
+            logger.exception("[ServiceLoader] 删除Service失败")
 
         session = await PostgreSQL.get_session()
         try:
             await session.execute(delete(ServicePoolVector).where(ServicePoolVector.id == service_id))
             await session.execute(delete(NodePoolVector).where(NodePoolVector.id == service_id))
             await session.commit()
-        except Exception as e:
-            err = f"[ServiceLoader] 删除数据库失败：{e}"
-            LOGGER.error(err)
+        except Exception:
+            logger.exception("[ServiceLoader] 删除数据库失败")
 
         if not is_reload:
             path = Path(config["SEMANTICS_DIR"]) / SERVICE_DIR / service_id
@@ -110,7 +111,7 @@ class ServiceLoader:
         """更新数据库"""
         if not metadata.hashes:
             err = f"[ServiceLoader] 服务 {metadata.id} 的哈希值为空"
-            LOGGER.error(err)
+            logger.error(err)
             raise ValueError(err)
         # 更新MongoDB
         service_collection = MongoDB.get_collection("service")
@@ -139,7 +140,7 @@ class ServiceLoader:
                 await node_collection.update_one({"_id": node.id}, {"$set": jsonable_encoder(node)}, upsert=True)
         except Exception as e:
             err = f"[ServiceLoader] 更新 MongoDB 失败：{e}"
-            LOGGER.error(err)
+            logger.exception(err)
             raise RuntimeError(err) from e
 
         # 向量化所有数据并保存

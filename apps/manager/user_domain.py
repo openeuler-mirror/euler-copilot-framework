@@ -2,9 +2,12 @@
 
 Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 """
-from apps.constants import LOGGER
+import logging
+
 from apps.entities.collection import UserDomainData
 from apps.models.mongo import MongoDB
+
+logger = logging.getLogger("ray")
 
 
 class UserDomainManager:
@@ -24,8 +27,8 @@ class UserDomainManager:
             ])
 
             return [UserDomainData.model_validate(domain).name async for domain in domains]
-        except Exception as e:
-            LOGGER.info(f"Get user_domain by user_sub and topk failed: {e}")
+        except Exception:
+            logger.exception("[UserDomainManager] 查询用户最常涉及的%d个领域失败", topk)
         return []
 
     @staticmethod
@@ -41,6 +44,6 @@ class UserDomainManager:
                 await domain_collection.insert_one({"_id": domain_name, "domain_description": ""})
             await user_collection.update_one({"_id": user_sub, "domains.name": domain_name}, {"$inc": {"domains.$.count": 1}})
             return True
-        except Exception as e:
-            LOGGER.info(f"Update user_domain by user_sub and domain_name failed due to error: {e}")
+        except Exception:
+            logger.exception("[UserDomainManager] 更新用户领域失败")
             return False

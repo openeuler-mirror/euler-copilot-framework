@@ -2,13 +2,13 @@
 
 Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 """
+import logging
 from datetime import datetime, timezone
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, status
 from fastapi.responses import JSONResponse
 
-from apps.constants import LOGGER
 from apps.dependency import get_user, verify_csrf_token, verify_user
 from apps.entities.collection import RecordComment
 from apps.entities.request_data import AddCommentData
@@ -16,6 +16,7 @@ from apps.entities.response_data import ResponseData
 from apps.manager.comment import CommentManager
 from apps.manager.record import RecordManager
 
+logger = logging.getLogger("ray")
 router = APIRouter(
     prefix="/api/comment",
     tags=["comment"],
@@ -29,7 +30,7 @@ router = APIRouter(
 async def add_comment(post_body: AddCommentData, user_sub: Annotated[str, Depends(get_user)]):  # noqa: ANN201
     """给Record添加评论"""
     if not await RecordManager.verify_record_in_group(post_body.group_id, post_body.record_id, user_sub):
-        LOGGER.error("Comment: record_id not found.")
+        logger.error("[Comment] record_id 不存在")
         return JSONResponse(status_code=status.HTTP_204_NO_CONTENT, content=ResponseData(
             code=status.HTTP_204_NO_CONTENT,
             message="record_id not found",

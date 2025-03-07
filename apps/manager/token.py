@@ -2,15 +2,17 @@
 
 Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 """
+import logging
 from typing import Optional
 
 import aiohttp
 from fastapi import status
 
 from apps.common.config import config
-from apps.constants import LOGGER
 from apps.manager.session import SessionManager
 from apps.models.redis import RedisConnectionPool
+
+logger = logging.getLogger("ray")
 
 
 class TokenManager:
@@ -69,7 +71,7 @@ class TokenManager:
                 )
                 ret = await response.json()
                 if response.status != status.HTTP_200_OK:
-                    LOGGER.error(f"获取OIDC Access token 失败: {ret}")
+                    logger.error("[TokenManager] 获取OIDC Access token 失败: %s", ret)
                     return None
                 oidc_access_token = ret["data"]["access_token"]
                 pipe.set(f"{user_sub}_oidc_access_token", oidc_access_token, int(config["OIDC_ACCESS_TOKEN_EXPIRE_TIME"]) * 60)
@@ -89,7 +91,7 @@ class TokenManager:
             )
             ret = await response.json()
             if response.status != status.HTTP_200_OK:
-                LOGGER.error(f"获取{plugin_name}插件所需的token失败")
+                logger.error("[TokenManager] 获取 %s 插件所需的token失败", plugin_name)
                 return None
             async with RedisConnectionPool.get_redis_connection().pipeline(transaction=True) as pipe:
                 pipe.set(f"{plugin_name}_{user_sub}_token", ret["data"]["access_token"], int(expire_time) * 60)

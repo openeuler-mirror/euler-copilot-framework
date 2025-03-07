@@ -32,9 +32,9 @@ class ExecutorState(BaseModel):
     """FlowExecutor状态"""
 
     # 执行器级数据
-    name: str = Field(description="执行器名称")
-    description: str = Field(description="执行器描述")
-    status: StepStatus = Field(description="执行器状态")
+    flow_id: str = Field(description="Flow ID")
+    description: str = Field(description="Flow描述")
+    status: StepStatus = Field(description="Flow执行状态")
     # 附加信息
     step_id: str = Field(description="当前步骤ID")
     step_name: str = Field(description="当前步骤名称")
