@@ -5,6 +5,7 @@ Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 
 import copy
 import json
+import logging
 import random
 import time
 import traceback
@@ -18,7 +19,7 @@ from openai import AsyncOpenAI
 from pydantic import BaseModel, Field
 
 from apps.common.config import config
-from apps.constants import LOGGER, REASONING_BEGIN_TOKEN, REASONING_END_TOKEN
+from apps.constants import REASONING_BEGIN_TOKEN, REASONING_END_TOKEN
 from apps.dependency import (
     get_session,
     get_user,
@@ -31,6 +32,8 @@ from apps.entities.scheduler import CallError
 from apps.manager.appcenter import AppCenterManager
 from apps.manager.flow import FlowManager
 from apps.scheduler.pool.loader.flow import FlowLoader
+
+logger = logging.getLogger("ray")
 
 
 class ReasoningLLM:
@@ -166,7 +169,7 @@ class ReasoningLLM:
                 yield reasoning_content
             yield result
 
-        # LOGGER.info(f"推理LLM：{reasoning_content}\n\n{result}")
+        # logger.info(f"推理LLM：{reasoning_content}\n\n{result}")
 
         # output_tokens = self._calculate_token_length([{"role": "assistant", "content": result}], pure_text=True)
         # task = ray.get_actor("task")
@@ -326,7 +329,7 @@ async def mock_data(
         params["question"] = question
 
         if flow is not None:
-            LOGGER.info(json.dumps(flow.model_dump_json(exclude_none=True, by_alias=True), ensure_ascii=False))
+            logger.info(json.dumps(flow.model_dump_json(exclude_none=True, by_alias=True), ensure_ascii=False))
             for step_id, step in flow.steps.items():
                 mapp[step_id] = step.name, step.params
             while now_flow_item != "end":
@@ -414,7 +417,7 @@ async def mock_data(
         # task = await task_pool.get_task.remote(task_id)
         # answer_text = task.record.content.answer
         # if not answer_text:
-        #     LOGGER.error(msg="Answer is empty")
+        #     logger.error(msg="Answer is empty")
         #     yield "data: [ERROR]\n\n"
         #     await Activity.remove_active(user_sub)
         #     return
@@ -422,7 +425,7 @@ async def mock_data(
         # # 创建新Record，存入数据库
         # await save_data(task_id, user_sub, post_body, result.used_docs)
     except Exception:
-        LOGGER.error(f"Run mock_data failed：{traceback.format_exc()}")
+        logger.error(f"Run mock_data failed：{traceback.format_exc()}")
         yield "data: [ERROR]\n\n"
 
 
@@ -465,7 +468,7 @@ async def call_llm(params: dict = {}):
     }
     prompt = params.get("prompt", "")
     chunk_list = params.get("chunk_list", "")
-    LOGGER.info("LLM 接收", chunk_list)
+    logger.info("LLM 接收", chunk_list)
     user_call = "请回答问题" + params.get("quetion", "") + "下面是获得的信息："
     # 构建请求体
     payload = {
@@ -486,11 +489,11 @@ async def call_llm(params: dict = {}):
             if response.status == status.HTTP_200_OK:
                 result = await response.json()
                 result = result["choices"][0]["message"]["content"]
-                LOGGER.info(result)
+                logger.info(result)
                 result = result.replace("\n\n", "")
                 return {"content": result}
             text = await response.text()
-            LOGGER.error(f"LLM 调用失败：{text}")
+            logger.error(f"LLM 调用失败：{text}")
             return None
 
 

@@ -2,6 +2,7 @@
 
 Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 """
+import logging
 from datetime import datetime
 from typing import Any
 
@@ -9,8 +10,9 @@ import pytz
 from jionlp import parse_time
 from jsonschema import TypeChecker
 
-from apps.constants import LOGGER
 from apps.entities.enum_var import SlotType
+
+logger = logging.getLogger("ray")
 
 
 class SlotDateParser:
@@ -31,7 +33,7 @@ class SlotDateParser:
         if "time" in result:
             start_time, end_time = result["time"]
         else:
-            LOGGER.error(f"Date解析失败: {data}")
+            logger.error("Date解析失败: %s", data)
             return data, data
 
         try:
@@ -41,8 +43,8 @@ class SlotDateParser:
 
             end_time = datetime.strptime(end_time, "%Y-%m-%d %H:%M:%S").astimezone(pytz.timezone("Asia/Shanghai"))
             end_time = end_time.strftime(time_format)
-        except Exception as e:
-            LOGGER.error(f"Date解析失败: {data}; 错误: {e!s}")
+        except Exception:
+            logger.exception("[Slot] Date解析失败: %s", data)
             return data, data
 
         return start_time, end_time
