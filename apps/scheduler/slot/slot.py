@@ -14,7 +14,7 @@ from jsonschema.protocols import Validator
 from jsonschema.validators import extend
 
 from apps.constants import LOGGER
-from apps.llm.patterns.json import Json
+from apps.llm.patterns.json_gen import Json
 from apps.scheduler.slot.parser import (
     SlotConstParser,
     SlotDateParser,

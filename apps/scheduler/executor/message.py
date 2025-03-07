@@ -42,7 +42,7 @@ async def push_step_input(task: TaskBlock, queue: actor.ActorHandle, state: Exec
     # 更新FlowContext
     task.flow_context[state.step_id] = FlowStepHistory(
         task_id=task.record.task_id,
-        flow_id=state.name,
+        flow_id=state.flow_id,
         step_id=state.step_id,
         status=state.status,
         input_data=state.filled_data,

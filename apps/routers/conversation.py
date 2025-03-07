@@ -2,6 +2,7 @@
 
 Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 """
+import logging
 from datetime import datetime
 from typing import Annotated, Optional
 
@@ -9,7 +10,6 @@ import pytz
 from fastapi import APIRouter, Depends, Query, Request, status
 from fastapi.responses import JSONResponse
 
-from apps.constants import LOGGER
 from apps.dependency import get_user, verify_csrf_token, verify_user
 from apps.entities.collection import Audit, Conversation
 from apps.entities.request_data import (
@@ -40,7 +40,7 @@ router = APIRouter(
         Depends(verify_user),
     ],
 )
-
+logger = logging.getLogger("ray")
 
 async def create_new_conversation(
     user_sub: str,
@@ -167,7 +167,7 @@ async def update_conversation(  # noqa: ANN201
     # 判断Conversation是否合法
     conv = await ConversationManager.get_conversation_by_conversation_id(user_sub, conversationId)
     if not conv or conv.user_sub != user_sub:
-        LOGGER.error("Conversation: conversation_id not found.")
+        logger.error("[Conversation] conversation_id 不存在")
         return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content=ResponseData(
             code=status.HTTP_400_BAD_REQUEST,
             message="conversation_id not found",

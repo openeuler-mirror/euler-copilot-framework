@@ -3,13 +3,14 @@
 Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 """
 
+import logging
 from typing import Optional
 
 from anyio import Path
 from pymongo import ASCENDING
 
 from apps.common.config import config
-from apps.constants import APP_DIR, LOGGER
+from apps.constants import APP_DIR
 from apps.entities.enum_var import EdgeType, PermissionType
 from apps.entities.flow import Edge, Flow, Step, StepPos
 from apps.entities.flow_topology import (
@@ -26,6 +27,8 @@ from apps.scheduler.pool.check import FileChecker
 from apps.scheduler.pool.loader.app import AppLoader
 from apps.scheduler.pool.loader.flow import FlowLoader
 from apps.utils.flow import generate_from_schema
+
+logger = logging.getLogger("ray")
 
 
 class FlowManager:
@@ -45,7 +48,7 @@ class FlowManager:
         try:
             node_pool_record = await node_pool_collection.find_one({"_id": node_meta_data_id})
             if node_pool_record is None:
-                LOGGER.error(f"节点元数据{node_meta_data_id}不存在")
+                logger.error("[FlowManager] 节点元数据 %s 不存在", node_meta_data_id)
                 return False
             match_conditions = [
                 {"author": user_sub},
@@ -66,8 +69,8 @@ class FlowManager:
 
             result = await service_collection.count_documents(query)
             return result > 0
-        except Exception as e:
-            LOGGER.error(f"Validate user node meta data access failed due to: {e}")
+        except Exception:
+            logger.exception("[FlowManager] 验证用户对服务的访问权限失败")
             return False
 
     @staticmethod
@@ -89,8 +92,8 @@ class FlowManager:
                         "input_parameters": generate_from_schema(params_schema),
                         "output_parameters": output_schema,
                     }
-                except Exception as e:
-                    LOGGER.error(f"[FlowManeger] generate_from_schema failed {e}")
+                except Exception:
+                    logger.exception("[FlowManager] generate_from_schema 失败")
                     continue
                 node_meta_data_item = NodeMetaDataItem(
                     nodeId=node_pool_record["_id"],
@@ -103,8 +106,8 @@ class FlowManager:
                 )
                 nodes_meta_data_items.append(node_meta_data_item)
             return nodes_meta_data_items
-        except Exception as e:
-            LOGGER.error(f"Get node metadatas by service_id failed due to: {e}")
+        except Exception:
+            logger.exception("[FlowManager] 获取节点元数据失败")
             return None
 
     @staticmethod
@@ -161,8 +164,8 @@ class FlowManager:
                 service_item.node_meta_datas = node_meta_datas
             return service_items
 
-        except Exception as e:
-            LOGGER.error(f"Get service by user id failed due to: {e}")
+        except Exception:
+            logger.exception("[FlowManager] 获取用户服务失败")
             return None
 
     @staticmethod
@@ -176,7 +179,7 @@ class FlowManager:
         try:
             node_pool_record = await node_pool_collection.find_one({"_id": node_meta_data_id})
             if node_pool_record is None:
-                LOGGER.error(f"节点元数据{node_meta_data_id}不存在")
+                logger.error("[FlowManager] 节点元数据 %s 不存在", node_meta_data_id)
                 return None
             parameters = {
                 "input_parameters": node_pool_record["params_schema"],
@@ -191,8 +194,8 @@ class FlowManager:
                 parameters=parameters,
                 createdAt=node_pool_record["created_at"],
             )
-        except Exception as e:
-            LOGGER.error(f"获取节点元数据失败: {e}")
+        except Exception:
+            logger.exception("[FlowManager] 获取节点元数据失败")
             return None
 
     @staticmethod
@@ -207,7 +210,7 @@ class FlowManager:
             app_collection = MongoDB.get_collection("app")
             app_record = await app_collection.find_one({"_id": app_id})
             if app_record is None:
-                LOGGER.error(f"应用{app_id}不存在")
+                logger.error("[FlowManager] 应用 %s 不存在", app_id)
                 return None
             cursor = app_collection.find(
                 {"_id": app_id, "flows.id": flow_id},
@@ -221,14 +224,14 @@ class FlowManager:
             if "flows" not in app_record or len(app_record["flows"]) == 0:
                 return None
             flow_record = app_record["flows"][0]
-        except Exception as e:
-            LOGGER.error(f"Get flow by app_id and flow_id failed due to: {e}")
+        except Exception:
+            logger.exception("[FlowManager] 获取流失败")
             return None
         try:
             if flow_record:
                 flow_config = await FlowLoader().load(app_id, flow_id)
                 if not flow_config:
-                    LOGGER.error("Get flow config by app_id and flow_id failed")
+                    logger.error("[FlowManager] 获取流配置失败")
                     return None
                 focus_point = flow_record["focus_point"]
                 flow_item = FlowItem(
@@ -270,7 +273,7 @@ class FlowManager:
                     branch_id = ""
                     tmp_list = edge_config.edge_from.split(".")
                     if len(tmp_list) == 0 or len(tmp_list) > 2:
-                        LOGGER.error("edge from format error")
+                        logger.error("[FlowManager] Flow中边的格式错误")
                         continue
                     if len(tmp_list) == 2:
                         edge_from = tmp_list[0]
@@ -286,8 +289,8 @@ class FlowManager:
                     )
                 return (flow_item, focus_point)
             return None
-        except Exception as e:
-            LOGGER.error(f"Get flow by app_id and flow_id failed due to: {e}")
+        except Exception:
+            logger.exception("[FlowManager] 获取流失败")
             return None
 
     @staticmethod
@@ -308,7 +311,7 @@ class FlowManager:
             app_collection = MongoDB.get_collection("app")
             app_record = await app_collection.find_one({"_id": app_id})
             if app_record is None:
-                LOGGER.error(f"应用{app_id}不存在")
+                logger.error("[FlowManager] 应用 %s 不存在", app_id)
                 return None
             cursor = app_collection.find(
                 {"_id": app_id, "flows._id": flow_id},
@@ -320,8 +323,8 @@ class FlowManager:
                 app_record = app_records[0]
                 if "flows" in app_record and len(app_record["flows"]) != 0:
                     flow_record = app_record["flows"][0]
-        except Exception as e:
-            LOGGER.error(f"Get flow by app_id and flow_id failed due to: {e}")
+        except Exception:
+            logger.exception("[FlowManager] 获取流失败")
             return None
         try:
             flow_config = Flow(
@@ -339,7 +342,7 @@ class FlowManager:
                     description=node_item.description,
                     pos=StepPos(x=node_item.position.x,
                                 y=node_item.position.y),
-                    params=node_item.parameters.get('input_parameters', {}),
+                    params=node_item.parameters.get("input_parameters", {}),
                 )
             for edge_item in flow_item.edges:
                 edge_from = edge_item.source_node
@@ -387,8 +390,8 @@ class FlowManager:
             await file_checker.diff_one(app_path)
             await app_loader.load(app_id, file_checker.hashes[f"{APP_DIR}/{app_id}"])
             return flow_item
-        except Exception as e:
-            LOGGER.error(f"Put flow by app_id and flow_id failed due to: {e}")
+        except Exception:
+            logger.exception("[FlowManager] 存储/更新流失败")
             return None
 
     @staticmethod
@@ -408,11 +411,11 @@ class FlowManager:
             await file_checker.diff_one(app_path)
             await app_loader.load(app_id, file_checker.hashes[f"{APP_DIR}/{app_id}"])
             if result is None:
-                LOGGER.error("Delete flow from app pool failed")
+                logger.error("[FlowManager] 删除流失败")
                 return None
             return flow_id
-        except Exception as e:
-            LOGGER.error(f"Delete flow by app_id and flow_id failed due to: {e}")
+        except Exception:
+            logger.exception("[FlowManager] 删除流失败")
             return None
 
     @staticmethod
@@ -437,6 +440,6 @@ class FlowManager:
             await file_checker.diff_one(app_path)
             await app_loader.load(app_id, file_checker.hashes[f"{APP_DIR}/{app_id}"])
             return True
-        except Exception as e:
-            LOGGER.error(f"Update flow debug from app pool failed: {e!s}")
+        except Exception:
+            logger.exception("[FlowManager] 更新流debug状态失败")
             return False

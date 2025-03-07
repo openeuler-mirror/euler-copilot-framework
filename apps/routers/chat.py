@@ -2,8 +2,8 @@
 
 Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 """
+import logging
 import random
-import traceback
 import uuid
 from collections.abc import AsyncGenerator
 from typing import Annotated
@@ -13,7 +13,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import JSONResponse, StreamingResponse
 
 from apps.common.queue import MessageQueue
-from apps.constants import LOGGER, SCHEDULER_REPLICAS
+from apps.constants import SCHEDULER_REPLICAS
 from apps.dependency import (
     get_session,
     get_user,
@@ -27,7 +27,7 @@ from apps.scheduler.scheduler.context import save_data
 from apps.service.activity import Activity
 
 RECOMMEND_TRES = 5
-
+logger = logging.getLogger("ray")
 router = APIRouter(
     prefix="/api",
     tags=["chat"],
@@ -43,7 +43,7 @@ async def chat_generator(post_body: RequestData, user_sub: str, session_id: str)
         word_check = ray.get_actor("words_check")
         if await word_check.check.remote(post_body.question) != 1:
             yield "data: [SENSITIVE]\n\n"
-            LOGGER.info(msg="问题包含敏感词！")
+            logger.info("[Chat] 问题包含敏感词！")
             await Activity.remove_active(user_sub)
             return
 
@@ -84,7 +84,7 @@ async def chat_generator(post_body: RequestData, user_sub: str, session_id: str)
         task = await task_actor.get_task.remote(task_id)
         answer_text = task.record.content.answer
         if not answer_text:
-            LOGGER.error(msg="Answer is empty")
+            logger.error("[Chat] 答案为空")
             yield "data: [ERROR]\n\n"
             await Activity.remove_active(user_sub)
             return
@@ -92,7 +92,7 @@ async def chat_generator(post_body: RequestData, user_sub: str, session_id: str)
         # 对结果进行敏感词检查
         if await word_check.check.remote(answer_text) != 1:
             yield "data: [SENSITIVE]\n\n"
-            LOGGER.info(msg="答案包含敏感词！")
+            logger.info("[Chat] 答案包含敏感词！")
             await Activity.remove_active(user_sub)
             return
 
@@ -101,8 +101,8 @@ async def chat_generator(post_body: RequestData, user_sub: str, session_id: str)
 
         yield "data: [DONE]\n\n"
 
-    except Exception as e:
-        LOGGER.error(msg=f"生成答案失败：{e!s}\n{traceback.format_exc()}")
+    except Exception:
+        logger.exception("[Chat] 生成答案失败")
         yield "data: [ERROR]\n\n"
 
     finally:

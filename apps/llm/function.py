@@ -3,13 +3,9 @@
 Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 """
 import json
-from typing import Any, Union
+from typing import Any
 
-import ollama
-import openai
-import sglang
 from asyncer import asyncify
-from sglang.lang.chat_template import get_chat_template
 
 from apps.common.config import config
 from apps.scheduler.json_schema import build_regex_from_schema
@@ -18,7 +14,7 @@ from apps.scheduler.json_schema import build_regex_from_schema
 class FunctionLLM:
     """用于FunctionCall的模型"""
 
-    _client: Union[sglang.RuntimeEndpoint, openai.AsyncOpenAI, ollama.AsyncClient]
+    _client: Any
 
     def __init__(self) -> None:
         """初始化用于FunctionCall的模型
@@ -26,15 +22,20 @@ class FunctionLLM:
         目前支持：
         - sglang
         - vllm
+        - ollama
         """
         if config["SCHEDULER_BACKEND"] == "sglang":
+            import sglang
+            from sglang.lang.chat_template import get_chat_template
+
             if not config["SCHEDULER_API_KEY"]:
                 self._client = sglang.RuntimeEndpoint(config["SCHEDULER_URL"])
             else:
                 self._client = sglang.RuntimeEndpoint(config["SCHEDULER_URL"], api_key=config["SCHEDULER_API_KEY"])
             self._client.chat_template = get_chat_template("chatml")
-            sglang.set_default_backend(self._client)
+
         if config["SCHEDULER_BACKEND"] == "vllm" or config["SCHEDULER_BACKEND"] == "openai":
+            import openai
             if not config["SCHEDULER_API_KEY"]:
                 self._client = openai.AsyncOpenAI(base_url=config["SCHEDULER_URL"])
             else:
@@ -42,7 +43,9 @@ class FunctionLLM:
                     base_url=config["SCHEDULER_URL"],
                     api_key=config["SCHEDULER_API_KEY"],
                 )
+
         if config["SCHEDULER_BACKEND"] == "ollama":
+            import ollama
             if not config["SCHEDULER_API_KEY"]:
                 self._client = ollama.AsyncClient(host=config["SCHEDULER_URL"])
             else:
@@ -54,8 +57,7 @@ class FunctionLLM:
                 )
 
     @staticmethod
-    @sglang.function
-    def _call_sglang(s, messages: list[dict[str, Any]], schema: dict[str, Any], max_tokens: int, temperature: float) -> None:  # noqa: ANN001
+    def _sglang_func(s, messages: list[dict[str, Any]], schema: dict[str, Any], max_tokens: int, temperature: float) -> None:  # noqa: ANN001
         """构建sglang需要的执行函数
 
         :param s: sglang context
@@ -66,20 +68,20 @@ class FunctionLLM:
         """
         for msg in messages:
             if msg["role"] == "user":
-                s += sglang.user(msg["content"])
+                s += s.user(msg["content"])
             elif msg["role"] == "assistant":
-                s += sglang.assistant(msg["content"])
+                s += s.assistant(msg["content"])
             elif msg["role"] == "system":
-                s += sglang.system(msg["content"])
+                s += s.system(msg["content"])
             else:
                 err_msg = f"Unknown message role: {msg['role']}"
                 raise ValueError(err_msg)
 
         # 如果Schema为空，认为是直接问答，不加输出限制
         if not schema:
-            s += sglang.assistant(sglang.gen(name="output", max_tokens=max_tokens, temperature=temperature))
+            s += s.assistant(s.gen(name="output", max_tokens=max_tokens, temperature=temperature))
         else:
-            s += sglang.assistant(sglang.gen(name="output", regex=build_regex_from_schema(json.dumps(schema)), max_tokens=max_tokens, temperature=temperature))
+            s += s.assistant(s.gen(name="output", regex=build_regex_from_schema(json.dumps(schema)), max_tokens=max_tokens, temperature=temperature))
 
 
     async def _call_vllm(self, messages: list[dict[str, Any]], schema: dict[str, Any], max_tokens: int, temperature: float) -> str:
@@ -108,7 +110,7 @@ class FunctionLLM:
         if schema:
             param["extra_body"] = {"guided_json": schema}
 
-        chat = await self._client.chat.completions.create(**param) # type: ignore[]
+        chat = await self._client.chat.completions.create(**param)
 
         result = ""
         async for chunk in chat:
@@ -149,7 +151,7 @@ class FunctionLLM:
             param["tools"] = [tool_data]
             param["tool_choice"] = "required"
 
-        response = await self._client.chat.completions.create(**param) # type: ignore[]
+        response = await self._client.chat.completions.create(**param)
         try:
             ans = response.choices[0].message.tool_calls[0].function.arguments or ""
         except IndexError:
@@ -179,8 +181,26 @@ class FunctionLLM:
         if schema:
             param["format"] = schema
 
-        response = await self._client.chat(**param)     # type: ignore[]
+        response = await self._client.chat(**param)
         return response.message.content or ""
+
+
+    async def _call_sglang(self, messages: list[dict[str, Any]], schema: dict[str, Any], max_tokens: int, temperature: float) -> str:
+        """调用sglang模型生成JSON
+
+        :param messages: 历史消息
+        :param schema: 输出JSON Schema
+        :param max_tokens: 最大Token长度
+        :param temperature: 大模型温度
+        :return: 生成的JSON
+        """
+        # 构造sglang执行函数
+        import sglang
+        sglang.set_default_backend(self._client)
+
+        sglang_func = sglang.function(self._sglang_func)
+        state = await asyncify(sglang_func.run)(messages, schema, max_tokens, temperature)
+        return state["output"]
 
 
     async def call(self, **kwargs) -> str:  # noqa: ANN003
@@ -192,8 +212,7 @@ class FunctionLLM:
             json_str = await self._call_vllm(**kwargs)
 
         elif config["SCHEDULER_BACKEND"] == "sglang":
-            state = await asyncify(FunctionLLM._call_sglang.run)(**kwargs)
-            json_str = state["output"]
+            json_str = await self._call_sglang(**kwargs)
 
         elif config["SCHEDULER_BACKEND"] == "ollama":
             json_str = await self._call_ollama(**kwargs)

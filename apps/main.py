@@ -20,6 +20,7 @@ from apps.common.wordscheck import WordsCheck
 from apps.constants import SCHEDULER_REPLICAS
 from apps.cron.delete_user import DeleteUserCron
 from apps.dependency.session import VerifySessionMiddleware
+from apps.llm.token import TokenCalculator
 from apps.routers import (
     api_key,
     appcenter,
@@ -93,6 +94,7 @@ if __name__ == "__main__":
     task = Task.options(name="task").remote()
     pool_actor = Pool.options(name="pool").remote()
     ray.get(pool_actor.init.remote())   # type: ignore[attr-type]
+    token_actor = TokenCalculator.options(name="token").remote()
     # 初始化Scheduler
     scheduler_sctors = [Scheduler.options(name=f"scheduler_{i}").remote() for i in range(SCHEDULER_REPLICAS)]
 

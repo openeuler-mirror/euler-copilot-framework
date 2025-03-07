@@ -4,13 +4,16 @@ Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 """
 from __future__ import annotations
 
+import logging
 import urllib.parse
 from typing import TYPE_CHECKING
 
 from pymongo import AsyncMongoClient
 
 from apps.common.config import config
-from apps.constants import LOGGER
+
+logger = logging.getLogger("ray")
+
 
 if TYPE_CHECKING:
     from pymongo.asynchronous.client_session import AsyncClientSession
@@ -30,7 +33,7 @@ class MongoDB:
         try:
             return cls._client[config["MONGODB_DATABASE"]][collection_name]
         except Exception as e:
-            LOGGER.error(f"Get collection {collection_name} failed: {e}")
+            logger.exception("[MongoDB] 获取集合 %s 失败", collection_name)
             raise RuntimeError(str(e)) from e
 
     @classmethod
@@ -38,8 +41,8 @@ class MongoDB:
         """清空MongoDB集合（表）"""
         try:
             await cls._client[config["MONGODB_DATABASE"]][collection_name].delete_many({})
-        except Exception as e:
-            LOGGER.error(f"Clear collection {collection_name} failed: {e}")
+        except Exception:
+            logger.exception("[MongoDB] 清空集合 %s 失败", collection_name)
 
     @classmethod
     def get_session(cls) -> AsyncClientSession:

@@ -65,7 +65,7 @@ class MessageQueue:
             # 如果使用了Flow
             flow = MessageFlow(
                 appId=task.flow_state.app_id,
-                flowId=task.flow_state.name,
+                flowId=task.flow_state.flow_id,
                 stepId=task.flow_state.step_id,
                 stepName=task.flow_state.step_name,
                 stepStatus=task.flow_state.status,

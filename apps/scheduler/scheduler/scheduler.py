@@ -149,6 +149,7 @@ class Scheduler:
         logger.info("[Scheduler] 初始化Executor")
 
         flow_exec = Executor(
+            flow_id=flow_id,
             flow=flow_data,
             task=task,
             queue=queue,

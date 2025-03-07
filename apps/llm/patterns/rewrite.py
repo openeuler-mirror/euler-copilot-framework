@@ -1,5 +1,6 @@
 """问题改写"""
 from apps.llm.patterns.core import CorePattern
+from apps.llm.reasoning import ReasoningLLM
 
 
 class QuestionRewrite(CorePattern):
@@ -32,6 +33,13 @@ class QuestionRewrite(CorePattern):
         question = kwargs["question"]
 
         messages = [
-            
+            {"role": "system", "content": self.system_prompt},
+            {"role": "user", "content": self.user_prompt.format(question=question)},
         ]
+
+        result = ""
+        async for chunk in ReasoningLLM().call(task_id, messages, streaming=False):
+            result += chunk
+
+        return result
 
