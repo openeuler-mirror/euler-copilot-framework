@@ -42,7 +42,7 @@ spec:
         fsGroup: 1001
       containers:
         - name: framework
-          image: {{ .Values.euler_copilot.framework.image | default (printf "%s/neocopilot/euler-copilot-framework:0.9.5-%s" (.Values.globals.imageRegistry | default "hub.oepkgs.net") (ternary "arm" "x86" (eq (.Values.globals.arch | default "x86") "arm"))) 
+          image: {{ .Values.euler_copilot.framework.image | default (printf "%s/neocopilot/euler-copilot-framework:0.9.5-%s" (.Values.globals.imageRegistry | default "hub.oepkgs.net") (ternary "arm" "x86" (eq (.Values.globals.arch | default "x86") "arm"))) }} 
           imagePullPolicy: {{ default "IfNotPresent" .Values.globals.imagePullPolicy }}
           ports:
             - containerPort: 8002
@@ -60,8 +60,8 @@ spec:
           env:
             - name: TZ
               value: "Asia/Shanghai"
-            # - name: PROD
-            #   value: "enable"
+            - name: PROD
+              value: "enable"
           volumeMounts:
             - mountPath: /euler-copilot-frame/config
               name: framework-shared
