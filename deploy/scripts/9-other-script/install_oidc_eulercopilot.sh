@@ -16,8 +16,17 @@ YELLOW='\e[33m'
 BLUE='\e[34m'
 NC='\e[0m' # 恢复默认颜色
 
-DEPLOY_DIR=/home/euler-copilot-framework/deploy
 PLUGINS_DIR="/home/eulercopilot/semantics"
+SCRIPT_PATH="$(
+  cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1
+  pwd
+)/$(basename "${BASH_SOURCE[0]}")"
+
+DEPLOY_DIR="$(
+  canonical_path=$(readlink -f "$SCRIPT_PATH" 2>/dev/null || echo "$SCRIPT_PATH")
+  dirname "$(dirname "$(dirname "$canonical_path")")"
+)"
+
 
 get_eth0_ip() {
     echo -e "${BLUE}获取 eth0 网络接口 IP 地址...${NC}"
