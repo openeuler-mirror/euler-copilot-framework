@@ -8,7 +8,15 @@ YELLOW='\033[33m'
 BLUE='\033[34m'
 NC='\033[0m'
 
-DEPLOY_DIR="/home/euler-copilot-framework/deploy"
+SCRIPT_PATH="$(
+  cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1
+  pwd
+)/$(basename "${BASH_SOURCE[0]}")"
+
+CHART_DIR="$(
+  canonical_path=$(readlink -f "$SCRIPT_PATH" 2>/dev/null || echo "$SCRIPT_PATH")
+  dirname "$(dirname "$(dirname "$canonical_path")")"
+)/chart"
 
 # 获取系统架构
 get_architecture() {
@@ -90,11 +98,11 @@ get_user_input() {
 helm_install() {
     local arch="$1"
     echo -e "${BLUE}==> 进入部署目录...${NC}"
-    [ ! -d "${DEPLOY_DIR}/chart" ] && {
-        echo -e "${RED}错误：部署目录不存在 ${DEPLOY_DIR}/chart ${NC}"
+    [ ! -d "${CHART_DIR}" ] && {
+        echo -e "${RED}错误：部署目录不存在 ${CHART_DIR} ${NC}"
         return 1
     }
-    cd "${DEPLOY_DIR}/chart"
+    cd "${CHART_DIR}"
 
     echo -e "${BLUE}正在安装 authhub...${NC}"
     helm upgrade --install authhub -n euler-copilot ./authhub \
