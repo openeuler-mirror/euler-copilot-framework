@@ -60,8 +60,8 @@ spec:
           env:
             - name: TZ
               value: "Asia/Shanghai"
-            - name: PROD
-              value: "enable"
+         #   - name: PROD
+         #     value: "enable"
           volumeMounts:
             - mountPath: /euler-copilot-frame/config
               name: framework-shared
