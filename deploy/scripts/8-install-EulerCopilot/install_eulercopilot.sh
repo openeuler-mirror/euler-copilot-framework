@@ -75,61 +75,8 @@ get_network_ip() {
     echo "$host"
 }
 
-get_client_info_auto() {
-    # 自动生成客户端名称（格式：client_随机8位字符）
-    local client_name="client_$(openssl rand -hex 4 | cut -c1-8)"
-    
-    # 生成输入应答（使用随机生成的client_name）
-    {
-        echo "$client_name"  # 客户端名称（使用随机生成值）
-        echo ""             # client_url（回车使用默认）
-        echo ""             # redirect_urls（回车使用默认）
-    } | python3 "${DEPLOY_DIR}/scripts/9-other-script/get_client_id_and_secret.py" > client_info.tmp 2>&1
 
-    # 检查Python脚本执行结果
-    if [ $? -ne 0 ]; then
-        echo -e "${RED}错误：Python脚本执行失败${NC}"
-        cat client_info.tmp
-    fi
-
-    # 提取凭证信息（保持原有逻辑）
-    client_id=$(grep "client_id: " client_info.tmp | awk '{print $2}')
-    client_secret=$(grep "client_secret: " client_info.tmp | awk '{print $2}')
-    rm -f client_info.tmp
-
-    # 验证结果（保持原有逻辑）
-    if [ -z "$client_id" ] || [ -z "$client_secret" ]; then
-        echo -e "${RED}错误：无法获取有效的客户端凭证${NC}" >&2
-    fi
-
-    # 输出结果（保持原有格式）
-    echo -e "${GREEN}==============================${NC}"
-    echo -e "${GREEN}Client ID:     ${client_id}${NC}"
-    echo -e "${GREEN}Client Secret: ${client_secret}${NC}"
-    echo -e "${GREEN}==============================${NC}"
-}
-
-get_client_info_manual() {
-
-    # 非交互模式直接使用默认值
-    if [ -t 0 ]; then  # 仅在交互式终端显示提示
-        echo -e "${BLUE}请输入 Client ID: 域名（端点信息：Client ID）： ${NC}"
-        read -p "> " input_id
-        [ -n "$input_id" ] && client_id=$input_id
-
-        echo -e "${BLUE}请输入 Client Secret: 域名（端点信息：Client Secret）：${NC}"
-        read -p "> " input_secret
-        [ -n "$input_secret" ] && client_secret=$input_secret
-    fi
-
-    # 统一验证域名格式
-    echo -e "${GREEN}使用配置："
-    echo "Client ID: $client_id"
-    echo "Client Secret: $client_secret"
-
-}
-
-# # 处理域名
+# 处理域名
 get_domain_input() {
     # 从环境变量读取或使用默认值
     eulercopilot_domain=${EULERCOPILOT_DOMAIN:-"www.eulercopilot.local"}
@@ -162,6 +109,57 @@ get_domain_input() {
     echo "Authhub域名:     $authhub_domain"
 }
 
+get_client_info_auto() {
+    get_domain_input
+    # 直接调用Python脚本并传递域名参数
+    python3 "${DEPLOY_DIR}/scripts/9-other-script/get_client_id_and_secret.py" "${eulercopilot_domain}" > client_info.tmp 2>&1
+
+    # 检查Python脚本执行结果
+    if [ $? -ne 0 ]; then
+        echo -e "${RED}错误：Python脚本执行失败${NC}"
+        cat client_info.tmp
+        rm -f client_info.tmp
+        return 1
+    fi
+
+    # 提取凭证信息
+    client_id=$(grep "client_id: " client_info.tmp | awk '{print $2}')
+    client_secret=$(grep "client_secret: " client_info.tmp | awk '{print $2}')
+    rm -f client_info.tmp
+
+    # 验证结果
+    if [ -z "$client_id" ] || [ -z "$client_secret" ]; then
+        echo -e "${RED}错误：无法获取有效的客户端凭证${NC}" >&2
+        return 1
+    fi
+
+    # 输出结果
+    echo -e "${GREEN}==============================${NC}"
+    echo -e "${GREEN}Client ID:     ${client_id}${NC}"
+    echo -e "${GREEN}Client Secret: ${client_secret}${NC}"
+    echo -e "${GREEN}==============================${NC}"
+}
+
+get_client_info_manual() {
+
+    # 非交互模式直接使用默认值
+    if [ -t 0 ]; then  # 仅在交互式终端显示提示
+        echo -e "${BLUE}请输入 Client ID: 域名（端点信息：Client ID）： ${NC}"
+        read -p "> " input_id
+        [ -n "$input_id" ] && client_id=$input_id
+
+        echo -e "${BLUE}请输入 Client Secret: 域名（端点信息：Client Secret）：${NC}"
+        read -p "> " input_secret
+        [ -n "$input_secret" ] && client_secret=$input_secret
+    fi
+
+    # 统一验证域名格式
+    echo -e "${GREEN}使用配置："
+    echo "Client ID: $client_id"
+    echo "Client Secret: $client_secret"
+
+}
+
 # 检查语义接口是否存在
 check_directories() {
     echo -e "${BLUE}检查语义接口目录是否存在...${NC}" >&2
@@ -170,6 +168,8 @@ check_directories() {
     else
         if mkdir -p "${PLUGINS_DIR}"; then
             echo -e "${GREEN}目录已创建：${PLUGINS_DIR}${NC}" >&2
+	    mkdir -p "${PLUGINS_DIR}"/app "${PLUGINS_DIR}"/service "${PLUGINS_DIR}"/call
+	    chmod -R 775 ${PLUGINS_DIR}/*
         else
             echo -e "${RED}错误：无法创建目录 ${PLUGINS_DIR}${NC}" >&2
             exit 1
@@ -177,21 +177,45 @@ check_directories() {
     fi
 }
 
-# 检查是否存在已经部署的EulerCopilot
-check_and_delete_existing_deployment() {
+uninstall_eulercopilot() {
     echo -e "${YELLOW}检查是否存在已部署的 EulerCopilot...${NC}" >&2
-    if helm list -n $NAMESPACE --short | grep -q "^$NAMESPACE$"; then
-        echo -e "${YELLOW}发现已存在的 EulerCopilot 部署，正在删除...${NC}" >&2
-        helm uninstall -n $NAMESPACE $NAMESPACE || {
-            echo -e "${RED}错误：删除旧版 EulerCopilot 失败${NC}" >&2
-            exit 1
-        }
 
-        echo -e "${YELLOW}等待旧部署清理完成（10秒）...${NC}" >&2
-        sleep 10
+    # 删除 Helm Release: euler-copilot
+    if helm list -n euler-copilot --short | grep -q '^euler-copilot$'; then
+        echo -e "${GREEN}找到Helm Release: euler-copilot，开始清理...${NC}"
+        if ! helm uninstall euler-copilot -n euler-copilot; then
+            echo -e "${RED}错误：删除Helm Release euler-copilot 失败！${NC}" >&2
+            return 1
+        fi
     else
-        echo -e "${GREEN}未找到已存在的 EulerCopilot 部署，继续安装...${NC}" >&2
+        echo -e "${YELLOW}未找到需要清理的Helm Release: euler-copilot${NC}"
     fi
+
+    # 删除 PVC: framework-semantics-claim
+    local pvc_name="framework-semantics-claim"
+    if kubectl get pvc "$pvc_name" -n euler-copilot &>/dev/null; then
+        echo -e "${GREEN}找到PVC: ${pvc_name}，开始清理...${NC}"
+        if ! kubectl delete pvc "$pvc_name" -n euler-copilot --force --grace-period=0; then
+            echo -e "${RED}错误：删除PVC ${pvc_name} 失败！${NC}" >&2
+            return 1
+        fi
+    else
+        echo -e "${YELLOW}未找到需要清理的PVC: ${pvc_name}${NC}"
+    fi
+
+    # 删除 Secret: euler-copilot-system
+    local secret_name="euler-copilot-system"
+    if kubectl get secret "$secret_name" -n euler-copilot &>/dev/null; then
+        echo -e "${GREEN}找到Secret: ${secret_name}，开始清理...${NC}"
+        if ! kubectl delete secret "$secret_name" -n euler-copilot; then
+            echo -e "${RED}错误：删除Secret ${secret_name} 失败！${NC}" >&2
+            return 1
+        fi
+    else
+        echo -e "${YELLOW}未找到需要清理的Secret: ${secret_name}${NC}"
+    fi
+
+    echo -e "${GREEN}资源清理完成${NC}"
 }
 
 # 修改配置文件
@@ -285,14 +309,12 @@ main() {
     local arch host
     arch=$(get_architecture) || exit 1
     host=$(get_network_ip) || exit 1
-
+    uninstall_eulercopilot
     if ! get_client_info_auto; then
 	echo -e "${YELLOW}需要手动登录Authhub域名并创建应用，获取client信息${NC}"
         get_client_info_manual
     fi
-    get_domain_input
     check_directories
-    check_and_delete_existing_deployment
     modify_yaml "$host"
     execute_helm_install "$arch"
 

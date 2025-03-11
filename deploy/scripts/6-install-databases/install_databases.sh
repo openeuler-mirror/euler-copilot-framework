@@ -49,7 +49,7 @@ create_namespace() {
     fi
 }
 
-delete_pvcs() {
+uninstall_databases() {
     echo -e "${BLUE}==> 清理现有资源...${NC}"
 
     local helm_releases
@@ -85,6 +85,18 @@ delete_pvcs() {
         done <<< "$pvc_list"
     else
         echo -e "${YELLOW}未找到需要清理的PVC${NC}"
+    fi
+
+    # 新增：删除 euler-copilot-database Secret
+    local secret_name="euler-copilot-database"
+    if kubectl get secret "$secret_name" -n euler-copilot &>/dev/null; then
+        echo -e "${YELLOW}找到Secret: ${secret_name}，开始清理...${NC}"
+        if ! kubectl delete secret "$secret_name" -n euler-copilot; then
+            echo -e "${RED}错误：删除Secret ${secret_name} 失败！${NC}" >&2
+            return 1
+        fi
+    else
+        echo -e "${YELLOW}未找到需要清理的Secret: ${secret_name}${NC}"
     fi
 
     echo -e "${BLUE}等待资源清理完成（10秒）...${NC}"
@@ -145,7 +157,7 @@ check_pods_status() {
 main() {
     get_architecture
     create_namespace
-    delete_pvcs
+    uninstall_databases
     helm_install
     check_pods_status
 

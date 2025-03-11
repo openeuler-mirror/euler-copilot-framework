@@ -50,7 +50,7 @@ create_namespace() {
     fi
 }
 
-delete_pvcs() {
+uninstall_authhub() {
     echo -e "${BLUE}==> 清理现有资源...${NC}"
 
     local RELEASES
@@ -74,6 +74,18 @@ delete_pvcs() {
         kubectl delete pvc mysql-pvc -n euler-copilot --force --grace-period=0 || echo -e "${RED}PVC删除失败，继续执行...${NC}"
     else
         echo -e "${YELLOW}未找到需要清理的PVC${NC}"
+    fi
+
+    # 新增：删除 authhub-secret
+    local authhub_secret="authhub-secret"
+    if kubectl get secret "$authhub_secret" -n euler-copilot &>/dev/null; then
+        echo -e "${YELLOW}找到Secret: ${authhub_secret}，开始清理...${NC}"
+        if ! kubectl delete secret "$authhub_secret" -n euler-copilot; then
+            echo -e "${RED}错误：删除Secret ${authhub_secret} 失败！${NC}" >&2
+            return 1
+        fi
+    else
+        echo -e "${YELLOW}未找到需要清理的Secret: ${authhub_secret}${NC}"
     fi
 
     echo -e "${GREEN}资源清理完成${NC}"
@@ -156,7 +168,7 @@ main() {
     local arch
     arch=$(get_architecture) || exit 1
     create_namespace || exit 1
-    delete_pvcs || exit 1
+    uninstall_authhub || exit 1
     get_user_input || exit 1
     helm_install "$arch" || exit 1
     check_pods_status || {
