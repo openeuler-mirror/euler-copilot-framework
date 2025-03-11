@@ -3,15 +3,18 @@
 Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 """
 
+import logging
 from hashlib import sha256
 from typing import Optional
 
 from anyio import Path
 
 from apps.common.config import config
-from apps.constants import APP_DIR, LOGGER, SERVICE_DIR
+from apps.constants import APP_DIR, SERVICE_DIR
 from apps.entities.enum_var import MetadataType
 from apps.models.mongo import MongoDB
+
+logger = logging.getLogger("ray")
 
 
 class FileChecker:
@@ -66,8 +69,8 @@ class FileChecker:
         try:
             items = await collection.find({}).to_list(None)
         except Exception as e:
-            err = f"{check_type}类型数据的条目为空： {e!s}"
-            LOGGER.error(err)
+            err = f"[FileChecker] {check_type}类型数据的条目为空"
+            logger.exception(err)
             raise RuntimeError(err) from e
 
         # 遍历列表

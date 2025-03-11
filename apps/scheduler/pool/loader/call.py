@@ -3,6 +3,7 @@
 Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 """
 import importlib
+import logging
 import sys
 from hashlib import shake_128
 from pathlib import Path
@@ -11,12 +12,14 @@ from sqlalchemy.dialects.postgresql import insert
 
 import apps.scheduler.call as system_call
 from apps.common.config import config
-from apps.constants import CALL_DIR, LOGGER
+from apps.constants import CALL_DIR
 from apps.entities.enum_var import CallType
 from apps.entities.pool import CallPool, NodePool
 from apps.entities.vector import CallPoolVector
 from apps.models.mongo import MongoDB
 from apps.models.postgres import PostgreSQL
+
+logger = logging.getLogger("ray")
 
 
 class CallLoader:
@@ -53,7 +56,7 @@ class CallLoader:
 
         call_dir = Path(config["SEMANTICS_DIR"]) / CALL_DIR / call_dir_name
         if not (call_dir / "__init__.py").exists():
-            LOGGER.info(msg=f"模块{call_dir}不存在__init__.py文件，尝试自动创建。")
+            logger.info("[CallLoader] 模块 %s 不存在__init__.py文件，尝试自动创建。", call_dir)
             try:
                 (Path(call_dir) / "__init__.py").touch()
             except Exception as e:
@@ -71,16 +74,16 @@ class CallLoader:
 
         # 已载入包，处理包中每个工具
         if not hasattr(call_package, "__all__"):
-            err = f"模块call.{call_dir_name}不符合模块要求，无法处理。"
-            LOGGER.info(msg=err)
+            err = f"[CallLoader] 模块call.{call_dir_name}不符合模块要求，无法处理。"
+            logger.info(err)
             raise ValueError(err)
 
         for call_id in call_package.__all__:
             try:
                 call_cls = getattr(call_package, call_id)
             except Exception as e:
-                err = f"载入工具call.{call_dir_name}.{call_id}失败：{e}；跳过载入。"
-                LOGGER.info(msg=err)
+                err = f"[CallLoader] 载入工具call.{call_dir_name}.{call_id}失败：{e}；跳过载入。"
+                logger.info(err)
                 continue
 
             cls_path = f"{call_package.service}::call.{call_dir_name}.{call_id}"
@@ -106,11 +109,11 @@ class CallLoader:
         try:
             sys.path.insert(0, str(call_dir))
             if not (call_dir / "__init__.py").exists():
-                LOGGER.info(msg=f"父模块{call_dir}不存在__init__.py文件，尝试自动创建。")
+                logger.info("[CallLoader] 父模块 %s 不存在__init__.py文件，尝试自动创建。", call_dir)
                 (Path(call_dir) / "__init__.py").touch()
             importlib.import_module("call")
         except Exception as e:
-            err = f'父模块"call"创建失败：{e}；无法载入。'
+            err = f"[CallLoader] 父模块'call'创建失败：{e}；无法载入。"
             raise RuntimeError(err) from e
 
         # 处理每一个子包
@@ -121,8 +124,8 @@ class CallLoader:
             try:
                 call_metadata.extend(await self._load_single_call_dir(call_file.name))
             except Exception as e:
-                err = f"载入模块{call_file}失败：{e}，跳过载入。"
-                LOGGER.info(msg=err)
+                err = f"[CallLoader] 载入模块{call_file}失败：{e}，跳过载入。"
+                logger.info(err)
                 continue
 
         return call_metadata
@@ -157,8 +160,8 @@ class CallLoader:
                 ).model_dump(exclude_none=True, by_alias=True))
                 call_descriptions += [call.description]
         except Exception as e:
-            err = f"更新MongoDB失败：{e}"
-            LOGGER.error(msg=err)
+            err = "[CallLoader] 更新MongoDB失败"
+            logger.exception(err)
             raise RuntimeError(err) from e
 
         # 进行向量化，更新PostgreSQL
@@ -185,22 +188,22 @@ class CallLoader:
         try:
             await call_collection.delete_many({})
             await node_collection.delete_many({"service_id": ""})
-        except Exception as e:
-            LOGGER.error(msg=f"Call的collection清空失败：{e}")
+        except Exception:
+            logger.exception("[CallLoader] Call的collection清空失败")
 
         # 载入所有已知的Call信息
         try:
             sys_call_metadata = await self._load_system_call()
         except Exception as e:
-            err = f"载入系统Call信息失败：{e}；停止运行。"
-            LOGGER.error(msg=err)
+            err = "[CallLoader] 载入系统Call信息失败"
+            logger.exception(err)
             raise RuntimeError(err) from e
 
         try:
             user_call_metadata = await self._load_all_user_call()
-        except Exception as e:
-            err = f"载入用户Call信息失败：{e}；只可使用基本功能。"
-            LOGGER.error(msg=err)
+        except Exception:
+            err = "[CallLoader] 载入用户Call信息失败"
+            logger.exception(err)
             user_call_metadata = []
 
         # 合并Call元数据
@@ -215,8 +218,8 @@ class CallLoader:
         try:
             call_metadata = await self._load_single_call_dir(call_name)
         except Exception as e:
-            err = f"载入Call信息失败：{e}。"
-            LOGGER.error(msg=err)
+            err = f"[CallLoader] 载入Call信息失败：{e}。"
+            logger.exception(err)
             raise RuntimeError(err) from e
 
         # 有数据时更新数据库

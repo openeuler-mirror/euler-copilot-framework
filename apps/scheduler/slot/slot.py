@@ -3,6 +3,7 @@
 Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 """
 import json
+import logging
 import traceback
 from collections.abc import Mapping
 from copy import deepcopy
@@ -13,7 +14,6 @@ from jsonschema.exceptions import ValidationError
 from jsonschema.protocols import Validator
 from jsonschema.validators import extend
 
-from apps.constants import LOGGER
 from apps.llm.patterns.json_gen import Json
 from apps.scheduler.slot.parser import (
     SlotConstParser,
@@ -22,6 +22,8 @@ from apps.scheduler.slot.parser import (
     SlotTimestampParser,
 )
 from apps.scheduler.slot.util import escape_path, patch_json
+
+logger = logging.getLogger("ray")
 
 # 各类检查器
 _TYPE_CHECKER = [
@@ -187,7 +189,7 @@ class Slot:
                 # 注意：此处与Validator文本有关，注意版本问题
                 key = error.message.split("'")[1]
             except IndexError:
-                LOGGER.error(f"Invalid error message: {error.message}")
+                logger.exception("[Slot] 错误信息不合法: %s", error.message)
                 return {}, []
 
             # 如果字段存在，则返回裁剪后的schema
@@ -198,14 +200,14 @@ class Slot:
                 return schema, [key]
 
             # 如果字段不存在，则返回空
-            LOGGER.error(f"Invalid error schema: {error.schema}")
+            logger.exception("[Slot] 错误schema不合法: %s", error.schema)
             return {}, []
 
         # 默认无需裁剪
         if isinstance(error.schema, Mapping):
             return dict(error.schema.items()), []
 
-        LOGGER.error(f"Invalid error schema: {error.schema}")
+        logger.exception("[Slot] 错误schema不合法: %s", error.schema)
         return {}, []
 
 
