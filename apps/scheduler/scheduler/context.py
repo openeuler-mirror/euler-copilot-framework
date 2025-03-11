@@ -39,6 +39,20 @@ async def get_docs(user_sub: str, post_body: RequestData) -> tuple[Union[list[Re
     return docs, doc_ids
 
 
+async def get_rag_context(user_sub: str, post_body: RequestData, n: int) -> list[dict[str, str]]:
+    """获取当前问答的上下文信息"""
+    # 组装RAG请求数据，备用
+    records = await RecordManager.query_record_by_conversation_id(user_sub, post_body.conversation_id, n + 5)
+
+    context = []
+    for record in records:
+        record_data = RecordContent.model_validate_json(Security.decrypt(record.data, record.key))
+        context.append({"role": "user", "content": record_data.question})
+        context.append({"role": "assistant", "content": record_data.answer})
+
+    return context
+
+
 async def get_context(user_sub: str, post_body: RequestData, n: int) -> tuple[str, list[str]]:
     """获取当前问答的上下文信息
 

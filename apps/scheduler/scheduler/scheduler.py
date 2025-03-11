@@ -17,7 +17,7 @@ from apps.manager.appcenter import AppCenterManager
 from apps.manager.flow import FlowManager
 from apps.manager.user import UserManager
 from apps.scheduler.executor.flow import Executor
-from apps.scheduler.scheduler.context import get_context, get_docs
+from apps.scheduler.scheduler.context import get_context, get_docs, get_rag_context
 from apps.scheduler.scheduler.flow import FlowChooser
 from apps.scheduler.scheduler.message import (
     push_document_message,
@@ -67,6 +67,7 @@ class Scheduler:
             document_ids=doc_ids,
             kb_sn=None if not user_info.kb_id else user_info.kb_id,
             top_k=5,
+            history=await get_rag_context(user_sub, post_body, 3),
         )
         # 已使用文档
         used_docs = []
