@@ -6,7 +6,7 @@ import logging
 import queue
 
 from apps.entities.enum_var import NodeType
-from apps.entities.flow_topology import FlowItem
+from apps.entities.flow_topology import EdgeItem, FlowItem, NodeItem
 
 logger = logging.getLogger("ray")
 
@@ -52,62 +52,96 @@ class FlowService:
         return flow_item
 
     @staticmethod
-    async def validate_flow_illegal(flow_item: FlowItem) -> None:
-        """验证流程图是否合法"""
-        step_id_set = set()
-        edge_id_set = set()
-        edge_to_branch = dict()
-        num_of_start_node = 0
-        num_of_end_node = 0
-        id_of_start_node = None
-        id_of_end_node = None
-        node_in_degrees = {}
-        node_out_degrees = {}
-        for node in flow_item.nodes:
-            if node.step_id in step_id_set:
+    async def _validate_node_ids(nodes: list[NodeItem]) -> tuple[str, str]:
+        """验证节点ID的唯一性并获取起始和终止节点ID，当节点ID重复或起始/终止节点数量不为1时抛出异常"""
+        ids = set()
+        start_cnt = 0
+        end_cnt = 0
+        start_id = None
+        end_id = None
+
+        for node in nodes:
+            if node.step_id in ids:
                 err = f"[FlowService] 节点{node.name}的id重复"
                 logger.error(err)
                 raise Exception(err)
-            step_id_set.add(node.step_id)
+            ids.add(node.step_id)
             if node.call_id == NodeType.START.value:
-                num_of_start_node += 1
-                id_of_start_node = node.step_id
+                start_cnt += 1
+                start_id = node.step_id
             if node.call_id == NodeType.END.value:
-                num_of_end_node += 1
-                id_of_end_node = node.step_id
-        if num_of_start_node != 1 or num_of_end_node != 1:
+                end_cnt += 1
+                end_id = node.step_id
+
+        if start_cnt != 1 or end_cnt != 1:
             err = "[FlowService] 起始节点和终止节点数量不为1"
             logger.error(err)
             raise Exception(err)
-        for edge in flow_item.edges:
-            if edge.edge_id in edge_id_set:
-                err = f"[FlowService] 边{edge.edge_id}的id重复"
-                logger.error(err)
-                raise Exception(err)
-            edge_id_set.add(edge.edge_id)
-            if edge.source_node == edge.target_node:
-                err = f"[FlowService] 边{edge.edge_id}的起始节点和终止节点相同"
-                logger.error(err)
-                raise Exception(err)
-            if edge.source_node not in edge_to_branch:
-                edge_to_branch[edge.source_node] = set()
-            if edge.branch_id in edge_to_branch[edge.source_node]:
-                err = f"[FlowService] 边{edge.edge_id}的分支{edge.branch_id}重复"
-                logger.error(err)
-                raise Exception(err)
-            edge_to_branch[edge.source_node].add(edge.branch_id)
-            node_in_degrees[edge.target_node] = node_in_degrees.get(
-                edge.target_node, 0) + 1
-            node_out_degrees[edge.source_node] = node_out_degrees.get(
-                edge.source_node, 0) + 1
-        if id_of_start_node in node_in_degrees and node_in_degrees[id_of_start_node] != 0:
-            err = f"[FlowService] 起始节点{id_of_start_node}的入度不为0"
+
+        if start_id is None or end_id is None:
+            err = "[FlowService] 起始节点或终止节点ID为空"
             logger.error(err)
             raise Exception(err)
-        if id_of_end_node in node_out_degrees and node_out_degrees[id_of_end_node] != 0:
-            err = f"[FlowService] 终止节点{id_of_end_node}的出度不为0"
+
+        return start_id, end_id
+
+    @staticmethod
+    async def _validate_edges(edges: list[EdgeItem]) -> tuple[dict[str, int], dict[str, int]]:
+        """验证边的合法性并计算节点的入度和出度；当边的ID重复、起始终止节点相同或分支重复时抛出异常"""
+        ids = set()
+        branches = {}
+        in_deg = {}
+        out_deg = {}
+
+        for e in edges:
+            if e.edge_id in ids:
+                err = f"[FlowService] 边{e.edge_id}的id重复"
+                logger.error(err)
+                raise Exception(err)
+            ids.add(e.edge_id)
+
+            if e.source_node == e.target_node:
+                err = f"[FlowService] 边{e.edge_id}的起始节点和终止节点相同"
+                logger.error(err)
+                raise Exception(err)
+
+            if e.source_node not in branches:
+                branches[e.source_node] = set()
+            if e.branch_id in branches[e.source_node]:
+                err = f"[FlowService] 边{e.edge_id}的分支{e.branch_id}重复"
+                logger.error(err)
+                raise Exception(err)
+            branches[e.source_node].add(e.branch_id)
+
+            in_deg[e.target_node] = in_deg.get(e.target_node, 0) + 1
+            out_deg[e.source_node] = out_deg.get(e.source_node, 0) + 1
+
+        return in_deg, out_deg
+
+    @staticmethod
+    async def _validate_node_degrees(start_id: str, end_id: str,
+                                   in_deg: dict[str, int], out_deg: dict[str, int]) -> None:
+        """验证起始和终止节点的入度和出度；当起始节点入度不为0或终止节点出度不为0时抛出异常"""
+        if start_id in in_deg and in_deg[start_id] != 0:
+            err = f"[FlowService] 起始节点{start_id}的入度不为0"
             logger.error(err)
             raise Exception(err)
+        if end_id in out_deg and out_deg[end_id] != 0:
+            err = f"[FlowService] 终止节点{end_id}的出度不为0"
+            logger.error(err)
+            raise Exception(err)
+
+    @staticmethod
+    async def validate_flow_illegal(flow_item: FlowItem) -> None:
+        """验证流程图是否合法；当流程图不合法时抛出异常"""
+        # 验证节点ID并获取起始和终止节点
+        start_id, end_id = await FlowService._validate_node_ids(flow_item.nodes)
+
+        # 验证边的合法性并获取节点的入度和出度
+        in_deg, out_deg = await FlowService._validate_edges(flow_item.edges)
+
+        # 验证起始和终止节点的入度和出度
+        await FlowService._validate_node_degrees(start_id, end_id, in_deg, out_deg)
 
     @staticmethod
     async def validate_flow_connectivity(flow_item: FlowItem) -> None:
