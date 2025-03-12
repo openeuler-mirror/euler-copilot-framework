@@ -14,6 +14,7 @@ from apps.entities.record import RecordDocument
 from apps.entities.request_data import RequestData
 from apps.entities.task import TaskBlock
 from apps.llm.patterns.facts import Facts
+from apps.manager.appcenter import AppCenterManager
 from apps.manager.document import DocumentManager
 from apps.manager.record import RecordManager
 from apps.manager.task import TaskManager
@@ -153,6 +154,10 @@ async def save_data(task_id: str, user_sub: str, post_body: RequestData, used_do
     await RecordManager.insert_record_data_into_record_group(user_sub, record_group, record)
     # 保存与答案关联的文件
     await DocumentManager.save_answer_doc(user_sub, record_group, used_docs)
+
+    if post_body.app:
+        # 更新最近使用的应用
+        await AppCenterManager.update_recent_app(user_sub, post_body.app.app_id)
 
     # 保存Task
     await task_actor.save_task.remote(task_id)
