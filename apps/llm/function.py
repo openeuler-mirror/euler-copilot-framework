@@ -37,10 +37,10 @@ class FunctionLLM:
         if config["SCHEDULER_BACKEND"] == "vllm" or config["SCHEDULER_BACKEND"] == "openai":
             import openai
             if not config["SCHEDULER_API_KEY"]:
-                self._client = openai.AsyncOpenAI(base_url=config["SCHEDULER_URL"])
+                self._client = openai.AsyncOpenAI(base_url=config["SCHEDULER_URL"] + "/v1")
             else:
                 self._client = openai.AsyncOpenAI(
-                    base_url=config["SCHEDULER_URL"],
+                    base_url=config["SCHEDULER_URL"] + "/v1",
                     api_key=config["SCHEDULER_API_KEY"],
                 )
 
@@ -199,7 +199,7 @@ class FunctionLLM:
         sglang.set_default_backend(self._client)
 
         sglang_func = sglang.function(self._sglang_func)
-        state = await asyncify(sglang_func.run)(messages, schema, max_tokens, temperature)
+        state = await asyncify(sglang_func.run)(messages, schema, max_tokens, temperature)  #type: ignore[arg-type]
         return state["output"]
 
 
