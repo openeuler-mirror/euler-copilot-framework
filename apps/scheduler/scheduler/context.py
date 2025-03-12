@@ -24,16 +24,17 @@ logger = logging.getLogger("ray")
 async def get_docs(user_sub: str, post_body: RequestData) -> tuple[Union[list[RecordDocument], list[Document]], list[str]]:
     """获取当前问答可供关联的文档"""
     doc_ids = []
-    if post_body.group_id:
-        # 是重新生成，直接从RecordGroup中获取
-        docs = await DocumentManager.get_used_docs_by_record_group(user_sub, post_body.group_id)
-        doc_ids += [doc.id for doc in docs]
-    else:
+    
+    docs = await DocumentManager.get_used_docs_by_record_group(user_sub, post_body.group_id)
+    if not docs:
         # 是新提问
         # 从Conversation中获取刚上传的文档
         docs = await DocumentManager.get_unused_docs(user_sub, post_body.conversation_id)
         # 从最近10条Record中获取文档
         docs += await DocumentManager.get_used_docs(user_sub, post_body.conversation_id, 10)
+        doc_ids += [doc.id for doc in docs]
+    else:
+        # 是重新生成
         doc_ids += [doc.id for doc in docs]
 
     return docs, doc_ids
