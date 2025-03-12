@@ -10,6 +10,6 @@ spec:
         expose: false
         exposedPort: 8083
       websecure:
-        expose: false
+        expose: true
         exposedPort: 443
         
