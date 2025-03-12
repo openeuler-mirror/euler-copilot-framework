@@ -9,8 +9,8 @@ show_top_menu() {
     echo "=============================="
     echo "0) 一键自动部署"
     echo "1) 手动分步部署"
-    echo "2) 卸载所有组件并清除数据"
-    echo "3) 重启服务"
+    echo "2) 重启服务"
+    echo "3) 卸载所有组件并清除数据"
     echo "4) 退出程序"
     echo "=============================="
     echo -n "请输入选项编号（0-3）: "
@@ -124,29 +124,83 @@ uninstall_all() {
         return
     fi
 
+    # 设置超时时间（单位：秒）
+    local HELM_TIMEOUT=300
+    local PVC_DELETE_TIMEOUT=120
+    local FORCE_DELETE=false
+
     echo "开始卸载所有Helm Release..."
     local RELEASES
-    RELEASES=$(helm list -n euler-copilot --short || true)
+    RELEASES=$(helm list -n euler-copilot --short)
 
     # 删除所有关联的Helm Release
     if [ -n "$RELEASES" ]; then
         echo -e "${YELLOW}找到以下Helm Release，开始清理...${NC}"
         for release in $RELEASES; do
             echo -e "${BLUE}正在删除Helm Release: ${release}${NC}"
-            helm uninstall "$release" -n euler-copilot || echo -e "${RED}删除Helm Release失败，继续执行...${NC}"
+            if ! helm uninstall "$release" -n euler-copilot \
+                --wait \
+                --timeout ${HELM_TIMEOUT}s \
+                --no-hooks; then
+                echo -e "${RED}警告：Helm Release ${release} 删除异常，尝试强制删除...${NC}"
+                FORCE_DELETE=true
+                helm uninstall "$release" -n euler-copilot \
+                    --timeout 10s \
+                    --no-hooks \
+                    --force || true
+            fi
         done
     else
         echo -e "${YELLOW}未找到需要清理的Helm Release${NC}"
     fi
 
+    # 等待资源释放
+    sleep 10
+
     # 获取所有PVC列表
     local pvc_list
-    pvc_list=$(kubectl get pvc -n euler-copilot -o name 2>/dev/null || true)
+    pvc_list=$(kubectl get pvc -n euler-copilot -o name 2>/dev/null)
 
-    # 删除PVC
+    # 删除PVC（带重试机制）
     if [ -n "$pvc_list" ]; then
         echo -e "${YELLOW}找到以下PVC，开始清理...${NC}"
-        echo "$pvc_list" | xargs -n 1 kubectl delete -n euler-copilot || echo -e "${RED}PVC删除失败，继续执行...${NC}"
+        local start_time=$(date +%s)
+        local end_time=$((start_time + PVC_DELETE_TIMEOUT))
+
+        for pvc in $pvc_list; do
+            while : ; do
+                # 尝试正常删除
+                if kubectl delete $pvc -n euler-copilot --timeout=30s 2>/dev/null; then
+                    break
+                fi
+
+                # 检查是否超时
+                if [ $(date +%s) -ge $end_time ]; then
+                    echo -e "${RED}错误：PVC删除超时，尝试强制清理...${NC}"
+                    
+                    # 移除Finalizer强制删除
+                    kubectl patch $pvc -n euler-copilot \
+                        --type json \
+                        --patch='[ { "op": "remove", "path": "/metadata/finalizers" } ]' 2>/dev/null || true
+                    
+                    # 强制删除
+                    kubectl delete $pvc -n euler-copilot \
+                        --force \
+                        --grace-period=0 2>/dev/null && break || true
+                    
+                    # 最终确认
+                    if ! kubectl get $pvc -n euler-copilot &>/dev/null; then
+                        break
+                    fi
+                    echo -e "${RED}严重错误：无法删除PVC ${pvc}${NC}" >&2
+                    return 1
+                fi
+
+                # 等待后重试
+                sleep 5
+                echo -e "${YELLOW}重试删除PVC: ${pvc}...${NC}"
+            done
+        done
     else
         echo -e "${YELLOW}未找到需要清理的PVC${NC}"
     fi
@@ -164,6 +218,10 @@ uninstall_all() {
             echo -e "${YELLOW}未找到需要清理的Secret: ${secret}${NC}"
         fi
     done
+
+    # 最终清理检查
+    echo -e "${YELLOW}执行最终资源检查...${NC}"
+    kubectl delete all --all -n euler-copilot --timeout=30s 2>/dev/null || true
 
     echo -e "${GREEN}资源清理完成${NC}"
     echo -e "\033[32m所有组件和数据已成功清除\033[0m"
@@ -226,11 +284,6 @@ while true; do
             manual_deployment_loop
             ;;
         2)
-            uninstall_all
-            echo "按任意键继续..."
-            read -r -n 1 -s
-            ;;
-        3)
             while true; do
                 show_restart_menu
                 read -r restart_choice
@@ -259,6 +312,12 @@ while true; do
                     read -r -n 1 -s
                 fi
             done
+            ;;
+	
+        3)
+            uninstall_all
+            echo "按任意键继续..."
+            read -r -n 1 -s
             ;;
         4)
             echo "退出部署系统"
