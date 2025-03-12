@@ -21,7 +21,7 @@ class FlowService:
         branch_illegal_chars="."
 
         for node in flow_item.nodes:
-            node_to_branches[node.step_id] = ()
+            node_to_branches[node.step_id] = set()
             if node.call_id == NodeType.CHOICE.value:
                 node.parameters = node.parameters["input_parameters"]
                 if "choices" not in node.parameters:
