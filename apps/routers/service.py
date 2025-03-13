@@ -192,7 +192,7 @@ async def update_service(  # noqa: PLR0911
             status_code=status.HTTP_400_BAD_REQUEST,
             content=ResponseData(
                 code=status.HTTP_400_BAD_REQUEST,
-                message="INVALID_SERVICE_ID",
+                message="OpenAPI 格式错误，YAML 解析失败",
                 result={},
             ).model_dump(exclude_none=True, by_alias=True),
         )

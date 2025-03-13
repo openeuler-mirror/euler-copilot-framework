@@ -71,6 +71,7 @@ class OpenAPILoader:
 
         url = service_metadata.api.server.rstrip("/") + spec.uri
         known_params = {}
+        content_type = None
 
         if method in (HTTPMethod.POST, HTTPMethod.PUT, HTTPMethod.PATCH):
             body_spec = spec.spec["requestBody"]["content"]
@@ -80,23 +81,26 @@ class OpenAPILoader:
                 (ct for ct in ContentType if ct.value in body_spec),
                 None,
             )
-            known_params["content_type"]=content_type
+            known_params["content_type"] = content_type
             if content_type is None:
                 err = f"[OpenAPILoader] 接口{spec.name}的Content-Type不支持"
                 logger.error(err)
                 raise RuntimeError(err)
 
         try:
+            body_schema = None
+            if "requestBody" in spec.spec and content_type is not None:
+                body_schema = spec.spec["requestBody"]["content"][content_type]["schema"]
+
             inp = APINodeInput(
                 param_schema=await self.parameters_to_spec(spec.spec["parameters"])
                 if "parameters" in spec.spec
                 else None,
-                body_schema=spec.spec["requestBody"]["content"][content_type]["schema"]
-                if "requestBody" in spec.spec
-                else None,
+                body_schema=body_schema,
             )
         except KeyError:
             logger.exception("[OpenAPILoader] 接口 %s 请求体定义错误", spec.name)
+            inp = APINodeInput()  # Create a default input object when exception occurs
 
         try:
             out = APINodeOutput(
@@ -163,8 +167,6 @@ class OpenAPILoader:
 
     async def save_one(self, yaml_path: Path, yaml_dict: dict[str, Any]) -> None:
         """保存单个OpenAPI文档"""
-        """在文件系统上保存Service，并更新数据库"""
-
         try:
             yaml.add_representer(str, str_presenter)
             yaml_data = yaml.safe_dump(yaml_dict)

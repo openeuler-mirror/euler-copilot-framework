@@ -128,7 +128,7 @@ class ServiceCenterManager:
             },
         )
         if db_service:
-            msg = "Service with this name already exists"
+            msg = "[ServiceCenterManager] 已存在相同名称和描述的服务"
             raise ValueError(msg)
         # 存入数据库
         service_metadata = ServiceMetadata(
