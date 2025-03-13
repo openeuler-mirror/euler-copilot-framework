@@ -197,8 +197,6 @@ start_deployment() {
         ((current_step++))
     done
 
-    show_completion
-
 }
 
 # 处理工具安装步骤
@@ -218,17 +216,6 @@ handle_eulercopilot_step() {
     sleep 60
     run_script_with_check "../8-install-EulerCopilot/install_eulercopilot.sh" "EulerCopilot部署" $current_step true
     
-}
-
-# 显示完成信息
-show_completion() {
-    echo -e "\n\n${BOLD}${GREEN}$(printf '✦%.0s' $(seq 1 $(tput cols)))${RESET}"
-    echo -e "${BOLD}${WHITE}                  部署成功完成                  ${RESET}"
-    echo -e "${BOLD}${GREEN}$(printf '✦%.0s' $(seq 1 $(tput cols)))${RESET}"
-    echo -e "${YELLOW}请通过以下方式验证部署："
-    echo -e "  ➤ 检查所有Pod状态: kubectl get pods -n $NAMESPACE"
-    echo -e "  ➤ 查看服务端点: kubectl get svc -n $NAMESPACE"
-    echo -e "  ➤ 访问Web界面: https://www.eulercopilot.local${RESET}"
 }
 
 # 主执行流程
