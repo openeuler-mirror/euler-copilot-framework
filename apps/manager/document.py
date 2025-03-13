@@ -119,7 +119,8 @@ class DocumentManager:
                 logger.error("[DocumentManager] 记录组不存在: %s", record_group_id)
                 return []
 
-            doc_ids = RecordGroup.model_validate(record_group).docs
+            docs = RecordGroup.model_validate(record_group).docs
+            doc_ids = [doc.id for doc in docs]
             doc_infos = [Document.model_validate(doc) async for doc in docs_collection.find({"_id": {"$in": doc_ids}})]
             return [
                 RecordDocument(
@@ -129,7 +130,7 @@ class DocumentManager:
                     size=item[1].size,
                     conversation_id=item[1].conversation_id,
                     associated=item[0].associated,
-                ) for item in zip(doc_ids, doc_infos)
+                ) for item in zip(docs, doc_infos)
             ]
         except Exception:
             logger.exception("[DocumentManager] 获取使用文件失败")
