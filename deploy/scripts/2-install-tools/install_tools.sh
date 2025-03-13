@@ -157,7 +157,7 @@ function check_k3s_status() {
 }
 
 function apply_traefik_config {
-    local config_file="../../chart_ssl/traefik-config.yml"
+    local config_file="../chart_ssl/traefik-config.yml"
 
     # 检查配置文件是否存在
     if [[ ! -f "$config_file" ]]; then

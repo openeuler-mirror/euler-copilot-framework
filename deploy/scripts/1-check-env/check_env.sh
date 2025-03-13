@@ -143,28 +143,21 @@ function check_ram {
     return 0
 }
 
-function check_disk {
-    local DISK_THRESHOLD=10000  # 修改为10G（单位：MB）
-    local PERCENT_THRESHOLD=70
+check_disk_space() {
+    local DIR="$1"
+    local THRESHOLD="$2"
 
-    read -r available size <<< $(df -m /var/lib | awk 'NR==2{print $4,$2}')
-    echo -e "${COLOR_INFO}[Info] 磁盘可用空间: ${available}MB, 总大小: ${size}MB${COLOR_RESET}"
+    # 获取当前磁盘使用百分比
+    local USAGE=$(df --output=pcent "$DIR" | tail -n 1 | sed 's/%//g' | tr -d ' ')
 
-    if (( available < DISK_THRESHOLD )); then
-        echo -e "${COLOR_ERROR}[Error] 磁盘空间不足 ${DISK_THRESHOLD} MB${COLOR_RESET}"
+    # 检查是否超过阈值
+    if [ "$USAGE" -ge "$THRESHOLD" ]; then
+        echo -e "${COLOR_INFO}[Info] 警告: $DIR 的磁盘使用率已达到 ${USAGE}%，超过阈值 ${THRESHOLD}%${COLOR_RESET}。"
         return 1
+    else
+        echo -e "${COLOR_INFO}$DIR 的磁盘使用率为 ${USAGE}%，低于阈值 ${THRESHOLD}%。${COLOR_RESET}"
+        return 0
     fi
-
-    local used_after=$(( size - (available - DISK_THRESHOLD) ))
-    local usage_percent=$(( used_after * 100 / size ))
-
-    if (( usage_percent > PERCENT_THRESHOLD )); then
-        echo -e "${COLOR_ERROR}[Error] 部署后磁盘使用率将达 ${usage_percent}% (超过 ${PERCENT_THRESHOLD}%)${COLOR_RESET}"
-        return 1
-    fi
-
-    echo -e "${COLOR_SUCCESS}[Success] 磁盘空间满足要求${COLOR_RESET}"
-    return 0
 }
 
 function check_network {
@@ -202,7 +195,14 @@ function main {
     check_hostname || return 1
     check_dns || return 1
     check_ram || return 1
-    check_disk || return 1
+    check_disk_space "/" 70
+
+    # 根据返回值处理逻辑
+    if [ $? -eq 1 ]; then
+        echo -e "${COLOR_INFO}需要清理磁盘空间！${COLOR_RESET}"
+    else
+        echo -e "${COLOR_SUCCESS}磁盘空间正常。${COLOR_RESET}"
+    fi
     check_network || return 1
     check_selinux || return 1
     check_firewall || return 1
