@@ -37,6 +37,7 @@ class ConfigModel(BaseModel):
     # Logging
     LOG: str = Field(description="日志记录模式")
     # Embedding
+    EMBEDDING_TYPE: str = Field(description="Embedding接口类型", default="openai")
     EMBEDDING_URL: str = Field(description="Embedding模型地址")
     EMBEDDING_KEY: str = Field(description="Embedding模型API Key")
     EMBEDDING_MODEL: str = Field(description="Embedding模型名称")

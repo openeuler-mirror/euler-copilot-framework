@@ -43,30 +43,66 @@ class PostgreSQL:
 
 
     @staticmethod
-    async def get_embedding(text: list[str]) -> list[list[float]]:
-        """访问OpenAI兼容的Embedding API，获得向量化数据
-
-        :param text: 待向量化文本（多条文本组成List）
-        :return: 文本对应的向量（顺序与text一致，也为List）
-        """
-        api = config["EMBEDDING_URL"]
-
-        if config["EMBEDDING_KEY"]:
-            headers = {
-                "Authorization": f"Bearer {config['EMBEDDING_KEY']}",
-            }
-        else:
-            headers = {}
-
-        headers["Content-Type"] = "application/json"
+    async def _get_openai_embedding(text: list[str]) -> list[list[float]]:
+        """访问OpenAI兼容的Embedding API，获得向量化数据"""
+        api = config["EMBEDDING_URL"] + "/v1/embeddings"
         data = {
-            "encoding_format": "float",
-            "model": config["EMBEDDING_MODEL"],
             "input": text,
+            "model": config["EMBEDDING_MODEL"],
+            "encoding_format": "float",
         }
+
+        headers = {
+            "Content-Type": "application/json",
+        }
+        if config["EMBEDDING_KEY"]:
+            headers["Authorization"] = f"Bearer {config['EMBEDDING_KEY']}"
 
         async with aiohttp.ClientSession() as session, session.post(
             api, json=data, headers=headers, timeout=60,
         ) as response:
             json = await response.json()
             return [item["embedding"] for item in json["data"]]
+
+
+    @staticmethod
+    async def _get_tei_embedding(text: list[str]) -> list[list[float]]:
+        """访问TEI兼容的Embedding API，获得向量化数据"""
+        api = config["EMBEDDING_URL"] + "/embed"
+        headers = {
+            "Content-Type": "application/json",
+        }
+        if config["EMBEDDING_KEY"]:
+            headers["Authorization"] = f"Bearer {config['EMBEDDING_KEY']}"
+
+        session = aiohttp.ClientSession(timeout=60)
+
+        result = []
+        for single_text in text:
+            data = {
+                "inputs": single_text,
+                "normalize": True,
+            }
+            async with session.post(api, json=data, headers=headers, timeout=60) as response:
+                json = await response.json()
+                result.append(json[0])
+
+        await session.close()
+        return result
+
+
+
+    @staticmethod
+    async def get_embedding(text: list[str]) -> list[list[float]]:
+        """访问OpenAI兼容的Embedding API，获得向量化数据
+
+        :param text: 待向量化文本（多条文本组成List）
+        :return: 文本对应的向量（顺序与text一致，也为List）
+        """
+        if config["EMBEDDING_TYPE"] == "openai":
+            return await PostgreSQL._get_openai_embedding(text)
+        if config["EMBEDDING_TYPE"] == "mindie":
+            return await PostgreSQL._get_tei_embedding(text)
+
+        err = f"不支持的Embedding API类型: {config['EMBEDDING_TYPE']}"
+        raise ValueError(err)
