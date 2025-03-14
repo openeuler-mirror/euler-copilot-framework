@@ -9,8 +9,9 @@ show_top_menu() {
     echo "=============================="
     echo "0) 一键自动部署"
     echo "1) 手动分步部署"
-    echo "2) 卸载所有组件并清除数据"
-    echo "3) 退出程序"
+    echo "2) 重启服务"
+    echo "3) 卸载所有组件并清除数据"
+    echo "4) 退出程序"
     echo "=============================="
     echo -n "请输入选项编号（0-3）: "
 }
@@ -33,6 +34,29 @@ show_sub_menu() {
     echo "=============================="
     echo -n "请输入选项编号（0-9）: "
 }
+
+show_restart_menu() {
+    clear
+    echo "=============================="
+    echo "        服务重启菜单           "
+    echo "=============================="
+    echo "可重启的服务列表："
+    echo "1) authhub-backend"
+    echo "2) authhub"
+    echo "3) framework"
+    echo "4) minio"
+    echo "5) mongo"
+    echo "6) mysql"
+    echo "7) pgsql"
+    echo "8) rag"
+    echo "9) rag-web"
+    echo "10) redis"
+    echo "11) web"
+    echo "12) 返回主菜单"
+    echo "=============================="
+    echo -n "请输入要重启的服务编号（1-12）: "
+}
+
 
 # 带错误检查的脚本执行函数
 run_script_with_check() {
@@ -94,38 +118,110 @@ run_sub_script() {
 uninstall_all() {
     echo -e "\033[31m警告：此操作将永久删除所有组件和数据！\033[0m"
     read -p "确认要继续吗？(y/n) " confirm
-    
+
     if [[ $confirm != "y" && $confirm != "Y" ]]; then
         echo "取消卸载操作"
         return
     fi
 
+    # 设置超时时间（单位：秒）
+    local HELM_TIMEOUT=300
+    local PVC_DELETE_TIMEOUT=120
+    local FORCE_DELETE=false
+
     echo "开始卸载所有Helm Release..."
     local RELEASES
-    RELEASES=$(helm list -n euler-copilot --short || true)
+    RELEASES=$(helm list -n euler-copilot --short)
 
     # 删除所有关联的Helm Release
     if [ -n "$RELEASES" ]; then
         echo -e "${YELLOW}找到以下Helm Release，开始清理...${NC}"
         for release in $RELEASES; do
             echo -e "${BLUE}正在删除Helm Release: ${release}${NC}"
-            helm uninstall "$release" -n euler-copilot || echo -e "${RED}删除Helm Release失败，继续执行...${NC}"
+            if ! helm uninstall "$release" -n euler-copilot \
+                --wait \
+                --timeout ${HELM_TIMEOUT}s \
+                --no-hooks; then
+                echo -e "${RED}警告：Helm Release ${release} 删除异常，尝试强制删除...${NC}"
+                FORCE_DELETE=true
+                helm uninstall "$release" -n euler-copilot \
+                    --timeout 10s \
+                    --no-hooks \
+                    --force || true
+            fi
         done
     else
         echo -e "${YELLOW}未找到需要清理的Helm Release${NC}"
     fi
 
+    # 等待资源释放
+    sleep 10
+
     # 获取所有PVC列表
     local pvc_list
-    pvc_list=$(kubectl get pvc -n euler-copilot -o name 2>/dev/null || true)
+    pvc_list=$(kubectl get pvc -n euler-copilot -o name 2>/dev/null)
 
-    # 删除PVC
+    # 删除PVC（带重试机制）
     if [ -n "$pvc_list" ]; then
         echo -e "${YELLOW}找到以下PVC，开始清理...${NC}"
-        echo "$pvc_list" | xargs -n 1 kubectl delete -n euler-copilot || echo -e "${RED}PVC删除失败，继续执行...${NC}"
+        local start_time=$(date +%s)
+        local end_time=$((start_time + PVC_DELETE_TIMEOUT))
+
+        for pvc in $pvc_list; do
+            while : ; do
+                # 尝试正常删除
+                if kubectl delete $pvc -n euler-copilot --timeout=30s 2>/dev/null; then
+                    break
+                fi
+
+                # 检查是否超时
+                if [ $(date +%s) -ge $end_time ]; then
+                    echo -e "${RED}错误：PVC删除超时，尝试强制清理...${NC}"
+                    
+                    # 移除Finalizer强制删除
+                    kubectl patch $pvc -n euler-copilot \
+                        --type json \
+                        --patch='[ { "op": "remove", "path": "/metadata/finalizers" } ]' 2>/dev/null || true
+                    
+                    # 强制删除
+                    kubectl delete $pvc -n euler-copilot \
+                        --force \
+                        --grace-period=0 2>/dev/null && break || true
+                    
+                    # 最终确认
+                    if ! kubectl get $pvc -n euler-copilot &>/dev/null; then
+                        break
+                    fi
+                    echo -e "${RED}严重错误：无法删除PVC ${pvc}${NC}" >&2
+                    return 1
+                fi
+
+                # 等待后重试
+                sleep 5
+                echo -e "${YELLOW}重试删除PVC: ${pvc}...${NC}"
+            done
+        done
     else
         echo -e "${YELLOW}未找到需要清理的PVC${NC}"
     fi
+
+    # 删除指定的 Secrets
+    local secret_list=("authhub-secret" "euler-copilot-database" "euler-copilot-system")
+    for secret in "${secret_list[@]}"; do
+        if kubectl get secret "$secret" -n euler-copilot &>/dev/null; then
+            echo -e "${YELLOW}找到Secret: ${secret}，开始清理...${NC}"
+            if ! kubectl delete secret "$secret" -n euler-copilot; then
+                echo -e "${RED}错误：删除Secret ${secret} 失败！${NC}" >&2
+                return 1
+            fi
+        else
+            echo -e "${YELLOW}未找到需要清理的Secret: ${secret}${NC}"
+        fi
+    done
+
+    # 最终清理检查
+    echo -e "${YELLOW}执行最终资源检查...${NC}"
+    kubectl delete all --all -n euler-copilot --timeout=30s 2>/dev/null || true
 
     echo -e "${GREEN}资源清理完成${NC}"
     echo -e "\033[32m所有组件和数据已成功清除\033[0m"
@@ -148,32 +244,87 @@ manual_deployment_loop() {
     done
 }
 
-# 主程序循环
+restart_pod() {
+  local service="$1"
+  if [[ -z "$service" ]]; then
+    echo -e "${RED}错误：请输入服务名称${NC}"
+    return 1
+  fi
+
+  local deployment="${service}-deploy"
+  echo -e "${BLUE}正在验证部署是否存在...${NC}"
+  if ! kubectl get deployment "$deployment" -n euler-copilot &> /dev/null; then
+    echo -e "${RED}错误：在 euler-copilot 命名空间中找不到部署 $deployment${NC}"
+    return 1
+  fi
+
+  echo -e "${YELLOW}正在重启部署 $deployment ...${NC}"
+  if kubectl rollout restart deployment/"$deployment" -n euler-copilot; then
+    echo -e "${GREEN}成功触发滚动重启！${NC}"
+    echo -e "可以使用以下命令查看状态：\nkubectl rollout status deployment/$deployment -n euler-copilot"
+    return 0
+  else
+    echo -e "${RED}重启部署 $deployment 失败！${NC}"
+    return 1
+  fi
+}
+
+# 主程序循环改进
 while true; do
     show_top_menu
     read -r main_choice
-    
+
     case $main_choice in
         0)
             run_script_with_check "./0-one-click-deploy/one-click-deploy.sh" "一键自动部署"
-	    echo "按任意键继续..."
-	    read -r -n 1 -s
-	    return 2
+            echo "按任意键继续..."
+            read -r -n 1 -s
             ;;
         1)
             manual_deployment_loop
             ;;
         2)
+            while true; do
+                show_restart_menu
+                read -r restart_choice
+                case $restart_choice in
+                    1)  service="authhub-backend" ;;
+                    2)  service="authhub" ;;
+                    3)  service="framework" ;;
+                    4)  service="minio" ;;
+                    5)  service="mongo" ;;
+                    6)  service="mysql" ;;
+                    7)  service="pgsql" ;;
+                    8)  service="rag" ;;
+                    9)  service="rag-web" ;;
+                    10) service="redis" ;;
+                    11) service="web" ;;
+                    12) break ;;
+                    *)
+                        echo -e "${RED}无效的选项，请输入1-12之间的数字${NC}"
+                        continue
+                        ;;
+                esac
+
+                if [[ -n "$service" ]]; then
+                    restart_pod "$service"
+                    echo "按任意键继续..."
+                    read -r -n 1 -s
+                fi
+            done
+            ;;
+	
+        3)
             uninstall_all
             echo "按任意键继续..."
             read -r -n 1 -s
             ;;
-        3)
+        4)
             echo "退出部署系统"
             exit 0
             ;;
         *)
-            echo -e "\033[31m无效的选项，请输入0-3之间的数字\033[0m"
+            echo -e "${RED}无效的选项，请输入0-4之间的数字${NC}"
             sleep 1
             ;;
     esac

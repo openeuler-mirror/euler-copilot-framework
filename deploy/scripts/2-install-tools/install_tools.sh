@@ -156,6 +156,38 @@ function check_k3s_status() {
     fi
 }
 
+function apply_traefik_config {
+    local config_file="../chart_ssl/traefik-config.yml"
+
+    # 检查配置文件是否存在
+    if [[ ! -f "$config_file" ]]; then
+        echo -e "\033[31m[Error] Traefik 配置文件未找到：$config_file\033[0m"
+        return 1
+    fi
+
+    # 检查 kubectl 是否已安装
+    if ! command -v kubectl &> /dev/null; then
+        echo -e "\033[31m[Error] kubectl 未安装，请先安装 kubectl\033[0m"
+        return 1
+    fi
+
+    # 检查 Kubernetes 集群是否可用
+    if ! kubectl cluster-info &> /dev/null; then
+        echo -e "\033[31m[Error] Kubernetes 集群不可用，请检查集群状态\033[0m"
+        return 1
+    fi
+
+    # 执行 kubectl apply
+    echo -e "[Info] 正在应用 Traefik 配置文件：$config_file"
+    if kubectl apply -f "$config_file"; then
+        echo -e "\033[32m[Success] Traefik 配置文件应用成功\033[0m"
+        return 0
+    else
+        echo -e "\033[31m[Error] Traefik 配置文件应用失败\033[0m"
+        return 1
+    fi
+}
+
 function main {
     
     check_user
@@ -180,6 +212,7 @@ function main {
     fi
     check_k3s_status
     set_kubeconfig
+    apply_traefik_config
 
     echo -e "\n\033[32m=== 全部工具安装完成 ===\033[0m"
     echo -e "K3s 版本：$(k3s --version | head -n1)"
