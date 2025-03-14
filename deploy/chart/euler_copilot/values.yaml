@@ -40,7 +40,7 @@ models:
   # 用于数据向量化（Embedding）的模型
   embedding:
     # 推理框架类型，默认为ollama
-    # [必填] Embedding接口类型：["ollama", "mindie"]
+    # [必填] Embedding接口类型：["openai", "mindie"]
     type:
     # [必填] Embedding URL（需要带上“v1”后缀）
     url: 
