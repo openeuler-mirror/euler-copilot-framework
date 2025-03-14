@@ -8,6 +8,7 @@ from typing import Any
 from asyncer import asyncify
 
 from apps.common.config import config
+from apps.constants import REASONING_BEGIN_TOKEN, REASONING_END_TOKEN
 from apps.scheduler.json_schema import build_regex_from_schema
 
 
@@ -112,9 +113,22 @@ class FunctionLLM:
 
         chat = await self._client.chat.completions.create(**param)
 
+        reasoning = False
         result = ""
         async for chunk in chat:
-            result += chunk.choices[0].delta.content or ""
+            chunk_str = chunk.choices[0].delta.content or ""
+            for token in REASONING_BEGIN_TOKEN:
+                if token in chunk_str:
+                    reasoning = True
+                    continue
+
+            for token in REASONING_END_TOKEN:
+                if token in chunk_str:
+                    reasoning = False
+                    continue
+
+            if reasoning:
+                result += chunk_str
         return result
 
 
