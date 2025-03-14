@@ -120,16 +120,17 @@ class FunctionLLM:
             for token in REASONING_BEGIN_TOKEN:
                 if token in chunk_str:
                     reasoning = True
-                    continue
+                    break
 
             for token in REASONING_END_TOKEN:
                 if token in chunk_str:
                     reasoning = False
-                    continue
+                    chunk_str = ""
+                    break
 
             if not reasoning:
                 result += chunk_str
-        return result
+        return result.strip().strip(" ").strip("\n")
 
 
     async def _call_openai(self, messages: list[dict[str, Any]], schema: dict[str, Any], max_tokens: int, temperature: float) -> str:
