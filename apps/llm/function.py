@@ -127,7 +127,7 @@ class FunctionLLM:
                     reasoning = False
                     continue
 
-            if reasoning:
+            if not reasoning:
                 result += chunk_str
         return result
 
