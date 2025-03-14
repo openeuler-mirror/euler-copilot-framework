@@ -48,6 +48,8 @@ def register_app(auth_hub_url, user_token, client_name, client_url, redirect_url
             "client_name": client_name,
             "client_uri": client_url,
             "redirect_uris": redirect_urls,
+            "register_callback_uris": [],  # 修复参数名中的空格
+            "logout_callback_uris": [],    # 修复参数名中的空格
             "skip_authorization": True,
             "scope": ["email", "phone", "username", "openid", "offline_access"],
             "grant_types": ["authorization_code"],
