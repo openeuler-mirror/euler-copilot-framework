@@ -86,7 +86,7 @@ class FastAPIWrapper:
 # 运行
 if __name__ == "__main__":
     # 初始化Ray
-    ray.init(dashboard_host="0.0.0.0", num_cpus=4)  # noqa: S104
+    ray.init(dashboard_host="0.0.0.0", num_cpus=4)
 
     # 初始化必要资源
     words_check = WordsCheck.options(name="words_check").remote()
@@ -99,5 +99,5 @@ if __name__ == "__main__":
     scheduler_sctors = [Scheduler.options(name=f"scheduler_{i}").remote() for i in range(SCHEDULER_REPLICAS)]
 
     # 启动FastAPI
-    serve.start(http_options=HTTPOptions(host="0.0.0.0", port=8002))  # noqa: S104
+    serve.start(http_options=HTTPOptions(host="0.0.0.0", port=8002))
     serve.run(FastAPIWrapper.bind(), blocking=True)

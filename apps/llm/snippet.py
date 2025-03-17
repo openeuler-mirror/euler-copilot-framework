@@ -1,4 +1,5 @@
 """上下文转提示词"""
+from typing import Any
 
 
 def convert_context_to_prompt(context: list[dict[str, str]]) -> str:
