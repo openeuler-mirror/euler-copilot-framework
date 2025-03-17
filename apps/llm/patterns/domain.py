@@ -7,6 +7,7 @@ from typing import Any, ClassVar, Optional
 from apps.llm.patterns.core import CorePattern
 from apps.llm.patterns.json_gen import Json
 from apps.llm.reasoning import ReasoningLLM
+from apps.llm.snippet import convert_context_to_prompt
 
 
 class Domain(CorePattern):
@@ -60,9 +61,10 @@ class Domain(CorePattern):
 
     async def generate(self, task_id: str, **kwargs) -> list[str]:  # noqa: ANN003
         """从问答中提取领域信息"""
+        conversation = convert_context_to_prompt(kwargs["conversation"])
         messages = [
             {"role": "system", "content": self.system_prompt},
-            {"role": "user", "content": self.user_prompt.format(conversation=kwargs["conversation"])},
+            {"role": "user", "content": self.user_prompt.format(conversation=conversation)},
         ]
 
         result = ""

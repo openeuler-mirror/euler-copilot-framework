@@ -22,9 +22,8 @@ class QuestionRewrite(CorePattern):
           </example>
         </instructions>
 
-        <input>
-            {question}
-        </input>
+        <input>{question}</input>
+        <output>
     """
     """用户提示词"""
 
@@ -41,5 +40,4 @@ class QuestionRewrite(CorePattern):
         async for chunk in ReasoningLLM().call(task_id, messages, streaming=False):
             result += chunk
 
-        return result
-
+        return result.strip().strip("\n").removesuffix("</output>")
