@@ -81,12 +81,11 @@ class TaskManager:
                 if flow_context:
                     flow_context = FlowStepHistory.model_validate(flow_context)
                     flow_context_list.append(flow_context)
-
-            return flow_context_list
-
         except Exception:
             logger.exception("[TaskManager] 获取record_id的flow信息失败")
             return []
+        else:
+            return flow_context_list
 
 
     @staticmethod
@@ -99,11 +98,11 @@ class TaskManager:
             async for history in flow_context_collection.find({"task_id": task_id}):
                 history_obj = FlowStepHistory.model_validate(history)
                 flow_context[history_obj.step_id] = history_obj
-
-            return flow_context
         except Exception:
             logger.exception("[TaskManager] 获取task_id的flow信息失败")
             return {}
+        else:
+            return flow_context
 
 
     @staticmethod

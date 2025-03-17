@@ -19,7 +19,7 @@ from apps.scheduler.openapi import (
     ReducedOpenAPISpec,
     reduce_openapi_spec,
 )
-from apps.scheduler.yaml import str_presenter
+from apps.scheduler.util import yaml_str_presenter
 
 logger = logging.getLogger("ray")
 
@@ -93,10 +93,10 @@ class OpenAPILoader:
                 body_schema = spec.spec["requestBody"]["content"][content_type]["schema"]
 
             inp = APINodeInput(
-                param_schema=await self.parameters_to_spec(spec.spec["parameters"])
+                query=await self.parameters_to_spec(spec.spec["parameters"])
                 if "parameters" in spec.spec
                 else None,
-                body_schema=body_schema,
+                body=body_schema,
             )
         except KeyError:
             logger.exception("[OpenAPILoader] 接口 %s 请求体定义错误", spec.name)
@@ -104,7 +104,7 @@ class OpenAPILoader:
 
         try:
             out = APINodeOutput(
-                resp_schema=spec.spec["responses"]["200"]["content"]["application/json"]["schema"],
+                result=spec.spec["responses"]["200"]["content"]["application/json"]["schema"],
             )
         except KeyError:
             err = f"[OpenAPILoader] 接口{spec.name}不存在响应体定义"
@@ -168,7 +168,7 @@ class OpenAPILoader:
     async def save_one(self, yaml_path: Path, yaml_dict: dict[str, Any]) -> None:
         """保存单个OpenAPI文档"""
         try:
-            yaml.add_representer(str, str_presenter)
+            yaml.add_representer(str, yaml_str_presenter)
             yaml_data = yaml.safe_dump(yaml_dict)
             await yaml_path.write_text(yaml_data)
         except Exception as e:

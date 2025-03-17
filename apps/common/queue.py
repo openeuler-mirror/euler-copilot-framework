@@ -146,7 +146,7 @@ class MessageQueue:
                 if group_info[0]["pending"]:
                     continue
             except Exception:
-                logger.info("[Queue] Redis流已结束")
+                logger.exception("[Queue] Redis流已结束")
                 break
 
             # 添加心跳消息，得到ID

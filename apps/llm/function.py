@@ -57,6 +57,7 @@ class FunctionLLM:
                     },
                 )
 
+
     @staticmethod
     def _sglang_func(s, messages: list[dict[str, Any]], schema: dict[str, Any], max_tokens: int, temperature: float) -> None:  # noqa: ANN001
         """构建sglang需要的执行函数
@@ -231,6 +232,9 @@ class FunctionLLM:
 
         elif config["SCHEDULER_BACKEND"] == "ollama":
             json_str = await self._call_ollama(**kwargs)
+
+        elif config["SCHEDULER_BACKEND"] == "openai":
+            json_str = await self._call_openai(**kwargs)
 
         else:
             err = "未知的Function模型后端"
