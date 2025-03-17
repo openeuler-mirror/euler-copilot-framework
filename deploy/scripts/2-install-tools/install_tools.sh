@@ -36,17 +36,24 @@ install_basic_tools() {
 
     # 检查 pip 是否已安装
     if ! command -v pip &> /dev/null; then
-        echo "pip could not be found, installing python3-pip..."
+        echo -e "pip could not be found, installing python3-pip..."
         yum install -y python3-pip
     else
-        echo "pip is already installed."
+        echo -e "pip is already installed."
     fi
-
-    # 使用 pip 安装 requests
-    echo "Installing requests with pip..."
-    pip install requests ruamel.yaml
-
+ 
+    echo "Installing requests ruamel.yaml with pip..."
+    if ! pip install \
+        --disable-pip-version-check \
+        --retries 3 \
+        --timeout 60 \
+        --trusted-host mirrors.huaweicloud.com \
+        -i https://mirrors.huaweicloud.com/repository/pypi/simple \
+        ruamel.yaml requests; then
+        echo -e "[ERROR] Failed to install ruamel.yaml and requests via pip" >&2
+    fi
     echo "All basic tools have been installed."
+    return 0
 }
 
 function install_k3s {
@@ -113,26 +120,45 @@ function install_helm {
 }
 
 function set_kubeconfig() {
-    local bashrc_file="/root/.bashrc"
-    local kubeconfig_line="export KUBECONFIG=/etc/rancher/k3s/k3s.yaml"
+    local k3s_config="/etc/rancher/k3s/k3s.yaml"
+    local bashrc_file="$HOME/.bashrc"
+    local kubeconfig_line="export KUBECONFIG=$k3s_config"
 
-    # 检查是否存在且可执行
-    if [ ! -f "/etc/rancher/k3s/k3s.yaml" ]; then
-        echo -e "\033[31m[Error] k3s.yaml 文件不存在，请先安装 k3s\033[0m"
+    # 检查 k3s.yaml 是否存在
+    if [ ! -f "$k3s_config" ]; then
+        echo -e "\033[31m[Error] k3s.yaml 文件不存在，请先安装 k3s 或检查路径：$k3s_config\033[0m"
         return 1
     fi
 
-    # 检查是否需要添加配置
-    if ! grep -Fxq "$kubeconfig_line" "$bashrc_file"; then
-        echo "$kubeconfig_line" | sudo tee -a "$bashrc_file" >/dev/null
-        echo -e "\033[32m[Success] KUBECONFIG 已写入 $bashrc_file\033[0m"
-    else
-        echo -e "[Info] KUBECONFIG 已存在，无需修改"
+    # 检查文件权限（至少需要可读权限）
+    if [ ! -r "$k3s_config" ]; then
+        echo -e "\033[33m[Warn] k3s.yaml 文件不可读，尝试修复权限...\033[0m"
+        sudo chmod 644 "$k3s_config" || {
+            echo -e "\033[31m[Error] 权限修复失败，请手动执行：sudo chmod 644 $k3s_config\033[0m"
+            return 1
+        }
     fi
 
-    # 直接为当前 Shell 设置环境变量（临时生效）
-    export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
+    # 检查并更新 .bashrc（兼容 root 和普通用户）
+    if ! grep -Fxq "$kubeconfig_line" "$bashrc_file"; then
+        echo "$kubeconfig_line" | tee -a "$bashrc_file" >/dev/null
+        echo -e "\033[32m[Success] KUBECONFIG 已写入 $bashrc_file\033[0m"
+    else
+        echo -e "\033[34m[Info] KUBECONFIG 已存在，无需修改\033[0m"
+    fi
+
+    # 设置当前 Shell 环境变量
+    export KUBECONFIG="$k3s_config"
     echo -e "\033[33m[Tips] 当前会话已临时生效，永久生效需重新登录或执行：source $bashrc_file\033[0m"
+
+    # 验证集群连通性
+    if ! kubectl cluster-info &>/dev/null; then
+        echo -e "\033[31m[Critical] 集群连接失败，可能原因：\033[0m"
+        echo -e "1. Kubernetes 未运行 → 执行: sudo systemctl status k3s"
+        echo -e "2. API 地址配置错误 → 检查 $k3s_config 中的 server 字段"
+        echo -e "3. 防火墙阻止连接 → 检查端口 6443 是否开放"
+        return 1
+    fi
 }
 
 function check_k3s_status() {
@@ -157,33 +183,66 @@ function check_k3s_status() {
 }
 
 function apply_traefik_config {
-    local config_file="../chart_ssl/traefik-config.yml"
+    # 获取脚本绝对路径
+    local script_dir
+    script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+    echo $script_dir 
+    # 构造配置文件绝对路径
+    local config_file="${script_dir}/../../chart_ssl/traefik-config.yml"
+
+    # 带颜色的输出函数
+    local RED='\033[31m'
+    local GREEN='\033[32m'
+    local YELLOW='\033[33m'
+    local RESET='\033[0m'
+
+    # 打印调试信息
+    echo -e "${YELLOW}[Debug] 当前脚本目录：${script_dir}${RESET}"
+    echo -e "${YELLOW}[Debug] 配置文件路径：${config_file}${RESET}"
 
     # 检查配置文件是否存在
     if [[ ! -f "$config_file" ]]; then
-        echo -e "\033[31m[Error] Traefik 配置文件未找到：$config_file\033[0m"
+        echo -e "${RED}[Error] Traefik 配置文件未找到：${config_file}${RESET}" >&2
+        echo -e "${YELLOW}建议检查步骤：" >&2
+        echo -e "1. 确认 chart_ssl 目录是否存在" >&2
+        echo -e "2. 确认文件权限（需至少可读权限）" >&2
+        echo -e "3. 检查文件路径是否正确${RESET}" >&2
         return 1
     fi
 
     # 检查 kubectl 是否已安装
     if ! command -v kubectl &> /dev/null; then
-        echo -e "\033[31m[Error] kubectl 未安装，请先安装 kubectl\033[0m"
+        echo -e "${RED}[Error] kubectl 未安装，请先安装 kubectl${RESET}" >&2
+        echo -e "${YELLOW}安装建议：https://kubernetes.io/docs/tasks/tools/${RESET}" >&2
         return 1
     fi
 
     # 检查 Kubernetes 集群是否可用
     if ! kubectl cluster-info &> /dev/null; then
-        echo -e "\033[31m[Error] Kubernetes 集群不可用，请检查集群状态\033[0m"
+        echo -e "${RED}[Error] Kubernetes 集群不可用，请检查：${RESET}" >&2
+        echo -e "${YELLOW}1. 集群是否正在运行" >&2
+        echo -e "2. kubeconfig 配置是否正确" >&2
+        echo -e "3. 网络连接是否正常${RESET}" >&2
         return 1
     fi
 
     # 执行 kubectl apply
     echo -e "[Info] 正在应用 Traefik 配置文件：$config_file"
     if kubectl apply -f "$config_file"; then
-        echo -e "\033[32m[Success] Traefik 配置文件应用成功\033[0m"
+        echo -e "${GREEN}[Success] Traefik 配置文件应用成功${RESET}"
+        
+        # 添加验证步骤
+        echo -e "\n[Info] 验证部署状态："
+        kubectl get svc traefik -n kube-system
+        kubectl get pods -n kube-system -l app.kubernetes.io/name=traefik
+        
         return 0
     else
-        echo -e "\033[31m[Error] Traefik 配置文件应用失败\033[0m"
+        echo -e "${RED}[Error] Traefik 配置文件应用失败${RESET}" >&2
+        echo -e "${YELLOW}排障建议：" >&2
+        echo -e "1. 检查 YAML 语法：kubectl apply --validate -f ${config_file}" >&2
+        echo -e "2. 查看详细日志：kubectl logs -n kube-system -l app.kubernetes.io/name=traefik" >&2
+        echo -e "3. 检查资源配置冲突${RESET}" >&2
         return 1
     fi
 }
