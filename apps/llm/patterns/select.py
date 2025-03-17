@@ -11,6 +11,7 @@ from typing import Any, ClassVar, Optional
 from apps.llm.patterns.core import CorePattern
 from apps.llm.patterns.json_gen import Json
 from apps.llm.reasoning import ReasoningLLM
+from apps.llm.snippet import choices_to_prompt
 
 logger = logging.getLogger("ray")
 
@@ -87,19 +88,6 @@ class Select(CorePattern):
         super().__init__(system_prompt, user_prompt)
 
 
-    @staticmethod
-    def _choices_to_prompt(choices: list[dict[str, Any]]) -> tuple[str, list[str]]:
-        """将选项转换为Prompt"""
-        choices_list = [item["name"] for item in choices]
-
-        prompt = "<options>\n"
-        for item in choices:
-            prompt += f"<item><name>{item['name']}</name><description>{item['description']}</description></item>\n"
-        prompt += "</options>\n"
-
-        return prompt, choices_list
-
-
     async def _generate_single_attempt(self, task_id: str, user_input: str, choice_list: list[str]) -> str:
         """使用ReasoningLLM进行单次尝试"""
         logger.info("[Select] 单次选择尝试: %s", task_id)
@@ -130,7 +118,7 @@ class Select(CorePattern):
         background = kwargs.get("background", "无背景信息。")
         data_str = json.dumps(kwargs.get("data", {}), ensure_ascii=False)
 
-        choice_prompt, choices_list = self._choices_to_prompt(kwargs["choices"])
+        choice_prompt, choices_list = choices_to_prompt(kwargs["choices"])
 
         if not choices_list:
             error_msg = "[Select] 选项列表不能为空"
