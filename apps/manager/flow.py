@@ -11,6 +11,7 @@ from pymongo import ASCENDING
 
 from apps.common.config import config
 from apps.constants import APP_DIR
+from apps.entities.collection import User
 from apps.entities.enum_var import EdgeType, PermissionType
 from apps.entities.flow import Edge, Flow, Step, StepPos
 from apps.entities.flow_topology import (
@@ -120,10 +121,13 @@ class FlowManager:
         service_collection = MongoDB.get_collection("service")
         user_collection = MongoDB.get_collection("user")
         try:
-            user_record = await user_collection.find_one({"_id": user_sub}, {"fav_services": 1, "_id": 0})
-            fav_services = []
-            if user_record:
-                fav_services = user_record.get("fav_services", [])
+            db_result = await user_collection.find_one({"_id": user_sub})
+            user = User.model_validate(db_result)
+            if user is None:
+                logger.error("[FlowManager] 用户 %s 不存在或数据损坏", user_sub)
+                return None
+            # 获取用户收藏的服务列表
+            fav_services = user.fav_services
             match_conditions = [
                 {"author": user_sub},
                 {
@@ -135,7 +139,7 @@ class FlowManager:
                 {
                     "$and": [
                         {"permissions.type": PermissionType.PROTECTED.value},
-                        {"permissions.users": user_sub},
+                        {"permissions.users": {"$in": [user_sub]}},
                         {"_id": {"$in": fav_services}},
                     ],
                 },
