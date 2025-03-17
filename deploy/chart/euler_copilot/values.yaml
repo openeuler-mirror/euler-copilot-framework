@@ -39,7 +39,7 @@ models:
     max_tokens: 
   # 用于数据向量化（Embedding）的模型
   embedding:
-    # 推理框架类型，默认为ollama
+    # 推理框架类型，默认为openai
     # [必填] Embedding接口类型：["openai", "mindie"]
     type:
     # [必填] Embedding URL（需要带上“v1”后缀）
