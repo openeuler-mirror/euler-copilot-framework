@@ -16,62 +16,63 @@ class Recommend(CorePattern):
     """系统提示词"""
 
     user_prompt: str = r"""
-        ## 目标：
-        根据上面的历史对话，结合给出的工具描述和用户倾向，生成三个预测问题。
+        <instructions>
+            <instruction>
+                根据提供的对话和附加信息（用户倾向、历史问题列表等），生成三个预测问题。
+                历史提问列表展示的是用户发生在历史对话之前的提问，仅为背景参考作用。
+                对话将在<conversation>标签中给出，用户倾向将在<domain>标签中给出，历史问题列表将在<history_list>标签中给出。
 
-        ## 要求：
-        信息说明：
-        - [Empty]的含义是“空信息”，如“工具描述: [Empty]”表示当前未使用工具。请忽略信息为空的项，正常进行问题预测。
-        - 历史提问信息是用户发生在历史对话之前的提问，仅为背景参考作用。
+                生成预测问题时的要求：
+                    1. 以用户口吻生成预测问题，数量必须为3个，必须为疑问句或祈使句，必须少于30字。
+                    2. 预测问题必须精简，不得发生重复，不得在问题中掺杂非必要信息，不得输出除问题以外的文字。
+                    3. 输出必须按照如下格式：
 
-        生成时需要遵循的要求：
-        1. 从用户角度生成预测问题，数量必须为3个，必须为疑问句或祈使句，必须少于30字。
-        2. 预测问题应优先贴合工具描述，除非工具描述为空。
-        3. 预测问题必须精简，不得在问题中掺杂非必要信息，不得输出除问题以外的文字。
-        4. 请以如下格式输出：
+                    ```json
+                    {{
+                        "predicted_questions": [
+                            "预测问题1",
+                            "预测问题2",
+                            "预测问题3"
+                        ]
+                    }}
+                    ```
+            </instruction>
 
-        ```json
-        {{
-            "predicted_questions": [
-                "预测问题1",
-                "预测问题2",
-                "预测问题3"
-            ]
-        }}
-        ```
+            <example>
+                <conversation>
+                    <user></user>
+                    <assistant></assistant>
+                </conversation>
+                <history_list>
+                    <question>简单介绍一下杭州</question>
+                    <question>杭州有哪些著名景点？</question>
+                </history_list>
+                <domain>["杭州", "旅游"]</domain>
 
-        ## 样例：
-        工具描述：调用API，查询天气数据
+                现在，进行问题生成：
 
-        用户历史提问：
-        - 简单介绍杭州
-        - 杭州有哪些著名景点
+                {{
+                    "predicted_questions": [
+                        "杭州西湖景区的门票价格是多少？",
+                        "杭州有哪些著名景点？",
+                        "杭州的天气怎么样？"
+                    ]
+                }}
+            </example>
+        </instructions>
 
-        用户倾向：
-        ['旅游', '美食']
 
-        生成的预测问题：
-        ```json
-        {{
-            "predicted_questions": [
-                "杭州西湖景区的门票价格是多少？",
-                "杭州有哪些著名景点？",
-                "杭州的天气怎么样？"
-            ]
-        }}
-        ```
+        <conversation>
+          {conversation}
+        </conversation>
 
-        ## 现在，进行问题生成：
-        工具描述：{action_description}
+        <history_list>
+            {history_questions}
+        </history_list>
 
-        用户历史提问：
-        {history_questions}
+        <domain>{user_preference}</domain>
 
-        用户倾向：
-        {user_preference}
-
-        生成的预测问题：
-        ```json
+        现在，进行问题生成：
     """
     """用户提示词"""
 
@@ -98,11 +99,6 @@ class Recommend(CorePattern):
 
     async def generate(self, task_id: str, **kwargs) -> list[str]:  # noqa: ANN003
         """生成推荐问题"""
-        if "action_description" not in kwargs or not kwargs["action_description"]:
-            action_description = "[Empty]"
-        else:
-            action_description = kwargs["action_description"]
-
         if "user_preference" not in kwargs or not kwargs["user_preference"]:
             user_preference = "[Empty]"
         else:

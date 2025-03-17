@@ -16,7 +16,7 @@ from apps.entities.flow import (
     AppMetadata,
     ServiceMetadata,
 )
-from apps.scheduler.yaml import str_presenter
+from apps.scheduler.util import yaml_str_presenter
 
 logger = logging.getLogger("ray")
 
@@ -102,7 +102,7 @@ class MetadataLoader:
             data = metadata
 
         # 使用UTF-8保存YAML，忽略部分乱码
-        yaml.add_representer(str, str_presenter)
+        yaml.add_representer(str, yaml_str_presenter)
         yaml_dict = yaml.dump(
             jsonable_encoder(data, exclude={"hashes"}),
             allow_unicode=True,

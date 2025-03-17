@@ -53,10 +53,11 @@ class RecordManager:
                 {"_id": group_id, "user_sub": user_sub},
                 {"$push": {"records": record.model_dump(by_alias=True)}},
             )
-            return record.record_id
         except Exception:
             logger.exception("[RecordManager] 插入加密问答对失败")
             return None
+        else:
+            return record.record_id
 
     @staticmethod
     async def query_record_by_conversation_id(
@@ -93,10 +94,11 @@ class RecordManager:
                     continue
 
                 records.append(Record.model_validate(record[0]["records"]))
-            return records
         except Exception:
             logger.exception("[RecordManager] 查询加密问答对失败")
             return []
+        else:
+            return records
 
     @staticmethod
     async def query_record_group_by_conversation_id(conversation_id: str, total_pairs: Optional[int] = None) -> list[RecordGroup]:
