@@ -7,6 +7,7 @@ from typing import Any, Optional
 from apps.entities.scheduler import ExecutorBackground
 from apps.llm.patterns.core import CorePattern
 from apps.llm.reasoning import ReasoningLLM
+from apps.llm.snippet import convert_context_to_prompt, facts_to_prompt
 
 
 class ExecutorThought(CorePattern):
@@ -111,16 +112,14 @@ class ExecutorSummary(CorePattern):
     async def generate(self, task_id: str, **kwargs) -> str:  # noqa: ANN003
         """进行初始背景生成"""
         background: ExecutorBackground = kwargs["background"]
-
-        facts_str = "<facts>\n"
-        for item in background.facts:
-            facts_str += f"- {item}\n"
-        facts_str += "</facts>"
+        conversation_str = convert_context_to_prompt(background.conversation)
+        facts_str = facts_to_prompt(background.facts)
 
         messages = [
+            {"role": "system", "content": self.system_prompt},
             {"role": "user", "content": self.user_prompt.format(
                 facts=facts_str,
-                conversation=background.conversation,
+                conversation=conversation_str,
             )},
         ]
 
@@ -128,4 +127,4 @@ class ExecutorSummary(CorePattern):
         async for chunk in ReasoningLLM().call(task_id, messages, streaming=False, temperature=0.7):
             result += chunk
 
-        return result
+        return result.strip().strip("\n")

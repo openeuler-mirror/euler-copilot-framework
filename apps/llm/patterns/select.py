@@ -31,8 +31,14 @@ class Select(CorePattern):
                     <question>使用天气API，查询明天杭州的天气信息</question>
 
                     <options>
-                        <item>[API] HTTP请求，获得返回的JSON数据</item>
-                        <item>[SQL] 查询数据库，获得数据库表中的数据</item>
+                        <item>
+                            <name>API</name>
+                            <description>HTTP请求，获得返回的JSON数据</description>
+                        </item>
+                        <item>
+                            <name>SQL</name>
+                            <description>查询数据库，获得数据库表中的数据</description>
+                        </item>
                     </options>
                 </input>
 
@@ -84,12 +90,14 @@ class Select(CorePattern):
     @staticmethod
     def _choices_to_prompt(choices: list[dict[str, Any]]) -> tuple[str, list[str]]:
         """将选项转换为Prompt"""
-        choices_prompt = ""
-        choice_str_list = []
-        for choice in choices:
-            choices_prompt += "- {}: {}\n".format(choice["name"], choice["description"])
-            choice_str_list.append(choice["name"])
-        return choices_prompt, choice_str_list
+        choices_list = [item["name"] for item in choices]
+
+        prompt = "<options>\n"
+        for item in choices:
+            prompt += f"<item><name>{item['name']}</name><description>{item['description']}</description></item>\n"
+        prompt += "</options>\n"
+
+        return prompt, choices_list
 
 
     async def _generate_single_attempt(self, task_id: str, user_input: str, choice_list: list[str]) -> str:
@@ -123,6 +131,15 @@ class Select(CorePattern):
         data_str = json.dumps(kwargs.get("data", {}), ensure_ascii=False)
 
         choice_prompt, choices_list = self._choices_to_prompt(kwargs["choices"])
+
+        if not choices_list:
+            error_msg = "[Select] 选项列表不能为空"
+            logger.error(error_msg)
+            raise ValueError(error_msg)
+        if len(choices_list) == 1:
+            logger.info("[Select] 选项列表只有一个选项，直接返回")
+            return choices_list[0]
+
         logger.info("[Select] 选项列表: %s", choice_prompt)
         user_input = self.user_prompt.format(
             question=kwargs["question"],

@@ -7,6 +7,7 @@ from typing import Any, ClassVar, Optional
 from apps.llm.patterns.core import CorePattern
 from apps.llm.patterns.json_gen import Json
 from apps.llm.reasoning import ReasoningLLM
+from apps.llm.snippet import convert_context_to_prompt, history_questions_to_prompt
 
 
 class Recommend(CorePattern):
@@ -40,8 +41,8 @@ class Recommend(CorePattern):
 
             <example>
                 <conversation>
-                    <user></user>
-                    <assistant></assistant>
+                    <user>杭州有哪些著名景点？</user>
+                    <assistant>杭州西湖是中国浙江省杭州市的一个著名景点，以其美丽的自然风光和丰富的文化遗产而闻名。西湖周围有许多著名的景点，包括著名的苏堤、白堤、断桥、三潭印月等。西湖以其清澈的湖水和周围的山脉而著名，是中国最著名的湖泊之一。</assistant>
                 </conversation>
                 <history_list>
                     <question>简单介绍一下杭州</question>
@@ -63,7 +64,7 @@ class Recommend(CorePattern):
 
 
         <conversation>
-          {conversation}
+            {conversation}
         </conversation>
 
         <history_list>
@@ -107,17 +108,15 @@ class Recommend(CorePattern):
         if "history_questions" not in kwargs or not kwargs["history_questions"]:
             history_questions = "[Empty]"
         else:
-            history_questions = kwargs["history_questions"]
+            history_questions = history_questions_to_prompt(kwargs["history_questions"])
 
-        user_input = self.user_prompt.format(
-            action_description=action_description,
-            history_questions=history_questions,
-            user_preference=user_preference,
-        )
-
-        messages = kwargs["recent_question"] + [
+        messages = [
             {"role": "system", "content": self.system_prompt},
-            {"role": "user", "content": user_input},
+            {"role": "user", "content": self.user_prompt.format(
+                conversation=convert_context_to_prompt(kwargs["conversation"]),
+                history_questions=history_questions,
+                user_preference=user_preference,
+            )},
         ]
 
         result = ""
