@@ -30,12 +30,12 @@ def history_questions_to_prompt(history_questions: list[str]) -> str:
 
 
 def choices_to_prompt(choices: list[dict[str, Any]]) -> tuple[str, list[str]]:
-        """将选项转换为Prompt"""
-        choices_list = [item["name"] for item in choices]
+    """将选项转换为Prompt"""
+    choices_list = [item["name"] for item in choices]
 
-        prompt = "<options>\n"
-        for item in choices:
-            prompt += f"<item><name>{item['name']}</name><description>{item['description']}</description></item>\n"
-        prompt += "</options>\n"
+    prompt = "<options>\n"
+    for item in choices:
+        prompt += f"<item><name>{item['name']}</name><description>{item['description']}</description></item>\n"
+    prompt += "</options>\n"
 
-        return prompt, choices_list
+    return prompt, choices_list
