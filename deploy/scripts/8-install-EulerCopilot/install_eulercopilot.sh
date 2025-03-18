@@ -169,7 +169,7 @@ check_directories() {
         if mkdir -p "${PLUGINS_DIR}"; then
             echo -e "${GREEN}目录已创建：${PLUGINS_DIR}${NC}" >&2
 	    mkdir -p "${PLUGINS_DIR}"/app "${PLUGINS_DIR}"/service "${PLUGINS_DIR}"/call
-	    chmod -R 1001:1001 ${PLUGINS_DIR}/*
+	    chown -R 1001:1001 ${PLUGINS_DIR}/*
         else
             echo -e "${RED}错误：无法创建目录 ${PLUGINS_DIR}${NC}" >&2
             exit 1
