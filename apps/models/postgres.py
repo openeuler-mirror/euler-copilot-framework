@@ -75,7 +75,7 @@ class PostgreSQL:
         if config["EMBEDDING_KEY"]:
             headers["Authorization"] = f"Bearer {config['EMBEDDING_KEY']}"
 
-        session = aiohttp.ClientSession(timeout=60)
+        session = aiohttp.ClientSession()
 
         result = []
         for single_text in text:
