@@ -2,6 +2,7 @@
 
 Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 """
+from collections.abc import AsyncGenerator
 from datetime import datetime
 from textwrap import dedent
 from typing import Any, ClassVar
@@ -39,6 +40,7 @@ class _LLMParams(BaseModel):
                         额外的背景信息：{{ context }}
             """).strip("\n"))
     timeout: int = Field(description="超时时间", default=30)
+    output_to_user: bool = Field(description="是否将输出推送给用户", default=True)
 
 
 class LLM(CoreCall):
@@ -57,9 +59,9 @@ class LLM(CoreCall):
     params_schema: ClassVar[dict[str, Any]] = _LLMParams.model_json_schema()
 
 
-    async def call(self, _slot_data: dict[str, Any]) -> CallResult:
-        """运行LLM Call"""
-        # 参数
+    async def _prepare_message(self) -> list[dict[str, str]]:
+        """准备消息"""
+        # 获取当前时间
         time = datetime.now(tz=pytz.timezone("Asia/Shanghai")).strftime("%Y-%m-%d %H:%M:%S")
         formatter = {
             "time": time,
@@ -69,30 +71,28 @@ class LLM(CoreCall):
         }
 
         try:
-            # 准备提示词
-            system_tmpl = SandboxedEnvironment(
+            # 创建一个共用的 Environment
+            env = SandboxedEnvironment(
                 loader=BaseLoader(),
                 autoescape=select_autoescape(),
                 trim_blocks=True,
                 lstrip_blocks=True,
-            ).from_string(self._params.system_prompt)
-            system_input = system_tmpl.render(**formatter)
-            user_tmpl = SandboxedEnvironment(
-                loader=BaseLoader(),
-                autoescape=select_autoescape(),
-                trim_blocks=True,
-                lstrip_blocks=True,
-            ).from_string(self._params.user_prompt)
-            user_input = user_tmpl.render(**formatter)
+            )
+            # 使用同一个 env 实例来渲染两个模板
+            system_input = env.from_string(self._params.system_prompt).render(**formatter)
+            user_input = env.from_string(self._params.user_prompt).render(**formatter)
         except Exception as e:
             raise CallError(message=f"用户提示词渲染失败：{e!s}", data={}) from e
 
-        message = [
+        return [
             {"role": "system", "content": system_input},
             {"role": "user", "content": user_input},
         ]
 
+    async def call(self, _slot_data: dict[str, Any]) -> CallResult:
+        """运行LLM Call"""
         try:
+            message = await self._prepare_message()
             result = ""
             async for chunk in ReasoningLLM().call(task_id=self._core_params.task_id, messages=message):
                 result += chunk
@@ -104,3 +104,17 @@ class LLM(CoreCall):
             message=result,
             output_schema={},
         )
+
+
+    async def stream(self, _slot_data: dict[str, Any]) -> AsyncGenerator[str, None]:
+        """运行LLM Call的流式输出版本"""
+        try:
+            message = await self._prepare_message()
+            async for chunk in ReasoningLLM().call(
+                task_id=self._core_params.task_id,
+                messages=message,
+                streaming=True,
+            ):
+                yield chunk
+        except Exception as e:
+            raise CallError(message=f"大模型流式调用失败：{e!s}", data={}) from e
