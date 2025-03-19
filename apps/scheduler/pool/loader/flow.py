@@ -84,9 +84,9 @@ class FlowLoader:
                 step["description"] = "结束节点"
                 step["type"] = "end"
             else:
-                step["type"] = (await NodeManager.get_node(step["node"])).call_id
+                step["type"] = (await NodeManager.get_node_call_id(step["node"]))
                 step["name"] = (
-                    (await NodeManager.get_node(step["node"])).name
+                    (await NodeManager.get_node_name(step["node"]))
                     if "name" not in step or step["name"] == ""
                     else step["name"]
                 )
