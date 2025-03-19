@@ -156,7 +156,7 @@ async def save_data(task_id: str, user_sub: str, post_body: RequestData, used_do
     # 保存与答案关联的文件
     await DocumentManager.save_answer_doc(user_sub, record_group, used_docs)
 
-    if post_body.app:
+    if post_body.app and post_body.app.app_id:
         # 更新最近使用的应用
         await AppCenterManager.update_recent_app(user_sub, post_body.app.app_id)
 
