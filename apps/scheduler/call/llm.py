@@ -40,7 +40,6 @@ class _LLMParams(BaseModel):
                         额外的背景信息：{{ context }}
             """).strip("\n"))
     timeout: int = Field(description="超时时间", default=30)
-    output_to_user: bool = Field(description="是否将输出推送给用户", default=True)
 
 
 class LLM(CoreCall):
@@ -57,6 +56,7 @@ class LLM(CoreCall):
     name: str = "llm"
     description: str = "大模型调用工具，用于以指定的提示词和上下文信息调用大模型，并获得输出。"
     params_schema: ClassVar[dict[str, Any]] = _LLMParams.model_json_schema()
+    output_to_user: bool = Field(description="是否将输出推送给用户", default=True)
 
 
     async def _prepare_message(self) -> list[dict[str, str]]:
