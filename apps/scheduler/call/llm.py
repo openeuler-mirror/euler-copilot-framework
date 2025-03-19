@@ -115,6 +115,7 @@ class LLM(CoreCall):
                 messages=message,
                 streaming=True,
             ):
-                yield chunk
+                if chunk:
+                    yield chunk
         except Exception as e:
             raise CallError(message=f"大模型流式调用失败：{e!s}", data={}) from e
