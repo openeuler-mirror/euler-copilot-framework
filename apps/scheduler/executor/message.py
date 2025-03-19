@@ -2,6 +2,7 @@
 
 Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 """
+from apps.constants import LOGGER
 from apps.common.queue import MessageQueue
 from apps.entities.enum import EventType, FlowOutputType, StepStatus
 from apps.entities.message import (
@@ -66,6 +67,8 @@ async def push_step_input(task_id: str, queue: MessageQueue, state: ExecutorStat
             params=state.slot_data,
         )
     else:
+        LOGGER.error(flow.steps)
+        LOGGER.error(state.step_name)
         content = StepInputContent(
             call_type=flow.steps[state.step_name].call_type,
             params=state.slot_data,
@@ -146,26 +149,20 @@ async def push_flow_stop(task_id: str, queue: MessageQueue, state: ExecutorState
         # 如果当前Flow是其他类型，则推送空消息
         content = {}
 
-    # 推送最终结果
-    params = {
-        "question": question,
-        "thought": state.thought,
-        "final_output": content,
-    }
-    full_text = ""
-    async for chunk in ExecutorResult().generate(task_id, **params):
-        if not chunk:
-            continue
-        await queue.push_output(
-            event_type=EventType.TEXT_ADD,
-            data=TextAddContent(text=chunk).model_dump(exclude_none=True, by_alias=True),
-        )
-        full_text += chunk
-
     # 推送Stop消息
     await queue.push_output(event_type=EventType.FLOW_STOP, data=content)
 
     # 更新Thought
-    task.record.content.answer = full_text
     task.flow_state = state
+    await TaskManager.set_task(task_id, task)
+
+
+async def push_call_text_output(task_id: str, queue: MessageQueue, flow: Flow, output: str) -> None:
+    """推送输出"""
+    # 获取Task
+    task = await TaskManager.get_task(task_id)
+
+    task.record.content.answer += output
+    # 推送输出
+    await queue.push_output(event_type=EventType.TEXT_ADD, data=TextAddContent(text=output).model_dump(exclude_none=True, by_alias=True))
     await TaskManager.set_task(task_id, task)
