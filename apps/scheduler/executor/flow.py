@@ -211,7 +211,7 @@ class Executor:
         # 执行Call
         try:
             # 如果是LLM类型，使用stream方法
-            if call_type == "llm" and call_obj.output_to_user:
+            if call_type == "llm" and self.flow_state.slot_data.get("output_to_user", True):
                 result = CallResult(
                     message="",
                     output={},
