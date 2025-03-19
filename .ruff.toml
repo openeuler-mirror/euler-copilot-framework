@@ -1,0 +1,26 @@
+line-length = 120
+indent-width = 4
+target-version = "py39"
+
+[lint]
+select = ["ALL"]
+ignore = [
+    "ANN401",
+    "ARG002",
+    "E501",
+    "D400",
+    "D415",
+    "FA100",
+    "PYI019",
+    "RUF001",
+    "RUF002",
+    "RUF003",
+    "S104",
+    "TC001",
+    "TD002",
+    "TD003",
+    "INP001"
+]
+
+[format]
+quote-style = "double"

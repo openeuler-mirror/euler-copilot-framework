@@ -21,6 +21,7 @@ from apps.llm.patterns import ExecutorThought
 from apps.llm.patterns.executor import ExecutorBackground
 from apps.manager import TaskManager
 from apps.scheduler.executor.message import (
+    push_call_text_output,
     push_flow_start,
     push_flow_stop,
     push_step_input,
@@ -209,7 +210,19 @@ class Executor:
 
         # 执行Call
         try:
-            result: CallResult = await call_obj.call(self.flow_state.slot_data)
+            # 如果是LLM类型，使用stream方法
+            if call_type == "llm" and call_obj.output_to_user:
+                result = CallResult(
+                    message="",
+                    output={},
+                    output_schema={},
+                    extra=None,
+                )
+                async for chunk in call_obj.stream(self.flow_state.slot_data):
+                    result.message += chunk
+                    await push_call_text_output(self._vars.task_id, self._vars.queue, self._flow_data, chunk)
+            else:
+                result: CallResult = await call_obj.call(self.flow_state.slot_data)
         except Exception as e:
             err = f"[FlowExecutor] 执行工具{call_type}时发生错误：{e!s}\n{traceback.format_exc()}"
             LOGGER.error(err)
@@ -234,17 +247,12 @@ class Executor:
 
     async def _handle_next_step(self, result: CallResult) -> None:
         """处理下一步"""
-        if self._next_step is None:
+        try:
+            self.flow_state.step_name = self._flow_data.steps[self.flow_state.step_name].next or ""
+        except Exception as e:
+            LOGGER.error(f"[FlowExecutor] 获取下一步时发生错误：{e!s}\n{traceback.format_exc()}")
+            self.flow_state.status = StepStatus.ERROR
             return
-
-        # 处理分支（cloice工具）
-        if self._flow_data.steps[self._next_step].call_type == "cloice" and result.extra is not None:
-            self._next_step = result.extra.get("next_step")
-            return
-
-        # 处理下一步
-        self._next_step = self._flow_data.steps[self._next_step].next
-
 
     async def _update_thought(self, call_name: str, call_description: str, call_result: CallResult) -> None:
         """执行步骤后，更新FlowExecutor的思考内容"""

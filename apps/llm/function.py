@@ -4,7 +4,7 @@ Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 """
 import json
 from typing import Any, Union
-
+import re
 import ollama
 import openai
 import sglang
@@ -79,10 +79,13 @@ class FunctionLLM:
         if not schema:
             s += sglang.assistant(sglang.gen(name="output", max_tokens=max_tokens, temperature=temperature))
         else:
-            s += sglang.assistant(sglang.gen(name="output", regex=build_regex_from_schema(json.dumps(schema)), max_tokens=max_tokens, temperature=temperature))
+            s += sglang.assistant(sglang.gen(name="output", regex=build_regex_from_schema(json.dumps(schema)),
+                                  max_tokens=max_tokens, temperature=temperature))
 
-
-    async def _call_vllm(self, messages: list[dict[str, Any]], schema: dict[str, Any], max_tokens: int, temperature: float) -> str:
+    async def _call_vllm(
+            self, messages: list[dict[str, Any]],
+            schema: dict[str, Any],
+            max_tokens: int, temperature: float) -> str:
         """调用vllm模型生成JSON
 
         :param messages: 历史消息列表
@@ -108,15 +111,17 @@ class FunctionLLM:
         if schema:
             param["extra_body"] = {"guided_json": schema}
 
-        chat = await self._client.chat.completions.create(**param) # type: ignore[]
+        chat = await self._client.chat.completions.create(**param)  # type: ignore[]
 
         result = ""
         async for chunk in chat:
             result += chunk.choices[0].delta.content or ""
         return result
 
-
-    async def _call_openai(self, messages: list[dict[str, Any]], schema: dict[str, Any], max_tokens: int, temperature: float) -> str:
+    async def _call_openai(
+            self, messages: list[dict[str, Any]],
+            schema: dict[str, Any],
+            max_tokens: int, temperature: float) -> str:
         """调用openai模型生成JSON
 
         :param messages: 历史消息列表
@@ -149,15 +154,17 @@ class FunctionLLM:
             param["tools"] = [tool_data]
             param["tool_choice"] = "required"
 
-        response = await self._client.chat.completions.create(**param) # type: ignore[]
+        response = await self._client.chat.completions.create(**param)  # type: ignore[]
         try:
             ans = response.choices[0].message.tool_calls[0].function.arguments or ""
         except IndexError:
             ans = ""
         return ans
 
-
-    async def _call_ollama(self, messages: list[dict[str, Any]], schema: dict[str, Any], max_tokens: int, temperature: float) -> str:
+    async def _call_ollama(
+            self, messages: list[dict[str, Any]],
+            schema: dict[str, Any],
+            max_tokens: int, temperature: float) -> str:
         """调用ollama模型生成JSON
 
         :param messages: 历史消息列表
@@ -182,7 +189,6 @@ class FunctionLLM:
         response = await self._client.chat(**param)     # type: ignore[]
         return response.message.content or ""
 
-
     async def call(self, **kwargs) -> str:  # noqa: ANN003
         """调用FunctionCall小模型
 
@@ -201,5 +207,11 @@ class FunctionLLM:
         else:
             err = "未知的Function模型后端"
             raise ValueError(err)
-
-        return json_str
+        json_str = re.sub(r'<think>.*?</think>', '', json_str, flags=re.DOTALL)
+        st=json_str.find('{')
+        en=json_str.rfind('}')
+        json_str=json_str[st:en+1]
+        if st==-1 or en==-1:
+            err = "json生成失败"
+            raise ValueError(err)
+        return json_str.strip()
