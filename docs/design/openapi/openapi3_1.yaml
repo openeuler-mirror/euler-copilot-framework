@@ -1,0 +1,3573 @@
+openapi: 3.1.0
+info:
+  title: EulerCopilot Framework
+  version: 0.9.5
+paths:
+  /api/conversation:
+    get:
+      tags:
+        - conversation
+      summary: Get Conversation List
+      description: 获取对话列表
+      operationId: get_conversation_list_api_conversation_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConversationListRsp'
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseData'
+          description: Internal Server Error
+    post:
+      tags:
+        - conversation
+      summary: Add Conversation
+      description: 手动创建新对话
+      operationId: add_conversation_api_conversation_post
+      parameters:
+        - name: appId
+          in: query
+          required: false
+          schema:
+            anyOf:
+              - type: string
+              - type: 'null'
+            title: Appid
+        - name: debug
+          in: query
+          required: false
+          schema:
+            anyOf:
+              - type: boolean
+              - type: 'null'
+            title: Debug
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AddConversationRsp'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    put:
+      tags:
+        - conversation
+      summary: Update Conversation
+      description: 更新特定Conversation的数据
+      operationId: update_conversation_api_conversation_put
+      parameters:
+        - name: conversationId
+          in: query
+          required: true
+          schema:
+            type: string
+            title: Conversationid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ModifyConversationData'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UpdateConversationRsp'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    delete:
+      tags:
+        - conversation
+      summary: Delete Conversation
+      description: 删除特定对话
+      operationId: delete_conversation_api_conversation_delete
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeleteConversationData'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseData'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/auth/login:
+    get:
+      tags:
+        - auth
+      summary: Oidc Login
+      description: |-
+        OIDC login
+
+        :param request: Request object
+        :param code: OIDC code
+        :param redirect_index: redirect index
+        :return: RedirectResponse
+      operationId: oidc_login_api_auth_login_get
+      parameters:
+        - name: code
+          in: query
+          required: true
+          schema:
+            type: string
+            title: Code
+        - name: redirect_index
+          in: query
+          required: false
+          schema:
+            anyOf:
+              - type: string
+              - type: 'null'
+            title: Redirect Index
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/auth/logout:
+    get:
+      tags:
+        - auth
+      summary: Logout
+      description: 用户登出EulerCopilot
+      operationId: logout_api_auth_logout_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseData'
+    post:
+      tags:
+        - auth
+      summary: Oidc Logout
+      description: OIDC主动触发登出
+      operationId: oidc_logout_api_auth_logout_post
+      parameters:
+        - name: token
+          in: query
+          required: true
+          schema:
+            type: string
+            title: Token
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseData'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/auth/redirect:
+    get:
+      tags:
+        - auth
+      summary: Oidc Redirect
+      description: OIDC重定向URL
+      operationId: oidc_redirect_api_auth_redirect_get
+      parameters:
+        - name: action
+          in: query
+          required: false
+          schema:
+            type: string
+            default: login
+            title: Action
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OidcRedirectRsp'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/auth/user:
+    get:
+      tags:
+        - auth
+      summary: Userinfo
+      description: 获取用户信息
+      operationId: userinfo_api_auth_user_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthUserRsp'
+  /api/auth/update_revision_number:
+    post:
+      tags:
+        - auth
+      summary: Update Revision Number
+      description: 更新用户协议信息
+      operationId: update_revision_number_api_auth_update_revision_number_post
+      parameters:
+        - name: _post_body
+          in: query
+          required: true
+          schema:
+            title: ' Post Body'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthUserRsp'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseData'
+          description: Internal Server Error
+  /api/auth/key:
+    get:
+      tags:
+        - key
+      summary: Check Api Key Existence
+      description: 检查API密钥是否存在
+      operationId: check_api_key_existence_api_auth_key_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetAuthKeyRsp'
+    post:
+      tags:
+        - key
+      summary: Manage Api Key
+      description: 管理用户的API密钥
+      operationId: manage_api_key_api_auth_key_post
+      parameters:
+        - name: action
+          in: query
+          required: true
+          schema:
+            type: string
+            title: Action
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PostAuthKeyRsp'
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseData'
+          description: Bad Request
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/app:
+    get:
+      tags:
+        - appcenter
+      summary: Get Applications
+      description: 获取应用列表
+      operationId: get_applications_api_app_get
+      parameters:
+        - name: createdByMe
+          in: query
+          required: false
+          schema:
+            type: boolean
+            description: 筛选我创建的
+            default: false
+            title: Createdbyme
+          description: 筛选我创建的
+        - name: favorited
+          in: query
+          required: false
+          schema:
+            type: boolean
+            description: 筛选我收藏的
+            default: false
+            title: Favorited
+          description: 筛选我收藏的
+        - name: searchType
+          in: query
+          required: false
+          schema:
+            $ref: '#/components/schemas/SearchType'
+            description: 搜索类型
+            default: all
+          description: 搜索类型
+        - name: keyword
+          in: query
+          required: false
+          schema:
+            anyOf:
+              - type: string
+              - type: 'null'
+            description: 搜索关键字
+            title: Keyword
+          description: 搜索关键字
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            description: 页码
+            default: 1
+            title: Page
+          description: 页码
+        - name: pageSize
+          in: query
+          required: false
+          schema:
+            type: integer
+            maximum: 100
+            minimum: 1
+            description: 每页条数
+            default: 16
+            title: Pagesize
+          description: 每页条数
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                anyOf:
+                  - $ref: '#/components/schemas/GetAppListRsp'
+                  - $ref: '#/components/schemas/ResponseData'
+                title: Response Get Applications Api App Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    post:
+      tags:
+        - appcenter
+      summary: Create Or Update Application
+      description: 创建或更新应用
+      operationId: create_or_update_application_api_app_post
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateAppRequest'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                anyOf:
+                  - $ref: '#/components/schemas/BaseAppOperationRsp'
+                  - $ref: '#/components/schemas/ResponseData'
+                title: Response Create Or Update Application Api App Post
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/app/recent:
+    get:
+      tags:
+        - appcenter
+      summary: Get Recently Used Applications
+      description: 获取最近使用的应用
+      operationId: get_recently_used_applications_api_app_recent_get
+      parameters:
+        - name: count
+          in: query
+          required: false
+          schema:
+            type: integer
+            maximum: 10
+            minimum: 1
+            default: 5
+            title: Count
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                anyOf:
+                  - $ref: '#/components/schemas/GetRecentAppListRsp'
+                  - $ref: '#/components/schemas/ResponseData'
+                title: Response Get Recently Used Applications Api App Recent Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/app/{appId}:
+    get:
+      tags:
+        - appcenter
+      summary: Get Application
+      description: 获取应用详情
+      operationId: get_application_api_app__appId__get
+      parameters:
+        - name: appId
+          in: path
+          required: true
+          schema:
+            type: string
+            description: 应用ID
+            title: Appid
+          description: 应用ID
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                anyOf:
+                  - $ref: '#/components/schemas/GetAppPropertyRsp'
+                  - $ref: '#/components/schemas/ResponseData'
+                title: Response Get Application Api App  Appid  Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    delete:
+      tags:
+        - appcenter
+      summary: Delete Application
+      description: 删除应用
+      operationId: delete_application_api_app__appId__delete
+      parameters:
+        - name: appId
+          in: path
+          required: true
+          schema:
+            type: string
+            description: 应用ID
+            title: Appid
+          description: 应用ID
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                anyOf:
+                  - $ref: '#/components/schemas/BaseAppOperationRsp'
+                  - $ref: '#/components/schemas/ResponseData'
+                title: Response Delete Application Api App  Appid  Delete
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    post:
+      tags:
+        - appcenter
+      summary: Publish Application
+      description: 发布应用
+      operationId: publish_application_api_app__appId__post
+      parameters:
+        - name: appId
+          in: path
+          required: true
+          schema:
+            type: string
+            description: 应用ID
+            title: Appid
+          description: 应用ID
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BaseAppOperationRsp'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    put:
+      tags:
+        - appcenter
+      summary: Modify Favorite Application
+      description: 更改应用收藏状态
+      operationId: modify_favorite_application_api_app__appId__put
+      parameters:
+        - name: appId
+          in: path
+          required: true
+          schema:
+            type: string
+            description: 应用ID
+            title: Appid
+          description: 应用ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ModFavAppRequest'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                anyOf:
+                  - $ref: '#/components/schemas/ModFavAppRsp'
+                  - $ref: '#/components/schemas/ResponseData'
+                title: Response Modify Favorite Application Api App  Appid  Put
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/service:
+    get:
+      tags:
+        - service-center
+      summary: Get Service List
+      description: 获取服务列表
+      operationId: get_service_list_api_service_get
+      parameters:
+        - name: createdByMe
+          in: query
+          required: false
+          schema:
+            type: boolean
+            description: 筛选我创建的
+            default: false
+            title: Createdbyme
+          description: 筛选我创建的
+        - name: favorited
+          in: query
+          required: false
+          schema:
+            type: boolean
+            description: 筛选我收藏的
+            default: false
+            title: Favorited
+          description: 筛选我收藏的
+        - name: searchType
+          in: query
+          required: false
+          schema:
+            $ref: '#/components/schemas/SearchType'
+            description: 搜索类型
+            default: all
+          description: 搜索类型
+        - name: keyword
+          in: query
+          required: false
+          schema:
+            anyOf:
+              - type: string
+              - type: 'null'
+            description: 搜索关键字
+            title: Keyword
+          description: 搜索关键字
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            description: 页码
+            default: 1
+            title: Page
+          description: 页码
+        - name: pageSize
+          in: query
+          required: false
+          schema:
+            type: integer
+            maximum: 100
+            minimum: 1
+            description: 每页数量
+            default: 16
+            title: Pagesize
+          description: 每页数量
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                anyOf:
+                  - $ref: '#/components/schemas/GetServiceListRsp'
+                  - $ref: '#/components/schemas/ResponseData'
+                title: Response Get Service List Api Service Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    post:
+      tags:
+        - service-center
+      summary: Update Service
+      description: 上传并解析服务
+      operationId: update_service_api_service_post
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateServiceRequest'
+              description: 上传 YAML 文本对应数据对象
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UpdateServiceRsp'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/service/{serviceId}:
+    get:
+      tags:
+        - service-center
+      summary: Get Service Detail
+      description: 获取服务详情
+      operationId: get_service_detail_api_service__serviceId__get
+      parameters:
+        - name: serviceId
+          in: path
+          required: true
+          schema:
+            type: string
+            description: 服务ID
+            title: Serviceid
+          description: 服务ID
+        - name: edit
+          in: query
+          required: false
+          schema:
+            type: boolean
+            description: 是否为编辑模式
+            default: false
+            title: Edit
+          description: 是否为编辑模式
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetServiceDetailRsp'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    delete:
+      tags:
+        - service-center
+      summary: Delete Service
+      description: 删除服务
+      operationId: delete_service_api_service__serviceId__delete
+      parameters:
+        - name: serviceId
+          in: path
+          required: true
+          schema:
+            type: string
+            description: 服务ID
+            title: Serviceid
+          description: 服务ID
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeleteServiceRsp'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    put:
+      tags:
+        - service-center
+      summary: Modify Favorite Service
+      description: 修改服务收藏状态
+      operationId: modify_favorite_service_api_service__serviceId__put
+      parameters:
+        - name: serviceId
+          in: path
+          required: true
+          schema:
+            type: string
+            description: 服务ID
+            title: Serviceid
+          description: 服务ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ModFavServiceRequest'
+              description: 更改收藏状态请求对象
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ModFavServiceRsp'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/comment:
+    post:
+      tags:
+        - comment
+      summary: Add Comment
+      description: 给Record添加评论
+      operationId: add_comment_api_comment_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddCommentData'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseData'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/record/{conversation_id}:
+    get:
+      tags:
+        - record
+      summary: Get Record
+      description: 获取某个对话的所有问答对
+      operationId: get_record_api_record__conversation_id__get
+      parameters:
+        - name: conversation_id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: Conversation Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RecordListRsp'
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseData'
+          description: Forbidden
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /health_check:
+    get:
+      tags:
+        - health_check
+      summary: Health Check
+      description: 健康检查接口
+      operationId: health_check_health_check_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthCheckRsp'
+  /api/chat:
+    post:
+      tags:
+        - chat
+      summary: Chat
+      description: LLM流式对话接口
+      operationId: chat_api_chat_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RequestData'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/stop:
+    post:
+      tags:
+        - chat
+      summary: Stop Generation
+      description: 停止生成
+      operationId: stop_generation_api_stop_post
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseData'
+  /api/client/session:
+    post:
+      tags:
+        - client
+      summary: Get Session Id
+      description: 获取客户端会话ID
+      operationId: get_session_id_api_client_session_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ClientSessionData'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PostClientSessionRsp'
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseData'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+        - OAuth2PasswordBearer: []
+  /api/blacklist/user:
+    get:
+      tags:
+        - blacklist
+      summary: Get Blacklist User
+      description: 获取黑名单用户
+      operationId: get_blacklist_user_api_blacklist_user_get
+      parameters:
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 0
+            title: Page
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetBlacklistUserRsp'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    post:
+      tags:
+        - blacklist
+      summary: Change Blacklist User
+      description: 操作黑名单用户
+      operationId: change_blacklist_user_api_blacklist_user_post
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserBlacklistRequest'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseData'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/blacklist/question:
+    get:
+      tags:
+        - blacklist
+      summary: Get Blacklist Question
+      description: |-
+        获取黑名单问题
+
+        目前情况下，先直接输出问题，不做用户类型校验
+      operationId: get_blacklist_question_api_blacklist_question_get
+      parameters:
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 0
+            title: Page
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetBlacklistQuestionRsp'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    post:
+      tags:
+        - blacklist
+      summary: Change Blacklist Question
+      description: 黑名单问题检测或操作
+      operationId: change_blacklist_question_api_blacklist_question_post
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/QuestionBlacklistRequest'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseData'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/blacklist/complaint:
+    post:
+      tags:
+        - blacklist
+      summary: Abuse Report
+      description: 用户实施举报
+      operationId: abuse_report_api_blacklist_complaint_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AbuseRequest'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseData'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/blacklist/abuse:
+    get:
+      tags:
+        - blacklist
+      summary: Get Abuse Report
+      description: 获取待审核的问答对
+      operationId: get_abuse_report_api_blacklist_abuse_get
+      parameters:
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 0
+            title: Page
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetBlacklistQuestionRsp'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    post:
+      tags:
+        - blacklist
+      summary: Change Abuse Report
+      description: 对被举报问答对进行操作
+      operationId: change_abuse_report_api_blacklist_abuse_post
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AbuseProcessRequest'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseData'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/document/{conversation_id}:
+    post:
+      tags:
+        - document
+      summary: Document Upload
+      description: 上传文档
+      operationId: document_upload_api_document__conversation_id__post
+      parameters:
+        - name: conversation_id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: Conversation Id
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: >-
+                #/components/schemas/Body_document_upload_api_document__conversation_id__post
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    get:
+      tags:
+        - document
+      summary: Get Document List
+      description: 获取文档列表
+      operationId: get_document_list_api_document__conversation_id__get
+      parameters:
+        - name: conversation_id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: Conversation Id
+        - name: used
+          in: query
+          required: false
+          schema:
+            type: boolean
+            default: false
+            title: Used
+        - name: unused
+          in: query
+          required: false
+          schema:
+            type: boolean
+            default: true
+            title: Unused
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConversationDocumentRsp'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/document/{document_id}:
+    delete:
+      tags:
+        - document
+      summary: Delete Single Document
+      description: 删除单个文件
+      operationId: delete_single_document_api_document__document_id__delete
+      parameters:
+        - name: document_id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: Document Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseData'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/knowledge:
+    get:
+      tags:
+        - 知识库
+      summary: Get Kb Id
+      description: 获取当前用户的知识库ID
+      operationId: get_kb_id_api_knowledge_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetKnowledgeIDRsp'
+        '404':
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseData'
+    post:
+      tags:
+        - 知识库
+      summary: Change Kb Id
+      description: 修改当前用户的知识库ID
+      operationId: change_kb_id_api_knowledge_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PostKnowledgeIDData'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseData'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/flow/service:
+    get:
+      tags:
+        - flow
+      summary: Get Services
+      description: 获取用户可访问的节点元数据所在服务的信息
+      operationId: get_services_api_flow_service_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NodeServiceListRsp'
+        '404':
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseData'
+  /api/flow/service/node:
+    get:
+      tags:
+        - flow
+      summary: Get Node Metadatas
+      description: 获取节点元数据的详细信息
+      operationId: get_node_metadatas_api_flow_service_node_get
+      parameters:
+        - name: serviceId
+          in: query
+          required: true
+          schema:
+            type: string
+            title: Serviceid
+        - name: NodeMetadataId
+          in: query
+          required: true
+          schema:
+            type: string
+            title: Nodemetadataid
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NodeMetaDataRsp'
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseData'
+          description: Forbidden
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseData'
+          description: Not Found
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/flow:
+    get:
+      tags:
+        - flow
+      summary: Get Flow
+      description: 获取流拓扑结构
+      operationId: get_flow_api_flow_get
+      parameters:
+        - name: appId
+          in: query
+          required: true
+          schema:
+            type: string
+            title: Appid
+        - name: flowId
+          in: query
+          required: true
+          schema:
+            type: string
+            title: Flowid
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FlowStructureGetRsp'
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseData'
+          description: Forbidden
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseData'
+          description: Not Found
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    put:
+      tags:
+        - flow
+      summary: Put Flow
+      description: 修改流拓扑结构
+      operationId: put_flow_api_flow_put
+      parameters:
+        - name: appId
+          in: query
+          required: true
+          schema:
+            type: string
+            title: Appid
+        - name: flowId
+          in: query
+          required: true
+          schema:
+            type: string
+            title: Flowid
+        - name: topologyCheck
+          in: query
+          required: false
+          schema:
+            anyOf:
+              - type: boolean
+              - type: 'null'
+            default: true
+            title: Topologycheck
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PutFlowReq'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FlowStructurePutRsp'
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseData'
+          description: Bad Request
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseData'
+          description: Forbidden
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseData'
+          description: Not Found
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseData'
+          description: Internal Server Error
+    delete:
+      tags:
+        - flow
+      summary: Delete Flow
+      description: 删除流拓扑结构
+      operationId: delete_flow_api_flow_delete
+      parameters:
+        - name: appId
+          in: query
+          required: true
+          schema:
+            type: string
+            title: Appid
+        - name: flowId
+          in: query
+          required: true
+          schema:
+            type: string
+            title: Flowid
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FlowStructureDeleteRsp'
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseData'
+          description: Not Found
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/user:
+    get:
+      tags:
+        - user
+      summary: Chat
+      description: 查询所有用户接口
+      operationId: chat_api_user_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+components:
+  schemas:
+    AbuseProcessRequest:
+      properties:
+        id:
+          type: string
+          title: Id
+        is_deletion:
+          type: integer
+          title: Is Deletion
+      type: object
+      required:
+        - id
+        - is_deletion
+      title: AbuseProcessRequest
+      description: POST /api/blacklist/abuse 请求数据结构
+    AbuseRequest:
+      properties:
+        record_id:
+          type: string
+          title: Record Id
+        reason:
+          type: string
+          title: Reason
+        reason_type:
+          items:
+            type: string
+          type: array
+          title: Reason Type
+      type: object
+      required:
+        - record_id
+        - reason
+        - reason_type
+      title: AbuseRequest
+      description: POST /api/blacklist/complaint 请求数据结构
+    AddCommentData:
+      properties:
+        record_id:
+          type: string
+          title: Record Id
+        group_id:
+          type: string
+          title: Group Id
+        is_like:
+          type: boolean
+          title: Is Like
+        dislike_reason:
+          items:
+            type: string
+          type: array
+          maxItems: 10
+          title: Dislike Reason
+          default: []
+        reason_link:
+          type: string
+          maxLength: 200
+          title: Reason Link
+        reason_description:
+          type: string
+          maxLength: 500
+          title: Reason Description
+      type: object
+      required:
+        - record_id
+        - group_id
+        - is_like
+      title: AddCommentData
+      description: 添加评论
+    AddConversationMsg:
+      properties:
+        conversationId:
+          type: string
+          title: Conversationid
+      type: object
+      required:
+        - conversationId
+      title: AddConversationMsg
+      description: POST /api/conversation Result数据结构
+    AddConversationRsp:
+      properties:
+        code:
+          type: integer
+          title: Code
+        message:
+          type: string
+          title: Message
+        result:
+          $ref: '#/components/schemas/AddConversationMsg'
+      type: object
+      required:
+        - code
+        - message
+        - result
+      title: AddConversationRsp
+      description: POST /api/conversation 返回数据结构
+    AppCenterCardItem:
+      properties:
+        appId:
+          type: string
+          title: Appid
+          description: 应用ID
+        icon:
+          type: string
+          title: Icon
+          description: 应用图标
+        name:
+          type: string
+          title: Name
+          description: 应用名称
+        description:
+          type: string
+          title: Description
+          description: 应用简介
+        author:
+          type: string
+          title: Author
+          description: 应用作者
+        favorited:
+          type: boolean
+          title: Favorited
+          description: 是否已收藏
+        published:
+          type: boolean
+          title: Published
+          description: 是否已发布
+          default: true
+      type: object
+      required:
+        - appId
+        - icon
+        - name
+        - description
+        - author
+        - favorited
+      title: AppCenterCardItem
+      description: 应用中心卡片数据结构
+    AppFlowInfo:
+      properties:
+        id:
+          type: string
+          title: Id
+          description: 工作流ID
+        name:
+          type: string
+          title: Name
+          description: 工作流名称
+        description:
+          type: string
+          title: Description
+          description: 工作流简介
+        debug:
+          type: boolean
+          title: Debug
+          description: 是否经过调试
+      type: object
+      required:
+        - id
+        - name
+        - description
+        - debug
+      title: AppFlowInfo
+      description: 应用工作流数据结构
+    AppLink:
+      properties:
+        title:
+          type: string
+          title: Title
+          description: 链接标题
+        url:
+          type: string
+          pattern: ^(https|http)://.*$
+          title: Url
+          description: 链接地址
+      type: object
+      required:
+        - title
+        - url
+      title: AppLink
+      description: App的相关链接
+    AppPermissionData:
+      properties:
+        visibility:
+          $ref: '#/components/schemas/PermissionType'
+          description: 可见性（public/private/protected）
+          default: private
+        authorizedUsers:
+          anyOf:
+            - items:
+                type: string
+              type: array
+            - type: 'null'
+          title: Authorizedusers
+          description: 附加人员名单（如果可见性为部分人可见）
+      type: object
+      title: AppPermissionData
+      description: 应用权限数据结构
+    AuthUserMsg:
+      properties:
+        user_sub:
+          type: string
+          title: User Sub
+        revision:
+          type: boolean
+          title: Revision
+      type: object
+      required:
+        - user_sub
+        - revision
+      title: AuthUserMsg
+      description: GET /api/auth/user Result数据结构
+    AuthUserRsp:
+      properties:
+        code:
+          type: integer
+          title: Code
+        message:
+          type: string
+          title: Message
+        result:
+          $ref: '#/components/schemas/AuthUserMsg'
+      type: object
+      required:
+        - code
+        - message
+        - result
+      title: AuthUserRsp
+      description: GET /api/auth/user 返回数据结构
+    BaseAppOperationMsg:
+      properties:
+        appId:
+          type: string
+          title: Appid
+          description: 应用ID
+      type: object
+      required:
+        - appId
+      title: BaseAppOperationMsg
+      description: 基础应用操作Result数据结构
+    BaseAppOperationRsp:
+      properties:
+        code:
+          type: integer
+          title: Code
+        message:
+          type: string
+          title: Message
+        result:
+          $ref: '#/components/schemas/BaseAppOperationMsg'
+      type: object
+      required:
+        - code
+        - message
+        - result
+      title: BaseAppOperationRsp
+      description: 基础应用操作返回数据结构
+    BaseServiceOperationMsg:
+      properties:
+        serviceId:
+          type: string
+          title: Serviceid
+          description: 服务ID
+      type: object
+      required:
+        - serviceId
+      title: BaseServiceOperationMsg
+      description: 语义接口中心：基础服务操作Result数据结构
+    Blacklist:
+      properties:
+        _id:
+          type: string
+          title: ' Id'
+        question:
+          type: string
+          title: Question
+        answer:
+          type: string
+          title: Answer
+        is_audited:
+          type: boolean
+          title: Is Audited
+          default: false
+        reason_type:
+          items:
+            type: string
+          type: array
+          title: Reason Type
+          default: []
+        reason:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Reason
+        updated_at:
+          type: number
+          title: Updated At
+      type: object
+      required:
+        - question
+        - answer
+      title: Blacklist
+      description: |-
+        黑名单
+
+        Collection: blacklist
+    Body_document_upload_api_document__conversation_id__post:
+      properties:
+        documents:
+          items:
+            type: string
+            format: binary
+          type: array
+          title: Documents
+      type: object
+      required:
+        - documents
+      title: Body_document_upload_api_document__conversation_id__post
+    ClientSessionData:
+      properties:
+        session_id:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Session Id
+      type: object
+      title: ClientSessionData
+      description: 客户端Session信息
+    ConversationDocumentItem:
+      properties:
+        _id:
+          type: string
+          title: ' Id'
+          default: ''
+        user_sub:
+          type: 'null'
+          title: User Sub
+        name:
+          type: string
+          title: Name
+        type:
+          type: string
+          title: Type
+        size:
+          type: number
+          title: Size
+        created_at:
+          type: number
+          title: Created At
+        conversation_id:
+          type: 'null'
+          title: Conversation Id
+        status:
+          $ref: '#/components/schemas/DocumentStatus'
+      type: object
+      required:
+        - name
+        - type
+        - size
+        - status
+      title: ConversationDocumentItem
+      description: GET /api/document/{conversation_id} Result内元素数据结构
+    ConversationDocumentMsg:
+      properties:
+        documents:
+          items:
+            $ref: '#/components/schemas/ConversationDocumentItem'
+          type: array
+          title: Documents
+          default: []
+      type: object
+      title: ConversationDocumentMsg
+      description: GET /api/document/{conversation_id} Result数据结构
+    ConversationDocumentRsp:
+      properties:
+        code:
+          type: integer
+          title: Code
+        message:
+          type: string
+          title: Message
+        result:
+          $ref: '#/components/schemas/ConversationDocumentMsg'
+      type: object
+      required:
+        - code
+        - message
+        - result
+      title: ConversationDocumentRsp
+      description: GET /api/document/{conversation_id} 返回数据结构
+    ConversationListItem:
+      properties:
+        conversationId:
+          type: string
+          title: Conversationid
+        title:
+          type: string
+          title: Title
+        docCount:
+          type: integer
+          title: Doccount
+        createdTime:
+          type: string
+          title: Createdtime
+        appId:
+          type: string
+          title: Appid
+        debug:
+          type: boolean
+          title: Debug
+      type: object
+      required:
+        - conversationId
+        - title
+        - docCount
+        - createdTime
+        - appId
+        - debug
+      title: ConversationListItem
+      description: GET /api/conversation Result数据结构
+    ConversationListMsg:
+      properties:
+        conversations:
+          items:
+            $ref: '#/components/schemas/ConversationListItem'
+          type: array
+          title: Conversations
+      type: object
+      required:
+        - conversations
+      title: ConversationListMsg
+      description: GET /api/conversation Result数据结构
+    ConversationListRsp:
+      properties:
+        code:
+          type: integer
+          title: Code
+        message:
+          type: string
+          title: Message
+        result:
+          $ref: '#/components/schemas/ConversationListMsg'
+      type: object
+      required:
+        - code
+        - message
+        - result
+      title: ConversationListRsp
+      description: GET /api/conversation 返回数据结构
+    CreateAppRequest:
+      properties:
+        icon:
+          type: string
+          title: Icon
+          description: 图标
+          default: ''
+        name:
+          type: string
+          maxLength: 20
+          title: Name
+          description: 应用名称
+        description:
+          type: string
+          maxLength: 150
+          title: Description
+          description: 应用简介
+        links:
+          items:
+            $ref: '#/components/schemas/AppLink'
+          type: array
+          maxItems: 5
+          title: Links
+          description: 相关链接
+          default: []
+        recommendedQuestions:
+          items:
+            type: string
+          type: array
+          maxItems: 3
+          title: Recommendedquestions
+          description: 推荐问题
+          default: []
+        dialogRounds:
+          type: integer
+          maximum: 10
+          minimum: 1
+          title: Dialogrounds
+          description: 对话轮次（1～10）
+          default: 3
+        permission:
+          $ref: '#/components/schemas/AppPermissionData'
+          description: 权限配置
+        workflows:
+          items:
+            $ref: '#/components/schemas/AppFlowInfo'
+          type: array
+          title: Workflows
+          description: 工作流信息列表
+          default: []
+        appId:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Appid
+          description: 应用ID
+      type: object
+      required:
+        - name
+        - description
+      title: CreateAppRequest
+      description: POST /api/app 请求数据结构
+    DeleteConversationData:
+      properties:
+        conversationList:
+          items:
+            type: string
+          type: array
+          title: Conversationlist
+      type: object
+      required:
+        - conversationList
+      title: DeleteConversationData
+      description: 删除会话
+    DeleteServiceRsp:
+      properties:
+        code:
+          type: integer
+          title: Code
+        message:
+          type: string
+          title: Message
+        result:
+          $ref: '#/components/schemas/BaseServiceOperationMsg'
+          title: Result
+      type: object
+      required:
+        - code
+        - message
+        - result
+      title: DeleteServiceRsp
+      description: DELETE /api/service/{serviceId} 返回数据结构
+    DependencyItem:
+      properties:
+        nodeId:
+          type: string
+          title: Nodeid
+        type:
+          type: string
+          title: Type
+      type: object
+      required:
+        - nodeId
+        - type
+      title: DependencyItem
+      description: 请求/响应中的节点依赖变量类
+    DocumentStatus:
+      type: string
+      enum:
+        - used
+        - unused
+        - processing
+        - failed
+      title: DocumentStatus
+      description: 文档状态
+    EdgeItem:
+      properties:
+        edgeId:
+          type: string
+          title: Edgeid
+        sourceNode:
+          type: string
+          title: Sourcenode
+        targetNode:
+          type: string
+          title: Targetnode
+        type:
+          type: string
+          title: Type
+          default: normal
+        branchId:
+          type: string
+          title: Branchid
+      type: object
+      required:
+        - edgeId
+        - sourceNode
+        - targetNode
+        - branchId
+      title: EdgeItem
+      description: 请求/响应中的边变量类
+    FlowItem-Input:
+      properties:
+        flowId:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Flowid
+          default: 工作流ID
+        name:
+          type: string
+          title: Name
+          default: 工作流名称
+        description:
+          type: string
+          title: Description
+          default: 工作流描述
+        enable:
+          type: boolean
+          title: Enable
+          default: true
+        editable:
+          type: boolean
+          title: Editable
+          default: true
+        nodes:
+          items:
+            $ref: '#/components/schemas/NodeItem'
+          type: array
+          title: Nodes
+          default: []
+        edges:
+          items:
+            $ref: '#/components/schemas/EdgeItem'
+          type: array
+          title: Edges
+          default: []
+        createdAt:
+          anyOf:
+            - type: number
+            - type: 'null'
+          title: Createdat
+          default: 0
+        debug:
+          type: boolean
+          title: Debug
+          default: false
+      type: object
+      title: FlowItem
+      description: 请求/响应中的流变量类
+    FlowItem-Output:
+      properties:
+        flowId:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Flowid
+          default: 工作流ID
+        name:
+          type: string
+          title: Name
+          default: 工作流名称
+        description:
+          type: string
+          title: Description
+          default: 工作流描述
+        enable:
+          type: boolean
+          title: Enable
+          default: true
+        editable:
+          type: boolean
+          title: Editable
+          default: true
+        nodes:
+          items:
+            $ref: '#/components/schemas/NodeItem'
+          type: array
+          title: Nodes
+          default: []
+        edges:
+          items:
+            $ref: '#/components/schemas/EdgeItem'
+          type: array
+          title: Edges
+          default: []
+        createdAt:
+          anyOf:
+            - type: number
+            - type: 'null'
+          title: Createdat
+          default: 0
+        debug:
+          type: boolean
+          title: Debug
+          default: false
+      type: object
+      title: FlowItem
+      description: 请求/响应中的流变量类
+    FlowStructureDeleteMsg:
+      properties:
+        flowId:
+          type: string
+          title: Flowid
+          default: ''
+      type: object
+      title: FlowStructureDeleteMsg
+      description: DELETE /api/flow/ result
+    FlowStructureDeleteRsp:
+      properties:
+        code:
+          type: integer
+          title: Code
+        message:
+          type: string
+          title: Message
+        result:
+          $ref: '#/components/schemas/FlowStructureDeleteMsg'
+      type: object
+      required:
+        - code
+        - message
+        - result
+      title: FlowStructureDeleteRsp
+      description: DELETE /api/flow/ 返回数据结构
+    FlowStructureGetMsg:
+      properties:
+        flow:
+          $ref: '#/components/schemas/FlowItem-Output'
+          default:
+            flowId: 工作流ID
+            name: 工作流名称
+            description: 工作流描述
+            enable: true
+            editable: true
+            nodes: []
+            edges: []
+            createdAt: 0
+            debug: false
+        focus_point:
+          $ref: '#/components/schemas/PositionItem'
+          default:
+            x: 0
+            'y': 0
+      type: object
+      title: FlowStructureGetMsg
+      description: GET /api/flow result
+    FlowStructureGetRsp:
+      properties:
+        code:
+          type: integer
+          title: Code
+        message:
+          type: string
+          title: Message
+        result:
+          $ref: '#/components/schemas/FlowStructureGetMsg'
+      type: object
+      required:
+        - code
+        - message
+        - result
+      title: FlowStructureGetRsp
+      description: GET /api/flow 返回数据结构
+    FlowStructurePutMsg:
+      properties:
+        flow:
+          $ref: '#/components/schemas/FlowItem-Output'
+          default:
+            flowId: 工作流ID
+            name: 工作流名称
+            description: 工作流描述
+            enable: true
+            editable: true
+            nodes: []
+            edges: []
+            createdAt: 0
+            debug: false
+      type: object
+      title: FlowStructurePutMsg
+      description: PUT /api/flow result
+    FlowStructurePutRsp:
+      properties:
+        code:
+          type: integer
+          title: Code
+        message:
+          type: string
+          title: Message
+        result:
+          $ref: '#/components/schemas/FlowStructurePutMsg'
+      type: object
+      required:
+        - code
+        - message
+        - result
+      title: FlowStructurePutRsp
+      description: PUT /api/flow 返回数据结构
+    GetAppListMsg:
+      properties:
+        currentPage:
+          type: integer
+          title: Currentpage
+          description: 当前页码
+        totalApps:
+          type: integer
+          title: Totalapps
+          description: 总应用数
+        applications:
+          items:
+            $ref: '#/components/schemas/AppCenterCardItem'
+          type: array
+          title: Applications
+          description: 应用列表
+      type: object
+      required:
+        - currentPage
+        - totalApps
+        - applications
+      title: GetAppListMsg
+      description: GET /api/app Result数据结构
+    GetAppListRsp:
+      properties:
+        code:
+          type: integer
+          title: Code
+        message:
+          type: string
+          title: Message
+        result:
+          $ref: '#/components/schemas/GetAppListMsg'
+      type: object
+      required:
+        - code
+        - message
+        - result
+      title: GetAppListRsp
+      description: GET /api/app 返回数据结构
+    GetAppPropertyMsg:
+      properties:
+        icon:
+          type: string
+          title: Icon
+          description: 图标
+          default: ''
+        name:
+          type: string
+          maxLength: 20
+          title: Name
+          description: 应用名称
+        description:
+          type: string
+          maxLength: 150
+          title: Description
+          description: 应用简介
+        links:
+          items:
+            $ref: '#/components/schemas/AppLink'
+          type: array
+          maxItems: 5
+          title: Links
+          description: 相关链接
+          default: []
+        recommendedQuestions:
+          items:
+            type: string
+          type: array
+          maxItems: 3
+          title: Recommendedquestions
+          description: 推荐问题
+          default: []
+        dialogRounds:
+          type: integer
+          maximum: 10
+          minimum: 1
+          title: Dialogrounds
+          description: 对话轮次（1～10）
+          default: 3
+        permission:
+          $ref: '#/components/schemas/AppPermissionData'
+          description: 权限配置
+        workflows:
+          items:
+            $ref: '#/components/schemas/AppFlowInfo'
+          type: array
+          title: Workflows
+          description: 工作流信息列表
+          default: []
+        appId:
+          type: string
+          title: Appid
+          description: 应用ID
+        published:
+          type: boolean
+          title: Published
+          description: 是否已发布
+      type: object
+      required:
+        - name
+        - description
+        - appId
+        - published
+      title: GetAppPropertyMsg
+      description: GET /api/app/{appId} Result数据结构
+    GetAppPropertyRsp:
+      properties:
+        code:
+          type: integer
+          title: Code
+        message:
+          type: string
+          title: Message
+        result:
+          $ref: '#/components/schemas/GetAppPropertyMsg'
+      type: object
+      required:
+        - code
+        - message
+        - result
+      title: GetAppPropertyRsp
+      description: GET /api/app/{appId} 返回数据结构
+    GetAuthKeyRsp:
+      properties:
+        code:
+          type: integer
+          title: Code
+        message:
+          type: string
+          title: Message
+        result:
+          $ref: '#/components/schemas/_GetAuthKeyMsg'
+      type: object
+      required:
+        - code
+        - message
+        - result
+      title: GetAuthKeyRsp
+      description: GET /api/auth/key 返回数据结构
+    GetBlacklistQuestionMsg:
+      properties:
+        question_list:
+          items:
+            $ref: '#/components/schemas/Blacklist'
+          type: array
+          title: Question List
+      type: object
+      required:
+        - question_list
+      title: GetBlacklistQuestionMsg
+      description: GET /api/blacklist/question Result数据结构
+    GetBlacklistQuestionRsp:
+      properties:
+        code:
+          type: integer
+          title: Code
+        message:
+          type: string
+          title: Message
+        result:
+          $ref: '#/components/schemas/GetBlacklistQuestionMsg'
+      type: object
+      required:
+        - code
+        - message
+        - result
+      title: GetBlacklistQuestionRsp
+      description: GET /api/blacklist/question 返回数据结构
+    GetBlacklistUserMsg:
+      properties:
+        user_subs:
+          items:
+            type: string
+          type: array
+          title: User Subs
+      type: object
+      required:
+        - user_subs
+      title: GetBlacklistUserMsg
+      description: GET /api/blacklist/user Result数据结构
+    GetBlacklistUserRsp:
+      properties:
+        code:
+          type: integer
+          title: Code
+        message:
+          type: string
+          title: Message
+        result:
+          $ref: '#/components/schemas/GetBlacklistUserMsg'
+      type: object
+      required:
+        - code
+        - message
+        - result
+      title: GetBlacklistUserRsp
+      description: GET /api/blacklist/user 返回数据结构
+    GetKnowledgeIDMsg:
+      properties:
+        kb_id:
+          type: string
+          title: Kb Id
+      type: object
+      required:
+        - kb_id
+      title: GetKnowledgeIDMsg
+      description: GET /api/knowledge Result数据结构
+    GetKnowledgeIDRsp:
+      properties:
+        code:
+          type: integer
+          title: Code
+        message:
+          type: string
+          title: Message
+        result:
+          $ref: '#/components/schemas/GetKnowledgeIDMsg'
+      type: object
+      required:
+        - code
+        - message
+        - result
+      title: GetKnowledgeIDRsp
+      description: GET /api/knowledge 返回数据结构
+    GetRecentAppListRsp:
+      properties:
+        code:
+          type: integer
+          title: Code
+        message:
+          type: string
+          title: Message
+        result:
+          $ref: '#/components/schemas/RecentAppList'
+      type: object
+      required:
+        - code
+        - message
+        - result
+      title: GetRecentAppListRsp
+      description: GET /api/app/recent 返回数据结构
+    GetServiceDetailMsg:
+      properties:
+        serviceId:
+          type: string
+          title: Serviceid
+          description: 服务ID
+        name:
+          type: string
+          title: Name
+          description: 服务名称
+        apis:
+          anyOf:
+            - items:
+                $ref: '#/components/schemas/ServiceApiData'
+              type: array
+            - type: 'null'
+          title: Apis
+          description: 解析后的接口列表
+        data:
+          anyOf:
+            - type: object
+            - type: 'null'
+          title: Data
+          description: YAML 内容数据对象
+      type: object
+      required:
+        - serviceId
+        - name
+      title: GetServiceDetailMsg
+      description: GET /api/service/{serviceId} Result数据结构
+    GetServiceDetailRsp:
+      properties:
+        code:
+          type: integer
+          title: Code
+        message:
+          type: string
+          title: Message
+        result:
+          $ref: '#/components/schemas/GetServiceDetailMsg'
+          title: Result
+      type: object
+      required:
+        - code
+        - message
+        - result
+      title: GetServiceDetailRsp
+      description: GET /api/service/{serviceId} 返回数据结构
+    GetServiceListMsg:
+      properties:
+        currentPage:
+          type: integer
+          title: Currentpage
+          description: 当前页码
+        totalCount:
+          type: integer
+          title: Totalcount
+          description: 总服务数
+        services:
+          items:
+            $ref: '#/components/schemas/ServiceCardItem'
+          type: array
+          title: Services
+          description: 解析后的服务列表
+      type: object
+      required:
+        - currentPage
+        - totalCount
+        - services
+      title: GetServiceListMsg
+      description: GET /api/service Result数据结构
+    GetServiceListRsp:
+      properties:
+        code:
+          type: integer
+          title: Code
+        message:
+          type: string
+          title: Message
+        result:
+          $ref: '#/components/schemas/GetServiceListMsg'
+          title: Result
+      type: object
+      required:
+        - code
+        - message
+        - result
+      title: GetServiceListRsp
+      description: GET /api/service 返回数据结构
+    HTTPValidationError:
+      properties:
+        detail:
+          items:
+            $ref: '#/components/schemas/ValidationError'
+          type: array
+          title: Detail
+      type: object
+      title: HTTPValidationError
+    HealthCheckRsp:
+      properties:
+        status:
+          type: string
+          title: Status
+      type: object
+      required:
+        - status
+      title: HealthCheckRsp
+      description: GET /health_check 返回数据结构
+    ModFavAppMsg:
+      properties:
+        appId:
+          type: string
+          title: Appid
+          description: 应用ID
+        favorited:
+          type: boolean
+          title: Favorited
+          description: 是否已收藏
+      type: object
+      required:
+        - appId
+        - favorited
+      title: ModFavAppMsg
+      description: PUT /api/app/{appId} Result数据结构
+    ModFavAppRequest:
+      properties:
+        favorited:
+          type: boolean
+          title: Favorited
+          description: 是否收藏
+      type: object
+      required:
+        - favorited
+      title: ModFavAppRequest
+      description: PUT /api/app/{appId} 请求数据结构
+    ModFavAppRsp:
+      properties:
+        code:
+          type: integer
+          title: Code
+        message:
+          type: string
+          title: Message
+        result:
+          $ref: '#/components/schemas/ModFavAppMsg'
+      type: object
+      required:
+        - code
+        - message
+        - result
+      title: ModFavAppRsp
+      description: PUT /api/app/{appId} 返回数据结构
+    ModFavServiceMsg:
+      properties:
+        serviceId:
+          type: string
+          title: Serviceid
+          description: 服务ID
+        favorited:
+          type: boolean
+          title: Favorited
+          description: 是否已收藏
+      type: object
+      required:
+        - serviceId
+        - favorited
+      title: ModFavServiceMsg
+      description: PUT /api/service/{serviceId} Result数据结构
+    ModFavServiceRequest:
+      properties:
+        favorited:
+          type: boolean
+          title: Favorited
+          description: 是否收藏
+      type: object
+      required:
+        - favorited
+      title: ModFavServiceRequest
+      description: PUT /api/service/{serviceId} 请求数据结构
+    ModFavServiceRsp:
+      properties:
+        code:
+          type: integer
+          title: Code
+        message:
+          type: string
+          title: Message
+        result:
+          $ref: '#/components/schemas/ModFavServiceMsg'
+          title: Result
+      type: object
+      required:
+        - code
+        - message
+        - result
+      title: ModFavServiceRsp
+      description: PUT /api/service/{serviceId} 返回数据结构
+    ModifyConversationData:
+      properties:
+        title:
+          type: string
+          maxLength: 2000
+          minLength: 1
+          title: Title
+      type: object
+      required:
+        - title
+      title: ModifyConversationData
+      description: 修改会话信息
+    NodeItem:
+      properties:
+        stepId:
+          type: string
+          title: Stepid
+          default: ''
+        serviceId:
+          type: string
+          title: Serviceid
+          default: ''
+        nodeId:
+          type: string
+          title: Nodeid
+          default: ''
+        name:
+          type: string
+          title: Name
+          default: ''
+        callId:
+          type: string
+          title: Callid
+          default: Empty
+        description:
+          type: string
+          title: Description
+          default: ''
+        enable:
+          type: boolean
+          title: Enable
+          default: true
+        parameters:
+          type: object
+          title: Parameters
+          default: {}
+        depedency:
+          anyOf:
+            - $ref: '#/components/schemas/DependencyItem'
+            - type: 'null'
+        position:
+          $ref: '#/components/schemas/PositionItem'
+          default:
+            x: 0
+            'y': 0
+        editable:
+          type: boolean
+          title: Editable
+          default: true
+      type: object
+      title: NodeItem
+      description: 请求/响应中的节点变量类
+    NodeMetaDataItem:
+      properties:
+        nodeId:
+          type: string
+          title: Nodeid
+        callId:
+          type: string
+          title: Callid
+        name:
+          type: string
+          title: Name
+        description:
+          type: string
+          title: Description
+        parameters:
+          anyOf:
+            - type: object
+            - type: 'null'
+          title: Parameters
+        editable:
+          type: boolean
+          title: Editable
+          default: true
+        createdAt:
+          anyOf:
+            - type: number
+            - type: 'null'
+          title: Createdat
+      type: object
+      required:
+        - nodeId
+        - callId
+        - name
+        - description
+        - parameters
+        - createdAt
+      title: NodeMetaDataItem
+      description: 节点元数据类
+    NodeMetaDataRsp:
+      properties:
+        code:
+          type: integer
+          title: Code
+        message:
+          type: string
+          title: Message
+        result:
+          $ref: '#/components/schemas/NodeMetaDataItem'
+      type: object
+      required:
+        - code
+        - message
+        - result
+      title: NodeMetaDataRsp
+      description: GET /api/flow/service/node 返回数据结构
+    NodeServiceItem:
+      properties:
+        serviceId:
+          type: string
+          title: Serviceid
+          description: 服务ID
+        name:
+          type: string
+          title: Name
+          description: 服务名称
+        type:
+          type: string
+          title: Type
+          description: 服务类型
+        nodeMetaDatas:
+          items:
+            $ref: '#/components/schemas/NodeMetaDataItem'
+          type: array
+          title: Nodemetadatas
+          default: []
+        createdAt:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Createdat
+          description: 创建时间
+      type: object
+      required:
+        - serviceId
+        - name
+        - type
+      title: NodeServiceItem
+      description: GET /api/flow/service 中单个service信息以及service下的节点元数据的信息
+    NodeServiceListMsg:
+      properties:
+        services:
+          items:
+            $ref: '#/components/schemas/NodeServiceItem'
+          type: array
+          title: Services
+          description: 服务列表
+          default: []
+      type: object
+      title: NodeServiceListMsg
+      description: GET /api/flow/service result
+    NodeServiceListRsp:
+      properties:
+        code:
+          type: integer
+          title: Code
+        message:
+          type: string
+          title: Message
+        result:
+          $ref: '#/components/schemas/NodeServiceListMsg'
+      type: object
+      required:
+        - code
+        - message
+        - result
+      title: NodeServiceListRsp
+      description: GET /api/flow/service 返回数据结构
+    OidcRedirectMsg:
+      properties:
+        url:
+          type: string
+          title: Url
+      type: object
+      required:
+        - url
+      title: OidcRedirectMsg
+      description: GET /api/auth/redirect Result数据结构
+    OidcRedirectRsp:
+      properties:
+        code:
+          type: integer
+          title: Code
+        message:
+          type: string
+          title: Message
+        result:
+          $ref: '#/components/schemas/OidcRedirectMsg'
+      type: object
+      required:
+        - code
+        - message
+        - result
+      title: OidcRedirectRsp
+      description: GET /api/auth/redirect 返回数据结构
+    PermissionType:
+      type: string
+      enum:
+        - protected
+        - public
+        - private
+      title: PermissionType
+      description: 权限类型
+    PositionItem:
+      properties:
+        x:
+          type: number
+          title: X
+          default: 0
+        'y':
+          type: number
+          title: 'Y'
+          default: 0
+      type: object
+      title: PositionItem
+      description: 请求/响应中的前端相对位置变量类
+    PostAuthKeyMsg:
+      properties:
+        api_key:
+          type: string
+          title: Api Key
+      type: object
+      required:
+        - api_key
+      title: PostAuthKeyMsg
+      description: POST /api/auth/key Result数据结构
+    PostAuthKeyRsp:
+      properties:
+        code:
+          type: integer
+          title: Code
+        message:
+          type: string
+          title: Message
+        result:
+          $ref: '#/components/schemas/PostAuthKeyMsg'
+      type: object
+      required:
+        - code
+        - message
+        - result
+      title: PostAuthKeyRsp
+      description: POST /api/auth/key 返回数据结构
+    PostClientSessionMsg:
+      properties:
+        session_id:
+          type: string
+          title: Session Id
+        user_sub:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: User Sub
+      type: object
+      required:
+        - session_id
+      title: PostClientSessionMsg
+      description: POST /api/client/session Result数据结构
+    PostClientSessionRsp:
+      properties:
+        code:
+          type: integer
+          title: Code
+        message:
+          type: string
+          title: Message
+        result:
+          $ref: '#/components/schemas/PostClientSessionMsg'
+      type: object
+      required:
+        - code
+        - message
+        - result
+      title: PostClientSessionRsp
+      description: POST /api/client/session 返回数据结构
+    PostKnowledgeIDData:
+      properties:
+        kb_id:
+          type: string
+          title: Kb Id
+      type: object
+      required:
+        - kb_id
+      title: PostKnowledgeIDData
+      description: 添加知识库
+    PutFlowReq:
+      properties:
+        flow:
+          $ref: '#/components/schemas/FlowItem-Input'
+        focusPoint:
+          $ref: '#/components/schemas/PositionItem'
+      type: object
+      required:
+        - flow
+        - focusPoint
+      title: PutFlowReq
+      description: 创建/修改流拓扑结构
+    QuestionBlacklistRequest:
+      properties:
+        id:
+          type: string
+          title: Id
+        question:
+          type: string
+          title: Question
+        answer:
+          type: string
+          title: Answer
+        is_deletion:
+          type: integer
+          title: Is Deletion
+      type: object
+      required:
+        - id
+        - question
+        - answer
+        - is_deletion
+      title: QuestionBlacklistRequest
+      description: POST /api/blacklist/question 请求数据结构
+    RecentAppList:
+      properties:
+        applications:
+          items:
+            $ref: '#/components/schemas/RecentAppListItem'
+          type: array
+          title: Applications
+          description: 最近使用的应用列表
+      type: object
+      required:
+        - applications
+      title: RecentAppList
+      description: GET /api/app/recent Result数据结构
+    RecentAppListItem:
+      properties:
+        appId:
+          type: string
+          title: Appid
+          description: 应用ID
+        name:
+          type: string
+          title: Name
+          description: 应用名称
+      type: object
+      required:
+        - appId
+        - name
+      title: RecentAppListItem
+      description: GET /api/app/recent 列表项数据结构
+    RecordContent:
+      properties:
+        question:
+          type: string
+          title: Question
+        answer:
+          type: string
+          title: Answer
+        data:
+          type: object
+          title: Data
+          default: {}
+      type: object
+      required:
+        - question
+        - answer
+      title: RecordContent
+      description: Record表子项：Record加密前的数据结构
+    RecordData:
+      properties:
+        id:
+          type: string
+          title: Id
+        groupId:
+          type: string
+          title: Groupid
+        conversationId:
+          type: string
+          title: Conversationid
+        taskId:
+          type: string
+          title: Taskid
+        document:
+          items:
+            $ref: '#/components/schemas/RecordDocument'
+          type: array
+          title: Document
+          default: []
+        flow:
+          anyOf:
+            - $ref: '#/components/schemas/RecordFlow'
+            - type: 'null'
+        content:
+          $ref: '#/components/schemas/RecordContent'
+        metadata:
+          $ref: '#/components/schemas/RecordMetadata'
+        createdAt:
+          type: number
+          title: Createdat
+      type: object
+      required:
+        - id
+        - groupId
+        - conversationId
+        - taskId
+        - content
+        - metadata
+        - createdAt
+      title: RecordData
+      description: GET /api/record/{conversation_id} Result内元素数据结构
+    RecordDocument:
+      properties:
+        _id:
+          type: string
+          title: ' Id'
+          default: ''
+        user_sub:
+          type: 'null'
+          title: User Sub
+        name:
+          type: string
+          title: Name
+        type:
+          type: string
+          title: Type
+        size:
+          type: number
+          title: Size
+        created_at:
+          type: number
+          title: Created At
+        conversation_id:
+          type: string
+          title: Conversation Id
+        associated:
+          type: string
+          enum:
+            - question
+            - answer
+          title: Associated
+      type: object
+      required:
+        - name
+        - type
+        - size
+        - conversation_id
+        - associated
+      title: RecordDocument
+      description: GET /api/record/{conversation_id} Result中的document数据结构
+    RecordFlow:
+      properties:
+        id:
+          type: string
+          title: Id
+        recordId:
+          type: string
+          title: Recordid
+        flowId:
+          type: string
+          title: Flowid
+        stepNum:
+          type: integer
+          title: Stepnum
+        steps:
+          items:
+            $ref: '#/components/schemas/RecordFlowStep'
+          type: array
+          title: Steps
+      type: object
+      required:
+        - id
+        - recordId
+        - flowId
+        - stepNum
+        - steps
+      title: RecordFlow
+      description: Flow的执行信息
+    RecordFlowStep:
+      properties:
+        stepId:
+          type: string
+          title: Stepid
+        stepStatus:
+          $ref: '#/components/schemas/StepStatus'
+        input:
+          type: object
+          title: Input
+        output:
+          type: object
+          title: Output
+      type: object
+      required:
+        - stepId
+        - stepStatus
+        - input
+        - output
+      title: RecordFlowStep
+      description: Record表子项：flow的单步数据结构
+    RecordListMsg:
+      properties:
+        records:
+          items:
+            $ref: '#/components/schemas/RecordData'
+          type: array
+          title: Records
+      type: object
+      required:
+        - records
+      title: RecordListMsg
+      description: GET /api/record/{conversation_id} Result数据结构
+    RecordListRsp:
+      properties:
+        code:
+          type: integer
+          title: Code
+        message:
+          type: string
+          title: Message
+        result:
+          $ref: '#/components/schemas/RecordListMsg'
+      type: object
+      required:
+        - code
+        - message
+        - result
+      title: RecordListRsp
+      description: GET /api/record/{conversation_id} 返回数据结构
+    RecordMetadata:
+      properties:
+        inputTokens:
+          type: integer
+          title: Inputtokens
+          default: 0
+        outputTokens:
+          type: integer
+          title: Outputtokens
+          default: 0
+        timeCost:
+          type: number
+          title: Timecost
+          default: 0
+        feature:
+          type: object
+          title: Feature
+          default: {}
+      type: object
+      title: RecordMetadata
+      description: Record表子项：Record的元信息
+    RequestData:
+      properties:
+        question:
+          type: string
+          maxLength: 2000
+          title: Question
+          description: 用户输入
+        conversationId:
+          type: string
+          title: Conversationid
+          description: 聊天ID
+        groupId:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Groupid
+          description: 问答组ID
+        language:
+          type: string
+          title: Language
+          description: 语言
+          default: zh
+        files:
+          items:
+            type: string
+          type: array
+          title: Files
+          description: 文件列表
+          default: []
+        app:
+          anyOf:
+            - $ref: '#/components/schemas/RequestDataApp'
+            - type: 'null'
+          description: 应用
+        debug:
+          type: boolean
+          title: Debug
+          description: 是否调试
+          default: false
+      type: object
+      required:
+        - question
+      title: RequestData
+      description: POST /api/chat 请求的总的数据结构
+    RequestDataApp:
+      properties:
+        appId:
+          type: string
+          title: Appid
+          description: 应用ID
+        flowId:
+          type: string
+          title: Flowid
+          description: Flow ID
+        params:
+          type: object
+          title: Params
+          description: 插件参数
+      type: object
+      required:
+        - appId
+        - flowId
+        - params
+      title: RequestDataApp
+      description: 模型对话中包含的app信息
+    ResponseData:
+      properties:
+        code:
+          type: integer
+          title: Code
+        message:
+          type: string
+          title: Message
+        result:
+          title: Result
+      type: object
+      required:
+        - code
+        - message
+        - result
+      title: ResponseData
+      description: 基础返回数据结构
+    SearchType:
+      type: string
+      enum:
+        - all
+        - name
+        - description
+        - author
+      title: SearchType
+      description: 搜索类型
+    ServiceApiData:
+      properties:
+        name:
+          type: string
+          title: Name
+          description: 接口名称
+        path:
+          type: string
+          title: Path
+          description: 接口路径
+        description:
+          type: string
+          title: Description
+          description: 接口描述
+      type: object
+      required:
+        - name
+        - path
+        - description
+      title: ServiceApiData
+      description: 语义接口中心：服务 API 接口属性数据结构
+    ServiceCardItem:
+      properties:
+        serviceId:
+          type: string
+          title: Serviceid
+          description: 服务ID
+        name:
+          type: string
+          title: Name
+          description: 服务名称
+        description:
+          type: string
+          title: Description
+          description: 服务简介
+        icon:
+          type: string
+          title: Icon
+          description: 服务图标
+        author:
+          type: string
+          title: Author
+          description: 服务作者
+        favorited:
+          type: boolean
+          title: Favorited
+          description: 是否已收藏
+      type: object
+      required:
+        - serviceId
+        - name
+        - description
+        - icon
+        - author
+        - favorited
+      title: ServiceCardItem
+      description: 语义接口中心：服务卡片数据结构
+    StepStatus:
+      type: string
+      enum:
+        - running
+        - success
+        - error
+        - param
+      title: StepStatus
+      description: 步骤状态
+    UpdateConversationRsp:
+      properties:
+        code:
+          type: integer
+          title: Code
+        message:
+          type: string
+          title: Message
+        result:
+          $ref: '#/components/schemas/ConversationListItem'
+      type: object
+      required:
+        - code
+        - message
+        - result
+      title: UpdateConversationRsp
+      description: POST /api/conversation 返回数据结构
+    UpdateServiceMsg:
+      properties:
+        serviceId:
+          type: string
+          title: Serviceid
+          description: 服务ID
+        name:
+          type: string
+          title: Name
+          description: 服务名称
+        apis:
+          items:
+            $ref: '#/components/schemas/ServiceApiData'
+          type: array
+          title: Apis
+          description: 解析后的接口列表
+      type: object
+      required:
+        - serviceId
+        - name
+        - apis
+      title: UpdateServiceMsg
+      description: 语义接口中心：服务属性数据结构
+    UpdateServiceRequest:
+      properties:
+        serviceId:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Serviceid
+          description: 服务ID（更新时传递）
+        data:
+          type: object
+          title: Data
+          description: 对应 YAML 内容的数据对象
+      type: object
+      required:
+        - data
+      title: UpdateServiceRequest
+      description: POST /api/service 请求数据结构
+    UpdateServiceRsp:
+      properties:
+        code:
+          type: integer
+          title: Code
+        message:
+          type: string
+          title: Message
+        result:
+          $ref: '#/components/schemas/UpdateServiceMsg'
+          title: Result
+      type: object
+      required:
+        - code
+        - message
+        - result
+      title: UpdateServiceRsp
+      description: POST /api/service 返回数据结构
+    UserBlacklistRequest:
+      properties:
+        user_sub:
+          type: string
+          title: User Sub
+        is_ban:
+          type: integer
+          title: Is Ban
+      type: object
+      required:
+        - user_sub
+        - is_ban
+      title: UserBlacklistRequest
+      description: POST /api/blacklist/user 请求数据结构
+    ValidationError:
+      properties:
+        loc:
+          items:
+            anyOf:
+              - type: string
+              - type: integer
+          type: array
+          title: Location
+        msg:
+          type: string
+          title: Message
+        type:
+          type: string
+          title: Error Type
+      type: object
+      required:
+        - loc
+        - msg
+        - type
+      title: ValidationError
+    _GetAuthKeyMsg:
+      properties:
+        api_key_exists:
+          type: boolean
+          title: Api Key Exists
+      type: object
+      required:
+        - api_key_exists
+      title: _GetAuthKeyMsg
+      description: GET /api/auth/key Result数据结构
+  securitySchemes:
+    OAuth2PasswordBearer:
+      type: oauth2
+      flows:
+        password:
+          scopes: {}
+          tokenUrl: token
