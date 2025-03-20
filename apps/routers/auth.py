@@ -178,10 +178,10 @@ async def oidc_redirect(action: Annotated[str, Query()] = "login"):  # noqa: ANN
 
 # TODO(zwt): OIDC主动触发logout
 # 002
-@router.post("/logout", response_model=ResponseData)
+@router.post("/logout", dependencies=[Depends(verify_user)], response_model=ResponseData)
 async def oidc_logout(token: str):  # noqa: ANN201
-    """OIDC主动触发登出"""
-    pass
+    """触发OIDC的登出"""
+    
 
 
 @router.get("/user", dependencies=[Depends(verify_user)], response_model=AuthUserRsp)
