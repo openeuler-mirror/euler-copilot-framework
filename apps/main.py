@@ -42,7 +42,7 @@ from apps.scheduler.pool.pool import Pool
 from apps.scheduler.scheduler.scheduler import Scheduler
 
 # 定义FastAPI app
-app = FastAPI(docs_url=None, redoc_url=None)
+app = FastAPI(redoc_url=None)
 # 定义FastAPI全局中间件
 app.add_middleware(
     CORSMiddleware,
