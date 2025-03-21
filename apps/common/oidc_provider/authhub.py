@@ -29,14 +29,15 @@ class AuthhubOIDCProvider(OIDCProviderBase):
         result = None
         async with aiohttp.ClientSession() as session, session.post(url, headers=headers, json=data, timeout=10) as resp:
             if resp.status != status.HTTP_200_OK:
-                err = f"Get OIDC token error: {resp.status}, full response is: {await resp.text()}"
+                err = f"[Authhub] 获取OIDC Token失败: {resp.status}，完整输出: {await resp.text()}"
                 raise RuntimeError(err)
-            LOGGER.info(f"full response is {await resp.text()}")
+            LOGGER.info(f"[Authhub] 获取OIDC Token成功: {await resp.text()}")
             result = await resp.json()
         return {
             "access_token": result["data"]["access_token"],
             "refresh_token": result["data"]["refresh_token"],
         }
+
 
     @classmethod
     async def get_oidc_user(cls, access_token: str) -> dict[str, Any]:
@@ -55,19 +56,41 @@ class AuthhubOIDCProvider(OIDCProviderBase):
         result = None
         async with aiohttp.ClientSession() as session, session.post(url, headers=headers, json=data, timeout=10) as resp:
             if resp.status != status.HTTP_200_OK:
-                err = f"Get OIDC user error: {resp.status}, full response is: {await resp.text()}"
+                err = f"[Authhub] 获取用户信息失败: {resp.status}，完整输出: {await resp.text()}"
                 raise RuntimeError(err)
-            LOGGER.info(f"full response is {await resp.text()}")
+            LOGGER.info(f"[Authhub] 获取用户信息成功: {await resp.text()}")
             result = await resp.json()
 
         return {
             "user_sub": result["data"],
         }
 
-    async def get_login_status(self, token: str):  # noqa: ANN201
-        """检查登录状态"""
-        raise NotImplementedError
 
-    async def oidc_logout(self, token: str):  # noqa: ANN201
+    @classmethod
+    async def get_login_status(cls, cookie: dict[str, str]) -> dict[str, Any]:
+        """检查登录状态；Authhub的Token实际是cookie"""
+        data = {
+            "client_id": config["OIDC_APP_ID"],
+        }
+        headers = {
+            "Content-Type": "application/json",
+        }
+        url = config["OIDC_USER_URL"]
+        async with aiohttp.ClientSession() as session, session.post(url, headers=headers, json=data, cookies=cookie, timeout=10) as resp:
+            if resp.status != status.HTTP_200_OK:
+                err = f"[Authhub] 获取登录状态失败: {resp.status}，完整输出: {await resp.text()}"
+                raise RuntimeError(err)
+            LOGGER.info(f"[Authhub] 获取登录状态成功: {await resp.text()}")
+
+
+    @classmethod
+    async def oidc_logout(cls, cookie: dict[str, str]) -> None:
         """触发OIDC的登出"""
-        raise NotImplementedError
+        headers = {
+            "Content-Type": "application/json",
+        }
+        url = config["OIDC_LOGOUT_URL"]
+        async with aiohttp.ClientSession() as session, session.get(url, headers=headers, cookies=cookie, timeout=10) as resp:
+            if resp.status != status.HTTP_200_OK:
+                err = f"[Authhub] 登出失败: {resp.status}，完整输出: {await resp.text()}"
+                raise RuntimeError(err)

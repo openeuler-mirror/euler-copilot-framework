@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response,
 from fastapi.responses import JSONResponse, RedirectResponse
 
 from apps.common.config import config
-from apps.common.oidc import get_oidc_token, get_oidc_user
+from apps.common.oidc import oidc_provider
 from apps.constants import LOGGER
 from apps.dependency import get_user, verify_csrf_token, verify_user
 from apps.entities.collection import Audit
@@ -44,9 +44,12 @@ async def oidc_login(request: Request, code: str, redirect_index: Optional[str] 
     else:
         response = RedirectResponse(config["WEB_FRONT_URL"], status_code=status.HTTP_301_MOVED_PERMANENTLY)
     try:
-        token = await get_oidc_token(code)
-        user_info = await get_oidc_user(token["access_token"], token["refresh_token"])
+        token = await oidc_provider.get_oidc_token(code)
+        user_info = await oidc_provider.get_oidc_user(token["access_token"])
+
         user_sub: Optional[str] = user_info.get("user_sub", None)
+        if user_sub:
+            await oidc_provider.set_redis_token(user_sub, token["access_token"], token["refresh_token"])
     except Exception as e:
         LOGGER.error(f"User login failed: {e}")
         if "auth error" in str(e):
@@ -147,6 +150,8 @@ async def logout(request: Request, response: Response, user_sub: Annotated[str, 
         message="/api/auth/logout: User logout succeeded.",
     )
     await AuditLogManager.add_audit_log(data)
+
+    await oidc_provider.oidc_logout(request.cookies)
     return JSONResponse(status_code=status.HTTP_200_OK, content=ResponseData(
         code=status.HTTP_200_OK,
         message="success",
@@ -180,7 +185,7 @@ async def oidc_redirect(action: Annotated[str, Query()] = "login"):  # noqa: ANN
 # 002
 @router.post("/logout", dependencies=[Depends(verify_user)], response_model=ResponseData)
 async def oidc_logout(token: str):  # noqa: ANN201
-    """触发OIDC的登出"""
+    """OIDC主动触发登出"""
     
 
 

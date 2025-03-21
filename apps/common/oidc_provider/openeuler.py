@@ -30,9 +30,9 @@ class OpenEulerOIDCProvider(OIDCProviderBase):
         result = None
         async with aiohttp.ClientSession() as session, session.post(url, headers=headers, data=data, timeout=10) as resp:
             if resp.status != status.HTTP_200_OK:
-                err = f"Get OIDC token error: {resp.status}, full output is: {await resp.text()}"
+                err = f"[OpenEuler] 获取OIDC Token失败: {resp.status}，完整输出: {await resp.text()}"
                 raise RuntimeError(err)
-            LOGGER.info(f"full response is {await resp.text()}")
+            LOGGER.info(f"[OpenEuler] 获取OIDC Token成功: {await resp.text()}")
             result = await resp.json()
         return {
             "access_token": result["access_token"],
@@ -54,9 +54,9 @@ class OpenEulerOIDCProvider(OIDCProviderBase):
         result = None
         async with aiohttp.ClientSession() as session, session.get(url, headers=headers, timeout=10) as resp:
             if resp.status != status.HTTP_200_OK:
-                err = f"Get OIDC user error: {resp.status}, full response is: {await resp.text()}"
+                err = f"[OpenEuler] 获取OIDC用户失败: {resp.status}，完整输出: {await resp.text()}"
                 raise RuntimeError(err)
-            LOGGER.info(f"full response is {await resp.text()}")
+            LOGGER.info(f"[OpenEuler] 获取OIDC用户成功: {await resp.text()}")
             result = await resp.json()
 
         if not result["phone_number_verified"]:
@@ -67,12 +67,14 @@ class OpenEulerOIDCProvider(OIDCProviderBase):
             "user_sub": result["sub"],
         }
 
-    @classmethod
-    async def get_login_status(cls, token: str):
-        """检查登录状态"""
-        ...
 
     @classmethod
-    async def oidc_logout(cls, token: str):
+    async def get_login_status(cls, _cookie: dict[str, str]) -> dict[str, Any]:
+        """检查登录状态"""
+        return {}
+
+
+    @classmethod
+    async def oidc_logout(cls, _cookie: dict[str, str]) -> None:
         """触发OIDC的登出"""
         ...
