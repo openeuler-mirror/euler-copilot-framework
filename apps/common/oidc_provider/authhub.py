@@ -80,7 +80,11 @@ class AuthhubOIDCProvider(OIDCProviderBase):
             if resp.status != status.HTTP_200_OK:
                 err = f"[Authhub] 获取登录状态失败: {resp.status}，完整输出: {await resp.text()}"
                 raise RuntimeError(err)
-            LOGGER.info(f"[Authhub] 获取登录状态成功: {await resp.text()}")
+            result = await resp.json()
+            return {
+                "access_token": result["access_token"],
+                "refresh_token": result["refresh_token"],
+            }
 
 
     @classmethod
