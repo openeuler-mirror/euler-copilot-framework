@@ -49,6 +49,10 @@ class VerifySessionMiddleware(BaseHTTPMiddleware):
 
     def _set_response_cookie(self, response: Response, session_id: str) -> None:
         """设置响应cookie"""
+        # 检查 是否其他dependence 设置过cookie
+        if "ECSESSION" in response.headers.get("set-cookie", ""):
+            return
+
         cookie_params = {
             "key": "ECSESSION",
             "value": session_id,
