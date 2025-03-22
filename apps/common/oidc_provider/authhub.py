@@ -82,8 +82,8 @@ class AuthhubOIDCProvider(OIDCProviderBase):
                 raise RuntimeError(err)
             result = await resp.json()
             return {
-                "access_token": result["access_token"],
-                "refresh_token": result["refresh_token"],
+                "access_token": result["data"]["access_token"],
+                "refresh_token": result["data"]["refresh_token"],
             }
 
 
