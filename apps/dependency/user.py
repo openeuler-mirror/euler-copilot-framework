@@ -110,9 +110,9 @@ async def get_user(request: HTTPConnection, response: Response) -> str:
     session_id = request.cookies["ECSESSION"]
     try:
         user = await SessionManager.get_user(session_id)
-        return user if user is not None else await _verify_oidc_auth(request, response)
-    except Exception as err:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="[OIDC] 获取用户信息失败") from err
+        return user if user is not None else ""
+    except Exception:
+        return await _verify_oidc_auth(request, response)
 
 
 async def verify_api_key(api_key: str = Depends(oauth2_scheme)) -> None:
