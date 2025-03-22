@@ -8,6 +8,7 @@ from starlette import status
 from starlette.exceptions import HTTPException
 from starlette.requests import HTTPConnection
 
+from apps.common.oidc import oidc_provider
 from apps.manager.api_key import ApiKeyManager
 from apps.manager.session import SessionManager
 
@@ -43,9 +44,20 @@ async def get_user(request: HTTPConnection) -> str:
     """
     session_id = request.cookies["ECSESSION"]
     user = await SessionManager.get_user(session_id)
-    if not user:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Authentication Error.")
-    return user
+    if user:
+        return user
+
+    # 没有用户，则尝试OIDC检查状态
+    tokens = await oidc_provider.get_login_status(request.cookies)
+    if not tokens:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="[OIDC] 检查OIDC登录状态失败")
+
+    # 获取用户信息
+    user_info = await oidc_provider.get_oidc_user(tokens["access_token"])
+    if not user_info:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="[OIDC] 获取用户信息失败")
+
+    return user_info["user_sub"]
 
 
 async def verify_api_key(api_key: str = Depends(oauth2_scheme)) -> None:
