@@ -36,12 +36,12 @@ class OIDCProvider:
 
     async def get_login_status(self, cookie: dict[str, str]) -> dict[str, Any]:
         """检查登录状态"""
-        ...
+        return await self.provider.get_login_status(cookie)
 
 
     async def oidc_logout(self, cookie: dict[str, str]) -> None:
         """触发OIDC的登出"""
-        ...
+        return await self.provider.oidc_logout(cookie)
 
 
     async def get_oidc_token(self, code: str) -> dict[str, Any]:
