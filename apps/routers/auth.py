@@ -190,7 +190,7 @@ async def oidc_logout(token: str):  # noqa: ANN201
 
 
 @router.get("/user", response_model=AuthUserRsp)
-async def userinfo(user_sub: Annotated[str, Depends(get_user)], response: Annotated[Response, Depends(verify_user)]):  # noqa: ANN201
+async def userinfo(user_sub: Annotated[str, Depends(get_user)], response: Response = Depends(verify_user)):  # noqa: ANN201
     """获取用户信息"""
     user = await UserManager.get_userinfo_by_user_sub(user_sub=user_sub)
     if not user:
