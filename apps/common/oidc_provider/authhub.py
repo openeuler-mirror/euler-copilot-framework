@@ -75,7 +75,7 @@ class AuthhubOIDCProvider(OIDCProviderBase):
         headers = {
             "Content-Type": "application/json",
         }
-        url = config["OIDC_USER_URL"]
+        url = config["OIDC_STATUS_URL"]
         async with aiohttp.ClientSession() as session, session.post(url, headers=headers, json=data, cookies=cookie, timeout=10) as resp:
             if resp.status != status.HTTP_200_OK:
                 err = f"[Authhub] 获取登录状态失败: {resp.status}，完整输出: {await resp.text()}"
