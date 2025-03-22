@@ -52,7 +52,7 @@ class VerifySessionMiddleware(BaseHTTPMiddleware):
         cookie_params = {
             "key": "ECSESSION",
             "value": session_id,
-            "domain": config["DOMAIN"]
+            "domain": config["DOMAIN"],
         }
 
         if config["COOKIE_MODE"] != "DEBUG":
@@ -60,7 +60,7 @@ class VerifySessionMiddleware(BaseHTTPMiddleware):
                 "httponly": True,
                 "secure": True,
                 "samesite": "strict",
-                "max_age": config["SESSION_TTL"] * 60
+                "max_age": config["SESSION_TTL"] * 60,
             })
 
         response.set_cookie(**cookie_params)
