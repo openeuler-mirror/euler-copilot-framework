@@ -82,11 +82,11 @@ async def verify_user(request: HTTPConnection, response: Response) -> None:
     :return:
     """
     session_id = request.cookies["ECSESSION"]
-    if await SessionManager.verify_user(session_id):
-        return
-
-    await _verify_oidc_auth(request, response)
-    return
+    try:
+        if await SessionManager.verify_user(session_id):
+            return
+    except Exception:
+        await _verify_oidc_auth(request, response)
 
 
 async def get_session(request: HTTPConnection) -> str:
@@ -108,11 +108,11 @@ async def get_user(request: HTTPConnection, response: Response) -> str:
     :return: 用户sub
     """
     session_id = request.cookies["ECSESSION"]
-    user = await SessionManager.get_user(session_id)
-    if user:
-        return user
-
-    return await _verify_oidc_auth(request, response)
+    try:
+        user = await SessionManager.get_user(session_id)
+        return user if user is not None else await _verify_oidc_auth(request, response)
+    except Exception as err:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="[OIDC] 获取用户信息失败") from err
 
 
 async def verify_api_key(api_key: str = Depends(oauth2_scheme)) -> None:
