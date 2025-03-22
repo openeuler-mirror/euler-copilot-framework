@@ -15,6 +15,24 @@ from apps.manager.session import SessionManager
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 
+async def _verify_oidc_auth(request: HTTPConnection) -> dict:
+    """验证OIDC认证状态并获取用户信息
+
+    :param request: HTTP请求
+    :return: 用户信息字典
+    :raises: HTTPException 当OIDC验证失败时
+    """
+    tokens = await oidc_provider.get_login_status(request.cookies)
+    if not tokens:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="[OIDC] 检查OIDC登录状态失败")
+
+    user_info = await oidc_provider.get_oidc_user(tokens["access_token"])
+    if not user_info:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="[OIDC] 获取用户信息失败")
+
+    return user_info
+
+
 async def verify_user(request: HTTPConnection) -> None:
     """验证Session是否已鉴权；未鉴权则抛出HTTP 401；接口级dependence
 
@@ -22,8 +40,12 @@ async def verify_user(request: HTTPConnection) -> None:
     :return:
     """
     session_id = request.cookies["ECSESSION"]
-    if not await SessionManager.verify_user(session_id):
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Authentication Error.")
+    if await SessionManager.verify_user(session_id):
+        return
+
+    await _verify_oidc_auth(request)
+    return
+
 
 async def get_session(request: HTTPConnection) -> str:
     """验证Session是否已鉴权，并返回Session ID；未鉴权则抛出HTTP 401；参数级dependence
@@ -36,6 +58,7 @@ async def get_session(request: HTTPConnection) -> str:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Authentication Error.")
     return session_id
 
+
 async def get_user(request: HTTPConnection) -> str:
     """验证Session是否已鉴权；若已鉴权，查询对应的user_sub；若未鉴权，抛出HTTP 401；参数级dependence
 
@@ -47,16 +70,7 @@ async def get_user(request: HTTPConnection) -> str:
     if user:
         return user
 
-    # 没有用户，则尝试OIDC检查状态
-    tokens = await oidc_provider.get_login_status(request.cookies)
-    if not tokens:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="[OIDC] 检查OIDC登录状态失败")
-
-    # 获取用户信息
-    user_info = await oidc_provider.get_oidc_user(tokens["access_token"])
-    if not user_info:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="[OIDC] 获取用户信息失败")
-
+    user_info = await _verify_oidc_auth(request)
     return user_info["user_sub"]
 
 
