@@ -186,11 +186,11 @@ async def oidc_redirect(action: Annotated[str, Query()] = "login"):  # noqa: ANN
 @router.post("/logout", dependencies=[Depends(verify_user)], response_model=ResponseData)
 async def oidc_logout(token: str):  # noqa: ANN201
     """OIDC主动触发登出"""
-    
 
 
-@router.get("/user", dependencies=[Depends(verify_user)], response_model=AuthUserRsp)
-async def userinfo(user_sub: Annotated[str, Depends(get_user)]):  # noqa: ANN201
+
+@router.get("/user", response_model=AuthUserRsp)
+async def userinfo(user_sub: Annotated[str, Depends(get_user)], response: Annotated[Response, Depends(verify_user)]):  # noqa: ANN201
     """获取用户信息"""
     user = await UserManager.get_userinfo_by_user_sub(user_sub=user_sub)
     if not user:
