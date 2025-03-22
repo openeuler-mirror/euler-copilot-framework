@@ -25,6 +25,7 @@ class ConfigModel(BaseModel):
     # OIDC
     DISABLE_LOGIN: bool = Field(description="是否禁用登录", default=False)
     DEFAULT_USER: Optional[str] = Field(description="禁用登录后，默认的用户ID", default=None)
+    OIDC_PROVIDER: str = Field(description="OIDC Provider", default="authhub")
     OIDC_APP_ID: Optional[str] = Field(description="OIDC AppID", default=None)
     OIDC_APP_SECRET: Optional[str] = Field(description="OIDC App Secret", default=None)
     OIDC_USER_URL: Optional[str] = Field(description="OIDC USER URL", default=None)
