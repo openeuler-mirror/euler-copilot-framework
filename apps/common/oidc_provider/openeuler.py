@@ -6,7 +6,7 @@ import aiohttp
 from fastapi import status
 
 from apps.common.config import config
-from apps.common.oidc import OIDCProviderBase
+from apps.common.oidc_provider.base import OIDCProviderBase
 from apps.constants import LOGGER
 
 
