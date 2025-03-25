@@ -19,48 +19,68 @@ BYPASS_LIST = [
 class VerifySessionMiddleware(BaseHTTPMiddleware):
     """浏览器Session校验中间件"""
 
-    async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:  # noqa: C901, PLR0912
+    def _check_bypass_list(self, path: str) -> bool:
+        """检查请求路径是否需要跳过验证"""
+        return path in BYPASS_LIST
+
+    def _validate_client(self, request: Request) -> str:
+        """验证客户端信息并返回主机地址"""
+        if request.client is None or request.client.host is None:
+            err = "[VerifySessionMiddleware] 无法检测请求来源IP！"
+            raise ValueError(err)
+        return request.client.host
+
+    def _update_cookie_header(self, request: Request, session_id: str) -> None:
+        """更新请求头中的cookie信息"""
+        cookie_str = ""
+        for item in request.scope["headers"]:
+            if item[0] == b"cookie":
+                cookie_str = item[1].decode()
+                request.scope["headers"].remove(item)
+                break
+
+        all_cookies = ""
+        if cookie_str:
+            other_headers = cookie_str.split(";")
+            all_cookies = "; ".join(item for item in other_headers if "ECSESSION" not in item)
+
+        all_cookies = f"{all_cookies}; ECSESSION={session_id}" if all_cookies else f"ECSESSION={session_id}"
+        request.scope["headers"].append((b"cookie", all_cookies.encode()))
+
+    def _set_response_cookie(self, response: Response, session_id: str) -> None:
+        """设置响应cookie"""
+        # 检查 是否其他dependence 设置过cookie
+        if "ECSESSION" in response.headers.get("set-cookie", ""):
+            return
+
+        cookie_params = {
+            "key": "ECSESSION",
+            "value": session_id,
+            "domain": config["DOMAIN"],
+        }
+
+        if config["COOKIE_MODE"] != "DEBUG":
+            cookie_params.update({
+                "httponly": True,
+                "secure": True,
+                "samesite": "strict",
+                "max_age": config["SESSION_TTL"] * 60,
+            })
+
+        response.set_cookie(**cookie_params)
+
+    async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
         """浏览器Session校验中间件"""
-        if request.url.path in BYPASS_LIST:
+        if self._check_bypass_list(request.url.path):
             return await call_next(request)
 
+        host = self._validate_client(request)
         cookie = request.cookies.get("ECSESSION", "")
-        if request.client is None or request.client.host is None:
-            err = "无法检测请求来源IP！"
-            raise ValueError(err)
-        host = request.client.host
         session_id = await SessionManager.get_session(cookie, host)
 
-        if session_id != request.cookies.get("ECSESSION", ""):
-            cookie_str = ""
+        if session_id != cookie:
+            self._update_cookie_header(request, session_id)
 
-            for item in request.scope["headers"]:
-                if item[0] == b"cookie":
-                    cookie_str = item[1].decode()
-                    request.scope["headers"].remove(item)
-                    break
-
-            all_cookies = ""
-            if cookie_str != "":
-                other_headers = cookie_str.split(";")
-                for item in other_headers:
-                    if "ECSESSION" not in item:
-                        all_cookies += f"{item}; "
-
-            all_cookies += f"ECSESSION={session_id}"
-            request.scope["headers"].append((b"cookie", all_cookies.encode()))
-
-            response = await call_next(request)
-            if config["COOKIE_MODE"] == "DEBUG":
-                response.set_cookie("ECSESSION", session_id, domain=config["DOMAIN"])
-            else:
-                response.set_cookie("ECSESSION", session_id, httponly=True, secure=True, samesite="strict",
-                                    max_age=config["SESSION_TTL"] * 60, domain=config["DOMAIN"])
-        else:
-            response = await call_next(request)
-            if config["COOKIE_MODE"] == "DEBUG":
-                response.set_cookie("ECSESSION", session_id, domain=config["DOMAIN"])
-            else:
-                response.set_cookie("ECSESSION", session_id, httponly=True, secure=True, samesite="strict",
-                                    max_age=config["SESSION_TTL"] * 60, domain=config["DOMAIN"])
+        response = await call_next(request)
+        self._set_response_cookie(response, session_id)
         return response

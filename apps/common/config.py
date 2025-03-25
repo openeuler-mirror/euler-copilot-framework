@@ -25,10 +25,13 @@ class ConfigModel(BaseModel):
     # OIDC
     DISABLE_LOGIN: bool = Field(description="是否禁用登录", default=False)
     DEFAULT_USER: Optional[str] = Field(description="禁用登录后，默认的用户ID", default=None)
+    OIDC_PROVIDER: str = Field(description="OIDC Provider", default="authhub")
     OIDC_APP_ID: Optional[str] = Field(description="OIDC AppID", default=None)
     OIDC_APP_SECRET: Optional[str] = Field(description="OIDC App Secret", default=None)
     OIDC_USER_URL: Optional[str] = Field(description="OIDC USER URL", default=None)
+    OIDC_STATUS_URL: Optional[str] = Field(description="OIDC 检查登录状态URL", default=None)
     OIDC_TOKEN_URL: Optional[str] = Field(description="OIDC Token获取URL", default=None)
+    OIDC_LOGOUT_URL: Optional[str] = Field(description="OIDC 登出URL", default=None)
     OIDC_REFRESH_TOKEN_URL: Optional[str] = Field(description="OIDC 刷新token", default=None)
     OIDC_REDIRECT_URL: Optional[str] = Field(description="OIDC Redirect URL", default=None)
     EULER_LOGIN_API: Optional[str] = Field(description="Euler Login API", default=None)
