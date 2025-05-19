@@ -317,47 +317,6 @@ function install_helm {
     return 0
 }
 
-function set_kubeconfig() {
-    local k3s_config="/etc/rancher/k3s/k3s.yaml"
-    local bashrc_file="$HOME/.bashrc"
-    local kubeconfig_line="export KUBECONFIG=$k3s_config"
-
-    # 检查 k3s.yaml 是否存在
-    if [ ! -f "$k3s_config" ]; then
-        echo -e "\033[31m[Error] k3s.yaml 文件不存在，请先安装 k3s 或检查路径：$k3s_config\033[0m"
-        return 1
-    fi
-
-    # 检查文件权限（至少需要可读权限）
-    if [ ! -r "$k3s_config" ]; then
-        echo -e "\033[33m[Warn] k3s.yaml 文件不可读，尝试修复权限...\033[0m"
-        sudo chmod 644 "$k3s_config" || {
-            echo -e "\033[31m[Error] 权限修复失败，请手动执行：sudo chmod 644 $k3s_config\033[0m"
-            return 1
-        }
-    fi
-
-    # 检查并更新 .bashrc（兼容 root 和普通用户）
-    if ! grep -Fxq "$kubeconfig_line" "$bashrc_file"; then
-        echo "$kubeconfig_line" | tee -a "$bashrc_file" >/dev/null
-        echo -e "\033[32m[Success] KUBECONFIG 已写入 $bashrc_file\033[0m"
-    else
-        echo -e "\033[34m[Info] KUBECONFIG 已存在，无需修改\033[0m"
-    fi
-
-    # 设置当前 Shell 环境变量
-    export KUBECONFIG="$k3s_config"
-    echo -e "\033[33m[Tips] 当前会话已临时生效，永久生效需重新登录或执行：source $bashrc_file\033[0m"
-
-    # 验证集群连通性
-    if ! kubectl cluster-info &>/dev/null; then
-        echo -e "\033[31m[Critical] 集群连接失败，可能原因：\033[0m"
-        echo -e "1. Kubernetes 未运行 → 执行: sudo systemctl status k3s"
-        echo -e "2. API 地址配置错误 → 检查 $k3s_config 中的 server 字段"
-        echo -e "3. 防火墙阻止连接 → 检查端口 6443 是否开放"
-        return 1
-    fi
-}
 
 function check_k3s_status() {
     local STATUS=$(systemctl is-active k3s)
@@ -411,8 +370,9 @@ function main {
     else
         echo -e "[Info] Helm 已经安装，跳过安装步骤"
     fi
+    mkdir -p ~/.kube
+    ln -sf /etc/rancher/k3s/k3s.yaml ~/.kube/config
     check_k3s_status
-    set_kubeconfig
 
     echo -e "\n\033[32m=== 全部工具安装完成 ===\033[0m"
     echo -e "K3s 版本：$(k3s --version | head -n1)"
