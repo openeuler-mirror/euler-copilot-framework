@@ -27,7 +27,7 @@ jwt_key = '${jwtKey}'
 type = '{{ default "openai" .Values.models.embedding.type }}'
 endpoint = '{{ .Values.models.embedding.endpoint }}'
 api_key = '{{ .Values.models.embedding.key }}'
-model = '{{ default "bge-m3" .Values.models.embedding.model }}'
+model = '{{ default "bge-m3" .Values.models.embedding.name }}'
 
 [rag]
 rag_service = 'http://rag-service.{{ .Release.Namespace }}.svc.cluster.local:9988'
