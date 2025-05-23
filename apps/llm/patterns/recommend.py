@@ -15,7 +15,7 @@ from apps.llm.snippet import convert_context_to_prompt, history_questions_to_pro
 class Recommend(CorePattern):
     """使用大模型进行推荐问题生成"""
 
-    system_prompt: str = ""
+    system_prompt: str = r"""You are a helpful assistant."""
     """系统提示词"""
 
     user_prompt: str = r"""

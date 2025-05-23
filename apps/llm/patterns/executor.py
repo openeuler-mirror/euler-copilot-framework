@@ -17,6 +17,9 @@ if TYPE_CHECKING:
 class ExecutorThought(CorePattern):
     """通过大模型生成Executor的思考内容"""
 
+    system_prompt: str = r"""You are a helpful assistant."""
+    """系统提示词"""
+
     user_prompt: str = r"""
         <instructions>
             <instruction>
@@ -88,6 +91,9 @@ class ExecutorThought(CorePattern):
 
 class ExecutorSummary(CorePattern):
     """使用大模型进行生成Executor初始背景"""
+
+    system_prompt: str = r"""You are a helpful assistant."""
+    """系统提示词"""
 
     user_prompt: str = r"""
         <instructions>

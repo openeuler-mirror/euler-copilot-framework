@@ -37,7 +37,7 @@ class LLM(CoreCall, input_model=LLMInput, output_model=LLMOutput):
     temperature: float = Field(description="大模型温度（随机化程度）", default=0.7)
     enable_context: bool = Field(description="是否启用上下文", default=True)
     step_history_size: int = Field(description="上下文信息中包含的步骤历史数量", default=3, ge=1, le=10)
-    system_prompt: str = Field(description="大模型系统提示词", default="")
+    system_prompt: str = Field(description="大模型系统提示词", default="You are a helpful assistant.")
     user_prompt: str = Field(description="大模型用户提示词", default=LLM_DEFAULT_PROMPT)
 
 

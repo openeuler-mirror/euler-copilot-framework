@@ -10,7 +10,7 @@ from apps.llm.snippet import convert_context_to_prompt
 class Facts(CorePattern):
     """事实提取"""
 
-    system_prompt: str = ""
+    system_prompt: str = r"""You are a helpful assistant."""
     """系统提示词（暂不使用）"""
 
     user_prompt: str = r"""

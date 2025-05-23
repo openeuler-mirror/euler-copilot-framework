@@ -22,6 +22,8 @@ logger = logging.getLogger(__name__)
 class Json(CorePattern):
     """使用FunctionCall范式，生成JSON参数"""
 
+    system_prompt: str = r"""You are a helpful assistant that can call functions."""
+    """系统提示词"""
     user_prompt: str = r"""
         <instructions>
           <instruction>
@@ -180,6 +182,7 @@ class Json(CorePattern):
 
         # 使用FunctionLLM进行提参
         messages_list = [
+            {"role": "system", "content": self.system_prompt},
             {"role": "user", "content": user_input},
         ]
 

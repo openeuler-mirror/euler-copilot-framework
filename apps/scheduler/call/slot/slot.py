@@ -47,7 +47,7 @@ class Slot(CoreCall, input_model=SlotInput, output_model=SlotOutput):
         template = env.from_string(SLOT_GEN_PROMPT)
 
         conversation = [
-            {"role": "system", "content": ""},
+            {"role": "system", "content": "You are a helpful assistant."},
             {"role": "user", "content": template.render(
                 current_tool={
                     "name": self.name,

@@ -15,6 +15,9 @@ from apps.llm.snippet import convert_context_to_prompt
 class Domain(CorePattern):
     """从问答中提取领域信息"""
 
+    system_prompt: str = r"""You are a helpful assistant."""
+    """系统提示词"""
+
     user_prompt: str = r"""
         <instructions>
           <instruction>
