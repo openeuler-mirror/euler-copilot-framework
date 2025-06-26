@@ -1,6 +1,0 @@
-label: AI大模型服务镜像使用指南
-isManual: true
-description: 支持百川、chatglm、星火等AI大模型的容器化封装
-sections:
-  - label: AI大模型服务镜像使用指南
-    href: ./llm-service-image-user-guide.md
