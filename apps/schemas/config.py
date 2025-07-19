@@ -114,6 +114,12 @@ class CheckConfig(BaseModel):
     words_list: str = Field(description="敏感词列表文件路径")
 
 
+class SandboxConfig(BaseModel):
+    """代码沙箱配置"""
+
+    sandbox_service: str = Field(description="代码沙箱服务地址")
+
+
 class ExtraConfig(BaseModel):
     """额外配置"""
 
@@ -134,4 +140,5 @@ class ConfigModel(BaseModel):
     function_call: FunctionCallConfig
     security: SecurityConfig
     check: CheckConfig
+    sandbox: SandboxConfig
     extra: ExtraConfig

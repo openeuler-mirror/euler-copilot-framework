@@ -36,6 +36,7 @@ from apps.routers import (
     record,
     service,
     user,
+    variable,
 )
 from apps.scheduler.pool.pool import Pool
 
@@ -66,6 +67,7 @@ app.include_router(llm.router)
 app.include_router(mcp_service.router)
 app.include_router(flow.router)
 app.include_router(user.router)
+app.include_router(variable.router)
 
 # logger配置
 LOGGER_FORMAT = "%(funcName)s() - %(message)s"
@@ -87,6 +89,10 @@ async def init_resources() -> None:
     await LanceDB().init()
     await Pool.init()
     TokenCalculator()
+    
+    # 初始化变量系统
+    from apps.scheduler.variable.pool import get_variable_pool
+    await get_variable_pool()
 
 # 运行
 if __name__ == "__main__":

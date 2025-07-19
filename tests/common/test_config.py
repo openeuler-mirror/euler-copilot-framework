@@ -68,6 +68,7 @@ MOCK_CONFIG_DATA: dict[str, Any] = {
         "jwt_key": "test_jwt_key",
     },
     "check": {"enable": False, "words_list": ""},
+    "sandbox": {"sandbox_service": "http://localhost:8000"},
     "extra": {"sql_url": "http://localhost"},
 }
 

@@ -62,5 +62,8 @@ temperature = {{ default 0.7 .Values.models.functionCall.temperature }}
 enable = false
 words_list = ""
 
+[sandbox]
+sandbox_service = 'http://euler-copilot-sandbox-service.{{ .Release.Namespace }}.svc.cluster.local:8000'
+
 [extra]
 sql_url = ''

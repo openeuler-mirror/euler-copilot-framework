@@ -62,5 +62,8 @@ temperature = 0.7
 enable = false
 words_list = ''
 
+[sandbox]
+sandbox_service = 'http://127.0.0.1:8000'
+
 [extra]
 sql_url = 'http://127.0.0.1:9015'

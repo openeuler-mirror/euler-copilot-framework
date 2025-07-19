@@ -149,7 +149,7 @@ async def oidc_redirect() -> JSONResponse:
 
 # TODO(zwt): OIDC主动触发logout
 @router.post("/logout", dependencies=[Depends(verify_user)], response_model=ResponseData)
-async def oidc_logout(token: str) -> JSONResponse:
+async def oidc_logout(token: str) -> JSONResponse | None:
     """OIDC主动触发登出"""
 
 

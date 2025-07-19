@@ -1,0 +1,12 @@
+LICENSE
+README.md
+pyproject.toml
+apps/__init__.py
+apps/constants.py
+apps/exceptions.py
+apps/main.py
+euler_copilot_framework.egg-info/PKG-INFO
+euler_copilot_framework.egg-info/SOURCES.txt
+euler_copilot_framework.egg-info/dependency_links.txt
+euler_copilot_framework.egg-info/requires.txt
+euler_copilot_framework.egg-info/top_level.txt
