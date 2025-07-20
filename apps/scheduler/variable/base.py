@@ -18,8 +18,7 @@ class VariableMetadata(BaseModel):
     
     # 作用域相关属性
     user_sub: Optional[str] = Field(default=None, description="用户级变量的用户ID")
-    flow_id: Optional[str] = Field(default=None, description="环境级变量的流程ID")
-    conversation_id: Optional[str] = Field(default=None, description="对话级变量的对话ID")
+    flow_id: Optional[str] = Field(default=None, description="环境级/对话级变量的流程ID")
     
     # 安全相关属性
     is_encrypted: bool = Field(default=False, description="是否加密存储")
@@ -37,8 +36,17 @@ class BaseVariable(ABC):
             value: 变量值
         """
         self.metadata = metadata
-        self._value = value
+        self._value = None  # 先设置为None
         self._original_value = value
+        self._initializing = True  # 标记正在初始化
+        
+        # 通过setter设置值，触发类型验证
+        if value is not None:
+            self.value = value  # 这会触发setter和类型验证
+        else:
+            self._value = value  # 如果是None则直接设置
+            
+        self._initializing = False  # 初始化完成
     
     @property
     def name(self) -> str:
@@ -63,7 +71,8 @@ class BaseVariable(ABC):
     @value.setter
     def value(self, new_value: Any) -> None:
         """设置变量值"""
-        if self.scope == VariableScope.SYSTEM:
+        # 只有在非初始化阶段才检查系统级变量的修改限制
+        if self.scope == VariableScope.SYSTEM and not getattr(self, '_initializing', False):
             raise ValueError("系统级变量不能修改")
         
         # 验证类型

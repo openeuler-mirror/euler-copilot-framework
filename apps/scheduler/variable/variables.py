@@ -166,13 +166,13 @@ class SecretVariable(BaseVariable):
             value: 变量值
             encryption_key: 加密密钥（可选，如果不提供会自动生成）
         """
-        super().__init__(metadata, value)
+        # 先设置加密密钥，因为父类初始化时可能会调用value setter
         self._encryption_key = encryption_key or self._generate_encryption_key()
+        super().__init__(metadata, value)
         self.metadata.is_encrypted = True
         
-        # 如果提供了值，立即加密
-        if value is not None:
-            self._value = self._encrypt_value(value)
+        # 如果提供了值，确保它已被加密（在value setter中已处理）
+        # 这里不需要再次加密，因为super().__init__已经通过setter处理了
     
     def _generate_encryption_key(self) -> str:
         """生成加密密钥"""
@@ -329,8 +329,9 @@ class ArrayVariable(BaseVariable):
     
     def __init__(self, metadata: VariableMetadata, value: Any = None):
         """初始化数组变量"""
+        # 先设置元素类型，因为父类初始化时会调用_validate_type
+        self._element_type = metadata.var_type.get_array_element_type()
         super().__init__(metadata, value or [])
-        self._element_type = self.var_type.get_array_element_type()
     
     def _validate_type(self, value: Any) -> bool:
         """验证值是否为数组类型，并检查元素类型"""

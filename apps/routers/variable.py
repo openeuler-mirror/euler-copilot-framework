@@ -36,7 +36,9 @@ class CreateVariableRequest(BaseModel):
 
 class UpdateVariableRequest(BaseModel):
     """更新变量请求"""
-    value: str = Field(description="新的变量值")
+    value: Optional[str] = Field(default=None, description="新的变量值")
+    var_type: Optional[VariableType] = Field(default=None, description="新的变量类型")
+    description: Optional[str] = Field(default=None, description="新的变量描述")
 
 
 class VariableResponse(BaseModel):
@@ -106,12 +108,15 @@ async def create_variable(
             description=request.description,
             user_sub=None,  # 不再支持用户级变量
             flow_id=request.flow_id if request.scope in [VariableScope.ENVIRONMENT, VariableScope.CONVERSATION] else None,
-            conversation_id=None,  # 不再使用conversation_id，统一使用flow_id
         )
+        
+        # 如果是对话级变量，刷新缓存确保数据一致性
+        if request.scope == VariableScope.CONVERSATION and request.flow_id:
+            await pool.refresh_conversation_cache(request.flow_id)
         
         return ResponseData(
             code=200,
-            message="变量创建ß功",
+            message="变量创建成功",
             result={"variable_name": variable.name},
         )
         
@@ -152,10 +157,15 @@ async def update_variable(
             name=name,
             scope=scope,
             value=request.value,
+            var_type=request.var_type,
+            description=request.description,
             user_sub=None,  # 不再支持用户级变量
             flow_id=flow_id,
-            conversation_id=None,  # 不再使用conversation_id
         )
+        
+        # 如果是对话级变量，刷新缓存确保数据一致性
+        if scope == VariableScope.CONVERSATION and flow_id:
+            await pool.refresh_conversation_cache(flow_id)
         
         return ResponseData(
             code=200,
@@ -204,7 +214,6 @@ async def delete_variable(
             scope=scope,
             user_sub=None,  # 不再支持用户级变量
             flow_id=flow_id,
-            conversation_id=None,  # 不再使用conversation_id
         )
         
         if not success:
@@ -212,6 +221,10 @@ async def delete_variable(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="变量不存在"
             )
+        
+        # 如果是对话级变量，刷新缓存确保数据一致性
+        if scope == VariableScope.CONVERSATION and flow_id:
+            await pool.refresh_conversation_cache(flow_id)
         
         return ResponseData(
             code=200,
@@ -259,7 +272,6 @@ async def get_variable(
             scope=scope,
             user_sub=None,  # 不再支持用户级变量
             flow_id=flow_id if scope in [VariableScope.ENVIRONMENT, VariableScope.CONVERSATION] else None,
-            conversation_id=None,  # 不再使用conversation_id
         )
         
         if not variable:
@@ -316,7 +328,6 @@ async def list_variables(
             scope=scope,
             user_sub=None,  # 不再支持用户级变量
             flow_id=flow_id if scope in [VariableScope.ENVIRONMENT, VariableScope.CONVERSATION] else None,
-            conversation_id=None,  # 不再使用conversation_id
         )
         
         # 过滤权限并构建响应

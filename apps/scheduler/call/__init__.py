@@ -7,6 +7,7 @@ from apps.scheduler.call.graph.graph import Graph
 from apps.scheduler.call.llm.llm import LLM
 from apps.scheduler.call.mcp.mcp import MCP
 from apps.scheduler.call.rag.rag import RAG
+from apps.scheduler.call.reply.direct_reply import DirectReply
 from apps.scheduler.call.sql.sql import SQL
 from apps.scheduler.call.suggest.suggest import Suggestion
 
@@ -14,6 +15,7 @@ from apps.scheduler.call.suggest.suggest import Suggestion
 __all__ = [
     "API",
     "Code",
+    "DirectReply",
     "LLM",
     "MCP",
     "RAG",

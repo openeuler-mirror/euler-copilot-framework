@@ -13,6 +13,7 @@ from pydantic import ConfigDict
 from apps.scheduler.call.core import CoreCall
 from apps.scheduler.call.empty import Empty
 from apps.scheduler.call.facts.facts import FactsCall
+from apps.scheduler.call.reply.direct_reply import DirectReply
 from apps.scheduler.call.slot.schema import SlotOutput
 from apps.scheduler.call.slot.slot import Slot
 from apps.scheduler.call.summary.summary import Summary
@@ -70,6 +71,8 @@ class StepExecutor(BaseExecutor):
             return FactsCall
         if call_id == SpecialCallType.SLOT.value:
             return Slot
+        if call_id == SpecialCallType.DIRECT_REPLY.value:
+            return DirectReply
 
         # 从Pool中获取对应的Call
         call_cls: type[CoreCall] = await Pool().get_call(call_id)

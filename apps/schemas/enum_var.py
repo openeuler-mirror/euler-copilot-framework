@@ -142,6 +142,7 @@ class SpecialCallType(str, Enum):
     FACTS = "Facts"
     SLOT = "Slot"
     LLM = "LLM"
+    DIRECT_REPLY = "DirectReply"
     START = "start"
     END = "end"
     CHOICE = "choice"

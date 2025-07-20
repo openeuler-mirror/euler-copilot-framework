@@ -107,7 +107,7 @@ class VariableIntegration:
         Args:
             name: 变量名
             value: 变量值
-            conversation_id: 对话ID
+            conversation_id: 对话ID（在内部作为flow_id使用）
             var_type_str: 变量类型字符串
             
         Returns:
@@ -120,12 +120,13 @@ class VariableIntegration:
             var_type = VariableType(var_type_str)
             
             pool = await get_variable_pool()
+            # 在内部将conversation_id作为flow_id传递
             await pool.add_variable(
                 name=name,
                 var_type=var_type,
                 scope=VariableScope.CONVERSATION,
                 value=value,
-                conversation_id=conversation_id
+                flow_id=conversation_id  # 统一使用flow_id
             )
             
             logger.debug(f"已添加对话变量: {name} = {value}")
@@ -150,11 +151,12 @@ class VariableIntegration:
         """
         try:
             pool = await get_variable_pool()
+            # 在内部将conversation_id作为flow_id传递
             await pool.update_variable(
                 name=name,
                 scope=VariableScope.CONVERSATION,
                 value=value,
-                conversation_id=conversation_id
+                flow_id=conversation_id  # 统一使用flow_id
             )
             
             logger.debug(f"已更新对话变量: {name} = {value}")

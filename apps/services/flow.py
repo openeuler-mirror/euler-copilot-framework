@@ -257,15 +257,21 @@ class FlowManager:
                 debug=flow_config.debug,
             )
             for node_id, node_config in flow_config.steps.items():
-                input_parameters = node_config.params
-                if node_config.node not in ("Empty"):
-                    _, output_parameters = await NodeManager.get_node_params(node_config.node)
+                # 对于Code节点，直接使用保存的完整params作为parameters
+                if node_config.type == "Code":
+                    parameters = node_config.params  # 直接使用保存的完整params
                 else:
-                    output_parameters = {}
-                parameters = {
-                    "input_parameters": input_parameters,
-                    "output_parameters": Slot(output_parameters).extract_type_desc_from_schema(),
-                }
+                    # 其他节点：使用原有逻辑
+                    input_parameters = node_config.params
+                    if node_config.node not in ("Empty"):
+                        _, output_parameters = await NodeManager.get_node_params(node_config.node)
+                    else:
+                        output_parameters = {}
+                    parameters = {
+                        "input_parameters": input_parameters,
+                        "output_parameters": Slot(output_parameters).extract_type_desc_from_schema(),
+                    }
+                
                 node_item = NodeItem(
                     stepId=node_id,
                     nodeId=node_config.node,
@@ -275,8 +281,7 @@ class FlowManager:
                     editable=True,
                     callId=node_config.type,
                     parameters=parameters,
-                    position=PositionItem(
-                        x=node_config.pos.x, y=node_config.pos.y),
+                    position=PositionItem(x=node_config.pos.x, y=node_config.pos.y),
                 )
                 flow_item.nodes.append(node_item)
 
@@ -384,13 +389,19 @@ class FlowManager:
                 debug=flow_item.debug,
             )
             for node_item in flow_item.nodes:
+                # 对于Code节点，保存完整的parameters；其他节点只保存input_parameters
+                if node_item.call_id == "Code":
+                    params = node_item.parameters  # 保存完整的parameters（包含input_parameters、output_parameters以及code配置）
+                else:
+                    params = node_item.parameters.get("input_parameters", {})  # 其他节点只保存input_parameters
+                
                 flow_config.steps[node_item.step_id] = Step(
                     type=node_item.call_id,
                     node=node_item.node_id,
                     name=node_item.name,
                     description=node_item.description,
                     pos=node_item.position,
-                    params=node_item.parameters.get("input_parameters", {}),
+                    params=params,
                 )
             for edge_item in flow_item.edges:
                 edge_from = edge_item.source_node

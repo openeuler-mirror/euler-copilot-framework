@@ -3,6 +3,7 @@ from typing import Any, Dict, List, Optional, Set
 from collections import defaultdict
 import asyncio
 from contextlib import asynccontextmanager
+from datetime import datetime, UTC
 
 from apps.common.mongo import MongoDB
 from .base import BaseVariable, VariableMetadata
@@ -74,8 +75,7 @@ class VariablePool:
                           value: Any = None,
                           description: Optional[str] = None,
                           user_sub: Optional[str] = None,
-                          flow_id: Optional[str] = None,
-                          conversation_id: Optional[str] = None) -> BaseVariable:
+                          flow_id: Optional[str] = None) -> BaseVariable:
         """添加变量
         
         Args:
@@ -86,7 +86,6 @@ class VariablePool:
             description: 描述
             user_sub: 用户ID（用户级变量必需）
             flow_id: 流程ID（环境级变量必需）
-            conversation_id: 对话ID（对话级变量必需）
             
         Returns:
             BaseVariable: 创建的变量
@@ -104,7 +103,7 @@ class VariablePool:
             raise ValueError("对话级变量必须指定 flow_id")
         
         # 检查变量是否已存在
-        existing_var = await self.get_variable(name, scope, user_sub, flow_id, conversation_id)
+        existing_var = await self.get_variable(name, scope, user_sub, flow_id)
         if existing_var:
             raise ValueError(f"变量 {name} 在作用域 {scope.value} 中已存在")
         
@@ -116,7 +115,6 @@ class VariablePool:
             description=description,
             user_sub=user_sub,
             flow_id=flow_id,
-            conversation_id=conversation_id,
             created_by=user_sub or "system"
         )
         
@@ -126,9 +124,8 @@ class VariablePool:
         # 存储到对应的缓存中
         await self._store_variable(variable)
         
-        # 持久化存储
-        if scope != VariableScope.CONVERSATION:  # 对话级变量不持久化
-            await self._persist_variable(variable)
+        # 持久化存储 - 为了更好的用户体验，对话级变量也进行持久化
+        await self._persist_variable(variable)
         
         logger.info(f"已添加变量: {name} ({var_type.value}) 到作用域 {scope.value}")
         return variable
@@ -136,24 +133,26 @@ class VariablePool:
     async def update_variable(self, 
                              name: str, 
                              scope: VariableScope,
-                             value: Any,
+                             value: Optional[Any] = None,
+                             var_type: Optional[VariableType] = None,
+                             description: Optional[str] = None,
                              user_sub: Optional[str] = None,
-                             flow_id: Optional[str] = None,
-                             conversation_id: Optional[str] = None) -> BaseVariable:
-        """更新变量值
+                             flow_id: Optional[str] = None) -> BaseVariable:
+        """更新变量值、类型或描述
         
         Args:
             name: 变量名
             scope: 作用域
-            value: 新值
+            value: 新值（可选）
+            var_type: 新变量类型（可选）
+            description: 新描述（可选）
             user_sub: 用户ID
             flow_id: 流程ID
-            conversation_id: 对话ID
             
         Returns:
             BaseVariable: 更新后的变量
         """
-        variable = await self.get_variable(name, scope, user_sub, flow_id, conversation_id)
+        variable = await self.get_variable(name, scope, user_sub, flow_id)
         if not variable:
             raise ValueError(f"变量 {name} 在作用域 {scope.value} 中不存在")
         
@@ -161,15 +160,26 @@ class VariablePool:
         if user_sub and not variable.can_access(user_sub):
             raise PermissionError(f"用户 {user_sub} 没有权限修改变量 {name}")
         
-        # 更新值
-        variable.value = value
+        # 至少需要更新一个字段
+        if value is None and var_type is None and description is None:
+            raise ValueError("至少需要指定一个要更新的字段（value、var_type 或 description）")
+        
+        # 更新字段
+        if value is not None:
+            variable.value = value
+        if var_type is not None:
+            variable.metadata.var_type = var_type
+        if description is not None:
+            variable.metadata.description = description
+            
+        # 更新时间戳
+        variable.metadata.updated_at = datetime.now(UTC)
         
         # 更新缓存
         await self._store_variable(variable)
         
-        # 持久化更新
-        if scope != VariableScope.CONVERSATION:
-            await self._persist_variable(variable)
+        # 持久化更新 - 为了更好的用户体验，对话级变量也进行持久化
+        await self._persist_variable(variable)
         
         logger.info(f"已更新变量: {name} 在作用域 {scope.value}")
         return variable
@@ -178,8 +188,7 @@ class VariablePool:
                              name: str, 
                              scope: VariableScope,
                              user_sub: Optional[str] = None,
-                             flow_id: Optional[str] = None,
-                             conversation_id: Optional[str] = None) -> bool:
+                             flow_id: Optional[str] = None) -> bool:
         """删除变量
         
         Args:
@@ -187,7 +196,6 @@ class VariablePool:
             scope: 作用域
             user_sub: 用户ID
             flow_id: 流程ID
-            conversation_id: 对话ID
             
         Returns:
             bool: 是否删除成功
@@ -195,7 +203,7 @@ class VariablePool:
         if scope == VariableScope.SYSTEM:
             raise ValueError("不能删除系统级变量")
         
-        variable = await self.get_variable(name, scope, user_sub, flow_id, conversation_id)
+        variable = await self.get_variable(name, scope, user_sub, flow_id)
         if not variable:
             return False
         
@@ -205,10 +213,8 @@ class VariablePool:
         
         # 从缓存中删除
         await self._remove_variable_from_cache(variable)
-        
-        # 从持久化存储中删除
-        if scope != VariableScope.CONVERSATION:
-            await self._delete_variable_from_db(variable)
+        # 从数据库删除
+        await self._delete_variable_from_db(variable)
         
         logger.info(f"已删除变量: {name} 从作用域 {scope.value}")
         return True
@@ -217,8 +223,7 @@ class VariablePool:
                           name: str, 
                           scope: VariableScope,
                           user_sub: Optional[str] = None,
-                          flow_id: Optional[str] = None,
-                          conversation_id: Optional[str] = None) -> Optional[BaseVariable]:
+                          flow_id: Optional[str] = None) -> Optional[BaseVariable]:
         """获取变量
         
         Args:
@@ -226,7 +231,6 @@ class VariablePool:
             scope: 作用域
             user_sub: 用户ID
             flow_id: 流程ID
-            conversation_id: 对话ID
             
         Returns:
             Optional[BaseVariable]: 变量或None
@@ -249,22 +253,24 @@ class VariablePool:
             # 从数据库加载
             return await self._load_env_variable(name, flow_id)
         elif scope == VariableScope.CONVERSATION and flow_id:
-            return self._conv_variables[flow_id].get(name)
+            # 先从缓存查找
+            if name in self._conv_variables[flow_id]:
+                return self._conv_variables[flow_id][name]
+            # 从数据库加载
+            return await self._load_conv_variable(name, flow_id)
         
         return None
     
     async def list_variables(self, 
                             scope: VariableScope,
                             user_sub: Optional[str] = None,
-                            flow_id: Optional[str] = None,
-                            conversation_id: Optional[str] = None) -> List[BaseVariable]:
+                            flow_id: Optional[str] = None) -> List[BaseVariable]:
         """列出指定作用域的所有变量
         
         Args:
             scope: 作用域
             user_sub: 用户ID
             flow_id: 流程ID
-            conversation_id: 对话ID
             
         Returns:
             List[BaseVariable]: 变量列表
@@ -282,6 +288,8 @@ class VariablePool:
             await self._load_all_env_variables(flow_id)
             return list(self._env_variables[flow_id].values())
         elif scope == VariableScope.CONVERSATION and flow_id:
+            # 加载对话级的所有变量
+            await self._load_all_conv_variables(flow_id)
             return list(self._conv_variables[flow_id].values())
         
         return []
@@ -292,18 +300,26 @@ class VariablePool:
             del self._conv_variables[flow_id]
             logger.info(f"已清空工作流 {flow_id} 的对话级变量")
     
+    async def refresh_conversation_cache(self, flow_id: str):
+        """刷新对话级变量缓存"""
+        if flow_id in self._conv_variables:
+            # 清空当前缓存
+            del self._conv_variables[flow_id]
+        
+        # 重新加载
+        await self._load_all_conv_variables(flow_id)
+        logger.info(f"已刷新工作流 {flow_id} 的对话级变量缓存")
+    
     async def resolve_variable_reference(self, 
                                        reference: str,
                                        user_sub: Optional[str] = None,
-                                       flow_id: Optional[str] = None,
-                                       conversation_id: Optional[str] = None) -> Any:
+                                       flow_id: Optional[str] = None) -> Any:
         """解析变量引用，如 {{sys.query}} 或 {{user.token}}
         
         Args:
             reference: 变量引用字符串
             user_sub: 用户ID
             flow_id: 流程ID
-            conversation_id: 对话ID
             
         Returns:
             Any: 变量值
@@ -338,7 +354,7 @@ class VariablePool:
         var_name = path_parts[0]
         
         # 获取变量
-        variable = await self.get_variable(var_name, scope, user_sub, flow_id, conversation_id)
+        variable = await self.get_variable(var_name, scope, user_sub, flow_id)
         if not variable:
             raise ValueError(f"变量不存在: {clean_ref}")
         
@@ -409,13 +425,22 @@ class VariablePool:
                 "metadata.scope": variable.scope.value
             }
             
-            if variable.scope == VariableScope.USER:
+            if variable.scope == VariableScope.USER and variable.metadata.user_sub:
                 query["metadata.user_sub"] = variable.metadata.user_sub
-            elif variable.scope == VariableScope.ENVIRONMENT:
+            elif variable.scope == VariableScope.ENVIRONMENT and variable.metadata.flow_id:
+                query["metadata.flow_id"] = variable.metadata.flow_id
+            elif variable.scope == VariableScope.CONVERSATION and variable.metadata.flow_id:
                 query["metadata.flow_id"] = variable.metadata.flow_id
             
-            # 更新或插入
-            await collection.replace_one(query, data, upsert=True)
+            # 更新或插入 - 强制等待写入确认
+            from pymongo import WriteConcern
+            result = await collection.with_options(
+                write_concern=WriteConcern(w="majority", j=True)
+            ).replace_one(query, data, upsert=True)
+            
+            # 确保写入成功
+            if not (result.acknowledged and (result.matched_count > 0 or result.upserted_id)):
+                raise RuntimeError(f"变量持久化失败: {variable.name}")
             
         except Exception as e:
             logger.error(f"持久化变量失败: {e}")
@@ -431,12 +456,22 @@ class VariablePool:
                 "metadata.scope": variable.scope.value
             }
             
-            if variable.scope == VariableScope.USER:
+            if variable.scope == VariableScope.USER and variable.metadata.user_sub:
                 query["metadata.user_sub"] = variable.metadata.user_sub
-            elif variable.scope == VariableScope.ENVIRONMENT:
+            elif variable.scope == VariableScope.ENVIRONMENT and variable.metadata.flow_id:
+                query["metadata.flow_id"] = variable.metadata.flow_id
+            elif variable.scope == VariableScope.CONVERSATION and variable.metadata.flow_id:
                 query["metadata.flow_id"] = variable.metadata.flow_id
             
-            await collection.delete_one(query)
+            # 强制等待写入确认的删除操作
+            from pymongo import WriteConcern
+            result = await collection.with_options(
+                write_concern=WriteConcern(w="majority", j=True)
+            ).delete_one(query)
+            
+            # 确保删除成功
+            if not result.acknowledged:
+                raise RuntimeError(f"变量删除失败: {variable.name}")
             
         except Exception as e:
             logger.error(f"删除变量失败: {e}")
@@ -458,9 +493,14 @@ class VariablePool:
                     # 找到对应的变量类
                     for var_class in VARIABLE_CLASS_MAP.values():
                         if var_class.__name__ == variable_class_name:
-                            variable = var_class.deserialize(doc)
-                            self._user_variables[user_sub][name] = variable
-                            return variable
+                            try:
+                                variable = var_class.deserialize(doc)
+                                self._user_variables[user_sub][name] = variable
+                                return variable
+                            except Exception as e:
+                                logger.warning(f"用户变量 {name} 数据损坏，将从数据库删除: {e}")
+                                await self._delete_corrupted_variable(doc)
+                                return None
             
             return None
             
@@ -484,14 +524,50 @@ class VariablePool:
                     # 找到对应的变量类
                     for var_class in VARIABLE_CLASS_MAP.values():
                         if var_class.__name__ == variable_class_name:
-                            variable = var_class.deserialize(doc)
-                            self._env_variables[flow_id][name] = variable
-                            return variable
+                            try:
+                                variable = var_class.deserialize(doc)
+                                self._env_variables[flow_id][name] = variable
+                                return variable
+                            except Exception as e:
+                                logger.warning(f"环境变量 {name} 数据损坏，将从数据库删除: {e}")
+                                await self._delete_corrupted_variable(doc)
+                                return None
             
             return None
             
         except Exception as e:
             logger.error(f"加载环境变量失败: {e}")
+            return None
+    
+    async def _load_conv_variable(self, name: str, flow_id: str) -> Optional[BaseVariable]:
+        """从数据库加载对话级变量"""
+        try:
+            collection = MongoDB().get_collection("variables")
+            doc = await collection.find_one({
+                "metadata.name": name,
+                "metadata.scope": VariableScope.CONVERSATION.value,
+                "metadata.flow_id": flow_id
+            })
+            
+            if doc:
+                variable_class_name = doc.get("class")
+                if variable_class_name in [cls.__name__ for cls in VARIABLE_CLASS_MAP.values()]:
+                    # 找到对应的变量类
+                    for var_class in VARIABLE_CLASS_MAP.values():
+                        if var_class.__name__ == variable_class_name:
+                            try:
+                                variable = var_class.deserialize(doc)
+                                self._conv_variables[flow_id][name] = variable
+                                return variable
+                            except Exception as e:
+                                logger.warning(f"对话级变量 {name} 数据损坏，将从数据库删除: {e}")
+                                await self._delete_corrupted_variable(doc)
+                                return None
+            
+            return None
+            
+        except Exception as e:
+            logger.error(f"加载对话级变量失败: {e}")
             return None
     
     async def _load_all_user_variables(self, user_sub: str):
@@ -503,15 +579,30 @@ class VariablePool:
                 "metadata.user_sub": user_sub
             })
             
+            corrupted_count = 0
+            loaded_count = 0
+            
             async for doc in cursor:
-                variable_class_name = doc.get("class")
-                if variable_class_name in [cls.__name__ for cls in VARIABLE_CLASS_MAP.values()]:
-                    # 找到对应的变量类
-                    for var_class in VARIABLE_CLASS_MAP.values():
-                        if var_class.__name__ == variable_class_name:
-                            variable = var_class.deserialize(doc)
-                            self._user_variables[user_sub][variable.name] = variable
-                            break
+                try:
+                    variable_class_name = doc.get("class")
+                    if variable_class_name in [cls.__name__ for cls in VARIABLE_CLASS_MAP.values()]:
+                        # 找到对应的变量类
+                        for var_class in VARIABLE_CLASS_MAP.values():
+                            if var_class.__name__ == variable_class_name:
+                                variable = var_class.deserialize(doc)
+                                self._user_variables[user_sub][variable.name] = variable
+                                loaded_count += 1
+                                break
+                except Exception as e:
+                    var_name = doc.get("metadata", {}).get("name", "unknown")
+                    logger.warning(f"用户变量 {var_name} 数据损坏，将从数据库删除: {e}")
+                    await self._delete_corrupted_variable(doc)
+                    corrupted_count += 1
+            
+            if corrupted_count > 0:
+                logger.info(f"用户 {user_sub} 加载变量完成: 成功 {loaded_count} 个，清理损坏数据 {corrupted_count} 个")
+            else:
+                logger.debug(f"用户 {user_sub} 加载变量完成: {loaded_count} 个")
             
         except Exception as e:
             logger.error(f"加载用户所有变量失败: {e}")
@@ -525,18 +616,177 @@ class VariablePool:
                 "metadata.flow_id": flow_id
             })
             
+            corrupted_count = 0
+            loaded_count = 0
+            
             async for doc in cursor:
-                variable_class_name = doc.get("class")
-                if variable_class_name in [cls.__name__ for cls in VARIABLE_CLASS_MAP.values()]:
-                    # 找到对应的变量类
-                    for var_class in VARIABLE_CLASS_MAP.values():
-                        if var_class.__name__ == variable_class_name:
-                            variable = var_class.deserialize(doc)
-                            self._env_variables[flow_id][variable.name] = variable
-                            break
+                try:
+                    variable_class_name = doc.get("class")
+                    if variable_class_name in [cls.__name__ for cls in VARIABLE_CLASS_MAP.values()]:
+                        # 找到对应的变量类
+                        for var_class in VARIABLE_CLASS_MAP.values():
+                            if var_class.__name__ == variable_class_name:
+                                variable = var_class.deserialize(doc)
+                                self._env_variables[flow_id][variable.name] = variable
+                                loaded_count += 1
+                                break
+                except Exception as e:
+                    var_name = doc.get("metadata", {}).get("name", "unknown")
+                    logger.warning(f"环境变量 {var_name} 数据损坏，将从数据库删除: {e}")
+                    await self._delete_corrupted_variable(doc)
+                    corrupted_count += 1
+            
+            if corrupted_count > 0:
+                logger.info(f"环境 {flow_id} 加载变量完成: 成功 {loaded_count} 个，清理损坏数据 {corrupted_count} 个")
+            else:
+                logger.debug(f"环境 {flow_id} 加载变量完成: {loaded_count} 个")
             
         except Exception as e:
             logger.error(f"加载环境所有变量失败: {e}")
+    
+    async def _load_all_conv_variables(self, flow_id: str):
+        """加载对话级的所有变量"""
+        try:
+            collection = MongoDB().get_collection("variables")
+            cursor = collection.find({
+                "metadata.scope": VariableScope.CONVERSATION.value,
+                "metadata.flow_id": flow_id
+            })
+            
+            corrupted_count = 0
+            loaded_count = 0
+            
+            async for doc in cursor:
+                try:
+                    variable_class_name = doc.get("class")
+                    if variable_class_name in [cls.__name__ for cls in VARIABLE_CLASS_MAP.values()]:
+                        # 找到对应的变量类
+                        for var_class in VARIABLE_CLASS_MAP.values():
+                            if var_class.__name__ == variable_class_name:
+                                variable = var_class.deserialize(doc)
+                                self._conv_variables[flow_id][variable.name] = variable
+                                loaded_count += 1
+                                break
+                except Exception as e:
+                    var_name = doc.get("metadata", {}).get("name", "unknown")
+                    logger.warning(f"对话级变量 {var_name} 数据损坏，将从数据库删除: {e}")
+                    await self._delete_corrupted_variable(doc)
+                    corrupted_count += 1
+            
+            if corrupted_count > 0:
+                logger.info(f"对话 {flow_id} 加载变量完成: 成功 {loaded_count} 个，清理损坏数据 {corrupted_count} 个")
+            else:
+                logger.debug(f"对话 {flow_id} 加载变量完成: {loaded_count} 个")
+            
+        except Exception as e:
+            logger.error(f"加载对话级所有变量失败: {e}")
+
+    async def _delete_corrupted_variable(self, doc: Dict[str, Any]):
+        """删除损坏的变量数据
+        
+        Args:
+            doc: 损坏的变量文档
+        """
+        try:
+            collection = MongoDB().get_collection("variables")
+            
+            # 记录损坏的数据用于分析
+            corrupted_collection = MongoDB().get_collection("corrupted_variables")
+            backup_doc = doc.copy()
+            backup_doc["corrupted_at"] = datetime.now(UTC)
+            backup_doc["reason"] = "deserialization_failed"
+            
+            # 备份损坏数据
+            try:
+                await corrupted_collection.insert_one(backup_doc)
+            except Exception as backup_e:
+                logger.warning(f"备份损坏变量数据失败: {backup_e}")
+            
+            # 删除原始损坏数据
+            if "_id" in doc:
+                result = await collection.delete_one({"_id": doc["_id"]})
+                if result.deleted_count > 0:
+                    var_name = doc.get("metadata", {}).get("name", "unknown")
+                    logger.debug(f"已删除损坏的变量数据: {var_name}")
+                else:
+                    logger.warning(f"未能删除损坏的变量数据，可能已被删除")
+            
+        except Exception as e:
+            logger.error(f"删除损坏变量数据失败: {e}")
+            # 即使删除失败也不抛出异常，避免影响其他变量的加载
+
+    async def cleanup_corrupted_variables(self) -> Dict[str, int]:
+        """手动清理所有损坏的变量数据
+        
+        Returns:
+            Dict[str, int]: 清理统计信息 {"checked": 检查数量, "cleaned": 清理数量}
+        """
+        logger.info("开始检查和清理损坏的变量数据...")
+        
+        collection = MongoDB().get_collection("variables")
+        checked_count = 0
+        cleaned_count = 0
+        
+        try:
+            # 遍历所有变量进行检查
+            cursor = collection.find({})
+            
+            async for doc in cursor:
+                checked_count += 1
+                try:
+                    variable_class_name = doc.get("class")
+                    if variable_class_name in [cls.__name__ for cls in VARIABLE_CLASS_MAP.values()]:
+                        # 找到对应的变量类并尝试反序列化
+                        for var_class in VARIABLE_CLASS_MAP.values():
+                            if var_class.__name__ == variable_class_name:
+                                var_class.deserialize(doc)  # 只是测试反序列化，不保存
+                                break
+                    else:
+                        # 未知的变量类型也视为损坏
+                        raise ValueError(f"未知的变量类型: {variable_class_name}")
+                        
+                except Exception as e:
+                    var_name = doc.get("metadata", {}).get("name", "unknown")
+                    logger.warning(f"发现损坏的变量 {var_name}，将删除: {e}")
+                    await self._delete_corrupted_variable(doc)
+                    cleaned_count += 1
+            
+            result = {"checked": checked_count, "cleaned": cleaned_count}
+            logger.info(f"变量数据清理完成: 检查了 {checked_count} 个变量，清理了 {cleaned_count} 个损坏的变量")
+            return result
+            
+        except Exception as e:
+            logger.error(f"清理损坏变量失败: {e}")
+            return {"checked": checked_count, "cleaned": cleaned_count}
+    
+    async def get_corrupted_variables_info(self) -> List[Dict[str, Any]]:
+        """获取已备份的损坏变量信息
+        
+        Returns:
+            List[Dict[str, Any]]: 损坏变量信息列表
+        """
+        try:
+            corrupted_collection = MongoDB().get_collection("corrupted_variables")
+            corrupted_vars = []
+            
+            cursor = corrupted_collection.find({}).sort("corrupted_at", -1).limit(100)
+            async for doc in cursor:
+                var_info = {
+                    "name": doc.get("metadata", {}).get("name", "unknown"),
+                    "scope": doc.get("metadata", {}).get("scope", "unknown"),
+                    "var_type": doc.get("metadata", {}).get("var_type", "unknown"),
+                    "corrupted_at": doc.get("corrupted_at"),
+                    "reason": doc.get("reason", "unknown"),
+                    "user_sub": doc.get("metadata", {}).get("user_sub"),
+                    "flow_id": doc.get("metadata", {}).get("flow_id"),
+                }
+                corrupted_vars.append(var_info)
+            
+            return corrupted_vars
+            
+        except Exception as e:
+            logger.error(f"获取损坏变量信息失败: {e}")
+            return []
 
 
 # 全局变量池实例
