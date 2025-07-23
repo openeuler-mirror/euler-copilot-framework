@@ -202,13 +202,19 @@ class SecretVariableSecurity:
             bool: 是否轮换成功
         """
         try:
-            from .pool import get_variable_pool
+            from .pool_manager import get_pool_manager
             from .type import VariableScope
             
-            pool = await get_variable_pool()
+            pool_manager = await get_pool_manager()
+            
+            # 获取用户变量池
+            user_pool = await pool_manager.get_user_pool(user_sub)
+            if not user_pool:
+                logger.error(f"用户变量池不存在: {user_sub}")
+                return False
             
             # 获取密钥变量
-            variable = await pool.get_variable(variable_name, VariableScope.USER, user_sub=user_sub)
+            variable = await user_pool.get_variable(variable_name)
             if not variable or not variable.var_type.is_secret_type():
                 return False
             
@@ -220,7 +226,7 @@ class SecretVariableSecurity:
             variable.value = original_value  # 这会触发重新加密
             
             # 更新存储
-            await pool._persist_variable(variable)
+            await user_pool._persist_variable(variable)
             
             # 记录轮换操作
             await self._log_access(

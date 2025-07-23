@@ -6,6 +6,7 @@ Core Call类是定义了所有Call都应具有的方法和参数的PyDantic类�
 """
 
 import logging
+import re
 from collections.abc import AsyncGenerator
 from typing import TYPE_CHECKING, Any, ClassVar, Self
 
@@ -14,6 +15,7 @@ from pydantic.json_schema import SkipJsonSchema
 
 from apps.llm.function import FunctionLLM
 from apps.llm.reasoning import ReasoningLLM
+from apps.scheduler.variable.integration import VariableIntegration
 from apps.schemas.enum_var import CallOutputType
 from apps.schemas.pool import NodePool
 from apps.schemas.scheduler import (
@@ -70,6 +72,7 @@ class CoreCall(BaseModel):
     )
 
     to_user: bool = Field(description="是否需要将输出返回给用户", default=False)
+    enable_variable_resolution: bool = Field(description="是否启用自动变量解析", default=True)
 
     model_config = ConfigDict(
         arbitrary_types_allowed=True,
@@ -108,6 +111,7 @@ class CoreCall(BaseModel):
                 task_id=executor.task.id,
                 flow_id=executor.task.state.flow_id,
                 session_id=executor.task.ids.session_id,
+                conversation_id=executor.task.ids.conversation_id,
                 user_sub=executor.task.ids.user_sub,
                 app_id=executor.task.state.app_id,
             ),
@@ -163,9 +167,113 @@ class CoreCall(BaseModel):
         await obj._set_input(executor)
         return obj
 
+    async def _initialize_variable_context(self, call_vars: CallVars) -> dict[str, Any]:
+        """初始化变量解析上下文并初始化系统变量"""
+        context = {
+            "question": call_vars.question,
+            "user_sub": call_vars.ids.user_sub,
+            "flow_id": call_vars.ids.flow_id,
+            "session_id": call_vars.ids.session_id,
+            "app_id": call_vars.ids.app_id,
+            "conversation_id": call_vars.ids.conversation_id,
+        }
+        
+        await VariableIntegration.initialize_system_variables(context)
+        return context
+
+    async def _resolve_variables_in_config(self, config: Any, call_vars: CallVars) -> Any:
+        """解析配置中的变量引用
+        
+        Args:
+            config: 配置值，可能包含变量引用
+            call_vars: Call变量
+            
+        Returns:
+            解析后的配置值
+        """
+        if isinstance(config, dict):
+            if "reference" in config:
+                # 解析变量引用
+                resolved_value = await VariableIntegration.resolve_variable_reference(
+                    config["reference"],
+                    user_sub=call_vars.ids.user_sub,
+                    flow_id=call_vars.ids.flow_id,
+                    conversation_id=call_vars.ids.conversation_id
+                )
+                return resolved_value
+            elif "value" in config:
+                # 使用默认值
+                return config["value"]
+            else:
+                # 递归解析字典中的所有值
+                resolved_dict = {}
+                for key, value in config.items():
+                    resolved_dict[key] = await self._resolve_variables_in_config(value, call_vars)
+                return resolved_dict
+        elif isinstance(config, list):
+            # 递归解析列表中的所有值
+            resolved_list = []
+            for item in config:
+                resolved_item = await self._resolve_variables_in_config(item, call_vars)
+                resolved_list.append(resolved_item)
+            return resolved_list
+        elif isinstance(config, str):
+            # 解析字符串中的变量引用
+            return await self._resolve_variables_in_text(config, call_vars)
+        else:
+            # 直接返回配置值
+            return config
+
+    async def _resolve_variables_in_text(self, text: str, call_vars: CallVars) -> str:
+        """解析文本中的变量引用（{{...}} 语法）
+        
+        Args:
+            text: 包含变量引用的文本
+            call_vars: Call变量
+            
+        Returns:
+            解析后的文本
+        """
+        if not isinstance(text, str):
+            return text
+            
+        # 检查是否包含变量引用语法
+        if not re.search(r'\{\{.*?\}\}', text):
+            return text
+        
+        # 提取所有变量引用并逐一解析替换
+        variable_pattern = r'\{\{(.*?)\}\}'
+        matches = re.findall(variable_pattern, text)
+        
+        resolved_text = text
+        for match in matches:
+            try:
+                # 解析变量引用
+                resolved_value = await VariableIntegration.resolve_variable_reference(
+                    match.strip(),
+                    user_sub=call_vars.ids.user_sub,
+                    flow_id=call_vars.ids.flow_id,
+                    conversation_id=call_vars.ids.conversation_id
+                )
+                # 替换原始文本中的变量引用
+                resolved_text = resolved_text.replace(f'{{{{{match}}}}}', str(resolved_value))
+            except Exception as e:
+                logger.warning(f"[CoreCall] 解析变量引用 '{match}' 失败: {e}")
+                # 如果解析失败，保留原始的变量引用
+                continue
+        
+        return resolved_text
+
+
     async def _set_input(self, executor: "StepExecutor") -> None:
         """获取Call的输入"""
         self._sys_vars = self._assemble_call_vars(executor)
+        self._step_id = executor.step.step_id  # 存储 step_id 用于变量名构造
+        
+        # 如果启用了变量解析，初始化变量上下文
+        if self.enable_variable_resolution:
+            await self._initialize_variable_context(self._sys_vars)
+        
         input_data = await self._init(self._sys_vars)
         self.input = input_data.model_dump(by_alias=True, exclude_none=True)
 
@@ -181,10 +289,17 @@ class CoreCall(BaseModel):
     async def _after_exec(self, input_data: dict[str, Any]) -> None:
         """Call类实例的执行后方法"""
 
+
     async def exec(self, executor: "StepExecutor", input_data: dict[str, Any]) -> AsyncGenerator[CallOutputChunk, None]:
         """Call类实例的执行方法"""
+        self._last_output_data = {}  # 初始化输出数据存储
+        
         async for chunk in self._exec(input_data):
+            # 捕获最后的输出数据
+            if chunk.type == CallOutputType.DATA and isinstance(chunk.content, dict):
+                self._last_output_data = chunk.content
             yield chunk
+            
         await self._after_exec(input_data)
 
     async def _llm(self, messages: list[dict[str, Any]]) -> str:

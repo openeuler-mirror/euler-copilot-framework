@@ -37,6 +37,17 @@ user = 'euler_copilot'
 password = ''
 database = 'euler_copilot'
 
+[redis]
+host = 'redis-db'
+port = 6379
+password = ''
+database = 0
+decode_responses = true
+socket_timeout = 5.0
+socket_connect_timeout = 5.0
+max_connections = 10
+health_check_interval = 30
+
 [minio]
 endpoint = '127.0.0.1:9000'
 access_key = 'minioadmin'

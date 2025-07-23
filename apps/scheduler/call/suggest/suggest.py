@@ -20,7 +20,7 @@ from apps.scheduler.call.suggest.schema import (
     SuggestionInput,
     SuggestionOutput,
 )
-from apps.schemas.enum_var import CallOutputType
+from apps.schemas.enum_var import CallOutputType, CallType
 from apps.schemas.pool import NodePool
 from apps.schemas.record import RecordContent
 from apps.schemas.scheduler import (
@@ -50,7 +50,11 @@ class Suggestion(CoreCall, input_model=SuggestionInput, output_model=SuggestionO
     @classmethod
     def info(cls) -> CallInfo:
         """返回Call的名称和描述"""
-        return CallInfo(name="问题推荐", description="在答案下方显示推荐的下一个问题")
+        return CallInfo(
+            name="问题推荐",
+            type=CallType.DEFAULT,
+            description="在答案下方显示推荐的下一个问题"
+        )
 
 
     @classmethod

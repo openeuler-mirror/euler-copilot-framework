@@ -5,6 +5,7 @@ description = "EulerCopilot 后端服务"
 requires-python = "==3.11.6"
 dependencies = [
     "aiofiles==24.1.0",
+    "redis==5.0.8",
     "asyncer==0.0.8",
     "asyncpg==0.30.0",
     "cryptography==44.0.2",

@@ -11,7 +11,7 @@ from pydantic import Field
 from apps.scheduler.call.core import CoreCall
 from apps.scheduler.call.graph.schema import RenderFormat, RenderInput, RenderOutput
 from apps.scheduler.call.graph.style import RenderStyle
-from apps.schemas.enum_var import CallOutputType
+from apps.schemas.enum_var import CallOutputType, CallType
 from apps.schemas.scheduler import (
     CallError,
     CallInfo,
@@ -29,7 +29,11 @@ class Graph(CoreCall, input_model=RenderInput, output_model=RenderOutput):
     @classmethod
     def info(cls) -> CallInfo:
         """返回Call的名称和描述"""
-        return CallInfo(name="图表", description="将SQL查询出的数据转换为图表")
+        return CallInfo(
+            name="图表", 
+            type=CallType.TRANSFORM,
+            description="将SQL查询出的数据转换为图表"
+        )
 
 
     async def _init(self, call_vars: CallVars) -> RenderInput:

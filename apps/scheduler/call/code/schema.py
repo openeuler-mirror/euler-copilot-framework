@@ -18,6 +18,7 @@ class CodeInput(DataBase):
     timeout_seconds: int = Field(description="超时时间（秒）", default=30, ge=1, le=300)
     memory_limit_mb: int = Field(description="内存限制（MB）", default=128, ge=1, le=1024)
     cpu_limit: float = Field(description="CPU限制", default=0.5, ge=0.1, le=2.0)
+    input_arg: dict[str, Any] = Field(description="传递给main函数的输入参数", default={})
 
 
 class CodeOutput(DataBase):
@@ -25,6 +26,5 @@ class CodeOutput(DataBase):
 
     task_id: str = Field(description="任务ID")
     status: str = Field(description="任务状态")
-    result: dict[str, Any] = Field(description="执行结果", default={})
     output: str = Field(description="执行输出", default="")
     error: str = Field(description="错误信息", default="") 

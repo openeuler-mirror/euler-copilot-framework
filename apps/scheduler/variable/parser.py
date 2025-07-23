@@ -4,39 +4,42 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 import json
 from datetime import datetime, UTC
 
-from .pool import get_variable_pool
+from .pool_manager import get_pool_manager
 from .type import VariableScope
 
 logger = logging.getLogger(__name__)
 
 
 class VariableParser:
-    """变量解析器 - 解析和替换模板中的变量引用"""
+    """变量解析器 - 支持新架构的变量解析器（系统变量和对话变量都在对话池中）"""
     
     # 变量引用的正则表达式：{{scope.variable_name.nested_path}}
     VARIABLE_PATTERN = re.compile(r'\{\{\s*([a-zA-Z_][a-zA-Z0-9_]*(?:\.[a-zA-Z_][a-zA-Z0-9_]*)*)\s*\}\}')
     
     def __init__(self, 
-                 user_sub: Optional[str] = None,
+                 user_id: Optional[str] = None,
                  flow_id: Optional[str] = None,
-                 conversation_id: Optional[str] = None):
+                 conversation_id: Optional[str] = None,
+                 user_sub: Optional[str] = None):
         """初始化变量解析器
         
         Args:
-            user_sub: 用户ID
+            user_id: 用户ID (向后兼容)
             flow_id: 流程ID
             conversation_id: 对话ID
+            user_sub: 用户订阅ID (优先使用，用于未来鉴权等需求)
         """
-        self.user_sub = user_sub
+        # 优先使用 user_sub，如果没有则使用 user_id
+        self.user_id = user_sub if user_sub is not None else user_id
         self.flow_id = flow_id
         self.conversation_id = conversation_id
-        self._variable_pool = None
+        self._pool_manager = None
     
-    async def _get_pool(self):
-        """获取变量池实例"""
-        if self._variable_pool is None:
-            self._variable_pool = await get_variable_pool()
-        return self._variable_pool
+    async def _get_pool_manager(self):
+        """获取变量池管理器实例"""
+        if self._pool_manager is None:
+            self._pool_manager = await get_pool_manager()
+        return self._pool_manager
     
     async def parse_template(self, template: str) -> str:
         """解析模板字符串，替换其中的变量引用
@@ -50,8 +53,6 @@ class VariableParser:
         if not template:
             return template
         
-        pool = await self._get_pool()
-        
         # 查找所有变量引用
         matches = self.VARIABLE_PATTERN.findall(template)
         
@@ -60,12 +61,7 @@ class VariableParser:
         for match in matches:
             try:
                 # 解析变量引用
-                value = await pool.resolve_variable_reference(
-                    f"{{{{{match}}}}}",
-                    user_sub=self.user_sub,
-                    flow_id=self.flow_id,
-                    conversation_id=self.conversation_id
-                )
+                value = await self._resolve_variable_reference(match)
                 
                 # 转换为字符串
                 str_value = self._convert_to_string(value)
@@ -81,6 +77,90 @@ class VariableParser:
                 continue
         
         return result
+    
+    async def _resolve_variable_reference(self, reference: str) -> Any:
+        """解析变量引用
+        
+        Args:
+            reference: 变量引用字符串（不含花括号）
+            
+        Returns:
+            Any: 变量值
+        """
+        pool_manager = await self._get_pool_manager()
+        
+        # 解析作用域和变量名
+        parts = reference.split(".", 1)
+        if len(parts) != 2:
+            raise ValueError(f"无效的变量引用格式: {reference}")
+        
+        scope_str, var_path = parts
+        
+        # 确定作用域
+        scope_map = {
+            "sys": VariableScope.SYSTEM,
+            "system": VariableScope.SYSTEM,
+            "user": VariableScope.USER,
+            "env": VariableScope.ENVIRONMENT,
+            "environment": VariableScope.ENVIRONMENT,
+            "conversation": VariableScope.CONVERSATION,
+            "conv": VariableScope.CONVERSATION,
+        }
+        
+        scope = scope_map.get(scope_str)
+        if not scope:
+            raise ValueError(f"无效的变量作用域: {scope_str}")
+        
+        # 解析变量路径
+        # 对于conversation作用域，支持节点输出变量格式：conversation.node_id.key
+        if scope == VariableScope.CONVERSATION and "." in var_path:
+            # 检查是否为节点输出变量（格式：node_id.key）
+            # 先尝试获取完整路径作为变量名
+            try:
+                variable = await pool_manager.get_variable_from_any_pool(
+                    name=var_path,  # 使用完整路径作为变量名
+                    scope=scope,
+                    user_id=self.user_id if scope == VariableScope.USER else None,
+                    flow_id=self.flow_id if scope in [VariableScope.SYSTEM, VariableScope.ENVIRONMENT, VariableScope.CONVERSATION] else None,
+                    conversation_id=self.conversation_id if scope in [VariableScope.SYSTEM, VariableScope.CONVERSATION] else None
+                )
+                if variable:
+                    return variable.value
+            except:
+                pass  # 如果找不到，继续使用原有逻辑
+        
+        # 原有逻辑：支持嵌套访问如 user.config.api_key
+        path_parts = var_path.split(".")
+        var_name = path_parts[0]
+        
+        # 根据作用域获取变量
+        variable = await pool_manager.get_variable_from_any_pool(
+            name=var_name,
+            scope=scope,
+            user_id=self.user_id,
+            flow_id=self.flow_id,
+            conversation_id=self.conversation_id
+        )
+        
+        if not variable:
+            raise ValueError(f"变量不存在: {scope_str}.{var_name}")
+        
+        # 获取变量值
+        value = variable.value
+        
+        # 如果有嵌套路径，继续解析
+        for path_part in path_parts[1:]:
+            if isinstance(value, dict):
+                value = value.get(path_part)
+            elif isinstance(value, list) and path_part.isdigit():
+                try:
+                    value = value[int(path_part)]
+                except IndexError:
+                    value = None
+            else:
+                raise ValueError(f"无法访问路径: {var_path}")
+        
+        return value
     
     async def extract_variables(self, template: str) -> List[str]:
         """提取模板中的所有变量引用
@@ -109,18 +189,12 @@ class VariableParser:
         if not template:
             return True, []
         
-        pool = await self._get_pool()
         matches = self.VARIABLE_PATTERN.findall(template)
         invalid_refs = []
         
         for match in matches:
             try:
-                await pool.resolve_variable_reference(
-                    f"{{{{{match}}}}}",
-                    user_sub=self.user_sub,
-                    flow_id=self.flow_id,
-                    conversation_id=self.conversation_id
-                )
+                await self._resolve_variable_reference(match)
             except Exception:
                 invalid_refs.append(f"{{{{{match}}}}}")
         
@@ -161,7 +235,14 @@ class VariableParser:
         Args:
             context: 系统上下文信息
         """
-        pool = await self._get_pool()
+        if not self.conversation_id:
+            logger.warning("无法更新系统变量：缺少conversation_id")
+            return
+        
+        # 确保对话变量池存在
+        await self.create_conversation_pool_if_needed()
+        
+        pool_manager = await self._get_pool_manager()
         
         # 预定义的系统变量映射
         system_var_mappings = {
@@ -169,22 +250,85 @@ class VariableParser:
             "files": context.get("files", []),
             "dialogue_count": context.get("dialogue_count", 0),
             "app_id": context.get("app_id", ""),
-            "flow_id": context.get("flow_id", ""),
-            "user_id": context.get("user_sub", ""),
+            "flow_id": context.get("flow_id", self.flow_id or ""),
+            "user_id": context.get("user_sub", self.user_id or ""),
             "session_id": context.get("session_id", ""),
+            "conversation_id": self.conversation_id,
             "timestamp": datetime.now(UTC).timestamp(),
         }
         
+        # 获取对话变量池
+        conversation_pool = await pool_manager.get_conversation_pool(self.conversation_id)
+        if not conversation_pool:
+            logger.error(f"对话变量池不存在，无法更新系统变量: {self.conversation_id}")
+            return
+        
         # 更新系统变量
+        updated_count = 0
         for var_name, var_value in system_var_mappings.items():
             try:
-                variable = await pool.get_variable(var_name, VariableScope.SYSTEM)
-                if variable:
-                    # 系统变量需要特殊处理，绕过只读限制
-                    variable._value = var_value
+                success = await conversation_pool.update_system_variable(var_name, var_value)
+                if success:
+                    updated_count += 1
                     logger.debug(f"已更新系统变量: {var_name} = {var_value}")
+                else:
+                    logger.warning(f"系统变量更新失败: {var_name}")
             except Exception as e:
                 logger.warning(f"更新系统变量失败: {var_name} - {e}")
+        
+        logger.info(f"系统变量更新完成: {updated_count}/{len(system_var_mappings)} 个变量更新成功")
+    
+    async def update_conversation_variable(self, var_name: str, value: Any) -> bool:
+        """更新对话变量的值
+        
+        Args:
+            var_name: 变量名
+            value: 新值
+            
+        Returns:
+            bool: 是否更新成功
+        """
+        if not self.conversation_id:
+            logger.warning("无法更新对话变量：缺少conversation_id")
+            return False
+        
+        pool_manager = await self._get_pool_manager()
+        conversation_pool = await pool_manager.get_conversation_pool(self.conversation_id)
+        
+        if not conversation_pool:
+            logger.warning(f"无法获取对话变量池: {self.conversation_id}")
+            return False
+        
+        try:
+            await conversation_pool.update_variable(var_name, value=value)
+            logger.info(f"已更新对话变量: {var_name} = {value}")
+            return True
+        except Exception as e:
+            logger.error(f"更新对话变量失败: {var_name} - {e}")
+            return False
+    
+    async def create_conversation_pool_if_needed(self) -> bool:
+        """如果需要，创建对话变量池
+        
+        Returns:
+            bool: 是否创建成功
+        """
+        if not self.conversation_id or not self.flow_id:
+            return False
+        
+        pool_manager = await self._get_pool_manager()
+        existing_pool = await pool_manager.get_conversation_pool(self.conversation_id)
+        
+        if existing_pool:
+            return True
+        
+        try:
+            await pool_manager.create_conversation_pool(self.conversation_id, self.flow_id)
+            logger.info(f"已创建对话变量池: {self.conversation_id}")
+            return True
+        except Exception as e:
+            logger.error(f"创建对话变量池失败: {self.conversation_id} - {e}")
+            return False
     
     def _convert_to_string(self, value: Any) -> str:
         """将值转换为字符串

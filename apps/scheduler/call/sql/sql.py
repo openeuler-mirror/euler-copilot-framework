@@ -12,7 +12,7 @@ from pydantic import Field
 from apps.common.config import Config
 from apps.scheduler.call.core import CoreCall
 from apps.scheduler.call.sql.schema import SQLInput, SQLOutput
-from apps.schemas.enum_var import CallOutputType
+from apps.schemas.enum_var import CallOutputType, CallType
 from apps.schemas.scheduler import (
     CallError,
     CallInfo,
@@ -35,7 +35,11 @@ class SQL(CoreCall, input_model=SQLInput, output_model=SQLOutput):
     @classmethod
     def info(cls) -> CallInfo:
         """返回Call的名称和描述"""
-        return CallInfo(name="SQL查询", description="使用大模型生成SQL语句，用于查询数据库中的结构化数据")
+        return CallInfo(
+            name="SQL查询", 
+            type=CallType.TOOL,
+            description="使用大模型生成SQL语句，用于查询数据库中的结构化数据"
+        )
 
 
     async def _init(self, call_vars: CallVars) -> SQLInput:

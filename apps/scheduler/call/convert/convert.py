@@ -12,7 +12,7 @@ from pydantic import Field
 
 from apps.scheduler.call.convert.schema import ConvertInput, ConvertOutput
 from apps.scheduler.call.core import CallOutputChunk, CoreCall
-from apps.schemas.enum_var import CallOutputType
+from apps.schemas.enum_var import CallOutputType, CallType
 from apps.schemas.scheduler import (
     CallInfo,
     CallOutputChunk,
@@ -30,7 +30,11 @@ class Convert(CoreCall, input_model=ConvertInput, output_model=ConvertOutput):
     @classmethod
     def info(cls) -> CallInfo:
         """返回Call的名称和描述"""
-        return CallInfo(name="模板转换", description="使用jinja2语法和jsonnet语法，将自然语言信息和原始数据进行格式化。")
+        return CallInfo(
+            name="模板转换", 
+            type=CallType.TRANSFORM,
+            description="使用jinja2语法和jsonnet语法，将自然语言信息和原始数据进行格式化。"
+        )
 
     async def _init(self, call_vars: CallVars) -> ConvertInput:
         """初始化工具"""

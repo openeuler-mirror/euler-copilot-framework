@@ -1,18 +1,19 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2023-2025. All rights reserved.
 """插件、工作流、步骤相关数据结构定义"""
 
+from enum import StrEnum
 from typing import Any
 
 from pydantic import BaseModel, Field
 
-from apps.schemas.enum_var import CallOutputType
+from apps.schemas.enum_var import CallOutputType, CallType
 from apps.schemas.task import FlowStepHistory
 
 
 class CallInfo(BaseModel):
     """Call的名称和描述"""
-
     name: str = Field(description="Call的名称")
+    type: CallType = Field(description="Call的类别")
     description: str = Field(description="Call的描述")
 
 
@@ -22,6 +23,7 @@ class CallIds(BaseModel):
     task_id: str = Field(description="任务ID")
     flow_id: str = Field(description="Flow ID")
     session_id: str = Field(description="当前用户的Session ID")
+    conversation_id: str = Field(description="当前对话ID")
     app_id: str = Field(description="当前应用的ID")
     user_sub: str = Field(description="当前用户的用户ID")
 

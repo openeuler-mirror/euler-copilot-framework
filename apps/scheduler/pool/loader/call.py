@@ -42,13 +42,12 @@ class CallLoader(metaclass=SingletonMeta):
             call_metadata.append(
                 CallPool(
                     _id=call_id,
-                    type=CallType.SYSTEM,
+                    type=call_info.type,
                     name=call_info.name,
                     description=call_info.description,
                     path=f"python::apps.scheduler.call::{call_id}",
                 ),
             )
-
         return call_metadata
 
     async def _load_single_call_dir(self, call_dir_name: str) -> list[CallPool]:
@@ -189,6 +188,7 @@ class CallLoader(metaclass=SingletonMeta):
                     NodePool(
                         _id=call.id,
                         name=call.name,
+                        type=call.type,
                         description=call.description,
                         service_id="",
                         call_id=call.id,

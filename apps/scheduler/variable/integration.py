@@ -4,7 +4,7 @@ import logging
 from typing import Any, Dict, List, Optional, Union
 
 from apps.scheduler.variable.parser import VariableParser
-from apps.scheduler.variable.pool import get_variable_pool
+from apps.scheduler.variable.pool_manager import get_pool_manager
 from apps.scheduler.variable.type import VariableScope
 
 logger = logging.getLogger(__name__)
@@ -67,6 +67,112 @@ class VariableIntegration:
             logger.warning(f"解析Call输入变量失败: {e}")
             # 如果解析失败，返回原始输入
             return input_data
+
+    @staticmethod
+    async def resolve_variable_reference(
+        reference: str,
+        user_sub: str,
+        flow_id: Optional[str] = None,
+        conversation_id: Optional[str] = None
+    ) -> Any:
+        """解析单个变量引用
+        
+        Args:
+            reference: 变量引用字符串（如 "{{user.name}}" 或 "user.name"）
+            user_sub: 用户ID
+            flow_id: 流程ID
+            conversation_id: 对话ID
+            
+        Returns:
+            Any: 解析后的变量值
+        """
+        try:
+            parser = VariableParser(
+                user_id=user_sub,
+                flow_id=flow_id,
+                conversation_id=conversation_id
+            )
+            
+            # 清理引用字符串（移除花括号）
+            clean_reference = reference.strip("{}")
+            
+            # 使用解析器解析变量引用
+            resolved_value = await parser._resolve_variable_reference(clean_reference)
+            
+            return resolved_value
+        
+        except Exception as e:
+            logger.error(f"解析变量引用失败: {reference}, 错误: {e}")
+            raise
+    
+    @staticmethod
+    async def save_conversation_variable(
+        var_name: str,
+        value: Any,
+        var_type: str = "string",
+        description: str = "",
+        user_sub: str = "",
+        flow_id: Optional[str] = None,
+        conversation_id: Optional[str] = None
+    ) -> bool:
+        """保存对话变量
+        
+        Args:
+            var_name: 变量名（不包含scope前缀）
+            value: 变量值
+            var_type: 变量类型
+            description: 变量描述
+            user_sub: 用户ID
+            flow_id: 流程ID
+            conversation_id: 对话ID
+            
+        Returns:
+            bool: 是否保存成功
+        """
+        try:
+            if not conversation_id:
+                logger.warning("无法保存对话变量：缺少conversation_id")
+                return False
+            
+            # 直接使用pool_manager，避免解析器的复杂逻辑
+            pool_manager = await get_pool_manager()
+            conversation_pool = await pool_manager.get_conversation_pool(conversation_id)
+            
+            if not conversation_pool:
+                logger.warning(f"无法获取对话变量池: {conversation_id}")
+                return False
+            
+            # 转换变量类型
+            from apps.scheduler.variable.type import VariableType
+            try:
+                var_type_enum = VariableType(var_type)
+            except ValueError:
+                var_type_enum = VariableType.STRING
+                logger.warning(f"未知的变量类型 {var_type}，使用默认类型 string")
+            
+            # 尝试更新变量，如果不存在则创建
+            try:
+                await conversation_pool.update_variable(var_name, value=value)
+                logger.debug(f"对话变量已更新: {var_name} = {value}")
+                return True
+            except ValueError as e:
+                if "不存在" in str(e):
+                    # 变量不存在，创建新变量
+                    await conversation_pool.add_variable(
+                        name=var_name,
+                        var_type=var_type_enum,
+                        value=value,
+                        description=description,
+                        created_by=user_sub or "system"
+                    )
+                    logger.debug(f"对话变量已创建: {var_name} = {value}")
+                    return True
+                else:
+                    raise  # 其他错误重新抛出
+                    
+        except Exception as e:
+            logger.error(f"保存对话变量失败: {var_name} - {e}")
+            return False
     
     @staticmethod
     async def parse_template_string(template: str,
@@ -119,14 +225,18 @@ class VariableIntegration:
             # 转换变量类型
             var_type = VariableType(var_type_str)
             
-            pool = await get_variable_pool()
-            # 在内部将conversation_id作为flow_id传递
-            await pool.add_variable(
+            pool_manager = await get_pool_manager()
+            # 获取对话变量池（如果不存在会抛出异常）
+            conversation_pool = await pool_manager.get_conversation_pool(conversation_id)
+            if not conversation_pool:
+                logger.error(f"对话变量池不存在: {conversation_id}")
+                return False
+            
+            await conversation_pool.add_variable(
                 name=name,
                 var_type=var_type,
-                scope=VariableScope.CONVERSATION,
                 value=value,
-                flow_id=conversation_id  # 统一使用flow_id
+                description=f"对话变量: {name}"
             )
             
             logger.debug(f"已添加对话变量: {name} = {value}")
@@ -150,13 +260,16 @@ class VariableIntegration:
             bool: 是否更新成功
         """
         try:
-            pool = await get_variable_pool()
-            # 在内部将conversation_id作为flow_id传递
-            await pool.update_variable(
+            pool_manager = await get_pool_manager()
+            # 获取对话变量池
+            conversation_pool = await pool_manager.get_conversation_pool(conversation_id)
+            if not conversation_pool:
+                logger.error(f"对话变量池不存在: {conversation_id}")
+                return False
+            
+            await conversation_pool.update_variable(
                 name=name,
-                scope=VariableScope.CONVERSATION,
-                value=value,
-                flow_id=conversation_id  # 统一使用flow_id
+                value=value
             )
             
             logger.debug(f"已更新对话变量: {name} = {value}")
@@ -209,9 +322,13 @@ class VariableIntegration:
             conversation_id: 对话ID
         """
         try:
-            pool = await get_variable_pool()
-            await pool.clear_conversation_variables(conversation_id)
-            logger.info(f"已清理对话 {conversation_id} 的变量")
+            pool_manager = await get_pool_manager()
+            # 移除对话变量池
+            success = await pool_manager.remove_conversation_pool(conversation_id)
+            if success:
+                logger.info(f"已清理对话 {conversation_id} 的变量")
+            else:
+                logger.warning(f"对话变量池不存在: {conversation_id}")
         except Exception as e:
             logger.error(f"清理对话变量失败: {e}")
     
@@ -244,134 +361,6 @@ class VariableIntegration:
             return False, [str(e)]
 
 
-# 为现有调度器提供的扩展方法
-class CoreCallExtension:
-    """CoreCall的变量支持扩展"""
-    
-    @staticmethod
-    async def enhanced_set_input(core_call_instance, executor) -> None:
-        """增强版的_set_input方法，支持变量解析
-        
-        Args:
-            core_call_instance: CoreCall实例
-            executor: StepExecutor实例
-        """
-        # 调用原始的_set_input方法
-        original_set_input = getattr(core_call_instance.__class__, '_original_set_input', None)
-        if original_set_input:
-            await original_set_input(core_call_instance, executor)
-        else:
-            # 如果没有原始方法，执行基本的输入设置
-            from apps.scheduler.call.core import CoreCall
-            core_call_instance._sys_vars = CoreCall._assemble_call_vars(executor)
-            input_data = await core_call_instance._init(core_call_instance._sys_vars)
-            core_call_instance.input = input_data.model_dump(by_alias=True, exclude_none=True)
-        
-        # 解析输入中的变量引用
-        if hasattr(core_call_instance, 'input') and core_call_instance.input:
-            # 首先初始化系统变量
-            context = {
-                "question": executor.question,
-                "user_sub": executor.task.ids.user_sub,
-                "flow_id": executor.task.state.flow_id if executor.task.state else None,
-                "session_id": executor.task.ids.session_id,
-                "app_id": executor.task.state.app_id if executor.task.state else None,
-                "conversation_id": executor.task.ids.session_id,  # 使用session_id作为conversation_id
-            }
-            
-            await VariableIntegration.initialize_system_variables(context)
-            
-            # 解析输入变量
-            core_call_instance.input = await VariableIntegration.parse_call_input(
-                core_call_instance.input,
-                user_sub=executor.task.ids.user_sub,
-                flow_id=executor.task.state.flow_id if executor.task.state else None,
-                conversation_id=executor.task.ids.session_id
-            )
-
-
-class LLMCallExtension:
-    """LLM Call的变量支持扩展"""
-    
-    @staticmethod
-    async def enhanced_prepare_message(llm_instance, call_vars) -> list[dict[str, Any]]:
-        """增强版的_prepare_message方法，支持变量解析
-        
-        Args:
-            llm_instance: LLM实例
-            call_vars: CallVars实例
-            
-        Returns:
-            list[dict[str, Any]]: 解析后的消息列表
-        """
-        # 调用原始的_prepare_message方法
-        original_prepare_message = getattr(llm_instance.__class__, '_original_prepare_message', None)
-        if original_prepare_message:
-            messages = await original_prepare_message(llm_instance, call_vars)
-        else:
-            # 如果没有原始方法，返回基本消息
-            messages = [
-                {"role": "system", "content": "You are a helpful assistant."},
-                {"role": "user", "content": call_vars.question}
-            ]
-        
-        # 解析消息中的变量引用
-        parsed_messages = []
-        for message in messages:
-            if "content" in message and isinstance(message["content"], str):
-                parsed_content = await VariableIntegration.parse_template_string(
-                    message["content"],
-                    user_sub=call_vars.ids.user_sub,
-                    flow_id=call_vars.ids.flow_id,
-                    conversation_id=call_vars.ids.session_id
-                )
-                parsed_messages.append({
-                    **message,
-                    "content": parsed_content
-                })
-            else:
-                parsed_messages.append(message)
-        
-        return parsed_messages
-
-
-def monkey_patch_scheduler():
-    """为现有调度器添加变量支持的猴子补丁"""
-    try:
-        # 为CoreCall添加变量支持
-        from apps.scheduler.call.core import CoreCall
-        
-        # 保存原始方法
-        original_set_input = getattr(CoreCall, '_set_input', None)
-        if original_set_input:
-            setattr(CoreCall, '_original_set_input', original_set_input)
-        
-        # 替换为增强版本
-        setattr(CoreCall, '_set_input', CoreCallExtension.enhanced_set_input)
-        # 为LLM Call添加变量支持
-        try:
-            from apps.scheduler.call.llm.llm import LLM
-            
-            # 保存原始方法
-            original_prepare_message = getattr(LLM, '_prepare_message', None)
-            if original_prepare_message:
-                setattr(LLM, '_original_prepare_message', original_prepare_message)
-            
-            # 替换为增强版本
-            setattr(LLM, '_prepare_message', LLMCallExtension.enhanced_prepare_message)
-        
-        except ImportError:
-            logger.warning("LLM Call 不存在，跳过LLM变量支持")
-        
-        logger.info("变量解析功能已集成到调度器中")
-        
-    except Exception as e:
-        logger.error(f"集成变量解析功能失败: {e}")
-        raise
-
-
-# 在模块导入时自动应用补丁
-try:
-    monkey_patch_scheduler()
-except Exception as e:
-    logger.error(f"自动应用变量解析补丁失败: {e}")
+# 注意：原本的 monkey_patch_scheduler 和相关扩展类已被移除
+# 因为 CoreCall 类现在已经内置了完整的变量解析功能
+# 这些代码是旧版本的遗留，会导致循环导入问题

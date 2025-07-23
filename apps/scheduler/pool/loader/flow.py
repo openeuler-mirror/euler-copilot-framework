@@ -27,6 +27,10 @@ BASE_PATH = Path(Config().get_config().deploy.data_dir) / "semantics" / "app"
 class FlowLoader:
     """工作流加载器"""
 
+    # 添加并发控制
+    _loading_flows = {}  # 改为字典，存储加载任务
+    _loading_lock = asyncio.Lock()
+
     async def _load_yaml_file(self, flow_path: Path) -> dict[str, Any]:
         """从YAML文件加载工作流配置"""
         try:
@@ -100,7 +104,61 @@ class FlowLoader:
 
     async def load(self, app_id: str, flow_id: str) -> Flow | None:
         """从文件系统中加载【单个】工作流"""
-        logger.info("[FlowLoader] 应用 %s：加载工作流 %s...", flow_id, app_id)
+        flow_key = f"{app_id}:{flow_id}"
+        
+        # 第一次检查：是否已在加载中
+        existing_task = None
+        async with self._loading_lock:
+            if flow_key in self._loading_flows:
+                existing_task = self._loading_flows[flow_key]
+        
+        # 如果找到现有任务，等待其完成
+        if existing_task is not None:
+            logger.info(f"[FlowLoader] 工作流正在加载中，等待完成: {flow_key}")
+            try:
+                return await existing_task
+            except Exception as e:
+                logger.error(f"[FlowLoader] 等待工作流加载失败: {flow_key}, 错误: {e}")
+                # 如果等待失败，清理失败的任务并重试
+                async with self._loading_lock:
+                    if self._loading_flows.get(flow_key) == existing_task:
+                        self._loading_flows.pop(flow_key, None)
+                return None
+        
+        # 创建新的加载任务
+        task = None
+        async with self._loading_lock:
+            # 再次检查，防止竞态条件
+            if flow_key in self._loading_flows:
+                existing_task = self._loading_flows[flow_key]
+                # 如果有新任务出现，等待它完成
+                if existing_task is not None:
+                    try:
+                        return await existing_task
+                    except Exception as e:
+                        logger.error(f"[FlowLoader] 等待工作流加载失败: {flow_key}, 错误: {e}")
+                        return None
+            
+            # 创建新的加载任务
+            task = asyncio.create_task(self._do_load(app_id, flow_id))
+            self._loading_flows[flow_key] = task
+        
+        # 执行加载任务
+        try:
+            result = await task
+            return result
+        except Exception as e:
+            logger.error(f"[FlowLoader] 工作流加载失败: {flow_key}, 错误: {e}")
+            return None
+        finally:
+            # 确保从加载集合中移除
+            async with self._loading_lock:
+                if self._loading_flows.get(flow_key) == task:
+                    self._loading_flows.pop(flow_key, None)
+
+    async def _do_load(self, app_id: str, flow_id: str) -> Flow | None:
+        """实际执行加载工作流的方法"""
+        logger.info("[FlowLoader] 应用 %s：加载工作流 %s...", app_id, flow_id)
 
         # 构建工作流文件路径
         flow_path = BASE_PATH / app_id / "flow" / f"{flow_id}.yaml"
@@ -235,18 +293,29 @@ class FlowLoader:
         except Exception:
             logger.exception("[FlowLoader] 更新 MongoDB 失败")
 
-        # 删除重复的ID
-        while True:
+        # 删除重复的ID，增加重试次数限制
+        max_retries = 10
+        retry_count = 0
+        while retry_count < max_retries:
             try:
                 table = await LanceDB().get_table("flow")
                 await table.delete(f"id = '{metadata.id}'")
                 break
             except RuntimeError as e:
                 if "Commit conflict" in str(e):
-                    logger.error("[FlowLoader] LanceDB删除flow冲突，重试中...")  # noqa: TRY400
-                    await asyncio.sleep(0.01)
+                    retry_count += 1
+                    logger.error(f"[FlowLoader] LanceDB删除flow冲突，重试中... ({retry_count}/{max_retries})")  # noqa: TRY400
+                    # 指数退避，减少冲突概率
+                    await asyncio.sleep(0.01 * (2 ** min(retry_count, 5)))
                 else:
                     raise
+            except Exception as e:
+                logger.error(f"[FlowLoader] LanceDB删除操作异常: {e}")
+                break
+        
+        if retry_count >= max_retries:
+            logger.warning(f"[FlowLoader] LanceDB删除flow达到最大重试次数，跳过删除: {metadata.id}")
+            # 不抛出异常，继续执行后续操作
         # 进行向量化
         service_embedding = await Embedding.get_embedding([metadata.description])
         vector_data = [
@@ -256,7 +325,10 @@ class FlowLoader:
                 embedding=service_embedding[0],
             ),
         ]
-        while True:
+        # 插入向量数据，增加重试次数限制
+        max_retries_insert = 10
+        retry_count_insert = 0
+        while retry_count_insert < max_retries_insert:
             try:
                 table = await LanceDB().get_table("flow")
                 await table.merge_insert("id").when_matched_update_all().when_not_matched_insert_all().execute(
@@ -265,7 +337,16 @@ class FlowLoader:
                 break
             except RuntimeError as e:
                 if "Commit conflict" in str(e):
-                    logger.error("[FlowLoader] LanceDB插入flow冲突，重试中...")  # noqa: TRY400
-                    await asyncio.sleep(0.01)
+                    retry_count_insert += 1
+                    logger.error(f"[FlowLoader] LanceDB插入flow冲突，重试中... ({retry_count_insert}/{max_retries_insert})")  # noqa: TRY400
+                    # 指数退避，减少冲突概率
+                    await asyncio.sleep(0.01 * (2 ** min(retry_count_insert, 5)))
                 else:
                     raise
+            except Exception as e:
+                logger.error(f"[FlowLoader] LanceDB插入操作异常: {e}")
+                break
+        
+        if retry_count_insert >= max_retries_insert:
+            logger.error(f"[FlowLoader] LanceDB插入flow达到最大重试次数，操作失败: {metadata.id}")
+            raise RuntimeError(f"LanceDB插入flow失败，达到最大重试次数: {metadata.id}")

@@ -9,7 +9,7 @@ from pydantic import Field
 from apps.llm.patterns.executor import ExecutorSummary
 from apps.scheduler.call.core import CoreCall, DataBase
 from apps.scheduler.call.summary.schema import SummaryOutput
-from apps.schemas.enum_var import CallOutputType
+from apps.schemas.enum_var import CallOutputType, CallType
 from apps.schemas.pool import NodePool
 from apps.schemas.scheduler import (
     CallInfo,
@@ -31,7 +31,11 @@ class Summary(CoreCall, input_model=DataBase, output_model=SummaryOutput):
     @classmethod
     def info(cls) -> CallInfo:
         """返回Call的名称和描述"""
-        return CallInfo(name="理解上下文", description="使用大模型，理解对话上下文")
+        return CallInfo(
+            name="理解上下文", 
+            type=CallType.DEFAULT,
+            description="使用大模型，理解对话上下文"
+        )
 
     @classmethod
     async def instance(cls, executor: "StepExecutor", node: NodePool | None, **kwargs: Any) -> Self:

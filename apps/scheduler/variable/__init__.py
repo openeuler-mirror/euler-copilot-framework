@@ -22,7 +22,7 @@ from .variables import (
     create_variable,
     VARIABLE_CLASS_MAP,
 )
-from .pool import VariablePool, get_variable_pool
+from .pool_manager import VariablePoolManager, get_pool_manager
 from .parser import VariableParser, VariableReferenceBuilder, VariableContext
 from .integration import VariableIntegration
 
@@ -46,9 +46,9 @@ __all__ = [
     "create_variable",
     "VARIABLE_CLASS_MAP",
     
-    # 变量池
-    "VariablePool",
-    "get_variable_pool",
+    # 变量池管理器
+    "VariablePoolManager", 
+    "get_pool_manager",
     
     # 解析器
     "VariableParser",

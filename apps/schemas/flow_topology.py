@@ -5,7 +5,7 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
-from apps.schemas.enum_var import EdgeType
+from apps.schemas.enum_var import CallType, EdgeType
 
 
 class NodeMetaDataItem(BaseModel):
@@ -14,6 +14,7 @@ class NodeMetaDataItem(BaseModel):
     node_id: str = Field(alias="nodeId")
     call_id: str = Field(alias="callId")
     name: str
+    type: CallType
     description: str
     parameters: dict[str, Any] | None
     editable: bool = Field(default=True)

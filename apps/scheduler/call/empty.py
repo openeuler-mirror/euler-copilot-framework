@@ -5,7 +5,7 @@ from collections.abc import AsyncGenerator
 from typing import Any
 
 from apps.scheduler.call.core import CoreCall, DataBase
-from apps.schemas.enum_var import CallOutputType
+from apps.schemas.enum_var import CallOutputType, CallType
 from apps.schemas.scheduler import CallInfo, CallOutputChunk, CallVars
 
 
@@ -20,7 +20,11 @@ class Empty(CoreCall, input_model=DataBase, output_model=DataBase):
         :return: Call的名称和描述
         :rtype: CallInfo
         """
-        return CallInfo(name="空白", description="空白节点，用于占位")
+        return CallInfo(
+            name="空白", 
+            type=CallType.DEFAULT,
+            description="空白节点，用于占位"
+        )
 
 
     async def _init(self, call_vars: CallVars) -> DataBase:

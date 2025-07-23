@@ -15,7 +15,7 @@ from pydantic.json_schema import SkipJsonSchema
 from apps.common.oidc import oidc_provider
 from apps.scheduler.call.api.schema import APIInput, APIOutput
 from apps.scheduler.call.core import CoreCall
-from apps.schemas.enum_var import CallOutputType, ContentType, HTTPMethod
+from apps.schemas.enum_var import CallOutputType, CallType, ContentType, HTTPMethod
 from apps.schemas.scheduler import (
     CallError,
     CallInfo,
@@ -62,7 +62,11 @@ class API(CoreCall, input_model=APIInput, output_model=APIOutput):
     @classmethod
     def info(cls) -> CallInfo:
         """返回Call的名称和描述"""
-        return CallInfo(name="API调用", description="向某一个API接口发送HTTP请求，获取数据。")
+        return CallInfo(
+            name="API调用", 
+            type=CallType.TOOL,
+            description="向某一个API接口发送HTTP请求，获取数据。"
+        )
 
     async def _init(self, call_vars: CallVars) -> APIInput:
         """初始化API调用工具"""

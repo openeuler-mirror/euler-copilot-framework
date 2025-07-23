@@ -15,7 +15,7 @@ from apps.llm.reasoning import ReasoningLLM
 from apps.scheduler.call.core import CoreCall
 from apps.scheduler.call.llm.prompt import LLM_CONTEXT_PROMPT, LLM_DEFAULT_PROMPT
 from apps.scheduler.call.llm.schema import LLMInput, LLMOutput
-from apps.schemas.enum_var import CallOutputType
+from apps.schemas.enum_var import CallOutputType, CallType
 from apps.schemas.scheduler import (
     CallError,
     CallInfo,
@@ -42,7 +42,11 @@ class LLM(CoreCall, input_model=LLMInput, output_model=LLMOutput):
     @classmethod
     def info(cls) -> CallInfo:
         """返回Call的名称和描述"""
-        return CallInfo(name="大模型", description="以指定的提示词和上下文信息调用大模型，并获得输出。")
+        return CallInfo(
+            name="大模型", 
+            type=CallType.DEFAULT, 
+            description="以指定的提示词和上下文信息调用大模型，并获得输出。"
+        )
 
 
     async def _prepare_message(self, call_vars: CallVars) -> list[dict[str, Any]]:

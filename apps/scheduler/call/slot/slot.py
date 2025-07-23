@@ -15,7 +15,7 @@ from apps.scheduler.call.core import CoreCall
 from apps.scheduler.call.slot.prompt import SLOT_GEN_PROMPT
 from apps.scheduler.call.slot.schema import SlotInput, SlotOutput
 from apps.scheduler.slot.slot import Slot as SlotProcessor
-from apps.schemas.enum_var import CallOutputType
+from apps.schemas.enum_var import CallOutputType, CallType
 from apps.schemas.pool import NodePool
 from apps.schemas.scheduler import CallInfo, CallOutputChunk, CallVars
 
@@ -36,7 +36,11 @@ class Slot(CoreCall, input_model=SlotInput, output_model=SlotOutput):
     @classmethod
     def info(cls) -> CallInfo:
         """返回Call的名称和描述"""
-        return CallInfo(name="参数自动填充", description="根据步骤历史，自动填充参数")
+        return CallInfo(
+            name="参数自动填充", 
+            type=CallType.TRANSFORM,
+            description="根据步骤历史，自动填充参数"
+        )
 
 
     async def _llm_slot_fill(self, remaining_schema: dict[str, Any]) -> tuple[str, dict[str, Any]]:

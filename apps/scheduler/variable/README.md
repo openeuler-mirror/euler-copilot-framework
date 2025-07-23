@@ -1,152 +1,264 @@
-# 工作流变量管理系统
+# 变量池架构文档
 
-## 概述
+## 架构设计
 
-工作流变量管理系统为Euler Copilot Framework提供了全面的变量管理功能，支持在工作流执行过程中进行变量的定义、存储、解析和使用。
+基于用户需求，变量系统采用"模板-实例"的两级架构：
 
-## 功能特性
+### 设计理念
 
-### 1. 多种变量类型支持
-- **基础类型**: String、Number、Boolean、Object、File
-- **安全类型**: Secret（加密存储的密钥变量）  
-- **数组类型**: Array[Any]、Array[String]、Array[Number]、Array[Object]、Array[File]、Array[Boolean]、Array[Secret]
+- **Flow级别（父pool）**：管理变量模板定义，用户可以查看和配置变量结构
+- **Conversation级别（子pool）**：管理变量实例，存储实际的运行时数据
 
-### 2. 四种作用域
-- **系统级变量** (`system`): 只读，包含query、files、app_id等系统信息
-- **用户级变量** (`user`): 跟随用户，如个人API密钥、配置信息
-- **环境级变量** (`env`): 跟随工作流，如流程配置参数
-- **对话级变量** (`conversation`): 单次对话内有效，支持局部作用域
+### 变量分类
 
-### 3. 变量解析语法
-支持在模板中使用以下语法引用变量：
-```
-{{sys.query}}              # 系统变量
-{{user.api_key}}           # 用户变量
-{{env.config.timeout}}     # 环境变量（支持嵌套访问）
-{{conversation.result}}    # 对话变量
-```
+不同类型的变量有不同的存储和管理方式：
+- **系统变量**：模板在Flow级别定义，实例在Conversation级别运行时更新
+- **对话变量**：模板在Flow级别定义，实例在Conversation级别用户可设置
+- **环境变量**：直接在Flow级别存储和使用
+- **用户变量**：在User级别长期存储
 
-### 4. 安全保障
-- Secret变量加密存储
-- 访问权限控制
-- 审计日志记录
-- 访问频率限制
-- 密钥强度检查
+## 架构实现
 
-## API 接口
+### 变量池类型
 
-### 变量管理
-- `POST /api/variable/create` - 创建变量
-- `PUT /api/variable/update` - 更新变量值
-- `DELETE /api/variable/delete` - 删除变量
-- `GET /api/variable/get` - 获取单个变量
-- `GET /api/variable/list` - 列出变量
+#### 1. UserVariablePool（用户变量池）
+- **关联ID**: `user_id`
+- **权限**: 用户可读写
+- **生命周期**: 随用户创建而创建，长期存在
+- **典型变量**: API密钥、用户偏好、个人配置等
 
-### 模板解析
-- `POST /api/variable/parse` - 解析模板中的变量引用
-- `POST /api/variable/validate` - 验证模板中的变量引用
+#### 2. FlowVariablePool（流程变量池）
+- **关联ID**: `flow_id`
+- **权限**: 流程可读写
+- **生命周期**: 随 flow 创建而创建
+- **继承**: 支持从父流程继承
+- **存储内容**: 
+  - 环境变量（直接使用）
+  - 系统变量模板（供对话继承）
+  - 对话变量模板（供对话继承）
 
-### 系统信息
-- `GET /api/variable/types` - 获取支持的变量类型
-- `POST /api/variable/clear-conversation` - 清空对话变量
+#### 3. ConversationVariablePool（对话变量池）
+- **关联ID**: `conversation_id`
+- **权限**: 
+  - 系统变量实例：只读，由系统自动更新
+  - 对话变量实例：可读写，用户可设置值
+- **生命周期**: 随对话创建而创建，对话结束后可选择性清理
+- **初始化方式**: 从FlowVariablePool的模板自动继承
+- **包含内容**:
+  - **系统变量实例**：`query`, `files`, `dialogue_count`等运行时值
+  - **对话变量实例**：用户定义的对话上下文数据
 
-## 使用示例
+## 核心设计原则
 
-### 1. 创建用户级变量
-```json
-{
-  "name": "openai_api_key",
-  "var_type": "secret",
-  "scope": "user",
-  "value": "sk-xxxxxxxxxxxxxxxx",
-  "description": "OpenAI API密钥"
-}
-```
+### 1. 统一的对话上下文
+所有对话相关的变量（无论是系统变量还是对话变量）都在同一个对话变量池中管理，确保上下文的一致性。
 
-### 2. 在工作流中使用变量
-```yaml
-steps:
-  llm_call:
-    node: "llm"
-    params:
-      system_prompt: "你是一个助手，用户查询：{{sys.query}}"
-      api_key: "{{user.openai_api_key}}"
-      temperature: "{{env.llm_config.temperature}}"
-```
+### 2. 权限区分
+通过 `is_system` 标记区分系统变量和对话变量：
+- `is_system=True`: 系统变量，只读，由系统自动更新
+- `is_system=False`: 对话变量，可读写，支持人为修改
 
-### 3. 在对话中设置临时变量
-工作流执行过程中可以动态设置对话级变量：
+### 3. 自动初始化和持久化
+创建对话变量池时，自动初始化所有必需的系统变量，设置合理的默认值，并立即持久化到数据库，确保系统变量在任何时候都可用。
+
+## 使用方式
+
+### 1. 创建对话变量池
+
 ```python
-await VariableIntegration.add_conversation_variable(
-    name="processing_result",
-    value={"status": "completed", "data": result},
-    conversation_id=conversation_id,
-    var_type_str="object"
+pool_manager = await get_pool_manager()
+
+# 创建对话变量池（自动包含系统变量）
+conv_pool = await pool_manager.create_conversation_pool("conv123", "flow456")
+```
+
+### 2. 更新系统变量
+
+```python
+# 系统变量由解析器自动更新
+parser = VariableParser(
+    user_id="user123",
+    flow_id="flow456", 
+    conversation_id="conv123"
 )
+
+# 更新系统变量
+await parser.update_system_variables({
+    "question": "你好，请帮我分析数据",
+    "files": [{"name": "data.csv", "size": 1024}],
+    "dialogue_count": 1,
+    "user_sub": "user123"
+})
 ```
 
-## 集成到工作流
+### 3. 更新对话变量
 
-系统自动集成到现有的工作流调度器中：
-
-1. **系统变量自动初始化** - 每次工作流启动时自动设置系统变量
-2. **输入参数解析** - Call的输入参数自动解析变量引用
-3. **模板渲染** - LLM提示词等模板自动替换变量
-4. **输出变量提取** - 步骤输出可自动提取为对话级变量
-
-## 安全机制
-
-### Secret变量保护
-- 使用AES加密存储
-- 基于用户ID和变量名生成唯一加密密钥
-- 显示时自动打码
-- 支持密钥轮换
-
-### 访问控制
-- 权限验证（用户只能访问自己的变量）
-- 访问频率限制（防止暴力破解）
-- IP地址验证（可选）
-- 失败尝试监控和临时封禁
-
-### 审计日志
-- 完整的访问日志记录
-- 密钥访问审计（记录哈希值而非原始值）
-- 自动清理过期日志
-
-## 开发指南
-
-### 添加新的变量类型
-1. 在`VariableType`枚举中添加新类型
-2. 创建继承自`BaseVariable`的新变量类
-3. 在`VARIABLE_CLASS_MAP`中注册映射关系
-
-### 扩展变量解析
-1. 修改`VariableParser.VARIABLE_PATTERN`正则表达式
-2. 在`resolve_variable_reference`方法中添加新的解析逻辑
-
-### 自定义安全策略
-1. 继承`SecretVariableSecurity`类
-2. 重写相关的安全检查方法
-3. 在应用启动时注册自定义安全管理器
-
-## 故障排除
-
-### 常见问题
-1. **变量解析失败** - 检查变量名是否存在，作用域是否正确
-2. **Secret变量解密失败** - 可能是加密密钥损坏，需要重新设置
-3. **访问被拒绝** - 检查用户权限和访问频率限制
-
-### 日志调试
-启用DEBUG日志级别查看详细的变量解析过程：
 ```python
-import logging
-logging.getLogger('apps.scheduler.variable').setLevel(logging.DEBUG)
+# 添加对话变量
+await conv_pool.add_variable(
+    name="context_history",
+    var_type=VariableType.ARRAY_STRING,
+    value=["用户问候", "系统回应"],
+    description="对话历史"
+)
+
+# 更新对话变量
+await conv_pool.update_variable("context_history", value=["问候", "回应", "新消息"])
 ```
 
-## 最佳实践
+### 4. 变量解析
 
-1. **变量命名** - 使用描述性的名称，避免特殊字符
-2. **作用域选择** - 根据变量的生命周期选择合适的作用域
-3. **Secret管理** - 定期轮换密钥，使用强密码
-4. **性能优化** - 避免在循环中频繁解析变量
-5. **安全审计** - 定期检查访问日志，监控异常行为 
+```python
+# 系统变量和对话变量使用相同的引用语法
+template = """
+系统变量 - 用户查询: {{sys.query}}
+系统变量 - 对话轮数: {{sys.dialogue_count}}
+对话变量 - 历史: {{conversation.context_history}}
+用户变量 - 偏好: {{user.preferences}}
+环境变量 - 数据库: {{env.database_url}}
+"""
+
+parsed = await parser.parse_template(template)
+```
+
+## 变量引用语法
+
+变量引用保持不变：
+- `{{sys.variable_name}}` - 系统变量（对话级别，只读）
+- `{{conversation.variable_name}}` - 对话变量（对话级别，可读写）
+- `{{user.variable_name}}` - 用户变量
+- `{{env.variable_name}}` - 环境变量
+
+## 权限控制详细说明
+
+### 系统变量权限
+```python
+# 普通更新会被拒绝
+await conv_pool.update_variable("query", value="new query")  # ❌ 抛出 PermissionError
+
+# 系统内部更新
+await conv_pool.update_system_variable("query", "new query")  # ✅ 成功
+# 或者
+await conv_pool.update_variable("query", value="new query", force_system_update=True)  # ✅ 成功
+```
+
+### 对话变量权限
+```python
+# 普通对话变量可以自由更新
+await conv_pool.update_variable("context_history", value=new_history)  # ✅ 成功
+```
+
+## 数据存储
+
+### 元数据增强
+```python
+class VariableMetadata(BaseModel):
+    # ... 其他字段
+    is_system: bool = Field(default=False, description="是否为系统变量（只读）")
+```
+
+### 数据库查询
+系统变量和对话变量存储在同一个集合中，通过 `metadata.is_system` 字段区分。
+
+## 迁移影响
+
+### 对用户的影响
+- ✅ **变量引用语法完全不变**
+- ✅ **API接口完全兼容**
+- ✅ **现有功能正常工作**
+
+### 内部实现变化
+- 去掉了独立的 `SystemVariablePool`
+- 系统变量现在在 `ConversationVariablePool` 中管理
+- 通过权限控制区分系统变量和对话变量
+
+## 架构优势
+
+### 1. 逻辑一致性
+系统变量和对话变量都属于对话上下文，在同一个池中管理更合理。
+
+### 2. 简化管理
+不需要在系统池和对话池之间同步数据，避免了数据一致性问题。
+
+### 3. 更好的性能
+减少了池之间的数据传递和同步开销。
+
+### 4. 扩展性
+为未来可能的对话级系统变量扩展提供了更好的基础。
+
+## 总结
+
+修正后的架构更准确地反映了变量的实际使用场景：
+- **用户变量**: 用户级别，长期存在
+- **环境变量**: 流程级别，配置相关
+- **系统变量 + 对话变量**: 对话级别，上下文相关
+
+这样的设计更符合实际业务逻辑，也更容易理解和维护。
+
+## 系统变量详细说明
+
+### 预定义系统变量
+
+每个对话变量池创建时，会自动初始化以下系统变量：
+
+| 变量名 | 类型 | 描述 | 初始值 |
+|-------|------|------|--------|
+| `query` | STRING | 用户查询内容 | "" |
+| `files` | ARRAY_FILE | 用户上传的文件列表 | [] |
+| `dialogue_count` | NUMBER | 对话轮数 | 0 |
+| `app_id` | STRING | 应用ID | "" |
+| `flow_id` | STRING | 工作流ID | {flow_id} |
+| `user_id` | STRING | 用户ID | "" |
+| `session_id` | STRING | 会话ID | "" |
+| `conversation_id` | STRING | 对话ID | {conversation_id} |
+| `timestamp` | NUMBER | 当前时间戳 | {当前时间} |
+
+### 系统变量生命周期
+
+1. **创建阶段**：对话变量池创建时，所有系统变量被初始化并持久化到数据库
+2. **更新阶段**：通过`VariableParser.update_system_variables()`方法更新系统变量值
+3. **访问阶段**：通过模板解析或直接访问获取系统变量值
+4. **清理阶段**：对话结束时，整个对话变量池被清理
+
+### 系统变量更新机制
+
+```python
+# 创建解析器并确保对话池存在
+parser = VariableParser(user_id=user_id, flow_id=flow_id, conversation_id=conversation_id)
+await parser.create_conversation_pool_if_needed()
+
+# 更新系统变量
+context = {
+    "question": "用户的问题",
+    "files": [{"name": "file.txt", "size": 1024}],
+    "dialogue_count": 1,
+    "app_id": "app123",
+    "user_sub": user_id,
+    "session_id": "session456"
+}
+
+await parser.update_system_variables(context)
+```
+
+### 系统变量的只读保护
+
+```python
+# ❌ 直接修改系统变量会失败
+await conversation_pool.update_variable("query", value="修改内容")  # 抛出PermissionError
+
+# ✅ 只能通过系统内部接口更新
+await conversation_pool.update_system_variable("query", "新内容")  # 成功
+```
+
+### 使用系统变量
+
+```python
+# 在模板中引用系统变量
+template = """
+用户问题：{{sys.query}}
+对话轮数：{{sys.dialogue_count}}
+工作流ID：{{sys.flow_id}}
+"""
+
+parsed = await parser.parse_template(template)
+``` 

@@ -51,8 +51,10 @@ class EventType(str, Enum):
 class CallType(str, Enum):
     """Call类型"""
 
-    SYSTEM = "system"
-    PYTHON = "python"
+    DEFAULT = "default"
+    LOGIC = "logic"
+    TRANSFORM = "transform"
+    TOOL = "tool"
 
 
 class MetadataType(str, Enum):

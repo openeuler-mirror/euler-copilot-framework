@@ -13,7 +13,7 @@ from apps.common.config import Config
 from apps.llm.patterns.rewrite import QuestionRewrite
 from apps.scheduler.call.core import CoreCall
 from apps.scheduler.call.rag.schema import RAGInput, RAGOutput, SearchMethod
-from apps.schemas.enum_var import CallOutputType
+from apps.schemas.enum_var import CallOutputType, CallType
 from apps.schemas.scheduler import (
     CallError,
     CallInfo,
@@ -40,7 +40,11 @@ class RAG(CoreCall, input_model=RAGInput, output_model=RAGOutput):
     @classmethod
     def info(cls) -> CallInfo:
         """返回Call的名称和描述"""
-        return CallInfo(name="知识库", description="查询知识库，从文档中获取必要信息")
+        return CallInfo(
+            name="知识库", 
+            type=CallType.DEFAULT,
+            description="查询知识库，从文档中获取必要信息"
+        )
 
     async def _init(self, call_vars: CallVars) -> RAGInput:
         """初始化RAG工具"""

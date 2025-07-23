@@ -1,6 +1,7 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2023-2025. All rights reserved.
 """FastAPI Flow拓扑结构展示API"""
 
+import logging
 from typing import Annotated
 
 from fastapi import APIRouter, Body, Depends, Query, status
@@ -24,6 +25,8 @@ from apps.services.appcenter import AppCenterManager
 from apps.services.application import AppManager
 from apps.services.flow import FlowManager
 from apps.services.flow_validate import FlowService
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(
     prefix="/api/flow",
@@ -153,6 +156,20 @@ async def put_flow(
                 result=FlowStructurePutMsg(),
             ).model_dump(exclude_none=True, by_alias=True),
         )
+    
+    # 触发前置节点变量预解析（异步执行，不阻塞响应）
+    try:
+        from apps.services.predecessor_cache_service import PredecessorCacheService
+        import asyncio
+        
+        # 在后台异步触发预解析
+        asyncio.create_task(
+            PredecessorCacheService.trigger_flow_parsing(flow_id, force_refresh=True)
+        )
+        logger.info(f"已触发Flow前置节点变量预解析: {flow_id}")
+    except Exception as trigger_error:
+        logger.warning(f"触发Flow前置节点变量预解析失败: {flow_id}, 错误: {trigger_error}")
+    
     return JSONResponse(
         status_code=status.HTTP_200_OK,
         content=FlowStructurePutRsp(

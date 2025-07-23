@@ -95,6 +95,7 @@ class FlowManager:
                     nodeId=node_pool_record["_id"],
                     callId=node_pool_record["call_id"],
                     name=node_pool_record["name"],
+                    type=node_pool_record["type"],
                     description=node_pool_record["description"],
                     editable=True,
                     createdAt=node_pool_record["created_at"],
@@ -153,7 +154,7 @@ class FlowManager:
                 NodeServiceItem(
                     serviceId=record["_id"],
                     name=record["name"],
-                    type="default",
+                    type="default", # TODO record["type"]?
                     nodeMetaDatas=[],
                     createdAt=str(record["created_at"]),
                 )

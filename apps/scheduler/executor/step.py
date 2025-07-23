@@ -18,7 +18,9 @@ from apps.scheduler.call.slot.schema import SlotOutput
 from apps.scheduler.call.slot.slot import Slot
 from apps.scheduler.call.summary.summary import Summary
 from apps.scheduler.executor.base import BaseExecutor
+from apps.scheduler.executor.step_config import should_use_direct_conversation_format
 from apps.scheduler.pool.pool import Pool
+from apps.scheduler.variable.integration import VariableIntegration
 from apps.schemas.enum_var import (
     EventType,
     SpecialCallType,
@@ -203,6 +205,108 @@ class StepExecutor(BaseExecutor):
 
         return content
 
+
+    async def _save_output_parameters_to_variables(self, output_data: str | dict[str, Any]) -> None:
+        """保存节点输出参数到变量池"""
+        try:
+            # 检查是否有output_parameters配置
+            output_parameters = None
+            if self.step.step.params and isinstance(self.step.step.params, dict):
+                output_parameters = self.step.step.params.get("output_parameters", {})
+            
+            if not output_parameters or not isinstance(output_parameters, dict):
+                return
+
+            # 确保output_data是字典格式
+            if isinstance(output_data, str):
+                # 如果是字符串，包装成字典
+                data_dict = {"text": output_data}
+            else:
+                data_dict = output_data if isinstance(output_data, dict) else {}
+
+            # 确定变量名前缀（根据配置决定是否使用直接格式）
+            use_direct_format = should_use_direct_conversation_format(
+                call_id=self._call_id,
+                step_name=self.step.step.name,
+                step_id=self.step.step_id
+            )
+            
+            if use_direct_format:
+                # 配置允许的节点类型保持原有格式：conversation.key
+                var_prefix = ""
+                logger.debug(f"[StepExecutor] 节点 {self.step.step.name}({self._call_id}) 使用直接变量格式")
+            else:
+                # 其他节点使用格式：conversation.node_id.key
+                var_prefix = f"{self.step.step_id}."
+                logger.debug(f"[StepExecutor] 节点 {self.step.step.name}({self._call_id}) 使用带前缀变量格式")
+
+            # 保存每个output_parameter到变量池
+            saved_count = 0
+            for param_name, param_config in output_parameters.items():
+                try:
+                    # 获取参数值
+                    param_value = self._extract_value_from_output_data(param_name, data_dict, param_config)
+                    
+                    if param_value is not None:
+                        # 构造变量名
+                        var_name = f"{var_prefix}{param_name}"
+                        
+                        # 保存到对话变量池
+                        success = await VariableIntegration.save_conversation_variable(
+                            var_name=var_name,
+                            value=param_value,
+                            var_type=param_config.get("type", "string"),
+                            description=param_config.get("description", ""),
+                            user_sub=self.task.ids.user_sub,
+                            flow_id=self.task.state.flow_id, # type: ignore[arg-type]
+                            conversation_id=self.task.ids.conversation_id
+                        )
+                        
+                        if success:
+                            saved_count += 1
+                            logger.debug(f"[StepExecutor] 已保存输出参数变量: conversation.{var_name} = {param_value}")
+                        else:
+                            logger.warning(f"[StepExecutor] 保存输出参数变量失败: {var_name}")
+                            
+                except Exception as e:
+                    logger.warning(f"[StepExecutor] 保存输出参数 {param_name} 失败: {e}")
+
+            if saved_count > 0:
+                logger.info(f"[StepExecutor] 已保存 {saved_count} 个输出参数到变量池")
+
+        except Exception as e:
+            logger.error(f"[StepExecutor] 保存输出参数到变量池失败: {e}")
+
+    def _extract_value_from_output_data(self, param_name: str, output_data: dict[str, Any], param_config: dict) -> Any:
+        """从输出数据中提取参数值"""
+        # 支持多种提取方式
+        
+        # 1. 直接从输出数据中获取同名key
+        if param_name in output_data:
+            return output_data[param_name]
+        
+        # 2. 支持路径提取（例如：result.data.value）
+        if "path" in param_config:
+            path = param_config["path"]
+            current_data = output_data
+            for key in path.split("."):
+                if isinstance(current_data, dict) and key in current_data:
+                    current_data = current_data[key]
+                else:
+                    return None
+            return current_data
+        
+        # 3. 支持默认值
+        if "default" in param_config:
+            return param_config["default"]
+        
+        # 4. 如果参数配置为"full_output"，返回完整输出
+        if param_config.get("source") == "full_output":
+            return output_data
+        
+        return None
+
+
     async def run(self) -> None:
         """运行单个步骤"""
         self.validate_flow_state(self.task)
@@ -249,6 +353,9 @@ class StepExecutor(BaseExecutor):
             output_data = TextAddContent(text=content).model_dump(exclude_none=True, by_alias=True)
         else:
             output_data = content
+
+        # 保存output_parameters到变量池
+        await self._save_output_parameters_to_variables(output_data)
 
         # 更新context
         history = FlowStepHistory(

@@ -16,7 +16,7 @@ from apps.scheduler.call.mcp.schema import (
     MCPOutput,
 )
 from apps.scheduler.mcp import MCPHost, MCPPlanner, MCPSelector
-from apps.schemas.enum_var import CallOutputType
+from apps.schemas.enum_var import CallOutputType, CallType
 from apps.schemas.mcp import MCPPlanItem
 from apps.schemas.scheduler import (
     CallInfo,
@@ -43,7 +43,11 @@ class MCP(CoreCall, input_model=MCPInput, output_model=MCPOutput):
         :return: Call的名称和描述
         :rtype: CallInfo
         """
-        return CallInfo(name="MCP", description="调用MCP Server，执行工具")
+        return CallInfo(
+            name="MCP", 
+            type=CallType.DEFAULT,
+            description="调用MCP Server，执行工具"
+        )
 
     async def _init(self, call_vars: CallVars) -> MCPInput:
         """初始化MCP"""

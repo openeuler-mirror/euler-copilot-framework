@@ -19,6 +19,13 @@ class VariableMetadata(BaseModel):
     # 作用域相关属性
     user_sub: Optional[str] = Field(default=None, description="用户级变量的用户ID")
     flow_id: Optional[str] = Field(default=None, description="环境级/对话级变量的流程ID")
+    conversation_id: Optional[str] = Field(default=None, description="对话级变量的对话ID")
+    
+    # 系统变量标识
+    is_system: bool = Field(default=False, description="是否为系统变量（只读）")
+    
+    # 模板变量标识
+    is_template: bool = Field(default=False, description="是否为模板变量（存储在flow级别）")
     
     # 安全相关属性
     is_encrypted: bool = Field(default=False, description="是否加密存储")

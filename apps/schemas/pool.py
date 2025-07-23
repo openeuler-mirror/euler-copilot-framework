@@ -45,9 +45,6 @@ class CallPool(BaseData):
     Call信息
 
     collection: call
-
-    “path”的格式如下：
-    1. Python代码会被导入成包，路径格式为`python::<package_name>::<call_name>`，用于查找Call的包路径和类路径
     """
 
     type: CallType = Field(description="Call的类型")
@@ -77,6 +74,7 @@ class NodePool(BaseData):
 
     service_id: str | None = Field(description="Node所属的Service ID", default=None)
     call_id: str = Field(description="所使用的Call的ID")
+    type: CallType = Field(description="所使用的Call的类型")
     known_params: dict[str, Any] | None = Field(
         description="已知的用于Call部分的参数，独立于输入和输出之外",
         default=None,

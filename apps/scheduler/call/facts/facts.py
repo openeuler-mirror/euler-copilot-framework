@@ -16,7 +16,7 @@ from apps.scheduler.call.facts.schema import (
     FactsInput,
     FactsOutput,
 )
-from apps.schemas.enum_var import CallOutputType
+from apps.schemas.enum_var import CallOutputType, CallType
 from apps.schemas.pool import NodePool
 from apps.schemas.scheduler import CallInfo, CallOutputChunk, CallVars
 from apps.services.user_domain import UserDomainManager
@@ -34,7 +34,11 @@ class FactsCall(CoreCall, input_model=FactsInput, output_model=FactsOutput):
     @classmethod
     def info(cls) -> CallInfo:
         """返回Call的名称和描述"""
-        return CallInfo(name="提取事实", description="从对话上下文和文档片段中提取事实。")
+        return CallInfo(
+            name="提取事实", 
+            type=CallType.DEFAULT,
+            description="从对话上下文和文档片段中提取事实。"
+        )
 
 
     @classmethod
