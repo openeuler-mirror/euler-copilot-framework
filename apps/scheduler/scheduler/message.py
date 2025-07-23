@@ -71,14 +71,7 @@ async def push_rag_message(
             # 如果是文本消息，直接拼接到答案中
             full_answer += content_obj.content
         elif content_obj.event_type == EventType.DOCUMENT_ADD.value:
-            task.runtime.documents.append({
-                "id": content_obj.content.get("id", ""),
-                "order": content_obj.content.get("order", 0),
-                "name": content_obj.content.get("name", ""),
-                "abstract": content_obj.content.get("abstract", ""),
-                "extension": content_obj.content.get("extension", ""),
-                "size": content_obj.content.get("size", 0),
-            })
+            task.runtime.documents.append(content_obj.content)
     # 保存答案
     task.runtime.answer = full_answer
     await TaskManager.save_task(task.id, task)
