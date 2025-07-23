@@ -2,7 +2,7 @@
 """队列中的消息结构"""
 
 from typing import Any
-
+from datetime import UTC, datetime
 from pydantic import BaseModel, Field
 
 from apps.schemas.enum_var import EventType, StepStatus
@@ -60,10 +60,14 @@ class DocumentAddContent(BaseModel):
 
     document_id: str = Field(description="文档UUID", alias="documentId")
     document_order: int = Field(description="文档在对话中的顺序，从1开始", alias="documentOrder")
+    document_author: str = Field(description="文档作者", alias="documentAuthor", default="")
     document_name: str = Field(description="文档名称", alias="documentName")
     document_abstract: str = Field(description="文档摘要", alias="documentAbstract", default="")
     document_type: str = Field(description="文档MIME类型", alias="documentType", default="")
     document_size: float = Field(ge=0, description="文档大小，单位是KB，保留两位小数", alias="documentSize", default=0)
+    created_at: float = Field(
+        description="文档创建时间，单位是秒", alias="createdAt", default_factory=lambda: round(datetime.now(tz=UTC).timestamp(), 3)
+    )
 
 
 class FlowStartContent(BaseModel):
