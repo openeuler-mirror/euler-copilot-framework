@@ -19,7 +19,7 @@ class RecordDocument(Document):
     id: str = Field(alias="_id", default="")
     order: int = Field(default=0, description="文档顺序")
     abstract: str = Field(default="", description="文档摘要")
-    user_sub: None | None
+    user_sub: None = None
     author: str = Field(default="", description="文档作者")
     associated: Literal["question", "answer"]
 
