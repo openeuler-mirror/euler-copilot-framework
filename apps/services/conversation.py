@@ -59,7 +59,11 @@ class ConversationManager:
                 model_name=llm.model_name,
             )
         kb_item_list = []
-        team_kb_list = await KnowledgeBaseManager.get_team_kb_list_from_rag(user_sub, None, None)
+        try:
+            team_kb_list = await KnowledgeBaseManager.get_team_kb_list_from_rag(user_sub, None, None)
+        except:
+            logger.error("[ConversationManager] 获取团队知识库列表失败")
+            team_kb_list = []
         for team_kb in team_kb_list:
             for kb in team_kb["kbList"]:
                 if str(kb["kbId"]) in kb_ids:
