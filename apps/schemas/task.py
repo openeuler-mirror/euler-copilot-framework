@@ -9,6 +9,7 @@ from pydantic import BaseModel, Field
 
 from apps.schemas.enum_var import StepStatus
 from apps.schemas.flow import Step
+from apps.schemas.mcp import MCPPlan
 
 
 class FlowStepHistory(BaseModel):
@@ -42,6 +43,7 @@ class ExecutorState(BaseModel):
     # 附加信息
     step_id: str = Field(description="当前步骤ID")
     step_name: str = Field(description="当前步骤名称")
+    step_description: str = Field(description="当前步骤描述", default="")
     app_id: str = Field(description="应用ID")
     slot: dict[str, Any] = Field(description="待填充参数的JSON Schema", default={})
     error_info: dict[str, Any] = Field(description="错误信息", default={})
@@ -75,6 +77,7 @@ class TaskRuntime(BaseModel):
     summary: str = Field(description="摘要", default="")
     filled: dict[str, Any] = Field(description="填充的槽位", default={})
     documents: list[dict[str, Any]] = Field(description="文档列表", default=[])
+    temporary_plans: MCPPlan | None = Field(description="临时计划列表", default=None)
 
 
 class Task(BaseModel):

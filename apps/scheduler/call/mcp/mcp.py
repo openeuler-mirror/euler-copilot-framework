@@ -35,7 +35,6 @@ class MCP(CoreCall, input_model=MCPInput, output_model=MCPOutput):
     text_output: bool = Field(description="是否将结果以文本形式返回", default=True)
     to_user: bool = Field(description="是否将结果返回给用户", default=True)
 
-
     @classmethod
     def info(cls) -> CallInfo:
         """
@@ -45,7 +44,6 @@ class MCP(CoreCall, input_model=MCPInput, output_model=MCPOutput):
         :rtype: CallInfo
         """
         return CallInfo(name="MCP", description="调用MCP Server，执行工具")
-
 
     async def _init(self, call_vars: CallVars) -> MCPInput:
         """初始化MCP"""
@@ -63,7 +61,6 @@ class MCP(CoreCall, input_model=MCPInput, output_model=MCPOutput):
 
         return MCPInput(avaliable_tools=avaliable_tools, max_steps=self.max_steps)
 
-
     async def _exec(self, input_data: dict[str, Any]) -> AsyncGenerator[CallOutputChunk, None]:
         """执行MCP"""
         # 生成计划
@@ -79,7 +76,6 @@ class MCP(CoreCall, input_model=MCPInput, output_model=MCPOutput):
         # 生成总结
         async for chunk in self._generate_answer():
             yield chunk
-
 
     async def _generate_plan(self) -> AsyncGenerator[CallOutputChunk, None]:
         """生成执行计划"""
@@ -102,7 +98,6 @@ class MCP(CoreCall, input_model=MCPInput, output_model=MCPOutput):
             MCPMessageType.PLAN_END,
             data=self._plan.model_dump(),
         )
-
 
     async def _execute_plan_item(self, plan_item: MCPPlanItem) -> AsyncGenerator[CallOutputChunk, None]:
         """执行单个计划项"""
@@ -141,7 +136,6 @@ class MCP(CoreCall, input_model=MCPInput, output_model=MCPOutput):
             },
         )
 
-
     async def _generate_answer(self) -> AsyncGenerator[CallOutputChunk, None]:
         """生成总结"""
         # 提示开始总结
@@ -162,7 +156,6 @@ class MCP(CoreCall, input_model=MCPInput, output_model=MCPOutput):
                 message=answer,
             ).model_dump(),
         )
-
 
     def _create_output(
         self,

@@ -153,7 +153,6 @@ class MCPLoader(metaclass=SingletonMeta):
         # 检查目录
         template_path = MCP_PATH / "template" / mcp_id
         await Path.mkdir(template_path, parents=True, exist_ok=True)
-        ProcessHandler.clear_finished_tasks()
         # 安装MCP模板
         if not ProcessHandler.add_task(mcp_id, MCPLoader._install_template_task, mcp_id, config):
             err = f"安装任务无法执行，请稍后重试: {mcp_id}"
