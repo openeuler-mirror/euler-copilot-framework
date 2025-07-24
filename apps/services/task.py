@@ -45,7 +45,6 @@ class TaskManager:
 
         return Task.model_validate(task)
 
-
     @staticmethod
     async def get_task_by_group_id(group_id: str, conversation_id: str) -> Task | None:
         """获取组ID的最后一条问答组关联的任务"""
@@ -58,7 +57,6 @@ class TaskManager:
         task = await task_collection.find_one({"_id": record_group_obj.task_id})
         return Task.model_validate(task)
 
-
     @staticmethod
     async def get_task_by_task_id(task_id: str) -> Task | None:
         """根据task_id获取任务"""
@@ -67,7 +65,6 @@ class TaskManager:
         if not task:
             return None
         return Task.model_validate(task)
-
 
     @staticmethod
     async def get_context_by_record_id(record_group_id: str, record_id: str) -> list[dict[str, Any]]:
@@ -95,7 +92,6 @@ class TaskManager:
         else:
             return flow_context_list
 
-
     @staticmethod
     async def get_context_by_task_id(task_id: str, length: int = 0) -> list[dict[str, Any]]:
         """根据task_id获取flow信息"""
@@ -114,7 +110,6 @@ class TaskManager:
             return []
         else:
             return flow_context
-
 
     @staticmethod
     async def save_flow_context(task_id: str, flow_context: list[dict[str, Any]]) -> None:
@@ -137,7 +132,6 @@ class TaskManager:
         except Exception:
             logger.exception("[TaskManager] 保存flow执行记录失败")
 
-
     @staticmethod
     async def delete_task_by_task_id(task_id: str) -> None:
         """通过task_id删除Task信息"""
@@ -147,7 +141,6 @@ class TaskManager:
         task = await task_collection.find_one({"_id": task_id}, {"_id": 1})
         if task:
             await task_collection.delete_one({"_id": task_id})
-
 
     @staticmethod
     async def delete_tasks_by_conversation_id(conversation_id: str) -> None:
@@ -166,7 +159,6 @@ class TaskManager:
             ]
             await task_collection.delete_many({"conversation_id": conversation_id}, session=session)
             await flow_context_collection.delete_many({"task_id": {"$in": task_ids}}, session=session)
-
 
     @classmethod
     async def get_task(
@@ -211,7 +203,6 @@ class TaskManager:
             tokens=TaskTokens(),
             runtime=TaskRuntime(),
         )
-
 
     @classmethod
     async def save_task(cls, task_id: str, task: Task) -> None:

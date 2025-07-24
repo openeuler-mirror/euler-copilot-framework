@@ -1,6 +1,7 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2023-2025. All rights reserved.
 """MCP 相关数据结构"""
 
+import uuid
 from enum import Enum
 from typing import Any
 
@@ -117,7 +118,7 @@ class MCPToolSelectResult(BaseModel):
 
 class MCPPlanItem(BaseModel):
     """MCP 计划"""
-
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     content: str = Field(description="计划内容")
     tool: str = Field(description="工具名称")
     instruction: str = Field(description="工具指令")
