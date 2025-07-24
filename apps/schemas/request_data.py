@@ -16,8 +16,8 @@ class RequestDataApp(BaseModel):
     """模型对话中包含的app信息"""
 
     app_id: str = Field(description="应用ID", alias="appId")
-    flow_id: str = Field(description="Flow ID", alias="flowId")
-    params: dict[str, Any] = Field(description="插件参数")
+    flow_id: str | None = Field(default=None, description="Flow ID", alias="flowId")
+    params: dict[str, Any] | None = Field(default=None, description="插件参数")
 
 
 class MockRequestData(BaseModel):
