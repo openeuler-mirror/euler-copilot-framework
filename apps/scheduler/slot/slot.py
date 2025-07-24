@@ -13,7 +13,7 @@ from jsonschema.protocols import Validator
 from jsonschema.validators import extend
 
 from apps.schemas.response_data import ParamsNode
-from apps.scheduler.call.choice.schema import Type
+from apps.scheduler.call.choice.schema import ValueType
 from apps.scheduler.slot.parser import (
     SlotConstParser,
     SlotDateParser,
@@ -232,15 +232,15 @@ class Slot:
 
             param_type = schema_node["type"]
             if param_type == "object":
-                param_type = Type.DICT
+                param_type = ValueType.DICT
             elif param_type == "array":
-                param_type = Type.LIST
+                param_type = ValueType.LIST
             elif param_type == "string":
-                param_type = Type.STRING
+                param_type = ValueType.STRING
             elif param_type == "number":
-                param_type = Type.NUMBER
+                param_type = ValueType.NUMBER
             elif param_type == "boolean":
-                param_type = Type.BOOL
+                param_type = ValueType.BOOL
             else:
                 logger.warning(f"[Slot] 不支持的参数类型: {param_type}")
                 return None

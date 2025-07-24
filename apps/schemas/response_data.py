@@ -15,7 +15,7 @@ from apps.schemas.flow_topology import (
     PositionItem,
 )
 from apps.schemas.parameters import (
-    Type,
+    ValueType,
     NumberOperate,
     StringOperate,
     ListOperate,
@@ -642,7 +642,7 @@ class ParamsNode(BaseModel):
     """参数数据结构"""
     param_name: str = Field(..., description="参数名称", alias="paramName")
     param_path: str = Field(..., description="参数路径", alias="paramPath")
-    param_type: Type = Field(..., description="参数类型", alias="paramType")
+    param_type: ValueType = Field(..., description="参数类型", alias="paramType")
     sub_params: list["ParamsNode"] | None = Field(
         default=None, description="子参数列表", alias="subParams"
     )
@@ -668,7 +668,7 @@ class OperateAndBindType(BaseModel):
     """操作和绑定类型数据结构"""
 
     operate: NumberOperate | StringOperate | ListOperate | BoolOperate | DictOperate = Field(description="操作类型")
-    bind_type: Type = Field(description="绑定类型")
+    bind_type: ValueType = Field(description="绑定类型")
 
 
 class GetOperaRsp(ResponseData):

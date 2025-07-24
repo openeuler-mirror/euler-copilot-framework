@@ -59,11 +59,14 @@ class DictOperate(str, Enum):
     NOT_CONTAINS_KEY = "dict_not_contains_key"
 
 
-class Type(str, Enum):
-    """Choice 工具支持的类型"""
+class ValueType(str, Enum):
+    """Choice 工具逻辑表达式左右值支持的类型"""
 
     STRING = "string"
     NUMBER = "number"
     LIST = "list"
     DICT = "dict"
     BOOL = "bool"
+
+    # 变量引用
+    REFERENCE = "reference"

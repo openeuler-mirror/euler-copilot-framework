@@ -7,7 +7,7 @@ import logging
 from pydantic import BaseModel
 
 from apps.schemas.parameters import (
-    Type,
+    ValueType,
     NumberOperate,
     StringOperate,
     ListOperate,
@@ -29,46 +29,46 @@ class ConditionHandler(BaseModel):
     """条件分支处理器"""
     @staticmethod
     async def get_value_type_from_operate(operate: NumberOperate | StringOperate | ListOperate |
-                                          BoolOperate | DictOperate) -> Type:
+                                          BoolOperate | DictOperate) -> ValueType:
         """获取右值的类型"""
         if isinstance(operate, NumberOperate):
-            return Type.NUMBER
+            return ValueType.NUMBER
         if operate in [
                 StringOperate.EQUAL, StringOperate.NOT_EQUAL, StringOperate.CONTAINS, StringOperate.NOT_CONTAINS,
                 StringOperate.STARTS_WITH, StringOperate.ENDS_WITH, StringOperate.REGEX_MATCH]:
-            return Type.STRING
+            return ValueType.STRING
         if operate in [StringOperate.LENGTH_EQUAL, StringOperate.LENGTH_GREATER_THAN,
                        StringOperate.LENGTH_GREATER_THAN_OR_EQUAL, StringOperate.LENGTH_LESS_THAN,
                        StringOperate.LENGTH_LESS_THAN_OR_EQUAL]:
-            return Type.NUMBER
+            return ValueType.NUMBER
         if operate in [ListOperate.EQUAL, ListOperate.NOT_EQUAL]:
-            return Type.LIST
+            return ValueType.LIST
         if operate in [ListOperate.CONTAINS, ListOperate.NOT_CONTAINS]:
-            return Type.STRING
+            return ValueType.STRING
         if operate in [ListOperate.LENGTH_EQUAL, ListOperate.LENGTH_GREATER_THAN,
                        ListOperate.LENGTH_GREATER_THAN_OR_EQUAL, ListOperate.LENGTH_LESS_THAN,
                        ListOperate.LENGTH_LESS_THAN_OR_EQUAL]:
-            return Type.NUMBER
+            return ValueType.NUMBER
         if operate in [BoolOperate.EQUAL, BoolOperate.NOT_EQUAL]:
-            return Type.BOOL
+            return ValueType.BOOL
         if operate in [DictOperate.EQUAL, DictOperate.NOT_EQUAL]:
-            return Type.DICT
+            return ValueType.DICT
         if operate in [DictOperate.CONTAINS_KEY, DictOperate.NOT_CONTAINS_KEY]:
-            return Type.STRING
+            return ValueType.STRING
         return None
 
     @staticmethod
-    def check_value_type(value: Value, expected_type: Type) -> bool:
+    def check_value_type(value: Value, expected_type: ValueType) -> bool:
         """检查值的类型是否符合预期"""
-        if expected_type == Type.STRING and isinstance(value.value, str):
+        if expected_type == ValueType.STRING and isinstance(value.value, str):
             return True
-        if expected_type == Type.NUMBER and isinstance(value.value, (int, float)):
+        if expected_type == ValueType.NUMBER and isinstance(value.value, (int, float)):
             return True
-        if expected_type == Type.LIST and isinstance(value.value, list):
+        if expected_type == ValueType.LIST and isinstance(value.value, list):
             return True
-        if expected_type == Type.DICT and isinstance(value.value, dict):
+        if expected_type == ValueType.DICT and isinstance(value.value, dict):
             return True
-        if expected_type == Type.BOOL and isinstance(value.value, bool):
+        if expected_type == ValueType.BOOL and isinstance(value.value, bool):
             return True
         return False
 
@@ -115,15 +115,15 @@ class ConditionHandler(BaseModel):
         value_type = condition.type
 
         result = None
-        if value_type == Type.STRING:
+        if value_type == ValueType.STRING:
             result = ConditionHandler._judge_string_condition(left, operate, right)
-        elif value_type == Type.NUMBER:
-            result = ConditionHandler._judge_int_condition(left, operate, right)
-        elif value_type == Type.BOOL:
+        elif value_type == ValueType.NUMBER:
+            result = ConditionHandler._judge_number_condition(left, operate, right)
+        elif value_type == ValueType.BOOL:
             result = ConditionHandler._judge_bool_condition(left, operate, right)
-        elif value_type == Type.LIST:
+        elif value_type == ValueType.LIST:
             result = ConditionHandler._judge_list_condition(left, operate, right)
-        elif value_type == Type.DICT:
+        elif value_type == ValueType.DICT:
             result = ConditionHandler._judge_dict_condition(left, operate, right)
         else:
             logger.error("不支持的数据类型: %s", value_type)

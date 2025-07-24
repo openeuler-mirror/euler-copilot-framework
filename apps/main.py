@@ -40,7 +40,7 @@ from apps.routers import (
     record,
     service,
     user,
-    parameter
+    variable
 )
 from apps.scheduler.pool.pool import Pool
 from apps.services.predecessor_cache_service import cleanup_background_tasks
@@ -121,7 +121,7 @@ app.include_router(llm.router)
 app.include_router(mcp_service.router)
 app.include_router(flow.router)
 app.include_router(user.router)
-app.include_router(parameter.router)
+app.include_router(variable.router)
 
 # logger配置
 LOGGER_FORMAT = "%(funcName)s() - %(message)s"
