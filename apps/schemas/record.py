@@ -17,8 +17,10 @@ class RecordDocument(Document):
     """GET /api/record/{conversation_id} Result中的document数据结构"""
 
     id: str = Field(alias="_id", default="")
+    order: int = Field(default=0, description="文档顺序")
     abstract: str = Field(default="", description="文档摘要")
     user_sub: None = None
+    author: str = Field(default="", description="文档作者")
     associated: Literal["question", "answer"]
 
     class Config:
@@ -103,11 +105,14 @@ class RecordGroupDocument(BaseModel):
     """RecordGroup关联的文件"""
 
     id: str = Field(default_factory=lambda: str(uuid.uuid4()), alias="_id")
+    order: int = Field(default=0, description="文档顺序")
+    author: str = Field(default="", description="文档作者")
     name: str = Field(default="", description="文档名称")
     abstract: str = Field(default="", description="文档摘要")
     extension: str = Field(default="", description="文档扩展名")
     size: int = Field(default=0, description="文档大小，单位是KB")
     associated: Literal["question", "answer"]
+    created_at: float = Field(default=0.0, description="文档创建时间")
 
 
 class Record(RecordData):

@@ -1,6 +1,7 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2023-2025. All rights reserved.
 """对接Euler Copilot RAG"""
 
+from datetime import UTC, datetime
 import json
 import logging
 from collections.abc import AsyncGenerator
@@ -156,9 +157,11 @@ class RAG:
                     "id": doc_chunk["docId"],
                     "order": doc_cnt,
                     "name": doc_chunk.get("docName", ""),
+                    "author": doc_chunk.get("docAuthor", ""),
                     "extension": doc_chunk.get("docExtension", ""),
                     "abstract": doc_chunk.get("docAbstract", ""),
                     "size": doc_chunk.get("docSize", 0),
+                    "created_at": doc_chunk.get("docCreatedAt", round(datetime.now(UTC).timestamp(), 3)),
                 })
                 doc_id_map[doc_chunk["docId"]] = doc_cnt
             doc_index = doc_id_map[doc_chunk["docId"]]

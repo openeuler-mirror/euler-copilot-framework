@@ -206,7 +206,7 @@ class Scheduler:
                 task=self.task,
                 msg_queue=queue,
                 question=post_body.question,
-                max_steps=app_metadata.history_len,
+                history_len=app_metadata.history_len,
                 servers_id=servers_id,
                 background=background,
                 agent_id=app_info.app_id,

@@ -6,6 +6,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, status
 from fastapi.responses import JSONResponse
 
+
 from apps.dependency.user import get_user, verify_user
 from apps.schemas.api_key import GetAuthKeyRsp, PostAuthKeyMsg, PostAuthKeyRsp
 from apps.schemas.response_data import ResponseData
