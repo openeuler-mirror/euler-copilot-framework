@@ -7,7 +7,7 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
-from apps.schemas.enum_var import StepStatus
+from apps.schemas.enum_var import FlowStatus, StepStatus
 from apps.schemas.flow import Step
 from apps.schemas.mcp import MCPPlan
 
@@ -23,10 +23,11 @@ class FlowStepHistory(BaseModel):
     task_id: str = Field(description="任务ID")
     flow_id: str = Field(description="FlowID")
     flow_name: str = Field(description="Flow名称")
+    flow_status: FlowStatus = Field(description="Flow状态")
     step_id: str = Field(description="当前步骤名称")
     step_name: str = Field(description="当前步骤名称")
-    step_description: str = Field(description="当前步骤描述")
-    status: StepStatus = Field(description="当前步骤状态")
+    step_description: str = Field(description="当前步骤描述", default="")
+    step_status: StepStatus = Field(description="当前步骤状态")
     input_data: dict[str, Any] = Field(description="当前Step执行的输入", default={})
     output_data: dict[str, Any] = Field(description="当前Step执行后的结果", default={})
     created_at: float = Field(default_factory=lambda: round(datetime.now(tz=UTC).timestamp(), 3))
@@ -39,10 +40,11 @@ class ExecutorState(BaseModel):
     flow_id: str = Field(description="Flow ID")
     flow_name: str = Field(description="Flow名称")
     description: str = Field(description="Flow描述")
-    status: StepStatus = Field(description="Flow执行状态")
-    # 附加信息
+    flow_status: FlowStatus = Field(description="Flow状态")
+    # 任务级数据
     step_id: str = Field(description="当前步骤ID")
     step_name: str = Field(description="当前步骤名称")
+    step_status: StepStatus = Field(description="当前步骤状态")
     step_description: str = Field(description="当前步骤描述", default="")
     app_id: str = Field(description="应用ID")
     slot: dict[str, Any] = Field(description="待填充参数的JSON Schema", default={})

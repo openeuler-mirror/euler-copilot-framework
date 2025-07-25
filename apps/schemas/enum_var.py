@@ -20,6 +20,17 @@ class StepStatus(str, Enum):
     SUCCESS = "success"
     ERROR = "error"
     PARAM = "param"
+    CANCELLED = "cancelled"
+
+
+class FlowStatus(str, Enum):
+    """Flow状态"""
+
+    WAITING = "waiting"
+    RUNNING = "running"
+    SUCCESS = "success"
+    ERROR = "error"
+    CANCELLED = "cancelled"
 
 
 class DocumentStatus(str, Enum):

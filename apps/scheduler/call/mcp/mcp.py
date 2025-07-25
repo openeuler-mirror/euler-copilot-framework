@@ -31,7 +31,7 @@ class MCP(CoreCall, input_model=MCPInput, output_model=MCPOutput):
     """MCP工具"""
 
     mcp_list: list[str] = Field(description="MCP Server ID列表", max_length=5, min_length=1)
-    max_steps: int = Field(description="最大步骤数", default=6)
+    max_steps: int = Field(description="最大步骤数", default=20)
     text_output: bool = Field(description="是否将结果以文本形式返回", default=True)
     to_user: bool = Field(description="是否将结果返回给用户", default=True)
 
