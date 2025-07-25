@@ -628,3 +628,21 @@ class ListLLMRsp(ResponseData):
     """GET /api/llm 返回数据结构"""
 
     result: list[LLMProviderInfo] = Field(default=[], title="Result")
+
+class Params(BaseModel):
+    """参数数据结构"""
+
+    id: str = Field(..., description="StepID")
+    name: str = Field(..., description="Step名称")
+    parameters: dict[str, Any] = Field(..., description="参数")
+    operate: str = Field(..., description="比较符")
+
+class GetParamsMsg(BaseModel):
+    """GET /api/params 返回数据结构"""
+
+    result: list[Params] = Field(..., title="Result")
+
+class GetParamsRsp(ResponseData):
+    """GET /api/params 返回数据结构"""
+
+    result: GetParamsMsg

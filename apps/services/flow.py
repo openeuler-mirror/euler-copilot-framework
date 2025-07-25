@@ -20,7 +20,7 @@ from apps.schemas.flow_topology import (
     PositionItem,
 )
 from apps.services.node import NodeManager
-
+from apps.schemas.response_data import Params
 logger = logging.getLogger(__name__)
 
 
@@ -470,3 +470,27 @@ class FlowManager:
             return False
         else:
             return True
+
+    @staticmethod
+    async def get_step_by_flow_and_step_id(flow: FlowItem, step_id: str) -> list[Params] | None:
+        """
+        寻找stepID对应的节点之前的所有节点的参数
+        """
+        params = []
+        try:
+            for edge in flow.edges:
+                if edge.target_node == step_id:
+                    id = edge.source_node
+                    if id == "start":
+                        break
+                    params.append(Params(
+                        id = id,
+                        name = flow.nodes[id].name,
+                        parameters = flow.nodes[id].parameters.get("parameters", {})
+                        ))
+                    step_id = edge.source_node
+            return params
+        except Exception:
+            logger.exception("[FlowManager] 获取节点失败")
+            return None
+        
