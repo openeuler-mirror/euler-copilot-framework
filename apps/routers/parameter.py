@@ -55,7 +55,7 @@ async def get_parameters(
                 result={},
             ).model_dump(exclude_none=True, by_alias=True),
         )
-    result = await FlowManager.get_step_by_flow_and_step_id(flow, step_id)
+    result = await FlowManager.get_params_by_flow_and_step_id(flow, step_id)
     if not result:
         return JSONResponse(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -120,7 +120,7 @@ async def operate_parameters(operate: str) -> list[str] | None:
     },)
 async def get_operate_parameters(
     user_sub: Annotated[str, Depends(get_user)],
-    operate: Annotated[str, Query(alias="operate")]
+    operate: Annotated[str, Query(alias="operate")],
 ) -> JSONResponse:
     """Get parameters for node choice."""
     result = await operate_parameters(operate)

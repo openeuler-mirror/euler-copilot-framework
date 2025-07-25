@@ -472,25 +472,46 @@ class FlowManager:
             return True
 
     @staticmethod
-    async def get_step_by_flow_and_step_id(flow: FlowItem, step_id: str) -> list[Params] | None:
-        """
-        寻找stepID对应的节点之前的所有节点的参数
-        """
+    async def get_params_by_flow_and_step_id(
+        flow: FlowItem, step_id: str
+    ) -> list[Params] | None:
+        """递归收集指定节点之前所有路径上的节点参数"""
         params = []
-        try:
-            for edge in flow.edges:
-                if edge.target_node == step_id:
-                    id = edge.source_node
-                    if id == "start":
-                        break
-                    params.append(Params(
-                        id = id,
-                        name = flow.nodes[id].name,
-                        parameters = flow.nodes[id].parameters.get("parameters", {})
-                        ))
-                    step_id = edge.source_node
-            return params
-        except Exception:
-            logger.exception("[FlowManager] 获取节点失败")
-            return None
-        
+        collected = set()  # 记录已收集参数的节点
+
+        async def backtrack(current_id: str, visited: set) -> None:
+            # 避免循环递归
+            if current_id in visited:
+                return
+            visited.add(current_id)
+
+            # 获取所有指向当前节点的边
+            incoming_edges = [
+                edge for edge in flow.edges if edge.target_node == current_id
+            ]
+
+            for edge in incoming_edges:
+                source_id = edge.source_node
+
+                # 跳过起始节点
+                if source_id == "start":
+                    continue
+
+                # 收集当前节点的参数（如果未被收集过）
+                if source_id not in collected:
+                    node = flow.nodes.get(source_id)
+                    if node:
+                        collected.add(source_id)
+                        params.append(
+                            Params(
+                                id=source_id,
+                                name=node.name,
+                                parameters=node.parameters.get("parameters", {}),
+                            ),
+                        )
+
+                # 继续回溯，传递当前路径的visited集合副本
+                await backtrack(source_id, visited.copy())
+
+        await backtrack(step_id, set())
+        return params
