@@ -16,8 +16,8 @@ class RequestDataApp(BaseModel):
     """模型对话中包含的app信息"""
 
     app_id: str = Field(description="应用ID", alias="appId")
-    flow_id: str = Field(description="Flow ID", alias="flowId")
-    params: dict[str, Any] = Field(description="插件参数")
+    flow_id: str | None = Field(default=None, description="Flow ID", alias="flowId")
+    params: dict[str, Any] | None = Field(default=None, description="插件参数")
 
 
 class MockRequestData(BaseModel):
@@ -46,6 +46,7 @@ class RequestData(BaseModel):
     files: list[str] = Field(default=[], description="文件列表")
     app: RequestDataApp | None = Field(default=None, description="应用")
     debug: bool = Field(default=False, description="是否调试")
+    new_task: bool = Field(default=True, description="是否新建任务")
 
 
 class QuestionBlacklistRequest(BaseModel):

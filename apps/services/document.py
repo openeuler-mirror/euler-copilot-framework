@@ -2,6 +2,7 @@
 """文件Manager"""
 
 import base64
+from datetime import UTC, datetime
 import logging
 import uuid
 
@@ -131,12 +132,15 @@ class DocumentManager:
         return [
             RecordDocument(
                 _id=doc.id,
+                order=doc.order,
+                author=doc.author,
                 abstract=doc.abstract,
                 name=doc.name,
                 type=doc.extension,
                 size=doc.size,
                 conversation_id=record_group.get("conversation_id", ""),
                 associated=doc.associated,
+                created_at=doc.created_at or round(datetime.now(tz=UTC).timestamp(), 3)
             )
             for doc in docs if type is None or doc.associated == type
         ]

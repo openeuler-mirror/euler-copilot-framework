@@ -114,11 +114,14 @@ async def save_data(task: Task, user_sub: str, post_body: RequestData) -> None:
         used_docs.append(
             RecordGroupDocument(
                 _id=docs["id"],
+                author=docs.get("author", ""),
+                order=docs.get("order", 0),
                 name=docs["name"],
                 abstract=docs.get("abstract", ""),
                 extension=docs.get("extension", ""),
                 size=docs.get("size", 0),
                 associated="answer",
+                created_at=docs.get("created_at", round(datetime.now(UTC).timestamp(), 3)),
             )
         )
         if docs.get("order") is not None:

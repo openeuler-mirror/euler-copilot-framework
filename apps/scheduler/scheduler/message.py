@@ -71,14 +71,7 @@ async def push_rag_message(
             # 如果是文本消息，直接拼接到答案中
             full_answer += content_obj.content
         elif content_obj.event_type == EventType.DOCUMENT_ADD.value:
-            task.runtime.documents.append({
-                "id": content_obj.content.get("id", ""),
-                "order": content_obj.content.get("order", 0),
-                "name": content_obj.content.get("name", ""),
-                "abstract": content_obj.content.get("abstract", ""),
-                "extension": content_obj.content.get("extension", ""),
-                "size": content_obj.content.get("size", 0),
-            })
+            task.runtime.documents.append(content_obj.content)
     # 保存答案
     task.runtime.answer = full_answer
     await TaskManager.save_task(task.id, task)
@@ -115,10 +108,12 @@ async def _push_rag_chunk(task: Task, queue: MessageQueue, content: str) -> tupl
                 data=DocumentAddContent(
                     documentId=content_obj.content.get("id", ""),
                     documentOrder=content_obj.content.get("order", 0),
+                    documentAuthor=content_obj.content.get("author", ""),
                     documentName=content_obj.content.get("name", ""),
                     documentAbstract=content_obj.content.get("abstract", ""),
                     documentType=content_obj.content.get("extension", ""),
                     documentSize=content_obj.content.get("size", 0),
+                    createdAt=round(datetime.now(tz=UTC).timestamp(), 3),
                 ).model_dump(exclude_none=True, by_alias=True),
             )
     except Exception:

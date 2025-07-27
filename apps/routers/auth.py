@@ -9,6 +9,7 @@ from fastapi import APIRouter, Depends, Request, status
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 
+from apps.common.config import Config
 from apps.common.oidc import oidc_provider
 from apps.dependency import get_session, get_user, verify_user
 from apps.schemas.collection import Audit
@@ -47,8 +48,6 @@ async def oidc_login(request: Request, code: str) -> HTMLResponse:
         user_info = await oidc_provider.get_oidc_user(token["access_token"])
 
         user_sub: str | None = user_info.get("user_sub", None)
-        if user_sub:
-            await oidc_provider.set_token(user_sub, token["access_token"], token["refresh_token"])
     except Exception as e:
         logger.exception("User login failed")
         status_code = status.HTTP_400_BAD_REQUEST if "auth error" in str(e) else status.HTTP_403_FORBIDDEN

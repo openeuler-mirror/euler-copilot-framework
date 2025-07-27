@@ -12,6 +12,8 @@ from jsonschema.exceptions import ValidationError
 from jsonschema.protocols import Validator
 from jsonschema.validators import extend
 
+from apps.schemas.response_data import ParamsNode
+from apps.scheduler.call.choice.schema import Type
 from apps.scheduler.slot.parser import (
     SlotConstParser,
     SlotDateParser,
@@ -221,6 +223,45 @@ class Slot:
             return data
         return _extract_type_desc(self._schema)
 
+    def get_params_node_from_schema(self, root: str = "") -> ParamsNode:
+        """从JSON Schema中提取ParamsNode"""
+        def _extract_params_node(schema_node: dict[str, Any], name: str = "", path: str = "") -> ParamsNode:
+            """递归提取ParamsNode"""
+            if "type" not in schema_node:
+                return None
+
+            param_type = schema_node["type"]
+            if param_type == "object":
+                param_type = Type.DICT
+            elif param_type == "array":
+                param_type = Type.LIST
+            elif param_type == "string":
+                param_type = Type.STRING
+            elif param_type == "number":
+                param_type = Type.NUMBER
+            elif param_type == "boolean":
+                param_type = Type.BOOL
+            else:
+                logger.warning(f"[Slot] 不支持的参数类型: {param_type}")
+                return None
+            sub_params = []
+
+            if param_type == "object" and "properties" in schema_node:
+                for key, value in schema_node["properties"].items():
+                    sub_params.append(_extract_params_node(value, name=key, path=f"{path}/{key}"))
+            else:
+                # 对于非对象类型，直接返回空子参数
+                sub_params = None
+            return ParamsNode(paramName=name,
+                              paramPath=path,
+                              paramType=param_type,
+                              subParams=sub_params)
+        try:
+            return _extract_params_node(self._schema, name=root, path=root)
+        except Exception as e:
+            logger.error(f"[Slot] 提取ParamsNode失败: {e!s}\n{traceback.format_exc()}")
+            return None
+
     def _flatten_schema(self, schema: dict[str, Any]) -> tuple[dict[str, Any], list[str]]:
         """将JSON Schema扁平化"""
         result = {}
@@ -276,7 +317,6 @@ class Slot:
         logger.exception("[Slot] 错误schema不合法: %s", error.schema)
         return {}, []
 
-
     def _assemble_patch(
             self,
             key: str,
@@ -328,7 +368,6 @@ class Slot:
 
         logger.info("[Slot] 组装patch: %s", patch_list)
         return patch_list
-
 
     def convert_json(self, json_data: str | dict[str, Any]) -> dict[str, Any]:
         """将用户手动填充的参数专为真实JSON"""
