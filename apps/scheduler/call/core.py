@@ -18,6 +18,7 @@ from apps.llm.reasoning import ReasoningLLM
 from apps.scheduler.variable.integration import VariableIntegration
 from apps.schemas.enum_var import CallOutputType
 from apps.schemas.pool import NodePool
+from apps.schemas.parameters import ValueType
 from apps.schemas.scheduler import (
     CallError,
     CallIds,
@@ -30,6 +31,7 @@ from apps.schemas.task import FlowStepHistory
 
 if TYPE_CHECKING:
     from apps.scheduler.executor.step import StepExecutor
+    from apps.scheduler.call.choice.schema import Value
 
 
 logger = logging.getLogger(__name__)
@@ -194,7 +196,7 @@ class CoreCall(BaseModel):
         if isinstance(config, dict):
             if "reference" in config:
                 # 解析变量引用
-                resolved_value = await VariableIntegration.resolve_variable_reference(
+                resolved_value, _ = await VariableIntegration.resolve_variable_reference(
                     config["reference"],
                     user_sub=call_vars.ids.user_sub,
                     flow_id=call_vars.ids.flow_id,
@@ -249,7 +251,7 @@ class CoreCall(BaseModel):
         for match in matches:
             try:
                 # 解析变量引用
-                resolved_value = await VariableIntegration.resolve_variable_reference(
+                resolved_value, _ = await VariableIntegration.resolve_variable_reference(
                     match.strip(),
                     user_sub=call_vars.ids.user_sub,
                     flow_id=call_vars.ids.flow_id,
@@ -264,6 +266,36 @@ class CoreCall(BaseModel):
         
         return resolved_text
 
+    async def _resolve_single_value(self, value: "Value", call_vars: CallVars) -> "Value":
+        """解析Value对象中的变量引用（{{...}} 语法）
+        
+        Args:
+            value: Value对象
+            call_vars: Call变量
+            
+        Returns:
+            解析后的Value对象
+        """
+        # 运行时导入避免循环依赖
+        from apps.scheduler.call.choice.schema import Value
+            
+        # 检查是否包含变量引用语法
+        match = re.match(r'^\{\{.*?\}\}$', value.value)
+        if not value.type == ValueType.REFERENCE and match:
+            return value
+        
+        try:
+            # 解析变量引用
+            resolved_value, resolved_type = await VariableIntegration.resolve_variable_reference(
+                match.group().strip(),
+                user_sub=call_vars.ids.user_sub,
+                flow_id=call_vars.ids.flow_id,
+                conversation_id=call_vars.ids.conversation_id
+            )
+        except Exception as e:
+            logger.warning(f"[CoreCall] 解析变量引用 '{match.group()}' 失败: {e}")
+        
+        return Value(value=resolved_value, type=resolved_type)
 
     async def _set_input(self, executor: "StepExecutor") -> None:
         """获取Call的输入"""

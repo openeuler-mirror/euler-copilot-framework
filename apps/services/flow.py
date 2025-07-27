@@ -257,8 +257,8 @@ class FlowManager:
                 debug=flow_config.debug,
             )
             for node_id, node_config in flow_config.steps.items():
-                # 对于Code节点，直接使用保存的完整params作为parameters
-                if node_config.type == "Code":
+                # TODO 新增标识位区分Node是否允许用户定义output parameters，如果output固定由节点生成，则走else逻辑
+                if node_config.type == "Code" or node_config.type == "DirectReply" or node_config.type == "Choice":
                     parameters = node_config.params  # 直接使用保存的完整params
                 else:
                     # 其他节点：使用原有逻辑
@@ -389,11 +389,7 @@ class FlowManager:
                 debug=flow_item.debug,
             )
             for node_item in flow_item.nodes:
-                # 对于Code节点，保存完整的parameters；其他节点只保存input_parameters
-                if node_item.call_id == "Code":
-                    params = node_item.parameters  # 保存完整的parameters（包含input_parameters、output_parameters以及code配置）
-                else:
-                    params = node_item.parameters.get("input_parameters", {})  # 其他节点只保存input_parameters
+                params = node_item.parameters
                 
                 flow_config.steps[node_item.step_id] = Step(
                     type=node_item.call_id,

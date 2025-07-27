@@ -1,7 +1,7 @@
 import logging
 import asyncio
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Optional, Set
+from typing import Any, Dict, List, Optional, Set, Tuple
 from datetime import datetime, UTC
 
 from apps.common.mongo import MongoDB
@@ -250,37 +250,6 @@ class BaseVariablePool(ABC):
     def _add_pool_query_conditions(self, query: Dict[str, Any], variable: BaseVariable):
         """添加池特定的查询条件"""
         pass
-    
-    async def resolve_variable_reference(self, reference: str) -> Any:
-        """解析变量引用"""
-        # 移除 {{ 和 }}
-        clean_ref = reference.strip("{}").strip()
-        
-        # 解析变量路径
-        path_parts = clean_ref.split(".")
-        var_name = path_parts[0]
-        
-        # 获取变量
-        variable = await self.get_variable(var_name)
-        if not variable:
-            raise ValueError(f"变量不存在: {var_name}")
-        
-        # 获取变量值
-        value = variable.value
-        
-        # 处理嵌套路径
-        for path_part in path_parts[1:]:
-            if isinstance(value, dict):
-                value = value.get(path_part)
-            elif isinstance(value, list) and path_part.isdigit():
-                try:
-                    value = value[int(path_part)]
-                except IndexError:
-                    value = None
-            else:
-                raise ValueError(f"无法访问路径: {clean_ref}")
-        
-        return value
 
 
 class UserVariablePool(BaseVariablePool):

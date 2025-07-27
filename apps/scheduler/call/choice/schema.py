@@ -15,6 +15,7 @@ from apps.schemas.parameters import (
     ValueType,
 )
 from apps.scheduler.call.core import DataBase
+from apps.scheduler.variable.type import VariableType
 
 
 class Logic(str, Enum):
@@ -60,3 +61,30 @@ class ChoiceOutput(DataBase):
     """Choice Call的输出"""
 
     branch_id: str = Field(description="分支ID", default="")
+
+
+def convert_variable_type_to_value_type(var_type: VariableType) -> ValueType | None:
+    """将VariableType转换为ValueType
+    
+    Args:
+        var_type: 变量类型
+        
+    Returns:
+        ValueType: 对应的值类型，如果无法转换则返回None
+    """
+    
+    type_mapping = {
+        VariableType.STRING: ValueType.STRING,
+        VariableType.NUMBER: ValueType.NUMBER,
+        VariableType.BOOLEAN: ValueType.BOOL,
+        VariableType.OBJECT: ValueType.DICT,
+        VariableType.ARRAY_ANY: ValueType.LIST,
+        VariableType.ARRAY_STRING: ValueType.LIST,
+        VariableType.ARRAY_NUMBER: ValueType.LIST,
+        VariableType.ARRAY_OBJECT: ValueType.LIST,
+        VariableType.ARRAY_FILE: ValueType.LIST,
+        VariableType.ARRAY_BOOLEAN: ValueType.LIST,
+        VariableType.ARRAY_SECRET: ValueType.LIST,
+    }
+    
+    return type_mapping.get(var_type)
