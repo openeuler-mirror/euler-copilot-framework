@@ -113,13 +113,17 @@ class Choice(CoreCall, input_model=ChoiceInput, output_model=ChoiceOutput):
         if not success:
             return False, error_msg
 
+        # 更新条件对象中的解析后的值
+        condition.left = _left
+        condition.right = _right
+
         # 检查运算符是否有效
         if condition.operate is None:
             return False, "条件缺少运算符"
         
         # 根据运算符确定期望的值类型
         try:
-            expected_type = await ConditionHandler.get_value_type_from_operate(condition.operate)
+            expected_type = ConditionHandler.get_value_type_from_operate(condition.operate)
         except Exception as e:
             return False, f"不支持的运算符: {condition.operate}"
         
@@ -176,7 +180,6 @@ class Choice(CoreCall, input_model=ChoiceInput, output_model=ChoiceOutput):
             list[ChoiceBranch]: 处理后的有效分支列表
         """
         valid_choices = []
-
         for choice in self.choices:
             try:
                 success, error_messages = await self._process_branch(choice, call_vars)

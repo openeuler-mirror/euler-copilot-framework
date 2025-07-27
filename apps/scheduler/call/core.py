@@ -281,7 +281,7 @@ class CoreCall(BaseModel):
             
         # 检查是否包含变量引用语法
         match = re.match(r'^\{\{.*?\}\}$', value.value)
-        if not value.type == ValueType.REFERENCE and match:
+        if not value.type == ValueType.REFERENCE or not match:
             return value
         
         try:

@@ -28,8 +28,8 @@ logger = logging.getLogger(__name__)
 class ConditionHandler(BaseModel):
     """条件分支处理器"""
     @staticmethod
-    async def get_value_type_from_operate(operate: NumberOperate | StringOperate | ListOperate |
-                                          BoolOperate | DictOperate) -> ValueType:
+    def get_value_type_from_operate(operate: NumberOperate | StringOperate | ListOperate |
+                                    BoolOperate | DictOperate) -> ValueType:
         """根据逻辑运算符获取值的类型"""
         if isinstance(operate, NumberOperate):
             return ValueType.NUMBER
@@ -75,23 +75,35 @@ class ConditionHandler(BaseModel):
     @staticmethod
     def handler(choices: list[ChoiceBranch]) -> str:
         """处理条件"""
+        logger.error(choices)
         default_branch = [c for c in choices if c.is_default]
 
-        for block_judgement in choices[::-1]:
+        # 先处理所有非默认分支
+        for block_judgement in choices:
             results = []
+            # 跳过默认分支，先处理有条件的分支
             if block_judgement.is_default:
-                return default_branch[0].branch_id
+                continue
+                
             for condition in block_judgement.conditions:
                 result = ConditionHandler._judge_condition(condition)
                 results.append(result)
+                
             if block_judgement.logic == Logic.AND:
                 final_result = all(results)
             elif block_judgement.logic == Logic.OR:
                 final_result = any(results)
+            else:
+                # 如果没有逻辑运算符但有条件，默认使用AND逻辑
+                final_result = all(results) if results else False
 
             if final_result:
                 return block_judgement.branch_id
     
+        # 如果所有非默认分支都不满足条件，返回默认分支
+        if default_branch:
+            return default_branch[0].branch_id
+            
         return ""
 
     @staticmethod
@@ -100,7 +112,7 @@ class ConditionHandler(BaseModel):
         判断条件是否成立。
 
         Args:
-            condition (Condition): 'left', 'operate', 'right', 'type'
+            condition (Condition): 'left', 'operate', 'right'
 
         Returns:
             bool
@@ -109,7 +121,14 @@ class ConditionHandler(BaseModel):
         left = condition.left
         operate = condition.operate
         right = condition.right
-        value_type = condition.type
+        
+        # 根据操作符动态推断值类型
+        try:
+            value_type = ConditionHandler.get_value_type_from_operate(operate)
+        except Exception as e:
+            logger.error("无法推断操作符 %s 的值类型: %s", operate, e)
+            msg = f"无法推断操作符 {operate} 的值类型: {e}"
+            raise ValueError(msg)
 
         result = None
         if value_type == ValueType.STRING:

@@ -11,6 +11,7 @@ from pydantic import Field
 from apps.scheduler.call.llm.prompt import LLM_ERROR_PROMPT
 from apps.scheduler.executor.base import BaseExecutor
 from apps.scheduler.executor.step import StepExecutor
+from apps.scheduler.variable.integration import VariableIntegration
 from apps.schemas.enum_var import EventType, SpecialCallType, StepStatus
 from apps.schemas.flow import Flow, Step
 from apps.schemas.request_data import RequestDataApp
@@ -114,13 +115,36 @@ class FlowExecutor(BaseExecutor):
         if self.task.state.step_id == "end" or not self.task.state.step_id:  # type: ignore[arg-type]
             return []
         if self.current_step.step.type == SpecialCallType.CHOICE.value:
-            # 如果是choice节点，获取分支ID
-            branch_id = self.task.context[-1].output_data.get("branch_id", "")
-            if branch_id:
-                next_steps = await self._find_next_id(self.task.state.step_id+"."+branch_id)
-                logger.info("[FlowExecutor] 分支ID：%s", branch_id)
-            else:
-                logger.warning("[FlowExecutor] 没有找到分支ID，返回空列表")
+            # 如果是choice节点，从变量池中获取分支ID
+            try:
+                # Choice 节点保存的变量格式：conversation.{step_id}.branch_id
+                branch_id_var_reference = f"conversation.{self.task.state.step_id}.branch_id"
+                branch_id, _ = await VariableIntegration.resolve_variable_reference(
+                    reference=branch_id_var_reference,
+                    user_sub=self.task.ids.user_sub,
+                    flow_id=self.task.state.flow_id,
+                    conversation_id=self.task.ids.conversation_id
+                )
+                
+                if branch_id:
+                    # 构建带分支ID的edge_from
+                    edge_from = f"{self.task.state.step_id}.{branch_id}"
+                    logger.info("[FlowExecutor] 从变量池获取分支ID：%s，查找边：%s", branch_id, edge_from)
+                    
+                    # 在edges中查找对应的下一个节点
+                    next_steps = []
+                    for edge in self.flow.edges:
+                        if edge.edge_from == edge_from:
+                            next_steps.append(edge.edge_to)
+                            logger.info("[FlowExecutor] 找到下一个节点：%s", edge.edge_to)
+                    
+                    if not next_steps:
+                        logger.warning("[FlowExecutor] 没有找到分支 %s 对应的边", edge_from)
+                else:
+                    logger.warning("[FlowExecutor] 没有找到分支ID变量")
+                    return []
+            except Exception as e:
+                logger.error("[FlowExecutor] 从变量池获取分支ID失败: %s", e)
                 return []
         else:
             next_steps = await self._find_next_id(self.task.state.step_id)  # type: ignore[arg-type]
