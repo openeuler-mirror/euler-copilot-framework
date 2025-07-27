@@ -47,7 +47,6 @@ class FlowExecutor(BaseExecutor):
     question: str = Field(description="用户输入")
     post_body_app: RequestDataApp = Field(description="请求体中的app信息")
 
-
     async def load_state(self) -> None:
         """从数据库中加载FlowExecutor的状态"""
         logger.info("[FlowExecutor] 加载Executor状态")
@@ -70,7 +69,6 @@ class FlowExecutor(BaseExecutor):
         self._reached_end: bool = False
         self.step_queue: deque[StepQueueItem] = deque()
 
-
     async def _invoke_runner(self, queue_item: StepQueueItem) -> None:
         """单一Step执行"""
         # 创建步骤Runner
@@ -90,7 +88,6 @@ class FlowExecutor(BaseExecutor):
         # 更新Task（已存过库）
         self.task = step_runner.task
 
-
     async def _step_process(self) -> None:
         """执行当前queue里面的所有步骤（在用户看来是单一Step）"""
         while True:
@@ -102,7 +99,6 @@ class FlowExecutor(BaseExecutor):
             # 执行Step
             await self._invoke_runner(queue_item)
 
-
     async def _find_next_id(self, step_id: str) -> list[str]:
         """查找下一个节点"""
         next_ids = []
@@ -111,15 +107,14 @@ class FlowExecutor(BaseExecutor):
                 next_ids += [edge.edge_to]
         return next_ids
 
-
     async def _find_flow_next(self) -> list[StepQueueItem]:
         """在当前步骤执行前，尝试获取下一步"""
         # 如果当前步骤为结束，则直接返回
-        if self.task.state.step_id == "end" or not self.task.state.step_id: # type: ignore[arg-type]
+        if self.task.state.step_id == "end" or not self.task.state.step_id:  # type: ignore[arg-type]
             return []
         if self.task.state.step_name == "Choice":
             # 如果是choice节点，获取分支ID
-            branch_id = self.task.context[-1]["output_data"].get("branch_id", None)
+            branch_id = self.task.context[-1]["output_data"]["branch_id"]
             if branch_id:
                 self.task.state.step_id = self.task.state.step_id + "." + branch_id
                 logger.info("[FlowExecutor] 分支ID：%s", branch_id)
@@ -127,7 +122,7 @@ class FlowExecutor(BaseExecutor):
                 logger.warning("[FlowExecutor] 没有找到分支ID，返回空列表")
                 return []
 
-        next_steps = await self._find_next_id(self.task.state.step_id) # type: ignore[arg-type]
+        next_steps = await self._find_next_id(self.task.state.step_id)  # type: ignore[arg-type]
         # 如果step没有任何出边，直接跳到end
         if not next_steps:
             return [
@@ -146,7 +141,6 @@ class FlowExecutor(BaseExecutor):
             for next_step in next_steps
         ]
 
-
     async def run(self) -> None:
         """
         运行流，返回各步骤结果，直到无法继续执行
@@ -159,8 +153,8 @@ class FlowExecutor(BaseExecutor):
 
         # 获取首个步骤
         first_step = StepQueueItem(
-            step_id=self.task.state.step_id, # type: ignore[arg-type]
-            step=self.flow.steps[self.task.state.step_id], # type: ignore[arg-type]
+            step_id=self.task.state.step_id,  # type: ignore[arg-type]
+            step=self.flow.steps[self.task.state.step_id],  # type: ignore[arg-type]
         )
 
         # 头插开始前的系统步骤，并执行
@@ -179,7 +173,7 @@ class FlowExecutor(BaseExecutor):
         # 运行Flow（未达终点）
         while not self._reached_end:
             # 如果当前步骤出错，执行错误处理步骤
-            if self.task.state.status == StepStatus.ERROR: # type: ignore[arg-type]
+            if self.task.state.status == StepStatus.ERROR:  # type: ignore[arg-type]
                 logger.warning("[FlowExecutor] Executor出错，执行错误处理步骤")
                 self.step_queue.clear()
                 self.step_queue.appendleft(StepQueueItem(
@@ -192,7 +186,7 @@ class FlowExecutor(BaseExecutor):
                         params={
                             "user_prompt": LLM_ERROR_PROMPT.replace(
                                 "{{ error_info }}",
-                                self.task.state.error_info["err_msg"], # type: ignore[arg-type]
+                                self.task.state.error_info["err_msg"],  # type: ignore[arg-type]
                             ),
                         },
                     ),

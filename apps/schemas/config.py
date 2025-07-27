@@ -129,7 +129,7 @@ class ExtraConfig(BaseModel):
 
 class ConfigModel(BaseModel):
     """配置文件的校验Class"""
-    no_auth: NoauthConfig
+    no_auth: NoauthConfig = Field(description="无认证配置", default=NoauthConfig())
     deploy: DeployConfig
     login: LoginConfig
     embedding: EmbeddingConfig

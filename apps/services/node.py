@@ -16,6 +16,7 @@ NODE_TYPE_MAP = {
     "API": APINode,
 }
 
+
 class NodeManager:
     """Node管理器"""
 
@@ -29,7 +30,6 @@ class NodeManager:
             raise ValueError(err)
         return node["call_id"]
 
-
     @staticmethod
     async def get_node(node_id: str) -> NodePool:
         """获取Node的类型"""
@@ -39,7 +39,6 @@ class NodeManager:
             err = f"[NodeManager] Node {node_id} not found."
             raise ValueError(err)
         return NodePool.model_validate(node)
-
 
     @staticmethod
     async def get_node_name(node_id: str) -> str:
@@ -51,7 +50,6 @@ class NodeManager:
             logger.error("[NodeManager] Node %s not found", node_id)
             return ""
         return node_doc["name"]
-
 
     @staticmethod
     def merge_params_schema(params_schema: dict[str, Any], known_params: dict[str, Any]) -> dict[str, Any]:
@@ -74,7 +72,6 @@ class NodeManager:
             params_schema["items"] = NodeManager.merge_params_schema(items, known_params)
 
         return params_schema
-
 
     @staticmethod
     async def get_node_params(node_id: str) -> tuple[dict[str, Any], dict[str, Any]]:
@@ -100,7 +97,6 @@ class NodeManager:
             err = f"[NodeManager] Call {call_id} 不存在"
             logger.error(err)
             raise ValueError(err)
-
         # 返回参数Schema
         return (
             NodeManager.merge_params_schema(call_class.model_json_schema(), node_data.known_params or {}),

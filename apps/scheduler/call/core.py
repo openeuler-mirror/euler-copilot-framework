@@ -76,20 +76,17 @@ class CoreCall(BaseModel):
         extra="allow",
     )
 
-
     def __init_subclass__(cls, input_model: type[DataBase], output_model: type[DataBase], **kwargs: Any) -> None:
         """初始化子类"""
         super().__init_subclass__(**kwargs)
         cls.input_model = input_model
         cls.output_model = output_model
 
-
     @classmethod
     def info(cls) -> CallInfo:
         """返回Call的名称和描述"""
         err = "[CoreCall] 必须手动实现info方法"
         raise NotImplementedError(err)
-
 
     @staticmethod
     def _assemble_call_vars(executor: "StepExecutor") -> CallVars:
@@ -120,7 +117,6 @@ class CoreCall(BaseModel):
             summary=executor.task.runtime.summary,
         )
 
-
     @staticmethod
     def _extract_history_variables(path: str, history: dict[str, FlowStepHistory]) -> Any:
         """
@@ -131,18 +127,16 @@ class CoreCall(BaseModel):
         :return: 变量
         """
         split_path = path.split("/")
+        if len(split_path) < 2:
+            err = f"[CoreCall] 路径格式错误: {path}"
+            logger.error(err)
+            return None
         if split_path[0] not in history:
             err = f"[CoreCall] 步骤{split_path[0]}不存在"
             logger.error(err)
-            raise CallError(
-                message=err,
-                data={
-                    "step_id": split_path[0],
-                },
-            )
-
+            return None
         data = history[split_path[0]].output_data
-        for key in split_path[1:]:
+        for key in split_path[2:]:
             if key not in data:
                 err = f"[CoreCall] 输出Key {key} 不存在"
                 logger.error(err)
@@ -155,7 +149,6 @@ class CoreCall(BaseModel):
                 )
             data = data[key]
         return data
-
 
     @classmethod
     async def instance(cls, executor: "StepExecutor", node: NodePool | None, **kwargs: Any) -> Self:
@@ -170,35 +163,29 @@ class CoreCall(BaseModel):
         await obj._set_input(executor)
         return obj
 
-
     async def _set_input(self, executor: "StepExecutor") -> None:
         """获取Call的输入"""
         self._sys_vars = self._assemble_call_vars(executor)
         input_data = await self._init(self._sys_vars)
         self.input = input_data.model_dump(by_alias=True, exclude_none=True)
 
-
     async def _init(self, call_vars: CallVars) -> DataBase:
         """初始化Call类，并返回Call的输入"""
         err = "[CoreCall] 初始化方法必须手动实现"
         raise NotImplementedError(err)
 
-
     async def _exec(self, input_data: dict[str, Any]) -> AsyncGenerator[CallOutputChunk, None]:
         """Call类实例的流式输出方法"""
         yield CallOutputChunk(type=CallOutputType.TEXT, content="")
 
-
     async def _after_exec(self, input_data: dict[str, Any]) -> None:
         """Call类实例的执行后方法"""
-
 
     async def exec(self, executor: "StepExecutor", input_data: dict[str, Any]) -> AsyncGenerator[CallOutputChunk, None]:
         """Call类实例的执行方法"""
         async for chunk in self._exec(input_data):
             yield chunk
         await self._after_exec(input_data)
-
 
     async def _llm(self, messages: list[dict[str, Any]]) -> str:
         """Call可直接使用的LLM非流式调用"""
@@ -209,7 +196,6 @@ class CoreCall(BaseModel):
         self.input_tokens = llm.input_tokens
         self.output_tokens = llm.output_tokens
         return result
-
 
     async def _json(self, messages: list[dict[str, Any]], schema: type[BaseModel]) -> BaseModel:
         """Call可直接使用的JSON生成"""
