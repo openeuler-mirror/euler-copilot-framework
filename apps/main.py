@@ -83,12 +83,28 @@ logging.basicConfig(
 )
 
 
+async def add_no_auth_user() -> None:
+    """
+    添加无认证用户
+    """
+    from apps.common.mongo import MongoDB
+    from apps.schemas.collection import User
+    mongo = MongoDB()
+    user_collection = mongo.get_collection("user")
+    await user_collection.insert_one(User(
+        _id=Config().get_config().no_auth.user_sub,
+        is_admin=True,
+    ).model_dump(by_alias=True))
+
+
 async def init_resources() -> None:
     """初始化必要资源"""
     WordsCheck()
     await LanceDB().init()
     await Pool.init()
     TokenCalculator()
+    if Config().get_config().no_auth.enable:
+        await add_no_auth_user()
 
 # 运行
 if __name__ == "__main__":
