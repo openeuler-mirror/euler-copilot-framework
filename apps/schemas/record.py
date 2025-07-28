@@ -44,6 +44,7 @@ class RecordFlow(BaseModel):
     id: str
     record_id: str = Field(alias="recordId")
     flow_id: str = Field(alias="flowId")
+    flow_status: StepStatus = Field(alias="flowStatus", default=StepStatus.SUCCESS)
     step_num: int = Field(alias="stepNum")
     steps: list[RecordFlowStep]
 

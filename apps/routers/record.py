@@ -83,22 +83,23 @@ async def get_record(conversation_id: str, user_sub: Annotated[str, Depends(get_
             tmp_record.document = await DocumentManager.get_used_docs_by_record_group(user_sub, record_group.id)
 
             # 获得Record关联的flow数据
-            flow_list = await TaskManager.get_context_by_record_id(record_group.id, record.id)
-            if flow_list:
-                first_flow = FlowStepHistory.model_validate(flow_list[0])
+            flow_step_list = await TaskManager.get_context_by_record_id(record_group.id, record.id)
+            if flow_step_list:
+                first_step_history = FlowStepHistory.model_validate(flow_step_list[0])
                 tmp_record.flow = RecordFlow(
-                    id=first_flow.flow_name,  #TODO: 此处前端应该用name
+                    id=first_step_history.flow_name,  # TODO: 此处前端应该用name
                     recordId=record.id,
-                    flowId=first_flow.id,
-                    stepNum=len(flow_list),
+                    flowStatus=first_step_history.flow_status,
+                    flowId=first_step_history.id,
+                    stepNum=len(flow_step_list),
                     steps=[],
                 )
-                for flow in flow_list:
-                    flow_step = FlowStepHistory.model_validate(flow)
+                for flow_step in flow_step_list:
+                    flow_step = FlowStepHistory.model_validate(flow_step)
                     tmp_record.flow.steps.append(
                         RecordFlowStep(
-                            stepId=flow_step.step_name,  #TODO: 此处前端应该用name
-                            stepStatus=flow_step.status,
+                            stepId=flow_step.step_name,  # TODO: 此处前端应该用name
+                            stepStatus=flow_step.step_status,
                             input=flow_step.input_data,
                             output=flow_step.output_data,
                         ),

@@ -11,7 +11,7 @@ from pydantic import Field
 from apps.scheduler.call.llm.prompt import LLM_ERROR_PROMPT
 from apps.scheduler.executor.base import BaseExecutor
 from apps.scheduler.executor.step import StepExecutor
-from apps.schemas.enum_var import EventType, SpecialCallType, StepStatus
+from apps.schemas.enum_var import EventType, SpecialCallType, FlowStatus, StepStatus
 from apps.schemas.flow import Flow, Step
 from apps.schemas.request_data import RequestDataApp
 from apps.schemas.task import ExecutorState, StepQueueItem
@@ -58,8 +58,9 @@ class FlowExecutor(BaseExecutor):
             self.task.state = ExecutorState(
                 flow_id=str(self.flow_id),
                 flow_name=self.flow.name,
+                flow_status=FlowStatus.RUNNING,
                 description=str(self.flow.description),
-                status=StepStatus.RUNNING,
+                step_status=StepStatus.RUNNING,
                 app_id=str(self.post_body_app.app_id),
                 step_id="start",
                 step_name="开始",
@@ -169,11 +170,11 @@ class FlowExecutor(BaseExecutor):
 
         # 插入首个步骤
         self.step_queue.append(first_step)
-
+        self.task.state.flow_status = FlowStatus.RUNNING  # type: ignore[arg-type]
         # 运行Flow（未达终点）
         while not self._reached_end:
             # 如果当前步骤出错，执行错误处理步骤
-            if self.task.state.status == StepStatus.ERROR:  # type: ignore[arg-type]
+            if self.task.state.step_status == StepStatus.ERROR:  # type: ignore[arg-type]
                 logger.warning("[FlowExecutor] Executor出错，执行错误处理步骤")
                 self.step_queue.clear()
                 self.step_queue.appendleft(StepQueueItem(
@@ -193,6 +194,7 @@ class FlowExecutor(BaseExecutor):
                     enable_filling=False,
                     to_user=False,
                 ))
+                self.task.state.flow_status = FlowStatus.ERROR  # type: ignore[arg-type]
                 # 错误处理后结束
                 self._reached_end = True
 
@@ -219,3 +221,5 @@ class FlowExecutor(BaseExecutor):
         self.task.tokens.time = round(datetime.now(UTC).timestamp(), 2) - self.task.tokens.full_time
         # 推送Flow停止消息
         await self.push_message(EventType.FLOW_STOP.value)
+        # 更新Task状态
+        self.task.state.flow_status = FlowStatus.SUCCESS  # type: ignore[arg-type]

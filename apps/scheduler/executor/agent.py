@@ -6,7 +6,7 @@ import logging
 from pydantic import Field
 
 from apps.scheduler.executor.base import BaseExecutor
-from apps.scheduler.mcp_agent.agent.mcp import MCPAgent
+from apps.scheduler.mcp_agent import host, plan, select
 from apps.schemas.task import ExecutorState, StepQueueItem
 from apps.services.task import TaskManager
 

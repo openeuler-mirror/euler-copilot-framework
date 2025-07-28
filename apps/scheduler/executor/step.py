@@ -132,7 +132,7 @@ class StepExecutor(BaseExecutor):
         # 更新State
         self.task.state.step_id = str(uuid.uuid4())  # type: ignore[arg-type]
         self.task.state.step_name = "自动参数填充"  # type: ignore[arg-type]
-        self.task.state.status = StepStatus.RUNNING  # type: ignore[arg-type]
+        self.task.state.step_status = StepStatus.RUNNING  # type: ignore[arg-type]
         self.task.tokens.time = round(datetime.now(UTC).timestamp(), 2)
 
         # 初始化填参
@@ -155,9 +155,9 @@ class StepExecutor(BaseExecutor):
 
         # 如果没有填全，则状态设置为待填参
         if result.remaining_schema:
-            self.task.state.status = StepStatus.PARAM  # type: ignore[arg-type]
+            self.task.state.step_status = StepStatus.PARAM  # type: ignore[arg-type]
         else:
-            self.task.state.status = StepStatus.SUCCESS  # type: ignore[arg-type]
+            self.task.state.step_status = StepStatus.SUCCESS  # type: ignore[arg-type]
         await self.push_message(EventType.STEP_OUTPUT.value, result.model_dump(by_alias=True, exclude_none=True))
 
         # 更新输入
@@ -209,7 +209,7 @@ class StepExecutor(BaseExecutor):
         await self._run_slot_filling()
 
         # 更新状态
-        self.task.state.status = StepStatus.RUNNING  # type: ignore[arg-type]
+        self.task.state.step_status = StepStatus.RUNNING  # type: ignore[arg-type]
         self.task.tokens.time = round(datetime.now(UTC).timestamp(), 2)
         # 推送输入
         await self.push_message(EventType.STEP_INPUT.value, self.obj.input)
@@ -221,7 +221,7 @@ class StepExecutor(BaseExecutor):
             content = await self._process_chunk(iterator, to_user=self.obj.to_user)
         except Exception as e:
             logger.exception("[StepExecutor] 运行步骤失败，进行异常处理步骤")
-            self.task.state.status = StepStatus.ERROR  # type: ignore[arg-type]
+            self.task.state.step_status = StepStatus.ERROR  # type: ignore[arg-type]
             await self.push_message(EventType.STEP_OUTPUT.value, {})
             if isinstance(e, CallError):
                 self.task.state.error_info = {  # type: ignore[arg-type]
@@ -236,7 +236,7 @@ class StepExecutor(BaseExecutor):
             return
 
         # 更新执行状态
-        self.task.state.status = StepStatus.SUCCESS  # type: ignore[arg-type]
+        self.task.state.step_status = StepStatus.SUCCESS  # type: ignore[arg-type]
         self.task.tokens.input_tokens += self.obj.tokens.input_tokens
         self.task.tokens.output_tokens += self.obj.tokens.output_tokens
         self.task.tokens.full_time += round(datetime.now(UTC).timestamp(), 2) - self.task.tokens.time
@@ -252,10 +252,11 @@ class StepExecutor(BaseExecutor):
             task_id=self.task.id,
             flow_id=self.task.state.flow_id,  # type: ignore[arg-type]
             flow_name=self.task.state.flow_name,  # type: ignore[arg-type]
+            flow_status=self.task.state.flow_status,  # type: ignore[arg-type]
             step_id=self.step.step_id,
             step_name=self.step.step.name,
             step_description=self.step.step.description,
-            status=self.task.state.status,  # type: ignore[arg-type]
+            step_status=self.task.state.step_status,
             input_data=self.obj.input,
             output_data=output_data,
         )
