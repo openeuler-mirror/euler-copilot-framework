@@ -119,7 +119,6 @@ class StepExecutor(BaseExecutor):
             logger.exception("[StepExecutor] 初始化Call失败")
             raise
 
-
     async def _run_slot_filling(self) -> None:
         """运行自动参数填充；相当于特殊Step，但是不存库"""
         # 判断是否需要进行自动参数填充
@@ -170,7 +169,6 @@ class StepExecutor(BaseExecutor):
         self.task.tokens.input_tokens += self.obj.tokens.input_tokens
         self.task.tokens.output_tokens += self.obj.tokens.output_tokens
 
-
     async def _process_chunk(
         self,
         iterator: AsyncGenerator[CallOutputChunk, None],
@@ -201,7 +199,6 @@ class StepExecutor(BaseExecutor):
                     await self.push_message(self.step.step.type, chunk.content)
 
         return content
-
 
     async def run(self) -> None:
         """运行单个步骤"""
