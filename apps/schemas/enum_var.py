@@ -56,6 +56,8 @@ class EventType(str, Enum):
     STEP_INPUT = "step.input"
     STEP_OUTPUT = "step.output"
     FLOW_STOP = "flow.stop"
+    FLOW_FAILED = "flow.failed"
+    FLOW_CANCELLED = "flow.cancelled"
     DONE = "done"
 
 
