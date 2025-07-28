@@ -20,7 +20,6 @@ from apps.schemas.flow_topology import (
     PositionItem,
 )
 from apps.services.node import NodeManager
-
 logger = logging.getLogger(__name__)
 
 

@@ -113,6 +113,15 @@ class FlowExecutor(BaseExecutor):
         # 如果当前步骤为结束，则直接返回
         if self.task.state.step_id == "end" or not self.task.state.step_id:  # type: ignore[arg-type]
             return []
+        if self.task.state.step_name == "Choice":
+            # 如果是choice节点，获取分支ID
+            branch_id = self.task.context[-1]["output_data"]["branch_id"]
+            if branch_id:
+                self.task.state.step_id = self.task.state.step_id + "." + branch_id
+                logger.info("[FlowExecutor] 分支ID：%s", branch_id)
+            else:
+                logger.warning("[FlowExecutor] 没有找到分支ID，返回空列表")
+                return []
 
         next_steps = await self._find_next_id(self.task.state.step_id)  # type: ignore[arg-type]
         # 如果step没有任何出边，直接跳到end

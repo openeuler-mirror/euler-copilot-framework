@@ -36,6 +36,7 @@ from apps.routers import (
     record,
     service,
     user,
+    parameter
 )
 from apps.scheduler.pool.pool import Pool
 
@@ -66,6 +67,7 @@ app.include_router(llm.router)
 app.include_router(mcp_service.router)
 app.include_router(flow.router)
 app.include_router(user.router)
+app.include_router(parameter.router)
 
 # logger配置
 LOGGER_FORMAT = "%(funcName)s() - %(message)s"
