@@ -385,22 +385,43 @@ class PredecessorCacheService:
     
     @staticmethod
     def _find_predecessor_nodes(flow_item, current_step_id: str) -> List:
-        """在工作流中查找前置节点"""
+        """在工作流中查找所有前置节点（使用BFS算法直到start节点）"""
         try:
+            from collections import deque
+            
             predecessor_nodes = []
+            visited = set()  # 避免重复访问节点
+            queue = deque([current_step_id])  # BFS队列
+            visited.add(current_step_id)
             
-            # 遍历边，找到指向当前节点的边
+            # 构建边的反向映射，便于快速查找前置节点
+            reverse_edges = {}  # target_node -> [source_node1, source_node2, ...]
             for edge in flow_item.edges:
-                if edge.target_node == current_step_id:
-                    # 找到前置节点
-                    source_node = next(
-                        (node for node in flow_item.nodes if node.step_id == edge.source_node),
-                        None
-                    )
-                    if source_node:
-                        predecessor_nodes.append(source_node)
+                if edge.target_node not in reverse_edges:
+                    reverse_edges[edge.target_node] = []
+                reverse_edges[edge.target_node].append(edge.source_node)
             
-            logger.debug(f"为节点 {current_step_id} 找到 {len(predecessor_nodes)} 个前置节点")
+            # 构建节点ID到节点对象的映射
+            node_map = {node.step_id: node for node in flow_item.nodes}
+            
+            # BFS遍历找到所有前置节点
+            while queue:
+                current_node_id = queue.popleft()
+                
+                # 获取当前节点的直接前置节点
+                if current_node_id in reverse_edges:
+                    for source_node_id in reverse_edges[current_node_id]:
+                        if source_node_id not in visited:
+                            visited.add(source_node_id)
+                            queue.append(source_node_id)
+                            
+                            # 将前置节点添加到结果中（排除当前节点本身）
+                            if source_node_id != current_step_id:
+                                source_node = node_map.get(source_node_id)
+                                if source_node:
+                                    predecessor_nodes.append(source_node)
+            
+            logger.debug(f"为节点 {current_step_id} 找到 {len(predecessor_nodes)} 个前置节点: {[node.step_id for node in predecessor_nodes]}")
             return predecessor_nodes
             
         except Exception as e:
@@ -486,3 +507,36 @@ class PredecessorCacheService:
         except Exception as e:
             logger.error(f"创建节点输出变量失败: {e}")
             return [] 
+
+    @staticmethod
+    async def clear_all_predecessor_cache():
+        """清空所有前置节点缓存（项目启动时使用）"""
+        try:
+            if not redis_cache.is_connected():
+                logger.warning("Redis未连接，跳过清空缓存")
+                return
+                
+            logger.info("开始清空所有前置节点缓存...")
+            
+            # 查找所有前置节点缓存相关的key
+            cache_patterns = [
+                "predecessor_vars:*",  # 缓存的变量数据
+                "parsing_status:*",  # 解析状态
+                "flow_hash:*"  # Flow哈希值
+            ]
+            
+            total_deleted = 0
+            for pattern in cache_patterns:
+                try:
+                    keys = await redis_cache._redis.keys(pattern)
+                    if keys:
+                        await redis_cache._redis.delete(*keys)
+                        deleted_count = len(keys)
+                        total_deleted += deleted_count
+                except Exception as e:
+                    logger.error(f"清空缓存模式 {pattern} 失败: {e}")
+            
+            logger.info(f"前置节点缓存清空完成，共删除 {total_deleted} 个缓存key")
+            
+        except Exception as e:
+            logger.error(f"清空所有前置节点缓存失败: {e}") 

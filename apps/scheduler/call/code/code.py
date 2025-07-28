@@ -57,13 +57,30 @@ class Code(CoreCall, input_model=CodeInput, output_model=CodeOutput):
             "permissions": ["execute"]
         }
 
-        # 处理输入参数 - 使用基类的变量解析功能
+        # 处理输入参数 - 直接从input_parameters读取
         input_arg = {}
+        
+        logger.info(f"[Code] 开始处理输入参数")
+        logger.info(f"[Code] self.input_parameters: {self.input_parameters}")
+        logger.info(f"[Code] self.output_parameters: {self.output_parameters}")
+        
         if self.input_parameters:
+            logger.info(f"[Code] 开始解析 {len(self.input_parameters)} 个输入参数")
             # 解析每个输入参数
             for param_name, param_config in self.input_parameters.items():
-                resolved_value = await self._resolve_variables_in_config(param_config, call_vars)
-                input_arg[param_name] = resolved_value
+                logger.info(f"[Code] 正在解析参数: {param_name}, 配置: {param_config}")
+                try:
+                    resolved_value = await self._resolve_variables_in_config(param_config, call_vars)
+                    input_arg[param_name] = resolved_value
+                    logger.info(f"[Code] 参数 {param_name} 解析成功: {resolved_value}")
+                except Exception as e:
+                    logger.error(f"[Code] 参数 {param_name} 解析失败: {e}")
+                    # 使用原始配置作为降级
+                    input_arg[param_name] = param_config
+        else:
+            logger.warning("[Code] input_parameters 为空或未配置")
+
+        logger.info(f"[Code] 最终的 input_arg: {input_arg}")
 
         return CodeInput(
             code=self.code,

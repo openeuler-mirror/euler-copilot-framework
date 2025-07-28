@@ -1,10 +1,10 @@
-"""变量解析与工作流调度器集成"""
+"""变量系统与外部组件的集成接口"""
 
 import logging
 from typing import Any, Dict, List, Optional, Tuple, Union
 
-from apps.scheduler.variable.parser import VariableParser
 from apps.scheduler.variable.pool_manager import get_pool_manager
+from apps.scheduler.variable.parser import VariableParser
 from apps.scheduler.variable.type import VariableScope
 
 logger = logging.getLogger(__name__)
@@ -202,163 +202,6 @@ class VariableIntegration:
             logger.warning(f"解析模板字符串失败: {e}")
             # 如果解析失败，返回原始模板
             return template
-    
-    @staticmethod
-    async def add_conversation_variable(name: str,
-                                      value: Any,
-                                      conversation_id: str,
-                                      var_type_str: str = "string") -> bool:
-        """添加对话级变量
-        
-        Args:
-            name: 变量名
-            value: 变量值
-            conversation_id: 对话ID（在内部作为flow_id使用）
-            var_type_str: 变量类型字符串
-            
-        Returns:
-            bool: 是否添加成功
-        """
-        try:
-            from apps.scheduler.variable.type import VariableType
-            
-            # 转换变量类型
-            var_type = VariableType(var_type_str)
-            
-            pool_manager = await get_pool_manager()
-            # 获取对话变量池（如果不存在会抛出异常）
-            conversation_pool = await pool_manager.get_conversation_pool(conversation_id)
-            if not conversation_pool:
-                logger.error(f"对话变量池不存在: {conversation_id}")
-                return False
-            
-            await conversation_pool.add_variable(
-                name=name,
-                var_type=var_type,
-                value=value,
-                description=f"对话变量: {name}"
-            )
-            
-            logger.debug(f"已添加对话变量: {name} = {value}")
-            return True
-        except Exception as e:
-            logger.error(f"添加对话变量失败: {e}")
-            return False
-    
-    @staticmethod
-    async def update_conversation_variable(name: str,
-                                         value: Any,
-                                         conversation_id: str) -> bool:
-        """更新对话级变量
-        
-        Args:
-            name: 变量名
-            value: 新值
-            conversation_id: 对话ID
-            
-        Returns:
-            bool: 是否更新成功
-        """
-        try:
-            pool_manager = await get_pool_manager()
-            # 获取对话变量池
-            conversation_pool = await pool_manager.get_conversation_pool(conversation_id)
-            if not conversation_pool:
-                logger.error(f"对话变量池不存在: {conversation_id}")
-                return False
-            
-            await conversation_pool.update_variable(
-                name=name,
-                value=value
-            )
-            
-            logger.debug(f"已更新对话变量: {name} = {value}")
-            return True
-        except Exception as e:
-            logger.error(f"更新对话变量失败: {e}")
-            return False
-    
-    @staticmethod
-    async def extract_output_variables(output_data: Dict[str, Any],
-                                     conversation_id: str,
-                                     step_name: str) -> None:
-        """从步骤输出中提取变量并设置为对话级变量
-        
-        Args:
-            output_data: 步骤输出数据
-            conversation_id: 对话ID
-            step_name: 步骤名称
-        """
-        try:
-            # 将整个输出作为对象变量存储
-            await VariableIntegration.add_conversation_variable(
-                name=f"step_{step_name}_output",
-                value=output_data,
-                conversation_id=conversation_id,
-                var_type_str="object"
-            )
-            
-            # 如果输出中有特定的变量定义，也可以单独提取
-            if isinstance(output_data, dict):
-                for key, value in output_data.items():
-                    if key.startswith("var_"):
-                        # 以 var_ 开头的字段被视为变量定义
-                        var_name = key[4:]  # 移除 var_ 前缀
-                        await VariableIntegration.add_conversation_variable(
-                            name=var_name,
-                            value=value,
-                            conversation_id=conversation_id,
-                            var_type_str="string"
-                        )
-            
-        except Exception as e:
-            logger.error(f"提取输出变量失败: {e}")
-    
-    @staticmethod
-    async def clear_conversation_context(conversation_id: str) -> None:
-        """清理对话上下文中的变量
-        
-        Args:
-            conversation_id: 对话ID
-        """
-        try:
-            pool_manager = await get_pool_manager()
-            # 移除对话变量池
-            success = await pool_manager.remove_conversation_pool(conversation_id)
-            if success:
-                logger.info(f"已清理对话 {conversation_id} 的变量")
-            else:
-                logger.warning(f"对话变量池不存在: {conversation_id}")
-        except Exception as e:
-            logger.error(f"清理对话变量失败: {e}")
-    
-    @staticmethod
-    async def validate_variable_references(template: str,
-                                         user_sub: str,
-                                         flow_id: Optional[str] = None,
-                                         conversation_id: Optional[str] = None) -> tuple[bool, list[str]]:
-        """验证模板中的变量引用是否有效
-        
-        Args:
-            template: 模板字符串
-            user_sub: 用户ID
-            flow_id: 流程ID
-            conversation_id: 对话ID
-            
-        Returns:
-            tuple[bool, list[str]]: (是否全部有效, 无效的变量引用列表)
-        """
-        try:
-            parser = VariableParser(
-                user_sub=user_sub,
-                flow_id=flow_id,
-                conversation_id=conversation_id
-            )
-            
-            return await parser.validate_template(template)
-        except Exception as e:
-            logger.error(f"验证变量引用失败: {e}")
-            return False, [str(e)]
 
 
 # 注意：原本的 monkey_patch_scheduler 和相关扩展类已被移除

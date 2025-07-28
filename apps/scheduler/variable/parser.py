@@ -90,7 +90,7 @@ class VariableParser:
         pool_manager = await self._get_pool_manager()
         
         # 解析作用域和变量名
-        parts = reference.split(".", 1)
+        parts = reference.strip().split(".", 1)
         if len(parts) != 2:
             raise ValueError(f"无效的变量引用格式: {reference}")
         

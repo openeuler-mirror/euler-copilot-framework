@@ -7,6 +7,7 @@ import uuid
 from collections.abc import AsyncGenerator
 from datetime import UTC, datetime
 from typing import Any
+import json
 
 from pydantic import ConfigDict
 
@@ -119,7 +120,7 @@ class StepExecutor(BaseExecutor):
             params.update(self.step.step.params)
 
         # 对于需要扁平化处理的Call类型，将input_parameters中的内容提取到顶级
-        if self._call_id in ["Choice", "Code", "DirectReply"] and "input_parameters" in params:
+        if self._call_id in ["Choice", "DirectReply"] and "input_parameters" in params:
             # 提取input_parameters中的所有字段到顶级
             input_params = params.get("input_parameters", {})
             if isinstance(input_params, dict):
@@ -219,45 +220,54 @@ class StepExecutor(BaseExecutor):
 
 
     async def _save_output_parameters_to_variables(self, output_data: str | dict[str, Any]) -> None:
-        """保存节点输出参数到变量池"""
+        """保存输出参数到变量池，并进行类型验证"""
         try:
-            # 检查是否有output_parameters配置
+            # 获取当前步骤的output_parameters配置
             output_parameters = None
             if self.step.step.params and isinstance(self.step.step.params, dict):
                 output_parameters = self.step.step.params.get("output_parameters", {})
+            elif hasattr(self.step, 'output_parameters'):
+                output_parameters = self.step.output_parameters
             
             if not output_parameters or not isinstance(output_parameters, dict):
+                logger.debug(f"[StepExecutor] 步骤 {self.step.step_id} 没有配置output_parameters")
                 return
 
-            # 确保output_data是字典格式
+            # 解析输出数据
             if isinstance(output_data, str):
-                # 如果是字符串，包装成字典
-                data_dict = {"text": output_data}
+                try:
+                    data_dict = json.loads(output_data)
+                except json.JSONDecodeError:
+                    logger.warning(f"[StepExecutor] 无法解析输出数据为JSON: {output_data}")
+                    data_dict = {"raw_output": output_data}
             else:
-                data_dict = output_data if isinstance(output_data, dict) else {}
+                data_dict = output_data
 
-            # 确定变量名前缀（根据配置决定是否使用直接格式）
-            use_direct_format = should_use_direct_conversation_format(
-                call_id=self._call_id,
-                step_name=self.step.step.name,
-                step_id=self.step.step_id
-            )
-            
-            if use_direct_format:
-                # 配置允许的节点类型保持原有格式：conversation.key
-                var_prefix = ""
-            else:
-                # 其他节点使用格式：conversation.node_id.key
-                var_prefix = f"{self.step.step_id}."
+            # 构造变量名前缀
+            var_prefix = f"{self.step.step_id}."
 
-            # 保存每个output_parameter到变量池
+            # 保存每个output_parameter到变量池，并进行类型验证
             saved_count = 0
+            failed_params = []
+            
             for param_name, param_config in output_parameters.items():
                 try:
                     # 获取参数值
                     param_value = self._extract_value_from_output_data(param_name, data_dict, param_config)
                     
                     if param_value is not None:
+                        # 获取期望的类型
+                        expected_type = param_config.get("type", "string")
+                        
+                        # 进行类型验证
+                        if not self._validate_output_value_type(param_value, expected_type):
+                            error_msg = (f"输出参数 '{param_name}' 类型不匹配。"
+                                       f"期望: {expected_type}, "
+                                       f"实际: {type(param_value).__name__}({param_value})")
+                            logger.error(f"[StepExecutor] {error_msg}")
+                            failed_params.append(f"{param_name}: {error_msg}")
+                            continue
+                        
                         # 构造变量名
                         var_name = f"{var_prefix}{param_name}"
                         
@@ -265,7 +275,7 @@ class StepExecutor(BaseExecutor):
                         success = await VariableIntegration.save_conversation_variable(
                             var_name=var_name,
                             value=param_value,
-                            var_type=param_config.get("type", "string"),
+                            var_type=expected_type,
                             description=param_config.get("description", ""),
                             user_sub=self.task.ids.user_sub,
                             flow_id=self.task.state.flow_id, # type: ignore[arg-type]
@@ -276,16 +286,43 @@ class StepExecutor(BaseExecutor):
                             saved_count += 1
                             logger.debug(f"[StepExecutor] 已保存输出参数变量: conversation.{var_name} = {param_value}")
                         else:
-                            logger.warning(f"[StepExecutor] 保存输出参数变量失败: {var_name}")
+                            error_msg = f"保存输出参数变量失败: {var_name}"
+                            logger.warning(f"[StepExecutor] {error_msg}")
+                            failed_params.append(f"{param_name}: {error_msg}")
                             
                 except Exception as e:
+                    error_msg = f"处理输出参数失败: {str(e)}"
                     logger.warning(f"[StepExecutor] 保存输出参数 {param_name} 失败: {e}")
+                    failed_params.append(f"{param_name}: {error_msg}")
 
+            # 如果有失败的参数，将步骤状态设置为失败
+            if failed_params:
+                from apps.schemas.enum_var import StepStatus
+                self.task.state.status = StepStatus.FAILED # type: ignore[assignment]
+                
+                failure_msg = f"输出参数类型验证失败:\n" + "\n".join(failed_params)
+                logger.error(f"[StepExecutor] 步骤 {self.step.step_id} 执行失败: {failure_msg}")
+                
+                # 保存错误信息到任务状态
+                if not hasattr(self.task.state, 'error_info') or self.task.state.error_info is None:
+                    self.task.state.error_info = {}
+                self.task.state.error_info['output_validation_errors'] = failed_params # type: ignore[assignment]
+                
+                # 抛出异常以停止工作流执行
+                raise ValueError(f"步骤输出参数类型验证失败: {failure_msg}")
+            
             if saved_count > 0:
                 logger.info(f"[StepExecutor] 已保存 {saved_count} 个输出参数到变量池")
 
         except Exception as e:
+            # 如果是我们主动抛出的验证错误，重新抛出
+            if "类型验证失败" in str(e):
+                raise
             logger.error(f"[StepExecutor] 保存输出参数到变量池失败: {e}")
+            # 对于其他意外错误，也将步骤设置为失败
+            from apps.schemas.enum_var import StepStatus
+            self.task.state.status = StepStatus.FAILED # type: ignore[assignment]
+            raise
 
     def _extract_value_from_output_data(self, param_name: str, output_data: dict[str, Any], param_config: dict) -> Any:
         """从输出数据中提取参数值"""
@@ -315,6 +352,28 @@ class StepExecutor(BaseExecutor):
             return output_data
         
         return None
+
+    def _validate_output_value_type(self, value: Any, expected_type: str) -> bool:
+        """验证输出值的类型是否符合期望"""
+        try:
+            if expected_type == "string":
+                return isinstance(value, str)
+            elif expected_type in ["number", "integer"]:
+                return isinstance(value, (int, float))
+            elif expected_type == "boolean":
+                return isinstance(value, bool)
+            elif expected_type == "array":
+                return isinstance(value, list)
+            elif expected_type == "object":
+                return isinstance(value, dict)
+            elif expected_type == "any":
+                return True  # 任何类型都匹配
+            else:
+                # 对于未知类型，默认接受字符串
+                logger.warning(f"[StepExecutor] 未知的期望类型: {expected_type}，默认验证为字符串")
+                return isinstance(value, str)
+        except Exception:
+            return False
 
 
     async def run(self) -> None:
