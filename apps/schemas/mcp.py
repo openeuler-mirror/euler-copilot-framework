@@ -111,6 +111,21 @@ class GoalEvaluationResult(BaseModel):
     reason: str = Field(description="评估原因")
 
 
+class Risk(Enum, str):
+    """MCP工具风险类型"""
+
+    LOW = "low"
+    MEDIUM = "medium"
+    HIGH = "high"
+
+
+class ToolRisk(BaseModel):
+    """MCP工具风险评估结果"""
+
+    risk: Risk = Field(description="风险类型", default=Risk.LOW)
+    reason: str = Field(description="风险原因", default="")
+
+
 class MCPSelectResult(BaseModel):
     """MCP选择结果"""
 

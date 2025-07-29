@@ -121,22 +121,12 @@ GENERATE_FLOW_NAME = dedent(r"""
     2. 流程名称应该包含关键的操作或步骤，例如“扫描”、“分析”、“调优”等。
     3. 流程名称应该避免使用过于复杂或专业的术语，以便用户能够理解。
     4. 流程名称应该尽量简短，小于20个字或者单词。
-    
-    - 必须按照如下格式生成流程名称，不要输出任何额外数据：
-    ```json
-    {
-        "flow_name": "生成的流程名称"
-    }
-    ```
+    5. 只输出流程名称，不要输出其他内容。
     # 样例
     ## 目标
     我需要扫描当前mysql数据库，分析性能瓶颈,并调优
     ## 输出
-    ```json
-    {
-        "flow_name": "MySQL性能分析与调优"
-    }
-    ```
+    扫描MySQL数据库并分析性能瓶颈，进行调优
     # 现在开始生成流程名称：
     # 目标
     {{ goal }}
@@ -398,7 +388,7 @@ RISK_EVALUATE = dedent(r"""
     你的任务是根据当前工具的名称、描述和入参以及附加信息，判断当前工具执行的风险并输出提示。
     ```json
     {
-        "risk": "高/中/低",
+        "risk": "low/medium/high",
         "message": "提示信息"
     }
     ```
@@ -429,12 +419,13 @@ RISK_EVALUATE = dedent(r"""
         "message": "当前工具将连接到MySQL数据库并分析性能，可能会对数据库性能产生一定影响。请确保在非生产环境中执行此操作。"
     }
     ```
-    # 工具名称
-    {{ tool_name }}
-    # 工具描述
-    {{ tool_description }}
+    # 工具
+    <tool>
+        <name>{{ tool.name }}</name>
+        <description>{{ tool.description }}</description>
+    </tool>
     # 工具入参
-    {{ tool_input }}
+    {{ input_param }}
     # 附加信息
     {{ additional_info }}
     # 输出
@@ -511,14 +502,15 @@ GET_MISSING_PARAMS = dedent(r"""
         "password": null
     }
     ```
-    # 工具名称
-    {{ tool_name }}
-    # 工具描述
-    {{ tool_description }}
+    # 工具
+    <tool>
+        <name>{{ tool.name }}</name>
+        <description>{{ tool.description }}</description>
+    </tool>
     # 工具入参
-    {{ tool_input }}
-    # 工具入参schema
-    {{ tool_input_schema }}
+    {{ input_param }}
+    # 工具入参schema（部分字段允许为null）
+    {{ input_schema }}
     # 运行报错
     {{ error_message }}
     # 输出

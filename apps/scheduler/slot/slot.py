@@ -1,6 +1,7 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2023-2025. All rights reserved.
 """参数槽位管理"""
 
+import copy
 import json
 import logging
 import traceback
@@ -475,3 +476,54 @@ class Slot:
             return schema_template
 
         return {}
+
+    def add_null_to_basic_types(self) -> dict[str, Any]:
+        """
+        递归地为 JSON Schema 中的基础类型（bool、number等）添加 null 选项
+        """
+        def add_null_to_basic_types(schema: dict[str, Any]) -> dict[str, Any]:
+            """
+                递归地为 JSON Schema 中的基础类型（bool、number等）添加 null 选项
+
+                参数:
+                schema (dict): 原始 JSON Schema
+
+                返回:
+                dict: 修改后的 JSON Schema
+            """
+            # 如果不是字典类型（schema），直接返回
+            if not isinstance(schema, dict):
+                return schema
+
+            # 处理当前节点的 type 字段
+            if 'type' in schema:
+                # 处理单一类型字符串
+                if isinstance(schema['type'], str):
+                    if schema['type'] in ['boolean', 'number', 'string', 'integer']:
+                        schema['type'] = [schema['type'], 'null']
+
+                # 处理类型数组
+                elif isinstance(schema['type'], list):
+                    for i, t in enumerate(schema['type']):
+                        if isinstance(t, str) and t in ['boolean', 'number', 'string', 'integer']:
+                            if 'null' not in schema['type']:
+                                schema['type'].append('null')
+                            break
+
+            # 递归处理 properties 字段（对象类型）
+            if 'properties' in schema:
+                for prop, prop_schema in schema['properties'].items():
+                    schema['properties'][prop] = add_null_to_basic_types(prop_schema)
+
+            # 递归处理 items 字段（数组类型）
+            if 'items' in schema:
+                schema['items'] = add_null_to_basic_types(schema['items'])
+
+            # 递归处理 anyOf, oneOf, allOf 字段
+            for keyword in ['anyOf', 'oneOf', 'allOf']:
+                if keyword in schema:
+                    schema[keyword] = [add_null_to_basic_types(sub_schema) for sub_schema in schema[keyword]]
+
+            return schema
+        schema_copy = copy.deepcopy(self._schema)
+        return add_null_to_basic_types(schema_copy)
