@@ -4,15 +4,15 @@ import uuid
 
 from enum import Enum
 
-from pydantic import BaseModel, Field
+from pydantic import Field
 
 from apps.schemas.parameters import (
-    Type,
     NumberOperate,
     StringOperate,
     ListOperate,
     BoolOperate,
     DictOperate,
+    ValueType,
 )
 from apps.scheduler.call.core import DataBase
 
@@ -27,8 +27,7 @@ class Logic(str, Enum):
 class Value(DataBase):
     """值的结构"""
 
-    step_id: str | None = Field(description="步骤id", default=None)
-    type: Type | None = Field(description="值的类型", default=None)
+    type: ValueType | None = Field(description="值的类型", default=None)
     value: str | float | int | bool | list | dict | None = Field(description="值", default=None)
 
 

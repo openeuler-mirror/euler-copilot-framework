@@ -16,10 +16,11 @@ from apps.scheduler.call.choice.schema import (
     ChoiceInput,
     ChoiceOutput,
     Logic,
+    Value,
 )
-from apps.schemas.parameters import Type
+from apps.schemas.parameters import ValueType
 from apps.scheduler.call.core import CoreCall
-from apps.schemas.enum_var import CallOutputType
+from apps.schemas.enum_var import CallOutputType, CallType
 from apps.schemas.scheduler import (
     CallError,
     CallInfo,
@@ -40,90 +41,141 @@ class Choice(CoreCall, input_model=ChoiceInput, output_model=ChoiceOutput):
     @classmethod
     def info(cls) -> CallInfo:
         """返回Call的名称和描述"""
-        return CallInfo(name="选择器", description="使用大模型或使用程序做出判断")
+        return CallInfo(
+            name="条件分支", 
+            type=CallType.LOGIC,
+            description="使用大模型或使用程序做出条件判断，决定后续分支"
+        )
 
-    async def _prepare_message(self, call_vars: CallVars) -> list[dict[str, Any]]:
-        """替换choices中的系统变量"""
+    def _validate_branch_logic(self, choice: ChoiceBranch) -> bool:
+        """验证分支的逻辑运算符是否有效
+        
+        Args:
+            choice: 需要验证的分支
+            
+        Returns:
+            bool: 逻辑运算符是否有效
+        """
+        if choice.logic not in [Logic.AND, Logic.OR]:
+            logger.warning(f"[Choice] 分支 {choice.branch_id} 条件处理失败: 无效的逻辑运算符: {choice.logic}")
+            return False
+        return True
+
+    async def _process_condition_value(self, value: Value, call_vars: CallVars, 
+                                       branch_id: str, value_position: str) -> tuple[bool, str]:
+        """处理条件值（左值或右值）
+        
+        Args:
+            value: 需要处理的值对象
+            call_vars: Call变量
+            branch_id: 分支ID，用于日志记录
+            value_position: 值的位置描述（"左值"或"右值"）
+            
+        Returns:
+            tuple[bool, str]: (是否成功, 错误消息)
+        """
+        # 处理reference类型
+        if value.type == ValueType.REFERENCE:
+            try:
+                value.value = await self._resolve_variables_in_config(value.value, call_vars)
+            except Exception as e:
+                return False, f"{value_position}引用解析失败: {e}"
+            
+            # 检查解析后的值类型
+            if value.value is None:
+                return False, f"{value_position}引用解析后为空"
+        
+        # 验证值类型
+        if not ConditionHandler.check_value_type(value.value, value.type):
+            return False, f"{value_position}类型不匹配: {value.value} 应为 {value.type.value}"
+            
+        return True, ""
+
+    async def _process_condition(self, condition: Condition, call_vars: CallVars, 
+                                 branch_id: str) -> tuple[bool, str]:
+        """处理单个条件
+        
+        Args:
+            condition: 需要处理的条件
+            call_vars: Call变量
+            branch_id: 分支ID，用于日志记录
+            
+        Returns:
+            tuple[bool, str]: (是否成功, 错误消息)
+        """
+        # 处理左值
+        success, error_msg = await self._process_condition_value(
+            condition.left, call_vars, branch_id, "左值")
+        if not success:
+            return False, error_msg
+            
+        # 处理右值
+        success, error_msg = await self._process_condition_value(
+            condition.right, call_vars, branch_id, "右值")
+        if not success:
+            return False, error_msg
+                
+        return True, ""
+
+    async def _process_branch(self, choice: ChoiceBranch, call_vars: CallVars) -> tuple[bool, list[str]]:
+        """处理单个分支
+        
+        Args:
+            choice: 需要处理的分支
+            call_vars: Call变量
+            
+        Returns:
+            tuple[bool, list[str]]: (是否成功, 错误消息列表)
+        """
+        # 验证逻辑运算符
+        if not self._validate_branch_logic(choice):
+            return False, ["无效的逻辑运算符"]
+            
+        valid_conditions = []
+        error_messages = []
+        
+        # 处理每个条件
+        for condition_original in choice.conditions:
+            condition = copy.deepcopy(condition_original)
+            success, error_msg = await self._process_condition(condition, call_vars, choice.branch_id)
+            
+            if success:
+                valid_conditions.append(condition)
+            else:
+                error_messages.append(error_msg)
+                logger.warning(f"[Choice] 分支 {choice.branch_id} 条件处理失败: {error_msg}")
+        
+        # 如果没有有效条件，返回失败
+        if not valid_conditions:
+            error_messages.append("分支没有有效条件")
+            return False, error_messages
+            
+        # 更新有效条件
+        choice.conditions = valid_conditions
+        return True, []
+
+    async def _prepare_message(self, call_vars: CallVars) -> list[ChoiceBranch]:
+        """替换choices中的系统变量
+        
+        Args:
+            call_vars: Call变量
+            
+        Returns:
+            list[ChoiceBranch]: 处理后的有效分支列表
+        """
         valid_choices = []
 
         for choice in self.choices:
             try:
-                # 验证逻辑运算符
-                if choice.logic not in [Logic.AND, Logic.OR]:
-                    msg = f"无效的逻辑运算符: {choice.logic}"
-                    logger.warning(f"[Choice] 分支 {choice.branch_id} 条件处理失败: {msg}")
-                    continue
-
-                valid_conditions = []
-                for i in range(len(choice.conditions)):
-                    condition = copy.deepcopy(choice.conditions[i])
-                    # 处理左值
-                    if condition.left.step_id is not None:
-                        condition.left.value = self._extract_history_variables(
-                            condition.left.step_id+'/'+condition.left.value, call_vars.history)
-                        # 检查历史变量是否成功提取
-                        if condition.left.value is None:
-                            msg = f"步骤 {condition.left.step_id} 的历史变量不存在"
-                            logger.warning(f"[Choice] 分支 {choice.branch_id} 条件处理失败: {msg}")
-                            continue
-                        if not ConditionHandler.check_value_type(
-                                condition.left.value, condition.left.type):
-                            msg = f"左值类型不匹配: {condition.left.value} 应为 {condition.left.type.value}"
-                            logger.warning(f"[Choice] 分支 {choice.branch_id} 条件处理失败: {msg}")
-                            continue
-                    else:
-                        msg = "左侧变量缺少step_id"
-                        logger.warning(f"[Choice] 分支 {choice.branch_id} 条件处理失败: {msg}")
-                        continue
-                    # 处理右值
-                    if condition.right.step_id is not None:
-                        condition.right.value = self._extract_history_variables(
-                            condition.right.step_id+'/'+condition.right.value, call_vars.history)
-                        # 检查历史变量是否成功提取
-                        if condition.right.value is None:
-                            msg = f"步骤 {condition.right.step_id} 的历史变量不存在"
-                            logger.warning(f"[Choice] 分支 {choice.branch_id} 条件处理失败: {msg}")
-                            continue
-                        if not ConditionHandler.check_value_type(
-                                condition.right.value, condition.right.type):
-                            msg = f"右值类型不匹配: {condition.right.value} 应为 {condition.right.type.value}"
-                            logger.warning(f"[Choice] 分支 {choice.branch_id} 条件处理失败: {msg}")
-                            continue
-                    else:
-                        # 如果右值没有step_id，尝试从call_vars中获取
-                        right_value_type = await ConditionHandler.get_value_type_from_operate(
-                            condition.operate)
-                        if right_value_type is None:
-                            msg = f"不支持的运算符: {condition.operate}"
-                            logger.warning(f"[Choice] 分支 {choice.branch_id} 条件处理失败: {msg}")
-                            continue
-                        if condition.right.type != right_value_type:
-                            msg = f"右值类型不匹配: {condition.right.value} 应为 {right_value_type.value}"
-                            logger.warning(f"[Choice] 分支 {choice.branch_id} 条件处理失败: {msg}")
-                            continue
-                        if right_value_type == Type.STRING:
-                            condition.right.value = str(condition.right.value)
-                        else:
-                            condition.right.value = ast.literal_eval(condition.right.value)
-                        if not ConditionHandler.check_value_type(
-                                condition.right.value, condition.right.type):
-                            msg = f"右值类型不匹配: {condition.right.value} 应为 {condition.right.type.value}"
-                            logger.warning(f"[Choice] 分支 {choice.branch_id} 条件处理失败: {msg}")
-                            continue
-                    valid_conditions.append(condition)
-
-                # 如果所有条件都无效，抛出异常
-                if not valid_conditions:
-                    msg = "分支没有有效条件"
-                    logger.warning(f"[Choice] 分支 {choice.branch_id} 条件处理失败: {msg}")
-                    continue
-
-                # 更新有效条件
-                choice.conditions = valid_conditions
-                valid_choices.append(choice)
-
-            except ValueError as e:
-                logger.warning("分支 %s 处理失败: %s，已跳过", choice.branch_id, str(e))
+                success, error_messages = await self._process_branch(choice, call_vars)
+                
+                if success:
+                    valid_choices.append(choice)
+                else:
+                    logger.warning(f"[Choice] 分支 {choice.branch_id} 处理失败: {'; '.join(error_messages)}")
+                    
+            except Exception as e:
+                logger.warning(f"[Choice] 分支 {choice.branch_id} 处理失败: {e}，已跳过")
                 continue
 
         return valid_choices
