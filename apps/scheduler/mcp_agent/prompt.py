@@ -62,6 +62,53 @@ MCP_SELECT = dedent(r"""
     ### 请一步一步思考：
 
 """)
+EVALUATE_GAOL = dedent(r"""
+    你是一个计划评估器。
+    请根据用户的目标和当前的工具集合以及一些附加信息，判断基于当前的工具集合，是否能够完成用户的目标。
+    如果能够完成，请返回`true`，否则返回`false`。
+    推理过程必须清晰明了，能够让人理解你的判断依据。
+    必须按照以下格式回答：
+    ```json
+    {
+        "can_complete": true/false,
+        "resoning": "你的推理过程"
+    }
+    ```
+
+    # 样例
+    ## 目标
+    我需要扫描当前mysql数据库，分析性能瓶颈,并调优
+
+    ## 工具集合
+    你可以访问并使用一些工具，这些工具将在<tools></tools> XML标签中给出。
+    <tools>
+        - <id>mysql_analyzer</id><description>分析MySQL数据库性能</description>
+        - <id>performance_tuner</id><description>调优数据库性能</description>
+        - <id>Final</id><description>结束步骤，当执行到这一步时，表示计划执行结束，所得到的结果将作为最终结果。</description>
+    </tools>
+
+    ## 附加信息
+    1. 当前MySQL数据库的版本是8.0.26
+    2. 当前MySQL数据库的配置文件路径是/etc/my.cnf
+
+    ##
+    ```json
+    {
+        "can_complete": true,
+        "resoning": "当前的工具集合中包含mysql_analyzer和performance_tuner，能够完成对MySQL数据库的性能分析和调优，因此可以完成用户的目标。"
+    }
+    ```
+
+    # 目标
+    {{ goal }}
+
+    # 工具集合
+    {{ tools }}
+
+    # 附加信息
+    {{ additional_info }}
+
+""")
 CREATE_PLAN = dedent(r"""
     你是一个计划生成器。
     请分析用户的目标，并生成一个计划。你后续将根据这个计划，一步一步地完成用户的目标。
@@ -163,43 +210,31 @@ CREATE_PLAN = dedent(r"""
 
     # 计划
 """)
-EVALUATE_PLAN = dedent(r"""
-    你是一个计划评估器。
-    请根据给定的计划，和当前计划执行的实际情况，分析当前计划是否合理和完整，并生成改进后的计划。
+RECREATE_PLAN = dedent(r"""
+    你是一个计划重建器。
+    请根据用户的目标、当前计划和运行报错，重新生成一个计划。
 
     # 一个好的计划应该：
 
     1. 能够成功完成用户的目标
     2. 计划中的每一个步骤必须且只能使用一个工具。
     3. 计划中的步骤必须具有清晰和逻辑的步骤，没有冗余或不必要的步骤。
-    4. 计划中的最后一步必须是Final工具，以确保计划执行结束。
+    4. 你的计划必须避免之前的错误，并且能够成功执行。
+    5. 计划中的最后一步必须是Final工具，以确保计划执行结束。
 
-    # 你此前的计划是：
+    # 生成计划时的注意事项：
 
-    {{ plan }}
-
-    # 这个计划的执行情况是：
-
-    计划的执行情况将放置在<status></status> XML标签中。
-
-    <status>
-    {{ memory }}
-    </status>
-
-    # 进行评估时的注意事项：
-
-    - 请一步一步思考，解析用户的目标，并指导你接下来的生成。思考过程应放置在<thinking></thinking> XML标签中。
-    - 评估结果分为两个部分：
-        - 计划评估的结论
-        - 改进后的计划
-    - 请按照以下JSON格式输出评估结果：
+    - 每一条计划包含3个部分：
+        - 计划内容：描述单个计划步骤的大致内容
+        - 工具ID：必须从下文的工具列表中选择
+        - 工具指令：改写用户的目标，使其更符合工具的输入要求
+    - 必须按照如下格式生成计划，不要输出任何额外数据：
 
     ```json
     {
-        "evaluation": "评估结果",
         "plans": [
             {
-                "content": "改进后的计划内容",
+                "content": "计划内容",
                 "tool": "工具ID",
                 "instruction": "工具指令"
             }
@@ -207,34 +242,267 @@ EVALUATE_PLAN = dedent(r"""
     }
     ```
 
-    # 现在开始评估计划：
+    - 在生成计划之前，请一步一步思考，解析用户的目标，并指导你接下来的生成。\
+思考过程应放置在<thinking></thinking> XML标签中。
+    - 计划内容中，可以使用"Result[]"来引用之前计划步骤的结果。例如："Result[3]"表示引用第三条计划执行后的结果。
+    - 计划不得多于{{ max_num }}条，且每条计划内容应少于150字。
 
+    # 样例
+
+    ## 目标
+
+    请帮我扫描一下192.168.1.1的这台机器的端口，看看有哪些端口开放。
+    ## 工具
+    你可以访问并使用一些工具，这些工具将在<tools></tools> XML标签中给出。
+    <tools>
+        - <id>command_generator</id><description>生成命令行指令</description>
+        - <id>tool_selector</id><description>选择合适的工具</description>
+        - <id>command_executor</id><description>执行命令行指令</description>
+        - <id>Final</id><description>结束步骤，当执行到这一步时，表示计划执行结束，所得到的结果将作为最终结果。</description>
+    </tools>
+
+    ## 当前计划
+    ```json
+    {
+        "plans": [
+            {
+                "content": "生成端口扫描命令",
+                "tool": "command_generator",
+                "instruction": "生成端口扫描命令：扫描192.168.1.1的开放端口"
+            },
+            {
+                "content": "在执行Result[0]生成的命令",
+                "tool": "command_executor",
+                "instruction": "执行端口扫描命令"
+            },
+            {
+                "content": "任务执行完成，端口扫描结果为Result[2]",
+                "tool": "Final",
+                "instruction": ""
+            }
+        ]
+    }
+    ```
+    ## 运行报错
+    执行端口扫描命令时，出现了错误：`-bash: curl: command not found`。
+    ## 重新生成的计划
+
+    <thinking>
+    1. 这个目标需要使用网络扫描工具来完成,首先需要选择合适的网络扫描工具
+    2. 目标可以拆解为以下几个部分:
+        - 生成端口扫描命令
+        - 执行端口扫描命令
+    3.但是在执行端口扫描命令时，出现了错误：`-bash: curl: command not found`。
+    4.我将计划调整为：
+        - 需要先生成一个命令，查看当前机器支持哪些网络扫描工具
+        - 执行这个命令，查看当前机器支持哪些网络扫描工具
+        - 然后从中选择一个网络扫描工具
+        - 基于选择的网络扫描工具，生成端口扫描命令
+        - 执行端口扫描命令
+    </thinking>
+
+    ```json
+    {
+        "plans": [
+            {
+                "content": "需要生成一条命令查看当前机器支持哪些网络扫描工具",
+                "tool": "command_generator",
+                "instruction": "选择一个前机器支持哪些网络扫描工具"
+            },
+            {
+                "content": "执行Result[0]中生成的命令，查看当前机器支持哪些网络扫描工具",
+                "tool": "command_executor",
+                "instruction": "执行Result[0]中生成的命令"
+            },
+            {
+                "content": "从Result[1]中选择一个网络扫描工具，生成端口扫描命令",
+                "tool": "tool_selector",
+                "instruction": "选择一个网络扫描工具，生成端口扫描命令"
+            },
+            {
+                "content": "基于result[2]中选择的网络扫描工具，生成端口扫描命令",
+                "tool": "command_generator",
+                "instruction": "生成端口扫描命令：扫描192.168.1.1的开放端口"
+            },
+            {
+                "content": "在Result[0]的MCP Server上执行Result[3]生成的命令",
+                "tool": "command_executor",
+                "instruction": "执行端口扫描命令"
+            },
+            {
+                "content": "任务执行完成，端口扫描结果为Result[4]",
+                "tool": "Final",
+                "instruction": ""
+            }
+        ]
+    }
+    ```
+
+    # 现在开始重新生成计划：
+
+    # 目标
+
+    {{goal}}
+
+    # 工具
+
+    你可以访问并使用一些工具，这些工具将在<tools></tools> XML标签中给出。
+
+    <tools>
+        {% for tool in tools %}
+        - <id>{{ tool.id }}</id><description>{{tool.name}}；{{ tool.description }}</description>
+        {% endfor %}
+        - <id>Final</id><description>结束步骤，当执行到这一步时，\
+表示计划执行结束，所得到的结果将作为最终结果。</description>
+    </tools>
+
+    # 当前计划
+    {{ current_plan }}
+
+    # 运行报错
+    {{ error_message }}
+
+    # 重新生成的计划
 """)
+RISK_EVALUATE = dedent(r"""
+    你是一个工具执行计划评估器。
+    你的任务是根据当前工具的名称、描述和入参以及附加信息，判断当前工具执行的风险并输出提示。
+    ```json
+    {
+        "risk": "高/中/低",
+        "message": "提示信息"
+    }
+    ```
+    # 样例
+    ## 工具名称
+    mysql_analyzer
+    ## 工具描述
+    分析MySQL数据库性能
+    ## 工具入参
+    {
+        "host": "192.0.0.1",
+        "port": 3306,
+        "username": "root",
+        "password": "password"
+    }
+    ## 附加信息
+    1. 当前MySQL数据库的版本是8.0.26
+    2. 当前MySQL数据库的配置文件路径是/etc/my.cnf，并含有以下配置项
+    ```ini
+    [mysqld]
+    innodb_buffer_pool_size=1G
+    innodb_log_file_size=256M
+    ```
+    ## 输出
+    ```json
+    {
+        "risk": "中",
+        "message": "当前工具将连接到MySQL数据库并分析性能，可能会对数据库性能产生一定影响。请确保在非生产环境中执行此操作。"
+    }
+    ```
+    # 工具名称
+    {{ tool_name }}
+    # 工具描述
+    {{ tool_description }}
+    # 工具入参
+    {{ tool_input }}
+    # 附加信息
+    {{ additional_info }}
+    # 输出
+    """
+                       )
+
+# 获取缺失的参数的json结构体
+GET_MISSING_PARAMS = dedent(r"""
+    你是一个工具参数获取器。
+    你的任务是根据当前工具的名称、描述和入参和入参的schema以及运行报错，获取当前工具缺失的参数并输出提示。
+    ```json
+    {
+        "host": "请补充主机地址",
+        "port": "请补充端口号",
+        "username": "请补充用户名",
+        "password": "请补充密码"
+    }
+    ```
+    # 样例
+    ## 工具名称
+    mysql_analyzer
+    ## 工具描述
+    分析MySQL数据库性能
+    ## 工具入参
+    {
+        "host": "192.0.0.1",
+        "port": 3306,
+        "username": "root",
+        "password": "password"
+    }
+    ## 工具入参schema
+    {
+        "type": "object",
+        "properties": {
+            "host": {"type": "string", "description": "MySQL数据库的主机地址"},
+            "port": {
+                "anyOf": [
+                    {"type": "string"},
+                    {"type": "integer"},
+                ],
+                "description": "MySQL数据库的端口号（可以是数字或字符串）"
+            },
+            "username": {"type": "string", "description": "MySQL数据库的用户名"},
+            "password": {"type": "string", "description": "MySQL数据库的密码"}
+        },
+        "required": ["host", "port", "username", "password"]
+    }
+    ## 运行报错
+    执行端口扫描命令时，出现了错误：`password is not correct`。
+    ## 输出
+    ```json
+    {
+        "host": "192.0.0.1",
+        "port": 3306,
+        "username": "请补充用户名",
+        "password": "请补充密码"
+    }
+    ```
+    # 工具名称
+    {{ tool_name }}
+    # 工具描述
+    {{ tool_description }}
+    # 工具入参
+    {{ tool_input }}
+    # 工具入参schema
+    {{ tool_input_schema }}
+    # 运行报错
+    {{ error_message }}
+    # 输出
+    """
+                            )
 FINAL_ANSWER = dedent(r"""
     综合理解计划执行结果和背景信息，向用户报告目标的完成情况。
 
     # 用户目标
 
-    {{ goal }}
+    {{goal}}
 
     # 计划执行情况
 
     为了完成上述目标，你实施了以下计划：
 
-    {{ memory }}
+    {{memory}}
 
     # 其他背景信息：
 
-    {{ status }}
+    {{status}}
 
     # 现在，请根据以上信息，向用户报告目标的完成情况：
 
 """)
+
 MEMORY_TEMPLATE = dedent(r"""
-    {% for ctx in context_list %}
-    - 第{{ loop.index }}步：{{ ctx.step_description }}
-      - 调用工具 `{{ ctx.step_id }}`，并提供参数 `{{ ctx.input_data }}`
-      - 执行状态：{{ ctx.status }}
-      - 得到数据：`{{ ctx.output_data }}`
-    {% endfor %}
+    { % for ctx in context_list % }
+    - 第{{loop.index}}步：{{ctx.step_description}}
+      - 调用工具 `{{ctx.step_id}}`，并提供参数 `{{ctx.input_data}}`
+      - 执行状态：{{ctx.status}}
+      - 得到数据：`{{ctx.output_data}}`
+    { % endfor % }
 """)

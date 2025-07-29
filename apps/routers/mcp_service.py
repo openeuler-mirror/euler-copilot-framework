@@ -36,6 +36,7 @@ router = APIRouter(
     dependencies=[Depends(verify_user)],
 )
 
+
 async def _check_user_admin(user_sub: str) -> None:
     user = await UserManager.get_userinfo_by_user_sub(user_sub)
     if not user:
@@ -282,7 +283,7 @@ async def active_or_deactivate_mcp_service(
     """激活/取消激活mcp"""
     try:
         if data.active:
-            await MCPServiceManager.active_mcpservice(user_sub, service_id)
+            await MCPServiceManager.active_mcpservice(user_sub, service_id, data.mcp_env)
         else:
             await MCPServiceManager.deactive_mcpservice(user_sub, service_id)
     except Exception as e:

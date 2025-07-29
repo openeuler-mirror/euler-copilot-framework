@@ -52,18 +52,26 @@ class FlowService:
             if node.call_id == NodeType.CHOICE.value:
                 node.parameters = node.parameters["input_parameters"]
                 if "choices" not in node.parameters:
-                    node.parameters["choices"] = []
+                    logger.error(f"[FlowService] 节点{node.name}的分支字段缺失")
+                    raise FlowBranchValidationError(f"[FlowService] 节点{node.name}的分支字段缺失")
+                if not node.parameters["choices"]:
+                    logger.error(f"[FlowService] 节点{node.name}的分支字段为空")
+                    raise FlowBranchValidationError(f"[FlowService] 节点{node.name}的分支字段为空")
                 for choice in node.parameters["choices"]:
-                    if choice["branchId"] in node_branch_map[node.step_id]:
-                        err = f"[FlowService] 节点{node.name}的分支{choice['branchId']}重复"
+                    if "branch_id" not in choice:
+                        err = f"[FlowService] 节点{node.name}的分支choice缺少branch_id字段"
+                        logger.error(err)
+                        raise FlowBranchValidationError(err)
+                    if choice["branch_id"] in node_branch_map[node.step_id]:
+                        err = f"[FlowService] 节点{node.name}的分支{choice['branch_id']}重复"
                         logger.error(err)
                         raise Exception(err)
                     for illegal_char in branch_illegal_chars:
-                        if illegal_char in choice["branchId"]:
-                            err = f"[FlowService] 节点{node.name}的分支{choice['branchId']}名称中含有非法字符"
+                        if illegal_char in choice["branch_id"]:
+                            err = f"[FlowService] 节点{node.name}的分支{choice['branch_id']}名称中含有非法字符"
                             logger.error(err)
                             raise Exception(err)
-                    node_branch_map[node.step_id].add(choice["branchId"])
+                    node_branch_map[node.step_id].add(choice["branch_id"])
             else:
                 node_branch_map[node.step_id].add("")
         valid_edges = []

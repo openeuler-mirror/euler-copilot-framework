@@ -118,7 +118,7 @@ class MCPToolSelectResult(BaseModel):
 
 class MCPPlanItem(BaseModel):
     """MCP 计划"""
-    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    step_id: str = Field(description="步骤的ID", default="")
     content: str = Field(description="计划内容")
     tool: str = Field(description="工具名称")
     instruction: str = Field(description="工具指令")
@@ -127,4 +127,4 @@ class MCPPlanItem(BaseModel):
 class MCPPlan(BaseModel):
     """MCP 计划"""
 
-    plans: list[MCPPlanItem] = Field(description="计划列表")
+    plans: list[MCPPlanItem] = Field(description="计划列表", default=[])
