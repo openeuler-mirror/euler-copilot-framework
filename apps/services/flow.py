@@ -257,10 +257,7 @@ class FlowManager:
             )
             for node_id, node_config in flow_config.steps.items():
                 input_parameters = node_config.params
-                if node_config.node not in ("Empty"):
-                    _, output_parameters = await NodeManager.get_node_params(node_config.node)
-                else:
-                    output_parameters = {}
+                _, output_parameters = await NodeManager.get_node_params(node_config.node)
                 parameters = {
                     "input_parameters": input_parameters,
                     "output_parameters": Slot(output_parameters).extract_type_desc_from_schema(),

@@ -248,7 +248,9 @@ class Slot:
 
             if param_type == "object" and "properties" in schema_node:
                 for key, value in schema_node["properties"].items():
-                    sub_params.append(_extract_params_node(value, name=key, path=f"{path}/{key}"))
+                    sub_param = _extract_params_node(value, name=key, path=f"{path}/{key}")
+                    if sub_param:
+                        sub_params.append(sub_param)
             else:
                 # 对于非对象类型，直接返回空子参数
                 sub_params = None
@@ -257,7 +259,7 @@ class Slot:
                               paramType=param_type,
                               subParams=sub_params)
         try:
-            return _extract_params_node(self._schema, name=root, path="/"+root)
+            return _extract_params_node(self._schema, name=root, path="/" + root)
         except Exception as e:
             logger.error(f"[Slot] 提取ParamsNode失败: {e!s}\n{traceback.format_exc()}")
             return None

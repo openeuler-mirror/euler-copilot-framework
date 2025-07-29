@@ -104,6 +104,13 @@ class MCPToolVector(LanceModel):
     embedding: Vector(dim=1024) = Field(description="MCP工具描述的向量信息")  # type: ignore[call-arg]
 
 
+class GoalEvaluationResult(BaseModel):
+    """MCP 目标评估结果"""
+
+    can_complete: bool = Field(description="是否可以完成目标")
+    reason: str = Field(description="评估原因")
+
+
 class MCPSelectResult(BaseModel):
     """MCP选择结果"""
 

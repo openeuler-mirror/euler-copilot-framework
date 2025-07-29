@@ -172,6 +172,7 @@ class FlowExecutor(BaseExecutor):
         self.step_queue.append(first_step)
         self.task.state.flow_status = FlowStatus.RUNNING  # type: ignore[arg-type]
         # 运行Flow（未达终点）
+        is_error = False
         while not self._reached_end:
             # 如果当前步骤出错，执行错误处理步骤
             if self.task.state.step_status == StepStatus.ERROR:  # type: ignore[arg-type]
@@ -194,7 +195,7 @@ class FlowExecutor(BaseExecutor):
                     enable_filling=False,
                     to_user=False,
                 ))
-                self.task.state.flow_status = FlowStatus.ERROR  # type: ignore[arg-type]
+                is_error = True
                 # 错误处理后结束
                 self._reached_end = True
 
@@ -209,6 +210,12 @@ class FlowExecutor(BaseExecutor):
             for step in next_step:
                 self.step_queue.append(step)
 
+        # 更新Task状态
+        if is_error:
+            self.task.state.flow_status = FlowStatus.ERROR  # type: ignore[arg-type]
+        else:
+            self.task.state.flow_status = FlowStatus.SUCCESS  # type: ignore[arg-type]
+
         # 尾插运行结束后的系统步骤
         for step in FIXED_STEPS_AFTER_END:
             self.step_queue.append(StepQueueItem(
@@ -220,6 +227,7 @@ class FlowExecutor(BaseExecutor):
         # FlowStop需要返回总时间，需要倒推最初的开始时间（当前时间减去当前已用总时间）
         self.task.tokens.time = round(datetime.now(UTC).timestamp(), 2) - self.task.tokens.full_time
         # 推送Flow停止消息
-        await self.push_message(EventType.FLOW_STOP.value)
-        # 更新Task状态
-        self.task.state.flow_status = FlowStatus.SUCCESS  # type: ignore[arg-type]
+        if is_error:
+            await self.push_message(EventType.FLOW_FAILED.value)
+        else:
+            await self.push_message(EventType.FLOW_SUCCESS.value)

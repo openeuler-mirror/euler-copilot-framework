@@ -103,12 +103,45 @@ EVALUATE_GAOL = dedent(r"""
     {{ goal }}
 
     # 工具集合
-    {{ tools }}
+    <tools>
+        {% for tool in tools %}
+        - <id>{{ tool.id }}</id><description>{{tool.name}}；{{ tool.description }}</description>
+        {% endfor %}
+    </tools>
 
     # 附加信息
     {{ additional_info }}
 
 """)
+GENERATE_FLOW_NAME = dedent(r"""
+    你是一个智能助手，你的任务是根据用户的目标，生成一个合适的流程名称。
+    
+    # 生成流程名称时的注意事项：
+    1. 流程名称应该简洁明了，能够准确表达达成用户目标的过程。
+    2. 流程名称应该包含关键的操作或步骤，例如“扫描”、“分析”、“调优”等。
+    3. 流程名称应该避免使用过于复杂或专业的术语，以便用户能够理解。
+    4. 流程名称应该尽量简短，小于20个字或者单词。
+    
+    - 必须按照如下格式生成流程名称，不要输出任何额外数据：
+    ```json
+    {
+        "flow_name": "生成的流程名称"
+    }
+    ```
+    # 样例
+    ## 目标
+    我需要扫描当前mysql数据库，分析性能瓶颈,并调优
+    ## 输出
+    ```json
+    {
+        "flow_name": "MySQL性能分析与调优"
+    }
+    ```
+    # 现在开始生成流程名称：
+    # 目标
+    {{ goal }}
+    # 输出
+    """)
 CREATE_PLAN = dedent(r"""
     你是一个计划生成器。
     请分析用户的目标，并生成一个计划。你后续将根据这个计划，一步一步地完成用户的目标。
@@ -153,8 +186,6 @@ CREATE_PLAN = dedent(r"""
         {% for tool in tools %}
         - <id>{{ tool.id }}</id><description>{{tool.name}}；{{ tool.description }}</description>
         {% endfor %}
-        - <id>Final</id><description>结束步骤，当执行到这一步时，\
-表示计划执行结束，所得到的结果将作为最终结果。</description>
     </tools>
 
     # 样例
@@ -352,8 +383,6 @@ RECREATE_PLAN = dedent(r"""
         {% for tool in tools %}
         - <id>{{ tool.id }}</id><description>{{tool.name}}；{{ tool.description }}</description>
         {% endfor %}
-        - <id>Final</id><description>结束步骤，当执行到这一步时，\
-表示计划执行结束，所得到的结果将作为最终结果。</description>
     </tools>
 
     # 当前计划
@@ -415,7 +444,7 @@ RISK_EVALUATE = dedent(r"""
 # 获取缺失的参数的json结构体
 GET_MISSING_PARAMS = dedent(r"""
     你是一个工具参数获取器。
-    你的任务是根据当前工具的名称、描述和入参和入参的schema以及运行报错，获取当前工具缺失的参数并输出提示。
+    你的任务是根据当前工具的名称、描述和入参和入参的schema以及运行报错，将当前缺失的参数设置为null，并输出一个JSON格式的字符串。
     ```json
     {
         "host": "请补充主机地址",
