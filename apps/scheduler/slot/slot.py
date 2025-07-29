@@ -246,7 +246,7 @@ class Slot:
                 return None
             sub_params = []
 
-            if param_type == "object" and "properties" in schema_node:
+            if param_type == Type.DICT and "properties" in schema_node:
                 for key, value in schema_node["properties"].items():
                     sub_param = _extract_params_node(value, name=key, path=f"{path}/{key}")
                     if sub_param:
