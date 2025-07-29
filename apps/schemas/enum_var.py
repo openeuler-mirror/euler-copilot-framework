@@ -86,7 +86,7 @@ class NodeType(str, Enum):
     START = "start"
     END = "end"
     NORMAL = "normal"
-    CHOICE = "choice"
+    CHOICE = "Choice"
 
 
 class SaveType(str, Enum):
