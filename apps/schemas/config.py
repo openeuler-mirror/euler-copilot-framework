@@ -10,7 +10,6 @@ class NoauthConfig(BaseModel):
     """无认证配置"""
 
     enable: bool = Field(description="是否启用无认证访问", default=False)
-    user_sub: str = Field(description="调试用户的sub", default="admin")
 
 
 class DeployConfig(BaseModel):

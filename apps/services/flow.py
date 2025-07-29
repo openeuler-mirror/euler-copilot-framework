@@ -257,10 +257,7 @@ class FlowManager:
             )
             for node_id, node_config in flow_config.steps.items():
                 input_parameters = node_config.params
-                if node_config.node not in ("Empty"):
-                    _, output_parameters = await NodeManager.get_node_params(node_config.node)
-                else:
-                    output_parameters = {}
+                _, output_parameters = await NodeManager.get_node_params(node_config.node)
                 parameters = {
                     "input_parameters": input_parameters,
                     "output_parameters": Slot(output_parameters).extract_type_desc_from_schema(),
@@ -413,6 +410,7 @@ class FlowManager:
                 flow_config.debug = await FlowManager.is_flow_config_equal(old_flow_config, flow_config)
             else:
                 flow_config.debug = False
+            logger.error(f'{flow_config}')
             await flow_loader.save(app_id, flow_id, flow_config)
         except Exception:
             logger.exception("[FlowManager] 存储/更新流失败")

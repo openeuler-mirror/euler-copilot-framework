@@ -4,6 +4,7 @@
 import collections
 import logging
 
+from apps.schemas.enum_var import SpecialCallType
 from apps.exceptions import FlowBranchValidationError, FlowEdgeValidationError, FlowNodeValidationError
 from apps.schemas.enum_var import NodeType
 from apps.schemas.flow_topology import EdgeItem, FlowItem, NodeItem
@@ -38,32 +39,40 @@ class FlowService:
         for node in flow_item.nodes:
             from apps.scheduler.pool.pool import Pool
             from pydantic import BaseModel
-            if node.node_id != 'start' and node.node_id != 'end' and node.node_id != 'Empty':
+            if node.node_id != 'start' and node.node_id != 'end' and node.node_id != SpecialCallType.EMPTY.value:
                 try:
                     call_class: type[BaseModel] = await Pool().get_call(node.call_id)
                     if not call_class:
-                        node.node_id = 'Empty'
+                        node.node_id = SpecialCallType.EMPTY.value
                         node.description = '【对应的api工具被删除！节点不可用！请联系相关人员！】\n\n'+node.description
                 except Exception as e:
-                    node.node_id = 'Empty'
+                    node.node_id = SpecialCallType.EMPTY.value
                     node.description = '【对应的api工具被删除！节点不可用！请联系相关人员！】\n\n'+node.description
                     logger.error(f"[FlowService] 获取步骤的call_id失败{node.call_id}由于：{e}")
             node_branch_map[node.step_id] = set()
             if node.call_id == NodeType.CHOICE.value:
-                node.parameters = node.parameters["input_parameters"]
-                if "choices" not in node.parameters:
-                    node.parameters["choices"] = []
-                for choice in node.parameters["choices"]:
-                    if choice["branchId"] in node_branch_map[node.step_id]:
-                        err = f"[FlowService] 节点{node.name}的分支{choice['branchId']}重复"
+                input_parameters = node.parameters["input_parameters"]
+                if "choices" not in input_parameters:
+                    logger.error(f"[FlowService] 节点{node.name}的分支字段缺失")
+                    raise FlowBranchValidationError(f"[FlowService] 节点{node.name}的分支字段缺失")
+                if not input_parameters["choices"]:
+                    logger.error(f"[FlowService] 节点{node.name}的分支字段为空")
+                    raise FlowBranchValidationError(f"[FlowService] 节点{node.name}的分支字段为空")
+                for choice in input_parameters["choices"]:
+                    if "branch_id" not in choice:
+                        err = f"[FlowService] 节点{node.name}的分支choice缺少branch_id字段"
+                        logger.error(err)
+                        raise FlowBranchValidationError(err)
+                    if choice["branch_id"] in node_branch_map[node.step_id]:
+                        err = f"[FlowService] 节点{node.name}的分支{choice['branch_id']}重复"
                         logger.error(err)
                         raise Exception(err)
                     for illegal_char in branch_illegal_chars:
-                        if illegal_char in choice["branchId"]:
-                            err = f"[FlowService] 节点{node.name}的分支{choice['branchId']}名称中含有非法字符"
+                        if illegal_char in choice["branch_id"]:
+                            err = f"[FlowService] 节点{node.name}的分支{choice['branch_id']}名称中含有非法字符"
                             logger.error(err)
                             raise Exception(err)
-                    node_branch_map[node.step_id].add(choice["branchId"])
+                    node_branch_map[node.step_id].add(choice["branch_id"])
             else:
                 node_branch_map[node.step_id].add("")
         valid_edges = []
@@ -133,7 +142,6 @@ class FlowService:
         branches = {}
         in_deg = {}
         out_deg = {}
-
         for e in edges:
             if e.edge_id in ids:
                 err = f"[FlowService] 边{e.edge_id}的id重复"

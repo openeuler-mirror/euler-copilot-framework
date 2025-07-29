@@ -123,7 +123,7 @@ class MCPHost:
 
         return output_data
 
-    async def _fill_params(self, tool: MCPTool, query: str) -> dict[str, Any]:
+    async def _fill_params(self, schema: dict[str, Any], query: str) -> dict[str, Any]:
         """填充工具参数"""
         # 更清晰的输入·指令，这样可以调用generate
         llm_query = rf"""
@@ -139,7 +139,7 @@ class MCPHost:
                 {"role": "system", "content": "You are a helpful assistant."},
                 {"role": "user", "content": await self.assemble_memory()},
             ],
-            tool.input_schema,
+            schema,
         )
         return await json_generator.generate()
 

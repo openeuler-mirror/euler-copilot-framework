@@ -198,7 +198,6 @@ class MCPServiceManager:
             base_filters = {"author": {"$regex": keyword, "$options": "i"}}
         return base_filters
 
-
     @staticmethod
     async def create_mcpservice(data: UpdateMCPServiceRequest, user_sub: str) -> str:
         """
@@ -297,6 +296,7 @@ class MCPServiceManager:
     async def active_mcpservice(
             user_sub: str,
             service_id: str,
+            mcp_env: dict[str, Any] = {},
     ) -> None:
         """
         激活MCP服务
@@ -310,7 +310,7 @@ class MCPServiceManager:
         for item in status:
             mcp_status = item.get("status", MCPInstallStatus.INSTALLING)
             if mcp_status == MCPInstallStatus.READY:
-                await MCPLoader.user_active_template(user_sub, service_id)
+                await MCPLoader.user_active_template(user_sub, service_id, mcp_env)
             else:
                 err = "[MCPServiceManager] MCP服务未准备就绪"
                 raise RuntimeError(err)

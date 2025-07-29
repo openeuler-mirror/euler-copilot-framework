@@ -1,6 +1,6 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2023-2025. All rights reserved.
 """用户鉴权"""
-
+import os
 import logging
 
 from fastapi import Depends
@@ -75,8 +75,11 @@ async def get_user(request: HTTPConnection) -> str:
     :return: 用户sub
     """
     if Config().get_config().no_auth.enable:
-        # 如果启用了无认证访问，直接返回调试用户
-        return Config().get_config().no_auth.user_sub
+        # 如果启用了无认证访问，直接返回当前操作系统用户的名称
+        username = os.environ.get('USERNAME')  # 适用于 Windows 系统
+        if not username:
+            username = os.environ.get('USER')  # 适用于 Linux 和 macOS 系统
+        return username or "admin"
     session_id = await _get_session_id_from_request(request)
     if not session_id:
         raise HTTPException(

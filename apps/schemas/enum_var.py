@@ -57,6 +57,7 @@ class EventType(str, Enum):
     STEP_OUTPUT = "step.output"
     FLOW_STOP = "flow.stop"
     FLOW_FAILED = "flow.failed"
+    FLOW_SUCCESS = "flow.success"
     FLOW_CANCELLED = "flow.cancelled"
     DONE = "done"
 
@@ -97,7 +98,7 @@ class NodeType(str, Enum):
     START = "start"
     END = "end"
     NORMAL = "normal"
-    CHOICE = "choice"
+    CHOICE = "Choice"
 
 
 class SaveType(str, Enum):

@@ -29,6 +29,7 @@ class Value(DataBase):
 
     step_id: str | None = Field(description="步骤id", default=None)
     type: Type | None = Field(description="值的类型", default=None)
+    name: str | None = Field(description="值的名称", default=None)
     value: str | float | int | bool | list | dict | None = Field(description="值", default=None)
 
 

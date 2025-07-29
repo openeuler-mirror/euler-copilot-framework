@@ -102,7 +102,7 @@ class MCPHost:
             task_id=self._task_id,
             flow_id=self._runtime_id,
             flow_name=self._runtime_name,
-            flow_status=StepStatus.SUCCESS,
+            flow_status=StepStatus.RUNNING,
             step_id=tool.name,
             step_name=tool.name,
             # description是规划的实际内容
