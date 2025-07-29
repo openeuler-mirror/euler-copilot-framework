@@ -257,7 +257,7 @@ class Slot:
                               paramType=param_type,
                               subParams=sub_params)
         try:
-            return _extract_params_node(self._schema, name=root, path=root)
+            return _extract_params_node(self._schema, name=root, path="/"+root)
         except Exception as e:
             logger.error(f"[Slot] 提取ParamsNode失败: {e!s}\n{traceback.format_exc()}")
             return None

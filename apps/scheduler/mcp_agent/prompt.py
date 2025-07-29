@@ -437,19 +437,37 @@ GET_MISSING_PARAMS = dedent(r"""
         "password": "password"
     }
     ## 工具入参schema
-    {
-        "type": "object",
-        "properties": {
-            "host": {"type": "string", "description": "MySQL数据库的主机地址"},
+   {
+    "type": "object",
+    "properties": {
+            "host": {
+                "anyOf": [
+                    {"type": "string"},
+                    {"type": "null"}
+                ],
+                "description": "MySQL数据库的主机地址（可以为字符串或null）"
+            },
             "port": {
                 "anyOf": [
                     {"type": "string"},
-                    {"type": "integer"},
+                    {"type": "null"}
                 ],
-                "description": "MySQL数据库的端口号（可以是数字或字符串）"
+                "description": "MySQL数据库的端口号（可以是数字、字符串或null）"
             },
-            "username": {"type": "string", "description": "MySQL数据库的用户名"},
-            "password": {"type": "string", "description": "MySQL数据库的密码"}
+            "username": {
+                "anyOf": [
+                    {"type": "string"},
+                    {"type": "null"}
+                ],
+                "description": "MySQL数据库的用户名（可以为字符串或null）"
+            },
+            "password": {
+                "anyOf": [
+                    {"type": "string"},
+                    {"type": "null"}
+                ],
+                "description": "MySQL数据库的密码（可以为字符串或null）"
+            }
         },
         "required": ["host", "port", "username", "password"]
     }
@@ -460,8 +478,8 @@ GET_MISSING_PARAMS = dedent(r"""
     {
         "host": "192.0.0.1",
         "port": 3306,
-        "username": "请补充用户名",
-        "password": "请补充密码"
+        "username": null,
+        "password": null
     }
     ```
     # 工具名称
