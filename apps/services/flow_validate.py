@@ -141,7 +141,6 @@ class FlowService:
         branches = {}
         in_deg = {}
         out_deg = {}
-
         for e in edges:
             if e.edge_id in ids:
                 err = f"[FlowService] 边{e.edge_id}的id重复"
