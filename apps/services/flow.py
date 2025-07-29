@@ -413,6 +413,7 @@ class FlowManager:
                 flow_config.debug = await FlowManager.is_flow_config_equal(old_flow_config, flow_config)
             else:
                 flow_config.debug = False
+            logger.error(f'{flow_config}')
             await flow_loader.save(app_id, flow_id, flow_config)
         except Exception:
             logger.exception("[FlowManager] 存储/更新流失败")
