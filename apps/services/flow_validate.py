@@ -50,16 +50,16 @@ class FlowService:
                     logger.error(f"[FlowService] 获取步骤的call_id失败{node.call_id}由于：{e}")
             node_branch_map[node.step_id] = set()
             if node.call_id == NodeType.CHOICE.value:
-                node.parameters = node.parameters["input_parameters"]
-                if "choices" not in node.parameters:
+                input_parameters = node.parameters["input_parameters"]
+                if "choices" not in input_parameters:
                     err = f"[FlowService] 节点{node.name}的分支choices字段缺失"
                     logger.error(err)
                     raise FlowBranchValidationError(err)
-                if not node.parameters["choices"]:
+                if not input_parameters["choices"]:
                     err = f"[FlowService] 节点{node.name}的分支choices字段为空"
                     logger.error(err)
                     raise FlowBranchValidationError(err)
-                for choice in node.parameters["choices"]:
+                for choice in input_parameters["choices"]:
                     if "branch_id" not in choice:
                         err = f"[FlowService] 节点{node.name}的分支choice缺少branch_id字段"
                         logger.error(err)
