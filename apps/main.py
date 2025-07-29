@@ -89,10 +89,16 @@ async def add_no_auth_user() -> None:
     """
     from apps.common.mongo import MongoDB
     from apps.schemas.collection import User
+    import os
     mongo = MongoDB()
     user_collection = mongo.get_collection("user")
+    username = os.environ.get('USERNAME')  # 适用于 Windows 系统
+    if not username:
+        username = os.environ.get('USER')  # 适用于 Linux 和 macOS 系统
+    if not username:
+        username = "admin"
     await user_collection.insert_one(User(
-        _id=Config().get_config().no_auth.user_sub,
+        _id=username,
         is_admin=True,
     ).model_dump(by_alias=True))
 
