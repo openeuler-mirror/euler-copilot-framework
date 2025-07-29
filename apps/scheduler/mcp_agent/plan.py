@@ -6,7 +6,12 @@ from jinja2.sandbox import SandboxedEnvironment
 
 from apps.llm.reasoning import ReasoningLLM
 from apps.llm.function import JsonGenerator
-from apps.scheduler.mcp_agent.prompt import EVALUATE_GAOL, CREATE_PLAN, RECREATE_PLAN, FINAL_ANSWER
+from apps.scheduler.mcp_agent.prompt import (
+    EVALUATE_GOAL,
+    CREATE_PLAN,
+    RECREATE_PLAN,
+    FINAL_ANSWER
+)
 from apps.schemas.mcp import (
     GoalEvaluationResult,
     MCPPlan,
@@ -64,8 +69,16 @@ class MCPPlanner:
         json_result = await json_generator.generate()
         return json_result
 
-    async def evaluate_goal(self, tool_list: list[MCPTool]) -> str:
-        pass
+    async def evaluate_goal(self, tool_list: list[MCPTool]) -> GoalEvaluationResult:
+        """评估用户目标的可行性"""
+        # 获取推理结果
+        result = await self._get_reasoning_evaluation(tool_list)
+
+        # 解析为结构化数据
+        evaluation = await self._parse_evaluation_result(result)
+
+        # 返回评估结果
+        return evaluation
 
     async def _get_reasoning_evaluation(self, tool_list: list[MCPTool]) -> str:
         """获取推理大模型的评估结果"""
@@ -77,7 +90,7 @@ class MCPPlanner:
         result = await self.get_resoning_result(prompt)
         return result
 
-    async def _parse_evaluation_result(self, result: str) -> str:
+    async def _parse_evaluation_result(self, result: str) -> GoalEvaluationResult:
         """将推理结果解析为结构化数据"""
         schema = GoalEvaluationResult.model_json_schema()
         evaluation = await self._parse_result(result, schema)

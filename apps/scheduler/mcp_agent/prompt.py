@@ -62,7 +62,7 @@ MCP_SELECT = dedent(r"""
     ### 请一步一步思考：
 
 """)
-EVALUATE_GAOL = dedent(r"""
+EVALUATE_GOAL = dedent(r"""
     你是一个计划评估器。
     请根据用户的目标和当前的工具集合以及一些附加信息，判断基于当前的工具集合，是否能够完成用户的目标。
     如果能够完成，请返回`true`，否则返回`false`。
