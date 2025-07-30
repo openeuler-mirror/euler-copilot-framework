@@ -48,7 +48,7 @@ class ExecutorState(BaseModel):
     step_description: str = Field(description="当前步骤描述", default="")
     retry_times: int = Field(description="当前步骤重试次数", default=0)
     error_message: str = Field(description="当前步骤错误信息", default="")
-    app_id: str = Field(description="应用ID")
+    app_id: str = Field(description="应用ID", default="")
     slot: dict[str, Any] = Field(description="待填充参数的JSON Schema", default={})
     error_info: dict[str, Any] = Field(description="错误信息", default={})
 
@@ -94,7 +94,7 @@ class Task(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()), alias="_id")
     ids: TaskIds = Field(description="任务涉及的各种ID")
     context: list[dict[str, Any]] = Field(description="Flow的步骤执行信息", default=[])
-    state: ExecutorState | None = Field(description="Flow的状态", default=None)
+    state: ExecutorState = Field(description="Flow的状态", default=ExecutorState())
     tokens: TaskTokens = Field(description="Token信息")
     runtime: TaskRuntime = Field(description="任务运行时数据")
     created_at: float = Field(default_factory=lambda: round(datetime.now(tz=UTC).timestamp(), 3))

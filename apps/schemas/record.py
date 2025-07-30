@@ -131,7 +131,7 @@ class Record(RecordData):
     key: dict[str, Any] = {}
     content: str
     comment: RecordComment = Field(default=RecordComment())
-    flow_history: FlowHistory = Field(
+    flow: FlowHistory = Field(
         default=FlowHistory(), description="Flow执行历史信息")
 
 

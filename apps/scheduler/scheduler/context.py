@@ -189,7 +189,7 @@ async def save_data(task: Task, user_sub: str, post_body: RequestData) -> None:
             feature={},
         ),
         createdAt=current_time,
-        flow_history=FlowHistory(
+        flow=FlowHistory(
             flow_id=task.state.flow_id,
             flow_name=task.state.flow_name,
             flow_status=task.state.flow_status,
