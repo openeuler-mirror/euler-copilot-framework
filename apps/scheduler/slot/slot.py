@@ -268,7 +268,7 @@ class Slot:
                 else:
                     type_val = ""
 
-            data = {"type": type_val, "description": description, " items": {}}
+            data = {"type": type_val, "description": description, "items": {}}
 
             # 递归处理对象和数组
             if type_val == "object":
