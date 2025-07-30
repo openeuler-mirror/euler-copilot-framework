@@ -113,7 +113,7 @@ class Choice(CoreCall, input_model=ChoiceInput, output_model=ChoiceOutput):
                     valid_conditions.append(condition)
 
                 # 如果所有条件都无效，抛出异常
-                if not valid_conditions:
+                if not valid_conditions and not choice.is_default:
                     msg = "分支没有有效条件"
                     logger.warning(f"[Choice] 分支 {choice.branch_id} 条件处理失败: {msg}")
                     continue
