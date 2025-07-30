@@ -10,6 +10,7 @@ from apps.llm.patterns.facts import Facts
 from apps.schemas.collection import Document
 from apps.schemas.enum_var import StepStatus
 from apps.schemas.record import (
+    FlowHistory,
     Record,
     RecordContent,
     RecordDocument,
@@ -188,7 +189,12 @@ async def save_data(task: Task, user_sub: str, post_body: RequestData) -> None:
             feature={},
         ),
         createdAt=current_time,
-        flow=[i["_id"] for i in task.context],
+        flow=FlowHistory(
+            flow_id=task.state.flow_id,
+            flow_name=task.state.flow_name,
+            flow_status=task.state.flow_status,
+            history_ids=[context["_id"] for context in task.context],
+        )
     )
 
     # 检查是否存在group_id

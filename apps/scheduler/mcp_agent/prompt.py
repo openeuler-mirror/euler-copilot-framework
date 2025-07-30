@@ -62,7 +62,7 @@ MCP_SELECT = dedent(r"""
     ### 请一步一步思考：
 
 """)
-EVALUATE_GAOL = dedent(r"""
+EVALUATE_GOAL = dedent(r"""
     你是一个计划评估器。
     请根据用户的目标和当前的工具集合以及一些附加信息，判断基于当前的工具集合，是否能够完成用户的目标。
     如果能够完成，请返回`true`，否则返回`false`。
@@ -115,28 +115,18 @@ EVALUATE_GAOL = dedent(r"""
 """)
 GENERATE_FLOW_NAME = dedent(r"""
     你是一个智能助手，你的任务是根据用户的目标，生成一个合适的流程名称。
-    
+
     # 生成流程名称时的注意事项：
     1. 流程名称应该简洁明了，能够准确表达达成用户目标的过程。
     2. 流程名称应该包含关键的操作或步骤，例如“扫描”、“分析”、“调优”等。
     3. 流程名称应该避免使用过于复杂或专业的术语，以便用户能够理解。
     4. 流程名称应该尽量简短，小于20个字或者单词。
-    
-    - 必须按照如下格式生成流程名称，不要输出任何额外数据：
-    ```json
-    {
-        "flow_name": "生成的流程名称"
-    }
-    ```
+    5. 只输出流程名称，不要输出其他内容。
     # 样例
     ## 目标
     我需要扫描当前mysql数据库，分析性能瓶颈,并调优
     ## 输出
-    ```json
-    {
-        "flow_name": "MySQL性能分析与调优"
-    }
-    ```
+    扫描MySQL数据库并分析性能瓶颈，进行调优
     # 现在开始生成流程名称：
     # 目标
     {{ goal }}
@@ -398,7 +388,7 @@ RISK_EVALUATE = dedent(r"""
     你的任务是根据当前工具的名称、描述和入参以及附加信息，判断当前工具执行的风险并输出提示。
     ```json
     {
-        "risk": "高/中/低",
+        "risk": "low/medium/high",
         "message": "提示信息"
     }
     ```
@@ -429,18 +419,86 @@ RISK_EVALUATE = dedent(r"""
         "message": "当前工具将连接到MySQL数据库并分析性能，可能会对数据库性能产生一定影响。请确保在非生产环境中执行此操作。"
     }
     ```
-    # 工具名称
-    {{ tool_name }}
-    # 工具描述
-    {{ tool_description }}
+    # 工具
+    <tool>
+        <name>{{ tool.name }}</name>
+        <description>{{ tool.description }}</description>
+    </tool>
     # 工具入参
-    {{ tool_input }}
+    {{ input_param }}
     # 附加信息
     {{ additional_info }}
     # 输出
     """
                        )
-
+# 根据当前计划和报错信息决定下一步执行，具体计划有需要用户补充工具入参、重计划当前步骤、重计划接下来的所有计划
+JUDGE_NEXT_STEP = dedent(r"""
+    你是一个计划决策器。
+    你的任务是根据当前计划、当前使用的工具、工具入参和工具运行报错，决定下一步执行的操作。
+    请根据以下规则进行判断：
+    1. 仅通过补充工具入参来解决问题的，返回 fill_params;
+    2. 需要重计划当前步骤的，返回 replan_current_step;
+    3. 需要重计划接下来的所有计划的，返回 replan_all_steps;
+    你的输出要以json格式返回，格式如下：
+    ```json
+    {
+        "next_step": "fill_params/replan_current_step/replan_all_steps",
+        "reason": "你的判断依据"
+    }
+    ```
+    注意：
+    reason字段必须清晰明了，能够让人理解你的判断依据，并且不超过50个中文字或者100个英文单词。
+    # 样例
+    ## 当前计划
+    {"plans": [
+        {
+            "content": "生成端口扫描命令",
+            "tool": "command_generator",
+            "instruction": "生成端口扫描命令：扫描192.168.1.1的开放端口"
+        },
+        {
+            "content": "在执行Result[0]生成的命令",
+            "tool": "command_executor",
+            "instruction": "执行端口扫描命令"
+        },
+        {
+            "content": "任务执行完成，端口扫描结果为Result[2]",
+            "tool": "Final",
+            "instruction": ""  
+        }
+    ]}
+    ## 当前使用的工具
+    <tool>
+        <name>command_executor</name>
+        <description>执行命令行指令</description>
+    </tool>
+    ## 工具入参
+    {
+        "command": "nmap -sS -p--open 192.168.1.1"
+    }
+    ## 工具运行报错
+    执行端口扫描命令时，出现了错误：`-bash: nmap: command not found`。
+    ## 输出
+    ```json
+    {
+        "next_step": "replan_all_steps",
+        "reason": "当前工具执行报错，提示nmap命令未找到,需要增加command_generator和command_executor的步骤，生成nmap安装命令并执行，之后再生成端口扫描命令并执行。"
+    }
+    ```
+    # 当前计划
+    {{ current_plan }}
+    # 当前使用的工具
+    <tool>
+        <name>{{ tool.name }}</name>
+        <description>{{ tool.description }}</description>
+    </tool>
+    # 工具入参
+    {{ input_param }}
+    # 工具运行报错
+    {{ error_message }}
+    # 输出
+    """
+                         )
 # 获取缺失的参数的json结构体
 GET_MISSING_PARAMS = dedent(r"""
     你是一个工具参数获取器。
@@ -454,18 +512,18 @@ GET_MISSING_PARAMS = dedent(r"""
     }
     ```
     # 样例
-    ## 工具名称
+    # 工具名称
     mysql_analyzer
-    ## 工具描述
+    # 工具描述
     分析MySQL数据库性能
-    ## 工具入参
+    # 工具入参
     {
         "host": "192.0.0.1",
         "port": 3306,
         "username": "root",
         "password": "password"
     }
-    ## 工具入参schema
+    # 工具入参schema
    {
     "type": "object",
     "properties": {
@@ -500,9 +558,9 @@ GET_MISSING_PARAMS = dedent(r"""
         },
         "required": ["host", "port", "username", "password"]
     }
-    ## 运行报错
+    # 运行报错
     执行端口扫描命令时，出现了错误：`password is not correct`。
-    ## 输出
+    # 输出
     ```json
     {
         "host": "192.0.0.1",
@@ -511,16 +569,17 @@ GET_MISSING_PARAMS = dedent(r"""
         "password": null
     }
     ```
-    # 工具名称
-    {{ tool_name }}
-    # 工具描述
-    {{ tool_description }}
+    # 工具
+    < tool >
+        < name > {{tool.name}} < /name >
+        < description > {{tool.description}} < /description >
+    < / tool >
     # 工具入参
-    {{ tool_input }}
-    # 工具入参schema
-    {{ tool_input_schema }}
+    {{input_param}}
+    # 工具入参schema（部分字段允许为null）
+    {{input_schema}}
     # 运行报错
-    {{ error_message }}
+    {{error_message}}
     # 输出
     """
                             )

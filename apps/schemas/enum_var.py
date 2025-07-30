@@ -14,7 +14,7 @@ class SlotType(str, Enum):
 
 class StepStatus(str, Enum):
     """步骤状态"""
-
+    UNKNOWN = "unknown"
     WAITING = "waiting"
     RUNNING = "running"
     SUCCESS = "success"
@@ -26,6 +26,7 @@ class StepStatus(str, Enum):
 class FlowStatus(str, Enum):
     """Flow状态"""
 
+    UNKNOWN = "unknown"
     WAITING = "waiting"
     RUNNING = "running"
     SUCCESS = "success"

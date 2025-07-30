@@ -127,7 +127,7 @@ class CoreCall(BaseModel):
         :return: 变量
         """
         split_path = path.split("/")
-        if len(split_path) < 2:
+        if len(split_path) < 1:
             err = f"[CoreCall] 路径格式错误: {path}"
             logger.error(err)
             return None
@@ -136,7 +136,7 @@ class CoreCall(BaseModel):
             logger.error(err)
             return None
         data = history[split_path[0]].output_data
-        for key in split_path[2:]:
+        for key in split_path[1:]:
             if key not in data:
                 err = f"[CoreCall] 输出Key {key} 不存在"
                 logger.error(err)

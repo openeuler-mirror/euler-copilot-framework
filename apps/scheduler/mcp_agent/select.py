@@ -7,6 +7,7 @@ from jinja2 import BaseLoader
 from jinja2.sandbox import SandboxedEnvironment
 from typing import AsyncGenerator
 
+from apps.llm.reasoning import ReasoningLLM
 from apps.common.lance import LanceDB
 from apps.common.mongo import MongoDB
 from apps.llm.embedding import Embedding
@@ -27,8 +28,9 @@ logger = logging.getLogger(__name__)
 class MCPSelector:
     """MCP选择器"""
 
-    def __init__(self) -> None:
+    def __init__(self, resoning_llm: ReasoningLLM = None) -> None:
         """初始化助手类"""
+        self.resoning_llm = resoning_llm or ReasoningLLM()
         self.input_tokens = 0
         self.output_tokens = 0
 
@@ -102,12 +104,11 @@ class MCPSelector:
     async def _call_reasoning(self, prompt: str) -> AsyncGenerator[str, None]:
         """调用大模型进行推理"""
         logger.info("[MCPHelper] 调用推理大模型")
-        llm = ReasoningLLM()
         message = [
             {"role": "system", "content": "You are a helpful assistant."},
             {"role": "user", "content": prompt},
         ]
-        async for chunk in llm.call(message):
+        async for chunk in self.resoning_llm.call(message):
             yield chunk
 
     async def _call_function_mcp(self, reasoning_result: str, mcp_ids: list[str]) -> MCPSelectResult:

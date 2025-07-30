@@ -81,16 +81,14 @@ async def get_record(conversation_id: str, user_sub: Annotated[str, Depends(get_
 
             # 获得Record关联的文档
             tmp_record.document = await DocumentManager.get_used_docs_by_record_group(user_sub, record_group.id)
-
             # 获得Record关联的flow数据
             flow_step_list = await TaskManager.get_context_by_record_id(record_group.id, record.id)
             if flow_step_list:
-                first_step_history = FlowStepHistory.model_validate(flow_step_list[0])
                 tmp_record.flow = RecordFlow(
-                    id=first_step_history.flow_name,  # TODO: 此处前端应该用name
+                    id=record.flow.flow_id,  # TODO: 此处前端应该用name
                     recordId=record.id,
-                    flowStatus=first_step_history.flow_status,
-                    flowId=first_step_history.id,
+                    flowStatus=record.flow.flow_staus,
+                    flowId=record.flow.flow_id,
                     stepNum=len(flow_step_list),
                     steps=[],
                 )

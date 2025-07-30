@@ -13,6 +13,7 @@ from fastapi.responses import JSONResponse, StreamingResponse
 from apps.common.queue import MessageQueue
 from apps.common.wordscheck import WordsCheck
 from apps.dependency import get_session, get_user
+from apps.schemas.enum_var import FlowStatus
 from apps.scheduler.scheduler import Scheduler
 from apps.scheduler.scheduler.context import save_data
 from apps.schemas.request_data import RequestData
@@ -82,8 +83,8 @@ async def chat_generator(post_body: RequestData, user_sub: str, session_id: str)
 
         # 获取最终答案
         task = scheduler.task
-        if not task.runtime.answer:
-            logger.error("[Chat] 答案为空")
+        if task.state.flow_status == FlowStatus.ERROR:
+            logger.error("[Chat] 生成答案失败")
             yield "data: [ERROR]\n\n"
             await Activity.remove_active(user_sub)
             return

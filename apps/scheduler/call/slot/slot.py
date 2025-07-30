@@ -32,12 +32,10 @@ class Slot(CoreCall, input_model=SlotInput, output_model=SlotOutput):
     facts: list[str] = Field(description="事实信息", default=[])
     step_num: int = Field(description="历史步骤数", default=1)
 
-
     @classmethod
     def info(cls) -> CallInfo:
         """返回Call的名称和描述"""
         return CallInfo(name="参数自动填充", description="根据步骤历史，自动填充参数")
-
 
     async def _llm_slot_fill(self, remaining_schema: dict[str, Any]) -> tuple[str, dict[str, Any]]:
         """使用大模型填充参数；若大模型解析度足够，则直接返回结果"""
@@ -106,7 +104,6 @@ class Slot(CoreCall, input_model=SlotInput, output_model=SlotOutput):
         await obj._set_input(executor)
         return obj
 
-
     async def _init(self, call_vars: CallVars) -> SlotInput:
         """初始化"""
         self._flow_history = []
@@ -125,7 +122,6 @@ class Slot(CoreCall, input_model=SlotInput, output_model=SlotOutput):
         return SlotInput(
             remaining_schema=remaining_schema,
         )
-
 
     async def _exec(self, input_data: dict[str, Any]) -> AsyncGenerator[CallOutputChunk, None]:
         """执行参数填充"""

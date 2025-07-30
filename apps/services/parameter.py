@@ -47,7 +47,7 @@ class ParameterManager:
             for item in operate:
                 result.append(OperateAndBindType(
                     operate=item,
-                    bind_type=ConditionHandler.get_value_type_from_operate(item)))
+                    bind_type=(await ConditionHandler.get_value_type_from_operate(item))))
         return result
 
     @staticmethod
@@ -78,7 +78,7 @@ class ParameterManager:
             node_id = step_id_to_node_id.get(step_id)
             params_schema, output_schema = await NodeManager.get_node_params(node_id)
             slot = Slot(output_schema)
-            params_node = slot.get_params_node_from_schema(root='output')
+            params_node = slot.get_params_node_from_schema()
             pre_step_params.append(
                 StepParams(
                     stepId=step_id,

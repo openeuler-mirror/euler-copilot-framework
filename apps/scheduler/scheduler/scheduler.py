@@ -1,6 +1,7 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2023-2025. All rights reserved.
 """Scheduler模块"""
 
+import asyncio
 import logging
 from datetime import UTC, datetime
 
@@ -17,11 +18,12 @@ from apps.scheduler.scheduler.message import (
     push_rag_message,
 )
 from apps.schemas.collection import LLM
-from apps.schemas.enum_var import AppType, EventType
+from apps.schemas.enum_var import FlowStatus, AppType, EventType
 from apps.schemas.pool import AppPool
 from apps.schemas.rag_data import RAGQueryReq
 from apps.schemas.request_data import RequestData
 from apps.schemas.scheduler import ExecutorBackground
+from apps.services.activity import Activity
 from apps.schemas.task import Task
 from apps.services.appcenter import AppCenterManager
 from apps.services.knowledge import KnowledgeBaseManager
@@ -41,9 +43,29 @@ class Scheduler:
         """初始化"""
         self.used_docs = []
         self.task = task
-
         self.queue = queue
         self.post_body = post_body
+
+    async def _monitor_activity(self, kill_event, user_sub):
+        """监控用户活动状态，不活跃时终止工作流"""
+        try:
+            check_interval = 0.5  # 每0.5秒检查一次
+
+            while not kill_event.is_set():
+                # 检查用户活动状态
+                is_active = await Activity.is_active(user_sub)
+
+                if not is_active:
+                    logger.warning("[Scheduler] 用户 %s 不活跃，终止工作流", user_sub)
+                    kill_event.set()
+                    break
+
+                # 控制检查频率
+                await asyncio.sleep(check_interval)
+        except asyncio.CancelledError:
+            logger.info("[Scheduler] 活动监控任务已取消")
+        except Exception as e:
+            logger.error(f"[Scheduler] 活动监控过程中发生错误: {e}")
 
     async def run(self) -> None:  # noqa: PLR0911
         """运行调度器"""
@@ -95,6 +117,9 @@ class Scheduler:
 
         # 如果是智能问答，直接执行
         logger.info("[Scheduler] 开始执行")
+        # 创建用于通信的事件
+        kill_event = asyncio.Event()
+        monitor = asyncio.create_task(self._monitor_activity(kill_event, self.task.ids.user_sub))
         if not self.post_body.app or self.post_body.app.app_id == "":
             self.task = await push_init_message(self.task, self.queue, 3, is_flow=False)
             rag_data = RAGQueryReq(
@@ -102,8 +127,11 @@ class Scheduler:
                 query=self.post_body.question,
                 tokensLimit=llm.max_tokens,
             )
-            self.task = await push_rag_message(self.task, self.queue, self.task.ids.user_sub, llm, history, doc_ids, rag_data)
-            self.task.tokens.full_time = round(datetime.now(UTC).timestamp(), 2) - self.task.tokens.time
+
+            # 启动监控任务和主任务
+            main_task = asyncio.create_task(push_rag_message(
+                self.task, self.queue, self.task.ids.user_sub, llm, history, doc_ids, rag_data))
+
         else:
             # 查找对应的App元数据
             app_data = await AppCenterManager.fetch_app_data_by_id(self.post_body.app.app_id)
@@ -127,8 +155,27 @@ class Scheduler:
                 conversation=context,
                 facts=facts,
             )
-            await self.run_executor(self.queue, self.post_body, executor_background)
 
+            # 启动监控任务和主任务
+            main_task = asyncio.create_task(self.run_executor(self.queue, self.post_body, executor_background))
+        # 等待任一任务完成
+        done, pending = await asyncio.wait(
+            [main_task, monitor],
+            return_when=asyncio.FIRST_COMPLETED
+        )
+
+        # 如果是监控任务触发，终止主任务
+        if kill_event.is_set():
+            logger.warning("[Scheduler] 用户活动状态检测不活跃，正在终止工作流执行...")
+            main_task.cancel()
+            need_change_cancel_flow_state = [FlowStatus.RUNNING, FlowStatus.WAITING]
+            if self.task.state.flow_status in need_change_cancel_flow_state:
+                self.task.state.flow_status = FlowStatus.CANCELLED
+            try:
+                await main_task
+                logger.info("[Scheduler] 工作流执行已被终止")
+            except Exception as e:
+                logger.error(f"[Scheduler] 终止工作流时发生错误: {e}")
         # 更新Task，发送结束消息
         logger.info("[Scheduler] 发送结束消息")
         await self.queue.push_output(self.task, event_type=EventType.DONE.value, data={})
