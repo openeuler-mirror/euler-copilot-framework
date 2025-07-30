@@ -111,7 +111,7 @@ class GoalEvaluationResult(BaseModel):
     reason: str = Field(description="评估原因")
 
 
-class Risk(Enum, str):
+class Risk(str, Enum):
     """MCP工具风险类型"""
 
     LOW = "low"
