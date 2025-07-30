@@ -47,7 +47,7 @@ class ParameterManager:
             for item in operate:
                 result.append(OperateAndBindType(
                     operate=item,
-                    bind_type=ConditionHandler.get_value_type_from_operate(item)))
+                    bind_type=(await ConditionHandler.get_value_type_from_operate(item))))
         return result
 
     @staticmethod
