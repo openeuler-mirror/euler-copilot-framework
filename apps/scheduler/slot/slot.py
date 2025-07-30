@@ -268,17 +268,23 @@ class Slot:
                 else:
                     type_val = ""
 
-            data = {"type": type_val, "description": description}
+            data = {"type": type_val, "description": description, " items": {}}
 
             # 递归处理对象和数组
             if type_val == "object":
-                data["items"] = {}
                 for key, val in schema_node.get("properties", {}).items():
                     data["items"][key] = _extract_type_desc(val)
             elif type_val == "array":
                 items_schema = schema_node.get("items", {})
-                data["items"]["items"] = _extract_type_desc(items_schema)
-
+                if isinstance(items_schema, list):
+                    item_index = 0
+                    for item in items_schema:
+                        data["items"][f"item_{item_index}"] = _extract_type_desc(item)
+                        item_index += 1
+                else:
+                    data["items"]["item"] = _extract_type_desc(items_schema)
+            if data["items"] == {}:
+                del data["items"]
             return data
 
         return _extract_type_desc(self._schema)
