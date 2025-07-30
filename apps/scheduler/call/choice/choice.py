@@ -146,7 +146,7 @@ class Choice(CoreCall, input_model=ChoiceInput, output_model=ChoiceOutput):
                 logger.warning(f"[Choice] 分支 {choice.branch_id} 条件处理失败: {error_msg}")
         
         # 如果没有有效条件，返回失败
-        if not valid_conditions:
+        if not valid_conditions and not choice.is_default:
             error_messages.append("分支没有有效条件")
             return False, error_messages
             
