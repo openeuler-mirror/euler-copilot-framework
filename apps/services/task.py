@@ -82,7 +82,7 @@ class TaskManager:
                 return []
 
             flow_context_list = []
-            for flow_context_id in records[0]["records"]["flow"]:
+            for flow_context_id in records[0]["records"]["flow_history"]["history_ids"]:
                 flow_context = await flow_context_collection.find_one({"_id": flow_context_id})
                 if flow_context:
                     flow_context_list.append(flow_context)

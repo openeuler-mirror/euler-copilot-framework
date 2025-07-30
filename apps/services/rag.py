@@ -18,7 +18,6 @@ from apps.schemas.collection import LLM
 from apps.schemas.config import LLMConfig
 from apps.schemas.enum_var import EventType
 from apps.schemas.rag_data import RAGQueryReq
-from apps.services.activity import Activity
 from apps.services.session import SessionManager
 
 logger = logging.getLogger(__name__)
@@ -257,8 +256,6 @@ class RAG:
             result_only=False,
             model=llm.model_name,
         ):
-            if not await Activity.is_active(user_sub):
-                return
             chunk = buffer + chunk
             # 防止脚注被截断
             if len(chunk) >= 2 and chunk[-2:] != "]]":

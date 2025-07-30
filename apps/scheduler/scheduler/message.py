@@ -15,6 +15,7 @@ from apps.schemas.message import (
     InitContentFeature,
     TextAddContent,
 )
+from apps.schemas.enum_var import FlowStatus
 from apps.schemas.rag_data import RAGEventData, RAGQueryReq
 from apps.schemas.record import RecordDocument
 from apps.schemas.task import Task
@@ -61,21 +62,25 @@ async def push_init_message(
 async def push_rag_message(
         task: Task, queue: MessageQueue, user_sub: str, llm: LLM, history: list[dict[str, str]],
         doc_ids: list[str],
-        rag_data: RAGQueryReq,) -> Task:
+        rag_data: RAGQueryReq,) -> None:
     """推送RAG消息"""
     full_answer = ""
-
-    async for chunk in RAG.chat_with_llm_base_on_rag(user_sub, llm, history, doc_ids, rag_data):
-        task, content_obj = await _push_rag_chunk(task, queue, chunk)
-        if content_obj.event_type == EventType.TEXT_ADD.value:
-            # 如果是文本消息，直接拼接到答案中
-            full_answer += content_obj.content
-        elif content_obj.event_type == EventType.DOCUMENT_ADD.value:
-            task.runtime.documents.append(content_obj.content)
+    try:
+        async for chunk in RAG.chat_with_llm_base_on_rag(user_sub, llm, history, doc_ids, rag_data):
+            task, content_obj = await _push_rag_chunk(task, queue, chunk)
+            if content_obj.event_type == EventType.TEXT_ADD.value:
+                # 如果是文本消息，直接拼接到答案中
+                full_answer += content_obj.content
+            elif content_obj.event_type == EventType.DOCUMENT_ADD.value:
+                task.runtime.documents.append(content_obj.content)
+        task.state.flow_status = FlowStatus.SUCCESS
+    except Exception as e:
+        logger.error(f"[Scheduler] RAG服务发生错误: {e}")
+        task.state.flow_status = FlowStatus.ERROR
     # 保存答案
     task.runtime.answer = full_answer
+    task.tokens.full_time = round(datetime.now(UTC).timestamp(), 2) - task.tokens.time
     await TaskManager.save_task(task.id, task)
-    return task
 
 
 async def _push_rag_chunk(task: Task, queue: MessageQueue, content: str) -> tuple[Task, RAGEventData]:
