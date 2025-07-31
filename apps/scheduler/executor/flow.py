@@ -119,7 +119,7 @@ class FlowExecutor(BaseExecutor):
             return []
         if self.current_step.step.type == SpecialCallType.CHOICE.value:
             # 如果是choice节点，获取分支ID
-            branch_id = self.task.context[-1]["output_data"]["branch_id"]
+            branch_id = self.task.context[-1].output_data["branch_id"]
             if branch_id:
                 next_steps = await self._find_next_id(self.task.state.step_id + "." + branch_id)
                 logger.info("[FlowExecutor] 分支ID：%s", branch_id)

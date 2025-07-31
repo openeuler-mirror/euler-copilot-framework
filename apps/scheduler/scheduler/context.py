@@ -193,7 +193,7 @@ async def save_data(task: Task, user_sub: str, post_body: RequestData) -> None:
             flow_id=task.state.flow_id,
             flow_name=task.state.flow_name,
             flow_status=task.state.flow_status,
-            history_ids=[context["_id"] for context in task.context],
+            history_ids=[context.id for context in task.context],
         )
     )
 

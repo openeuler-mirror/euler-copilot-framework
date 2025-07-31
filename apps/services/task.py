@@ -13,6 +13,7 @@ from apps.schemas.task import (
     TaskIds,
     TaskRuntime,
     TaskTokens,
+    FlowStepHistory
 )
 from apps.services.record import RecordManager
 
@@ -67,7 +68,7 @@ class TaskManager:
         return Task.model_validate(task)
 
     @staticmethod
-    async def get_context_by_record_id(record_group_id: str, record_id: str) -> list[dict[str, Any]]:
+    async def get_context_by_record_id(record_group_id: str, record_id: str) -> FlowStepHistory:
         """根据record_group_id获取flow信息"""
         record_group_collection = MongoDB().get_collection("record_group")
         flow_context_collection = MongoDB().get_collection("flow_context")
@@ -85,7 +86,7 @@ class TaskManager:
             for flow_context_id in records[0]["records"]["flow"]["history_ids"]:
                 flow_context = await flow_context_collection.find_one({"_id": flow_context_id})
                 if flow_context:
-                    flow_context_list.append(flow_context)
+                    flow_context_list.append(FlowStepHistory.model_validate(flow_context))
         except Exception:
             logger.exception("[TaskManager] 获取record_id的flow信息失败")
             return []
