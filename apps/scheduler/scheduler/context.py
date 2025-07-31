@@ -188,7 +188,7 @@ async def save_data(task: Task, user_sub: str, post_body: RequestData) -> None:
             feature={},
         ),
         createdAt=current_time,
-        flow=[i["_id"] for i in task.context],
+        flow=[context.id for context in task.context],
     )
 
     # 检查是否存在group_id
