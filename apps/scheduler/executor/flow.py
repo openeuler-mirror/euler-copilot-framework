@@ -117,7 +117,7 @@ class FlowExecutor(BaseExecutor):
             # 如果是choice节点，获取分支ID
             branch_id = self.task.context[-1].output_data.get("branch_id", "")
             if branch_id:
-                next_steps = self._find_next_id(self.task.state.step_id+"."+branch_id)
+                next_steps = await self._find_next_id(self.task.state.step_id+"."+branch_id)
                 logger.info("[FlowExecutor] 分支ID：%s", branch_id)
             else:
                 logger.warning("[FlowExecutor] 没有找到分支ID，返回空列表")
