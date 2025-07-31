@@ -89,7 +89,7 @@ class Task(BaseModel):
 
     id: str = Field(default_factory=lambda: str(uuid.uuid4()), alias="_id")
     ids: TaskIds = Field(description="任务涉及的各种ID")
-    context: list[dict[str, Any]] = Field(description="Flow的步骤执行信息", default=[])
+    context: list[FlowStepHistory] = Field(description="Flow的步骤执行信息", default=[])
     state: ExecutorState | None = Field(description="Flow的状态", default=None)
     tokens: TaskTokens = Field(description="Token信息")
     runtime: TaskRuntime = Field(description="任务运行时数据")
