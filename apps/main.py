@@ -97,10 +97,13 @@ async def add_no_auth_user() -> None:
         username = os.environ.get('USER')  # 适用于 Linux 和 macOS 系统
     if not username:
         username = "admin"
-    await user_collection.insert_one(User(
-        _id=username,
-        is_admin=True,
-    ).model_dump(by_alias=True))
+    try:
+        await user_collection.insert_one(User(
+            _id=username,
+            is_admin=True,
+        ).model_dump(by_alias=True))
+    except Exception as e:
+        logging.warning(f"添加无认证用户失败: {e}")
 
 
 async def init_resources() -> None:
