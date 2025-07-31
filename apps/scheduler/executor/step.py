@@ -118,6 +118,18 @@ class StepExecutor(BaseExecutor):
         if self.step.step.params:
             params.update(self.step.step.params)
 
+        # 对于需要扁平化处理的Call类型，将input_parameters中的内容提取到顶级
+        if self._call_id in ["Choice", "Code", "DirectReply"] and "input_parameters" in params:
+            # 提取input_parameters中的所有字段到顶级
+            input_params = params.get("input_parameters", {})
+            if isinstance(input_params, dict):
+                # 将input_parameters中的字段提取到顶级
+                for key, value in input_params.items():
+                    params[key] = value
+                # 移除input_parameters，避免重复
+                params.pop("input_parameters", None)
+                logger.info(f"[StepExecutor] 对 {self._call_id} 节点进行参数扁平化处理")
+
         try:
             self.obj = await call_cls.instance(self, self.node, **params)
         except Exception:
@@ -234,11 +246,9 @@ class StepExecutor(BaseExecutor):
             if use_direct_format:
                 # 配置允许的节点类型保持原有格式：conversation.key
                 var_prefix = ""
-                logger.debug(f"[StepExecutor] 节点 {self.step.step.name}({self._call_id}) 使用直接变量格式")
             else:
                 # 其他节点使用格式：conversation.node_id.key
                 var_prefix = f"{self.step.step_id}."
-                logger.debug(f"[StepExecutor] 节点 {self.step.step.name}({self._call_id}) 使用带前缀变量格式")
 
             # 保存每个output_parameter到变量池
             saved_count = 0
