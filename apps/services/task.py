@@ -68,7 +68,7 @@ class TaskManager:
         return Task.model_validate(task)
 
     @staticmethod
-    async def get_context_by_record_id(record_group_id: str, record_id: str) -> FlowStepHistory:
+    async def get_context_by_record_id(record_group_id: str, record_id: str) -> list[FlowStepHistory]:
         """根据record_group_id获取flow信息"""
         record_group_collection = MongoDB().get_collection("record_group")
         flow_context_collection = MongoDB().get_collection("flow_context")
