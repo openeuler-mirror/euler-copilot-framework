@@ -77,10 +77,10 @@ class ConditionHandler(BaseModel):
         """处理条件"""
         default_branch = [c for c in choices if c.is_default]
 
-        for block_judgement in choices:
+        for block_judgement in choices[::-1]:
             results = []
             if block_judgement.is_default:
-                continue
+                return default_branch[0].branch_id
             for condition in block_judgement.conditions:
                 result = ConditionHandler._judge_condition(condition)
                 results.append(result)
@@ -91,10 +91,7 @@ class ConditionHandler(BaseModel):
 
             if final_result:
                 return block_judgement.branch_id
-
-        # 如果没有匹配的分支，选择默认分支
-        if default_branch:
-            return default_branch[0].branch_id
+    
         return ""
 
     @staticmethod
