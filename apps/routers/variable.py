@@ -67,25 +67,10 @@ async def _get_predecessor_node_variables(
                         if node_id != current_step_id:  # 不是当前节点的变量
                             variables.append(var)
         else:
-            # 配置阶段：优先使用缓存，降级到实时解析
             try:
-                # 尝试使用优化的缓存服务
+                # 使用缓存获取变量列表
                 from apps.services.predecessor_cache_service import PredecessorCacheService
                 
-                # 1. 先从flow池中查找已存在的前置节点变量
-                flow_pool = await pool_manager.get_flow_pool(flow_id)
-                if flow_pool:
-                    flow_conversation_vars = await flow_pool.list_variables()
-                    
-                    # 筛选出前置节点的输出变量（格式为 node_id.key）
-                    for var in flow_conversation_vars:
-                        var_name = var.name
-                        if "." in var_name and not var_name.startswith("system."):
-                            node_id = var_name.split(".")[0]
-                            if node_id != current_step_id:
-                                variables.append(var)
-                
-                # 2. 使用优化的缓存服务获取前置节点变量
                 cached_var_data = await PredecessorCacheService.get_predecessor_variables_optimized(
                     flow_id, current_step_id, user_sub, max_wait_time=5
                 )

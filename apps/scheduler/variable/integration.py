@@ -1,7 +1,7 @@
 """变量解析与工作流调度器集成"""
 
 import logging
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 from apps.scheduler.variable.parser import VariableParser
 from apps.scheduler.variable.pool_manager import get_pool_manager
@@ -74,7 +74,7 @@ class VariableIntegration:
         user_sub: str,
         flow_id: Optional[str] = None,
         conversation_id: Optional[str] = None
-    ) -> Any:
+    ) -> Tuple[Any, Any]:
         """解析单个变量引用
         
         Args:
@@ -84,7 +84,7 @@ class VariableIntegration:
             conversation_id: 对话ID
             
         Returns:
-            Any: 解析后的变量值
+            Tuple[Any, Any]: 解析后的变量值和变量类型
         """
         try:
             parser = VariableParser(
@@ -97,9 +97,9 @@ class VariableIntegration:
             clean_reference = reference.strip("{}")
             
             # 使用解析器解析变量引用
-            resolved_value = await parser._resolve_variable_reference(clean_reference)
+            resolved_value, resolved_type = await parser._resolve_variable_reference(clean_reference)
             
-            return resolved_value
+            return resolved_value, resolved_type
         
         except Exception as e:
             logger.error(f"解析变量引用失败: {reference}, 错误: {e}")

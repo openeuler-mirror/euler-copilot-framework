@@ -30,7 +30,7 @@ class ConditionHandler(BaseModel):
     @staticmethod
     async def get_value_type_from_operate(operate: NumberOperate | StringOperate | ListOperate |
                                           BoolOperate | DictOperate) -> ValueType:
-        """获取右值的类型"""
+        """根据逻辑运算符获取值的类型"""
         if isinstance(operate, NumberOperate):
             return ValueType.NUMBER
         if operate in [
@@ -58,17 +58,17 @@ class ConditionHandler(BaseModel):
         return None
 
     @staticmethod
-    def check_value_type(value: Value, expected_type: ValueType) -> bool:
+    def check_value_type(value: Value) -> bool:
         """检查值的类型是否符合预期"""
-        if expected_type == ValueType.STRING and isinstance(value.value, str):
+        if value.type == ValueType.STRING and isinstance(value.value, str):
             return True
-        if expected_type == ValueType.NUMBER and isinstance(value.value, (int, float)):
+        if value.type == ValueType.NUMBER and isinstance(value.value, (int, float)):
             return True
-        if expected_type == ValueType.LIST and isinstance(value.value, list):
+        if value.type == ValueType.LIST and isinstance(value.value, list):
             return True
-        if expected_type == ValueType.DICT and isinstance(value.value, dict):
+        if value.type == ValueType.DICT and isinstance(value.value, dict):
             return True
-        if expected_type == ValueType.BOOL and isinstance(value.value, bool):
+        if value.type == ValueType.BOOL and isinstance(value.value, bool):
             return True
         return False
 

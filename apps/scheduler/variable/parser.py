@@ -78,14 +78,14 @@ class VariableParser:
         
         return result
     
-    async def _resolve_variable_reference(self, reference: str) -> Any:
+    async def _resolve_variable_reference(self, reference: str) -> Tuple[Any, Any]:
         """解析变量引用
         
         Args:
             reference: 变量引用字符串（不含花括号）
             
         Returns:
-            Any: 变量值
+            Tuple[Any, Any]: 变量值, 变量类型
         """
         pool_manager = await self._get_pool_manager()
         
@@ -125,7 +125,7 @@ class VariableParser:
                     conversation_id=self.conversation_id if scope in [VariableScope.SYSTEM, VariableScope.CONVERSATION] else None
                 )
                 if variable:
-                    return variable.value
+                    return variable.value, variable.var_type
             except:
                 pass  # 如果找不到，继续使用原有逻辑
         
@@ -147,6 +147,7 @@ class VariableParser:
         
         # 获取变量值
         value = variable.value
+        var_type = variable.var_type
         
         # 如果有嵌套路径，继续解析
         for path_part in path_parts[1:]:
@@ -160,7 +161,7 @@ class VariableParser:
             else:
                 raise ValueError(f"无法访问路径: {var_path}")
         
-        return value
+        return value, var_type
     
     async def extract_variables(self, template: str) -> List[str]:
         """提取模板中的所有变量引用

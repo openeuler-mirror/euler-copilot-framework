@@ -62,7 +62,7 @@ class Choice(CoreCall, input_model=ChoiceInput, output_model=ChoiceOutput):
         return True
 
     async def _process_condition_value(self, value: Value, call_vars: CallVars, 
-                                       branch_id: str, value_position: str) -> tuple[bool, str]:
+                                       branch_id: str, value_position: str) -> tuple[bool, Value, str]:
         """处理条件值（左值或右值）
         
         Args:
@@ -72,24 +72,22 @@ class Choice(CoreCall, input_model=ChoiceInput, output_model=ChoiceOutput):
             value_position: 值的位置描述（"左值"或"右值"）
             
         Returns:
-            tuple[bool, str]: (是否成功, 错误消息)
+            tuple[bool, Value, str]: (是否成功, 处理后的Value对象，错误消息)
         """
         # 处理reference类型
         if value.type == ValueType.REFERENCE:
             try:
-                value.value = await self._resolve_variables_in_config(value.value, call_vars)
+                resolved_value = await self._resolve_single_value(value, call_vars)
             except Exception as e:
-                return False, f"{value_position}引用解析失败: {e}"
+                return False, None, f"{value_position}引用解析失败: {e}"
+        else:
+            resolved_value = value
             
-            # 检查解析后的值类型
-            if value.value is None:
-                return False, f"{value_position}引用解析后为空"
-        
-        # 验证值类型
-        if not ConditionHandler.check_value_type(value.value, value.type):
-            return False, f"{value_position}类型不匹配: {value.value} 应为 {value.type.value}"
+        # 对于非引用类型，验证值类型
+        if not ConditionHandler.check_value_type(resolved_value):
+            return False, None, f"{value_position}类型不匹配: {resolved_value.value} 应为 {resolved_value.type}"
             
-        return True, ""
+        return True, resolved_value, ""
 
     async def _process_condition(self, condition: Condition, call_vars: CallVars, 
                                  branch_id: str) -> tuple[bool, str]:
@@ -104,16 +102,30 @@ class Choice(CoreCall, input_model=ChoiceInput, output_model=ChoiceOutput):
             tuple[bool, str]: (是否成功, 错误消息)
         """
         # 处理左值
-        success, error_msg = await self._process_condition_value(
+        success, _left, error_msg = await self._process_condition_value(
             condition.left, call_vars, branch_id, "左值")
         if not success:
             return False, error_msg
             
         # 处理右值
-        success, error_msg = await self._process_condition_value(
+        success, _right, error_msg = await self._process_condition_value(
             condition.right, call_vars, branch_id, "右值")
         if not success:
             return False, error_msg
+
+        # 检查运算符是否有效
+        if condition.operate is None:
+            return False, "条件缺少运算符"
+        
+        # 根据运算符确定期望的值类型
+        try:
+            expected_type = await ConditionHandler.get_value_type_from_operate(condition.operate)
+        except Exception as e:
+            return False, f"不支持的运算符: {condition.operate}"
+        
+        # 检查类型是否与运算符匹配
+        if not expected_type == _left.type == _right.type:
+            return False, f"左值类型 {_left.type.value} 与运算符 {condition.operate} 不匹配"
                 
         return True, ""
 
