@@ -162,7 +162,7 @@ class SpecialCallType(str, Enum):
     LLM = "LLM"
     START = "start"
     END = "end"
-    CHOICE = "choice"
+    CHOICE = "Choice"
 
 
 class CommentType(str, Enum):
