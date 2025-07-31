@@ -150,7 +150,7 @@ class SpecialCallType(str, Enum):
     DIRECT_REPLY = "DirectReply"
     START = "start"
     END = "end"
-    CHOICE = "choice"
+    CHOICE = "Choice"
 
 
 class CommentType(str, Enum):
