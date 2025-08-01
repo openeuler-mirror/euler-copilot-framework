@@ -229,7 +229,8 @@ class Scheduler:
 
             # 初始化Executor
             logger.info("[Scheduler] 初始化Executor")
-
+            logger.error(f"{flow_data}")
+            logger.error(f"{self.task}")
             flow_exec = FlowExecutor(
                 flow_id=flow_id,
                 flow=flow_data,
