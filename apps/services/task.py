@@ -94,7 +94,7 @@ class TaskManager:
             return flow_context_list
 
     @staticmethod
-    async def get_context_by_task_id(task_id: str, length: int = 0) -> list[dict[str, Any]]:
+    async def get_context_by_task_id(task_id: str, length: int = 0) -> list[FlowStepHistory]:
         """根据task_id获取flow信息"""
         flow_context_collection = MongoDB().get_collection("flow_context")
 
@@ -105,7 +105,8 @@ class TaskManager:
             ).sort(
                 "created_at", -1,
             ).limit(length):
-                flow_context += [history]
+                for i in range(len(flow_context)):
+                    flow_context.append(FlowStepHistory.model_validate(history))
         except Exception:
             logger.exception("[TaskManager] 获取task_id的flow信息失败")
             return []
@@ -113,7 +114,7 @@ class TaskManager:
             return flow_context
 
     @staticmethod
-    async def save_flow_context(task_id: str, flow_context: list[dict[str, Any]]) -> None:
+    async def save_flow_context(task_id: str, flow_context: list[FlowStepHistory]) -> None:
         """保存flow信息到flow_context"""
         flow_context_collection = MongoDB().get_collection("flow_context")
         try:
@@ -121,12 +122,12 @@ class TaskManager:
                 # 查找是否存在
                 current_context = await flow_context_collection.find_one({
                     "task_id": task_id,
-                    "_id": history["_id"],
+                    "_id": history.id,
                 })
                 if current_context:
                     await flow_context_collection.update_one(
                         {"_id": current_context["_id"]},
-                        {"$set": history},
+                        {"$set": history.model_dump(exclude_none=True, by_alias=True)},
                     )
                 else:
                     await flow_context_collection.insert_one(history)
