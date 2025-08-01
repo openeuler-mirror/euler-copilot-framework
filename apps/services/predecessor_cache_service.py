@@ -491,7 +491,7 @@ class PredecessorCacheService:
                     'name': f"{node_id}.{param_name}",
                     'var_type': var_type.value,
                     'scope': VariableScope.CONVERSATION.value,
-                    'value': "",  # 配置阶段的潜在变量，值为空
+                    'value': None,  # 配置阶段的潜在变量，值为None
                     'description': description or f"来自节点 {node_id} 的输出参数 {param_name}",
                     'created_at': datetime.now(UTC).isoformat(),
                     'updated_at': datetime.now(UTC).isoformat(),

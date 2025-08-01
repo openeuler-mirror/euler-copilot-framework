@@ -98,8 +98,8 @@ async def _get_predecessor_node_variables(
                             updated_at=datetime.fromisoformat(var_data['updated_at'].replace('Z', '+00:00'))
                         )
                         
-                        # 创建变量对象，并附加缓存的节点信息
-                        variable = create_variable(metadata, var_data.get('value', ''))
+                        # 创建变量对象，并附加缓存的节点信息（使用None避免类型验证失败）
+                        variable = create_variable(metadata, var_data.get('value'))
                         
                         # 将节点信息附加到变量对象上（用于后续响应格式化）
                         if hasattr(variable, '_cache_data'):
@@ -995,8 +995,8 @@ async def _create_node_output_variables(node, user_sub: str) -> List:
                 updated_at=datetime.now(UTC)
             )
             
-            # 创建变量对象
-            variable = create_variable(metadata, "")  # 配置阶段的潜在变量，值为空
+            # 创建变量对象（使用None作为默认值，避免类型验证失败）
+            variable = create_variable(metadata, None)  # 配置阶段的潜在变量，值为None
             variables.append(variable)
         
         logger.info(f"为节点 {node_id} 创建了 {len(variables)} 个输出变量: {[v.name for v in variables]}")
