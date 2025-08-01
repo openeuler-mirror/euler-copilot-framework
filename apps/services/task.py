@@ -130,7 +130,7 @@ class TaskManager:
                         {"$set": history.model_dump(exclude_none=True, by_alias=True)},
                     )
                 else:
-                    await flow_context_collection.insert_one(history)
+                    await flow_context_collection.insert_one(history.model_dump(exclude_none=True, by_alias=True))
         except Exception:
             logger.exception("[TaskManager] 保存flow执行记录失败")
 
