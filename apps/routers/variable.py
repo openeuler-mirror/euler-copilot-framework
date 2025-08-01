@@ -2,7 +2,8 @@
 """FastAPI 变量管理 API"""
 
 import logging
-from typing import Annotated, List, Optional, Dict
+from typing import Annotated, List, Optional, Dict, Any
+from datetime import datetime, UTC
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Query, status
 from fastapi.responses import JSONResponse
@@ -15,6 +16,9 @@ from apps.scheduler.variable.type import VariableType, VariableScope
 from apps.scheduler.variable.parser import VariableParser
 from apps.schemas.response_data import ResponseData
 from apps.services.flow import FlowManager
+
+import json
+import re
 
 logger = logging.getLogger(__name__)
 
@@ -136,14 +140,14 @@ class CreateVariableRequest(BaseModel):
     name: str = Field(description="变量名称")
     var_type: VariableType = Field(description="变量类型")
     scope: VariableScope = Field(description="变量作用域")
-    value: Optional[str] = Field(default=None, description="变量值")
+    value: Optional[Any] = Field(default=None, description="变量值")
     description: Optional[str] = Field(default=None, description="变量描述")
     flow_id: Optional[str] = Field(default=None, description="流程ID（环境级和对话级变量必需）")
 
 
 class UpdateVariableRequest(BaseModel):
     """更新变量请求"""
-    value: Optional[str] = Field(default=None, description="新的变量值")
+    value: Optional[Any] = Field(default=None, description="新的变量值")
     var_type: Optional[VariableType] = Field(default=None, description="新的变量类型")
     description: Optional[str] = Field(default=None, description="新的变量描述")
 
@@ -206,6 +210,17 @@ async def create_variable(
                 detail="不允许创建系统级变量"
             )
         
+        # 类型转换和验证
+        converted_value = None
+        if request.value is not None:
+            try:
+                converted_value = convert_value_by_type(request.value, request.var_type)
+            except ValueError as e:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"变量值类型转换失败: {str(e)}"
+                )
+        
         pool_manager = await get_pool_manager()
         
         # 根据作用域获取合适的变量池
@@ -252,7 +267,7 @@ async def create_variable(
             variable = await pool.add_conversation_template(
                 name=request.name,
                 var_type=request.var_type,
-                default_value=request.value,
+                default_value=converted_value,
                 description=request.description,
                 created_by=user_sub
             )
@@ -261,7 +276,7 @@ async def create_variable(
             variable = await pool.add_variable(
                 name=request.name,
                 var_type=request.var_type,
-                value=request.value,
+                value=converted_value,
                 description=request.description,
                 created_by=user_sub
             )
@@ -353,10 +368,34 @@ async def update_variable(
                 detail="无法获取变量池"
             )
         
+        # 类型转换和验证（仅当提供了新值和新类型时）
+        converted_value = request.value
+        if request.value is not None and request.var_type is not None:
+            try:
+                converted_value = convert_value_by_type(request.value, request.var_type)
+            except ValueError as e:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"变量值类型转换失败: {str(e)}"
+                )
+        elif request.value is not None:
+            # 如果只提供了值但没有类型，需要获取现有变量的类型
+            try:
+                existing_variable = await pool.get_variable(name)
+                converted_value = convert_value_by_type(request.value, existing_variable.metadata.var_type)
+            except ValueError as e:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"变量值类型转换失败: {str(e)}"
+                )
+            except Exception:
+                # 如果获取现有变量失败，使用原值
+                converted_value = request.value
+        
         # 更新变量
         variable = await pool.update_variable(
             name=name,
-            value=request.value,
+            value=converted_value,
             var_type=request.var_type,
             description=request.description
         )
@@ -966,3 +1005,341 @@ async def _create_node_output_variables(node, user_sub: str) -> List:
     except Exception as e:
         logger.error(f"创建节点输出变量失败: {e}")
         return []
+
+
+def convert_string_value_by_type(value: str, var_type: VariableType) -> Any:
+    """
+    根据变量类型将字符串值转换为对应的Python类型
+    
+    Args:
+        value: 字符串格式的值
+        var_type: 变量类型
+        
+    Returns:
+        转换后的值
+        
+    Raises:
+        ValueError: 当值无法转换为指定类型时
+    """
+    if value is None:
+        return None
+        
+    try:
+        match var_type:
+            case VariableType.STRING | VariableType.SECRET:
+                return str(value)
+                
+            case VariableType.NUMBER:
+                # 尝试转换为数字
+                if isinstance(value, str) and value.strip() == "":
+                    return 0
+                # 如果包含小数点，转换为float，否则转换为int
+                if '.' in str(value):
+                    return float(value)
+                else:
+                    return int(value)
+                    
+            case VariableType.BOOLEAN:
+                # 处理布尔值转换
+                if isinstance(value, bool):
+                    return value
+                if isinstance(value, str):
+                    lower_value = value.lower().strip()
+                    if lower_value in ('true', '1', 'yes', 'on'):
+                        return True
+                    elif lower_value in ('false', '0', 'no', 'off'):
+                        return False
+                    else:
+                        raise ValueError(f"无法将 '{value}' 转换为布尔值")
+                return bool(value)
+                
+            case VariableType.OBJECT:
+                # 处理对象类型
+                if isinstance(value, dict):
+                    return value
+                if isinstance(value, str):
+                    try:
+                        return json.loads(value)
+                    except json.JSONDecodeError as e:
+                        raise ValueError(f"无法解析JSON对象: {e}")
+                return dict(value)
+                
+            case VariableType.ARRAY_STRING:
+                # 处理字符串数组
+                if isinstance(value, list):
+                    return [str(item) for item in value]
+                if isinstance(value, str):
+                    try:
+                        parsed = json.loads(value)
+                        if isinstance(parsed, list):
+                            return [str(item) for item in parsed]
+                        else:
+                            # 尝试按逗号分割
+                            return [item.strip() for item in value.split(',') if item.strip()]
+                    except json.JSONDecodeError:
+                        # 按逗号分割
+                        return [item.strip() for item in value.split(',') if item.strip()]
+                return list(value)
+                
+            case VariableType.ARRAY_NUMBER:
+                # 处理数字数组
+                if isinstance(value, list):
+                    return [float(item) if '.' in str(item) else int(item) for item in value]
+                if isinstance(value, str):
+                    try:
+                        parsed = json.loads(value)
+                        if isinstance(parsed, list):
+                            result = []
+                            for item in parsed:
+                                if isinstance(item, (int, float)):
+                                    result.append(item)
+                                else:
+                                    result.append(float(item) if '.' in str(item) else int(item))
+                            return result
+                        else:
+                            raise ValueError("期望数组格式")
+                    except (json.JSONDecodeError, ValueError) as e:
+                        raise ValueError(f"无法解析数字数组: {e}")
+                return list(value)
+                
+            case VariableType.ARRAY_BOOLEAN:
+                # 处理布尔数组
+                if isinstance(value, list):
+                    return [convert_string_value_by_type(str(item), VariableType.BOOLEAN) for item in value]
+                if isinstance(value, str):
+                    try:
+                        parsed = json.loads(value)
+                        if isinstance(parsed, list):
+                            return [convert_string_value_by_type(str(item), VariableType.BOOLEAN) for item in parsed]
+                        else:
+                            raise ValueError("期望数组格式")
+                    except json.JSONDecodeError as e:
+                        raise ValueError(f"无法解析布尔数组: {e}")
+                return list(value)
+                
+            case VariableType.ARRAY_OBJECT:
+                # 处理对象数组
+                if isinstance(value, list):
+                    return [convert_string_value_by_type(json.dumps(item) if not isinstance(item, str) else item, VariableType.OBJECT) for item in value]
+                if isinstance(value, str):
+                    try:
+                        parsed = json.loads(value)
+                        if isinstance(parsed, list):
+                            return parsed  # 已经是解析后的对象数组
+                        else:
+                            raise ValueError("期望数组格式")
+                    except json.JSONDecodeError as e:
+                        raise ValueError(f"无法解析对象数组: {e}")
+                return list(value)
+                
+            case VariableType.FILE | VariableType.ARRAY_FILE:
+                # 文件类型暂时保持字符串格式
+                return str(value)
+                
+            case VariableType.ARRAY_SECRET:
+                # 密钥数组
+                if isinstance(value, list):
+                    return [str(item) for item in value]
+                if isinstance(value, str):
+                    try:
+                        parsed = json.loads(value)
+                        if isinstance(parsed, list):
+                            return [str(item) for item in parsed]
+                        else:
+                            raise ValueError("期望数组格式")
+                    except json.JSONDecodeError as e:
+                        raise ValueError(f"无法解析密钥数组: {e}")
+                return list(value)
+                
+            case _:
+                # 默认返回字符串
+                return str(value)
+                
+    except (ValueError, TypeError, json.JSONDecodeError) as e:
+        raise ValueError(f"无法将值 '{value}' 转换为类型 '{var_type.value}': {str(e)}")
+
+
+def convert_value_by_type(value: Any, var_type: VariableType) -> Any:
+    """
+    根据变量类型将任意类型的值转换为对应的Python类型
+    
+    Args:
+        value: 任意类型的值
+        var_type: 变量类型
+        
+    Returns:
+        转换后的值
+        
+    Raises:
+        ValueError: 当值无法转换为指定类型时
+    """
+    if value is None:
+        return None
+    
+    try:
+        match var_type:
+            case VariableType.STRING | VariableType.SECRET:
+                # 如果已经是字符串，直接返回
+                if isinstance(value, str):
+                    return value
+                # 如果是复杂类型，JSON序列化
+                elif isinstance(value, (dict, list)):
+                    return json.dumps(value)
+                else:
+                    return str(value)
+                
+            case VariableType.NUMBER:
+                # 如果已经是数字，直接返回
+                if isinstance(value, (int, float)):
+                    return value
+                # 尝试转换为数字
+                if isinstance(value, str):
+                    if value.strip() == "":
+                        return 0
+                    # 如果包含小数点，转换为float，否则转换为int
+                    if '.' in value or 'e' in value.lower():
+                        return float(value)
+                    else:
+                        return int(value)
+                elif isinstance(value, bool):
+                    return int(value)
+                else:
+                    return float(value)
+                    
+            case VariableType.BOOLEAN:
+                # 如果已经是布尔值，直接返回
+                if isinstance(value, bool):
+                    return value
+                # 处理布尔值转换
+                if isinstance(value, str):
+                    lower_value = value.lower().strip()
+                    if lower_value in ('true', '1', 'yes', 'on'):
+                        return True
+                    elif lower_value in ('false', '0', 'no', 'off'):
+                        return False
+                    else:
+                        return bool(value)
+                else:
+                    return bool(value)
+                
+            case VariableType.OBJECT:
+                # 如果已经是字典，直接返回
+                if isinstance(value, dict):
+                    return value
+                # 处理对象类型
+                if isinstance(value, str):
+                    try:
+                        return json.loads(value)
+                    except json.JSONDecodeError as e:
+                        raise ValueError(f"无法解析JSON对象: {e}")
+                else:
+                    # 尝试转换为字典
+                    if hasattr(value, '__dict__'):
+                        return value.__dict__
+                    else:
+                        return dict(value)
+                
+            case VariableType.ARRAY_STRING:
+                # 如果已经是列表，检查元素类型
+                if isinstance(value, list):
+                    return [str(item) for item in value]
+                if isinstance(value, str):
+                    try:
+                        parsed = json.loads(value)
+                        if isinstance(parsed, list):
+                            return [str(item) for item in parsed]
+                        else:
+                            # 尝试按逗号分割
+                            return [item.strip() for item in value.split(',') if item.strip()]
+                    except json.JSONDecodeError:
+                        # 按逗号分割
+                        return [item.strip() for item in value.split(',') if item.strip()]
+                else:
+                    return [str(value)]
+                
+            case VariableType.ARRAY_NUMBER:
+                # 如果已经是列表，检查元素类型
+                if isinstance(value, list):
+                    result = []
+                    for item in value:
+                        if isinstance(item, (int, float)):
+                            result.append(item)
+                        else:
+                            result.append(float(item) if '.' in str(item) else int(item))
+                    return result
+                if isinstance(value, str):
+                    try:
+                        parsed = json.loads(value)
+                        if isinstance(parsed, list):
+                            result = []
+                            for item in parsed:
+                                if isinstance(item, (int, float)):
+                                    result.append(item)
+                                else:
+                                    result.append(float(item) if '.' in str(item) else int(item))
+                            return result
+                        else:
+                            raise ValueError("期望数组格式")
+                    except (json.JSONDecodeError, ValueError) as e:
+                        raise ValueError(f"无法解析数字数组: {e}")
+                else:
+                    return [value]
+                
+            case VariableType.ARRAY_BOOLEAN:
+                # 如果已经是列表，检查元素类型
+                if isinstance(value, list):
+                    return [convert_value_by_type(item, VariableType.BOOLEAN) for item in value]
+                if isinstance(value, str):
+                    try:
+                        parsed = json.loads(value)
+                        if isinstance(parsed, list):
+                            return [convert_value_by_type(item, VariableType.BOOLEAN) for item in parsed]
+                        else:
+                            raise ValueError("期望数组格式")
+                    except json.JSONDecodeError as e:
+                        raise ValueError(f"无法解析布尔数组: {e}")
+                else:
+                    return [value]
+                
+            case VariableType.ARRAY_OBJECT:
+                # 如果已经是列表，检查元素类型
+                if isinstance(value, list):
+                    return [convert_value_by_type(item, VariableType.OBJECT) for item in value]
+                if isinstance(value, str):
+                    try:
+                        parsed = json.loads(value)
+                        if isinstance(parsed, list):
+                            return parsed  # 已经是解析后的对象数组
+                        else:
+                            raise ValueError("期望数组格式")
+                    except json.JSONDecodeError as e:
+                        raise ValueError(f"无法解析对象数组: {e}")
+                else:
+                    return [value]
+                
+            case VariableType.FILE | VariableType.ARRAY_FILE:
+                # 文件类型暂时保持原样
+                return value
+                
+            case VariableType.ARRAY_SECRET:
+                # 密钥数组
+                if isinstance(value, list):
+                    return [str(item) for item in value]
+                if isinstance(value, str):
+                    try:
+                        parsed = json.loads(value)
+                        if isinstance(parsed, list):
+                            return [str(item) for item in parsed]
+                        else:
+                            raise ValueError("期望数组格式")
+                    except json.JSONDecodeError as e:
+                        raise ValueError(f"无法解析密钥数组: {e}")
+                else:
+                    return [str(value)]
+                
+            case _:
+                # 默认返回字符串
+                return str(value)
+                
+    except (ValueError, TypeError, json.JSONDecodeError) as e:
+        raise ValueError(f"无法将值 '{value}' (类型: {type(value).__name__}) 转换为类型 '{var_type.value}': {str(e)}")

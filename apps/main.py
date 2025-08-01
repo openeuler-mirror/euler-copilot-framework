@@ -153,6 +153,9 @@ async def init_resources() -> None:
         from apps.services.predecessor_cache_service import PredecessorCacheService, periodic_cleanup_background_tasks
         await PredecessorCacheService.initialize_redis()
         
+        # 项目启动时清空所有前置节点缓存，确保使用最新的算法逻辑
+        await PredecessorCacheService.clear_all_predecessor_cache()
+        
         # 启动定期清理任务
         global _cleanup_task
         _cleanup_task = asyncio.create_task(start_periodic_cleanup())

@@ -83,11 +83,117 @@ class Choice(CoreCall, input_model=ChoiceInput, output_model=ChoiceOutput):
         else:
             resolved_value = value
             
-        # 对于非引用类型，验证值类型
+        # 对于非引用类型，先进行类型转换，然后验证值类型
+        try:
+            resolved_value = self._convert_value_to_expected_type(resolved_value)
+        except Exception as e:
+            return False, None, f"{value_position}类型转换失败: {e}"
+            
         if not ConditionHandler.check_value_type(resolved_value):
             return False, None, f"{value_position}类型不匹配: {resolved_value.value} 应为 {resolved_value.type}"
             
         return True, resolved_value, ""
+
+    def _convert_value_to_expected_type(self, value: Value) -> Value:
+        """根据期望的类型转换值
+        
+        Args:
+            value: 需要转换的Value对象
+            
+        Returns:
+            Value: 转换后的Value对象
+            
+        Raises:
+            ValueError: 当值无法转换为指定类型时
+        """
+        if value.value is None:
+            return value
+            
+        # 如果已经是正确的类型，直接返回
+        if ConditionHandler.check_value_type(value):
+            return value
+        
+        # 创建新的Value对象进行转换
+        converted_value = Value(type=value.type, value=value.value)
+        
+        try:
+            if value.type == ValueType.NUMBER:
+                # 转换为数字
+                if isinstance(value.value, str):
+                    if value.value.strip() == "":
+                        converted_value.value = 0
+                    elif '.' in value.value or 'e' in value.value.lower():
+                        converted_value.value = float(value.value)
+                    else:
+                        converted_value.value = int(value.value)
+                elif isinstance(value.value, bool):
+                    converted_value.value = int(value.value)
+                elif isinstance(value.value, (int, float)):
+                    converted_value.value = value.value
+                else:
+                    converted_value.value = float(value.value)
+                    
+            elif value.type == ValueType.STRING:
+                # 转换为字符串
+                if isinstance(value.value, (dict, list)):
+                    import json
+                    converted_value.value = json.dumps(value.value)
+                else:
+                    converted_value.value = str(value.value)
+                    
+            elif value.type == ValueType.BOOL:
+                # 转换为布尔值
+                if isinstance(value.value, str):
+                    lower_value = value.value.lower().strip()
+                    if lower_value in ('true', '1', 'yes', 'on'):
+                        converted_value.value = True
+                    elif lower_value in ('false', '0', 'no', 'off'):
+                        converted_value.value = False
+                    else:
+                        converted_value.value = bool(value.value)
+                else:
+                    converted_value.value = bool(value.value)
+                    
+            elif value.type == ValueType.LIST:
+                # 转换为列表
+                if isinstance(value.value, str):
+                    import json
+                    try:
+                        converted_value.value = json.loads(value.value)
+                        if not isinstance(converted_value.value, list):
+                            # 如果不是列表，尝试按逗号分割
+                            converted_value.value = [item.strip() for item in value.value.split(',') if item.strip()]
+                    except json.JSONDecodeError:
+                        # 按逗号分割
+                        converted_value.value = [item.strip() for item in value.value.split(',') if item.strip()]
+                elif isinstance(value.value, list):
+                    converted_value.value = value.value
+                else:
+                    converted_value.value = [value.value]
+                    
+            elif value.type == ValueType.DICT:
+                # 转换为字典
+                if isinstance(value.value, str):
+                    import json
+                    try:
+                        converted_value.value = json.loads(value.value)
+                        if not isinstance(converted_value.value, dict):
+                            raise ValueError(f"解析后的值不是字典类型: {type(converted_value.value)}")
+                    except json.JSONDecodeError as e:
+                        raise ValueError(f"无法解析JSON字典: {e}")
+                elif isinstance(value.value, dict):
+                    converted_value.value = value.value
+                else:
+                    raise ValueError(f"无法将 {type(value.value)} 转换为字典")
+                    
+            else:
+                # 对于其他类型，保持原值
+                converted_value.value = value.value
+                
+        except (ValueError, TypeError, ImportError) as e:
+            raise ValueError(f"无法将值 '{value.value}' 转换为类型 '{value.type.value}': {str(e)}")
+            
+        return converted_value
 
     async def _process_condition(self, condition: Condition, call_vars: CallVars, 
                                  branch_id: str) -> tuple[bool, str]:

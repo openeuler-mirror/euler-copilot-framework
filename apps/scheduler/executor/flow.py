@@ -54,7 +54,9 @@ class FlowExecutor(BaseExecutor):
         logger.info("[FlowExecutor] 加载Executor状态")
         # 尝试恢复State
         if self.task.state:
-            self.task.context = await TaskManager.get_context_by_task_id(self.task.id)
+            context_objects = await TaskManager.get_context_by_task_id(self.task.id)
+            # 将对象转换为字典以保持与系统其他部分的一致性
+            self.task.context = [context.model_dump(exclude_none=True, by_alias=True) for context in context_objects]
         else:
             # 创建ExecutorState
             self.task.state = ExecutorState(

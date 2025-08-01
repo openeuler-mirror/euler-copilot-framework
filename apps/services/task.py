@@ -3,7 +3,7 @@
 
 import logging
 import uuid
-from typing import Any
+from typing import Any, Dict, List
 
 from apps.common.mongo import MongoDB
 from apps.schemas.record import RecordGroup
@@ -94,7 +94,7 @@ class TaskManager:
             return flow_context_list
 
     @staticmethod
-    async def get_context_by_task_id(task_id: str, length: int = 0) -> list[F]:
+    async def get_context_by_task_id(task_id: str, length: int = 0) -> List[FlowStepHistory]:
         """根据task_id获取flow信息"""
         flow_context_collection = MongoDB().get_collection("flow_context")
 
@@ -105,7 +105,8 @@ class TaskManager:
             ).sort(
                 "created_at", -1,
             ).limit(length):
-                flow_context += [history]
+                # 将字典转换为 FlowStepHistory 对象
+                flow_context.append(FlowStepHistory.model_validate(history))
         except Exception:
             logger.exception("[TaskManager] 获取task_id的flow信息失败")
             return []
