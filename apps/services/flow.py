@@ -262,7 +262,7 @@ class FlowManager:
                     parameters = node_config.params  # 直接使用保存的完整params
                 else:
                     # 其他节点：使用原有逻辑
-                    input_parameters = node_config.params
+                    input_parameters = node_config.params.get("input_parameters")
                     if node_config.node not in ("Empty"):
                         _, output_parameters = await NodeManager.get_node_params(node_config.node)
                     else:
