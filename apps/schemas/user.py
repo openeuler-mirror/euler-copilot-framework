@@ -9,3 +9,4 @@ class UserInfo(BaseModel):
 
     user_sub: str = Field(alias="userSub", default="")
     user_name: str = Field(alias="userName", default="")
+    auto_execute: bool = Field(alias="autoExecute", default=False)

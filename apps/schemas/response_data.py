@@ -55,6 +55,7 @@ class AuthUserMsg(BaseModel):
     user_sub: str
     revision: bool
     is_admin: bool
+    auto_execute: bool
 
 
 class AuthUserRsp(ResponseData):

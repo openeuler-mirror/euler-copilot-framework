@@ -4,6 +4,7 @@
 import logging
 from datetime import UTC, datetime
 
+from apps.schemas.request_data import UserUpdateRequest
 from apps.common.mongo import MongoDB
 from apps.schemas.collection import User
 from apps.services.conversation import ConversationManager
@@ -52,7 +53,26 @@ class UserManager:
         return User(**user_data) if user_data else None
 
     @staticmethod
-    async def update_userinfo_by_user_sub(user_sub: str, *, refresh_revision: bool = False) -> bool:
+    async def update_userinfo_by_user_sub(user_sub: str, data: UserUpdateRequest) -> bool:
+        """
+        根据用户sub更新用户信息
+
+        :param user_sub: 用户sub
+        :param data: 用户更新信息
+        :return: 是否更新成功
+        """
+        mongo = MongoDB()
+        user_collection = mongo.get_collection("user")
+        update_dict = {
+            "$set": {
+                "auto_execute": data.auto_execute,
+            }
+        }
+        result = await user_collection.update_one({"_id": user_sub}, update_dict)
+        return result.modified_count > 0
+
+    @staticmethod
+    async def update_refresh_revision_by_user_sub(user_sub: str, *, refresh_revision: bool = False) -> bool:
         """
         根据用户sub更新用户信息
 

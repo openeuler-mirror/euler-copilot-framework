@@ -61,6 +61,7 @@ class User(BaseModel):
     fav_apps: list[str] = []
     fav_services: list[str] = []
     is_admin: bool = Field(default=False, description="是否为管理员")
+    auto_execute: bool = Field(default=True, description="是否自动执行任务")
 
 
 class LLM(BaseModel):

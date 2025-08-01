@@ -10,6 +10,7 @@ from apps.schemas.appcenter import AppData
 from apps.schemas.enum_var import CommentType
 from apps.schemas.flow_topology import FlowItem
 from apps.schemas.mcp import MCPType
+from apps.schemas.message import param
 
 
 class RequestDataApp(BaseModel):
@@ -17,7 +18,7 @@ class RequestDataApp(BaseModel):
 
     app_id: str = Field(description="应用ID", alias="appId")
     flow_id: str | None = Field(default=None, description="Flow ID", alias="flowId")
-    params: dict[str, Any] | None = Field(default=None, description="插件参数")
+    params: param | None = Field(default=None, description="流执行过程中的参数补充", alias="params")
 
 
 class MockRequestData(BaseModel):
@@ -185,3 +186,9 @@ class UpdateKbReq(BaseModel):
     """更新知识库请求体"""
 
     kb_ids: list[str] = Field(description="知识库ID列表", alias="kbIds", default=[])
+
+
+class UserUpdateRequest(BaseModel):
+    """更新用户信息请求体"""
+
+    auto_execute: bool = Field(default=False, description="是否自动执行", alias="autoExecute")

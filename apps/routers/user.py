@@ -3,10 +3,11 @@
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Body, Depends, status
 from fastapi.responses import JSONResponse
 
 from apps.dependency import get_user
+from apps.schemas.request_data import UserUpdateRequest
 from apps.schemas.response_data import UserGetMsp, UserGetRsp
 from apps.schemas.user import UserInfo
 from apps.services.user import UserManager
@@ -18,7 +19,7 @@ router = APIRouter(
 
 
 @router.get("")
-async def chat(
+async def get_user_sub(
     user_sub: Annotated[str, Depends(get_user)],
 ) -> JSONResponse:
     """查询所有用户接口"""
@@ -41,4 +42,25 @@ async def chat(
             message="用户数据详细信息获取成功",
             result=UserGetMsp(userInfoList=user_info_list),
         ).model_dump(exclude_none=True, by_alias=True),
+    )
+
+
+@router.post("")
+async def update_user_info(
+    user_sub: Annotated[str, Depends(get_user)],
+    *,
+    data: Annotated[UserUpdateRequest, Body(..., description="用户更新信息")],
+) -> JSONResponse:
+    """更新用户信息接口"""
+    # 更新用户信息
+
+    result = await UserManager.update_userinfo_by_user_sub(user_sub, data)
+    if not result:
+        return JSONResponse(
+            status_code=status.HTTP_200_OK,
+            content={"code": status.HTTP_200_OK, "message": "用户信息更新成功"},
+        )
+    return JSONResponse(
+        status_code=status.HTTP_404_NOT_FOUND,
+        content={"code": status.HTTP_404_NOT_FOUND, "message": "用户信息更新失败"},
     )

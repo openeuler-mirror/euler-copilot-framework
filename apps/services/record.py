@@ -51,6 +51,10 @@ class RecordManager:
         try:
             await group_collection.update_one(
                 {"_id": group_id, "user_sub": user_sub},
+                {"$pull": {"records": {"id": record.id}}}
+            )
+            await group_collection.update_one(
+                {"_id": group_id, "user_sub": user_sub},
                 {"$push": {"records": record.model_dump(by_alias=True)}},
             )
         except Exception:
@@ -150,7 +154,6 @@ class RecordManager:
         except Exception:
             logger.exception("[RecordManager] 验证记录是否在组中失败")
             return False
-
 
     @staticmethod
     async def check_group_id(group_id: str, user_sub: str) -> bool:

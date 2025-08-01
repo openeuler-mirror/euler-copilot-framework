@@ -67,7 +67,7 @@ class MCPHost:
 
         context_list = []
         for ctx_id in self._context_list:
-            context = next((ctx for ctx in task.context if ctx["_id"] == ctx_id), None)
+            context = next((ctx for ctx in task.context if ctx.id == ctx_id), None)
             if not context:
                 continue
             context_list.append(context)
@@ -118,7 +118,7 @@ class MCPHost:
             logger.error("任务 %s 不存在", self._task_id)
             return {}
         self._context_list.append(context.id)
-        task.context.append(context.model_dump(by_alias=True, exclude_none=True))
+        task.context.append(context.model_dump(exclude_none=True, by_alias=True))
         await TaskManager.save_task(self._task_id, task)
 
         return output_data

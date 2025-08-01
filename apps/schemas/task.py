@@ -50,7 +50,7 @@ class ExecutorState(BaseModel):
     error_message: str = Field(description="当前步骤错误信息", default="")
     app_id: str = Field(description="应用ID", default="")
     slot: dict[str, Any] = Field(description="待填充参数的JSON Schema", default={})
-    error_info: dict[str, Any] = Field(description="错误信息", default={})
+    error_info: str = Field(description="错误信息", default="")
 
 
 class TaskIds(BaseModel):
