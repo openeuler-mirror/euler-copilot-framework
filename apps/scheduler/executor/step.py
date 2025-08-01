@@ -260,7 +260,7 @@ class StepExecutor(BaseExecutor):
             input_data=self.obj.input,
             output_data=output_data,
         )
-        self.task.context.append(history.model_dump(exclude_none=True, by_alias=True))
+        self.task.context.append(history)
 
         # 推送输出
         await self.push_message(EventType.STEP_OUTPUT.value, output_data)
