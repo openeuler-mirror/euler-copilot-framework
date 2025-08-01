@@ -55,7 +55,7 @@ class FlowExecutor(BaseExecutor):
         """从数据库中加载FlowExecutor的状态"""
         logger.info("[FlowExecutor] 加载Executor状态")
         # 尝试恢复State
-        if self.task.state:
+        if self.task.state and self.task.state.flow_status != FlowStatus.INIT:
             self.task.context = await TaskManager.get_context_by_task_id(self.task.id)
         else:
             # 创建ExecutorState

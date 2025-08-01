@@ -40,7 +40,7 @@ class ExecutorState(BaseModel):
     flow_id: str = Field(description="Flow ID", default="")
     flow_name: str = Field(description="Flow名称", default="")
     description: str = Field(description="Flow描述", default="")
-    flow_status: FlowStatus = Field(description="Flow状态", default=FlowStatus.UNKNOWN)
+    flow_status: FlowStatus = Field(description="Flow状态", default=FlowStatus.INIT)
     # 任务级数据
     step_id: str = Field(description="当前步骤ID", default="")
     step_name: str = Field(description="当前步骤名称", default="")

@@ -27,6 +27,7 @@ class FlowStatus(str, Enum):
     """Flow状态"""
 
     UNKNOWN = "unknown"
+    INIT = "init"
     WAITING = "waiting"
     RUNNING = "running"
     SUCCESS = "success"
