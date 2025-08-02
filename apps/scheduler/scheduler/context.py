@@ -199,21 +199,21 @@ async def save_data(task: Task, user_sub: str, post_body: RequestData) -> None:
 
     # 检查是否存在group_id
     if not await RecordManager.check_group_id(task.ids.group_id, user_sub):
-        record_group = await RecordManager.create_record_group(
-            task.ids.group_id, user_sub, post_body.conversation_id, task.id,
+        record_group_id = await RecordManager.create_record_group(
+            task.ids.group_id, user_sub, post_body.conversation_id
         )
-        if not record_group:
+        if not record_group_id:
             logger.error("[Scheduler] 创建问答组失败")
             return
     else:
-        record_group = task.ids.group_id
+        record_group_id = task.ids.group_id
 
     # 修改文件状态
-    await DocumentManager.change_doc_status(user_sub, post_body.conversation_id, record_group)
+    await DocumentManager.change_doc_status(user_sub, post_body.conversation_id, record_group_id)
     # 保存Record
-    await RecordManager.insert_record_data_into_record_group(user_sub, record_group, record)
+    await RecordManager.insert_record_data_into_record_group(user_sub, record_group_id, record)
     # 保存与答案关联的文件
-    await DocumentManager.save_answer_doc(user_sub, record_group, used_docs)
+    await DocumentManager.save_answer_doc(user_sub, record_group_id, used_docs)
 
     if post_body.app and post_body.app.app_id:
         # 更新最近使用的应用
@@ -223,5 +223,4 @@ async def save_data(task: Task, user_sub: str, post_body: RequestData) -> None:
     if not task.state or task.state.flow_status == StepStatus.SUCCESS or task.state.flow_status == StepStatus.ERROR or task.state.flow_status == StepStatus.CANCELLED:
         await TaskManager.delete_task_by_task_id(task.id)
     else:
-        # 更新Task
         await TaskManager.save_task(task.id, task)

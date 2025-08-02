@@ -46,11 +46,12 @@ class ExecutorState(BaseModel):
     step_name: str = Field(description="当前步骤名称", default="")
     step_status: StepStatus = Field(description="当前步骤状态", default=StepStatus.UNKNOWN)
     step_description: str = Field(description="当前步骤描述", default="")
-    retry_times: int = Field(description="当前步骤重试次数", default=0)
-    error_message: str = Field(description="当前步骤错误信息", default="")
     app_id: str = Field(description="应用ID", default="")
-    slot: dict[str, Any] = Field(description="待填充参数的JSON Schema", default={})
+    current_input: dict[str, Any] = Field(description="当前输入数据", default={})
+    params: dict[str, Any] = Field(description="补充的参数", default={})
+    params_description: str = Field(description="补充的参数描述", default="")
     error_info: str = Field(description="错误信息", default="")
+    retry_times: int = Field(description="当前步骤重试次数", default=0)
 
 
 class TaskIds(BaseModel):

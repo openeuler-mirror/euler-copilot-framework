@@ -14,116 +14,53 @@ from apps.llm.function import JsonGenerator
 from apps.scheduler.mcp.prompt import MEMORY_TEMPLATE
 from apps.scheduler.pool.mcp.client import MCPClient
 from apps.scheduler.pool.mcp.pool import MCPPool
+from apps.scheduler.mcp_agent.prompt import REPAIR_PARAMS
 from apps.schemas.enum_var import StepStatus
 from apps.schemas.mcp import MCPPlanItem, MCPTool
-from apps.schemas.task import FlowStepHistory
+from apps.schemas.task import Task, FlowStepHistory
 from apps.services.task import TaskManager
 
 logger = logging.getLogger(__name__)
+
+_env = SandboxedEnvironment(
+    loader=BaseLoader,
+    autoescape=True,
+    trim_blocks=True,
+    lstrip_blocks=True,
+)
 
 
 class MCPHost:
     """MCP宿主服务"""
 
-    def __init__(self, user_sub: str, task_id: str, runtime_id: str, runtime_name: str) -> None:
-        """初始化MCP宿主"""
-        self._user_sub = user_sub
-        self._task_id = task_id
-        # 注意：runtime在工作流中是flow_id和step_description，在Agent中可为标识Agent的id和description
-        self._runtime_id = runtime_id
-        self._runtime_name = runtime_name
-        self._context_list = []
-        self._env = SandboxedEnvironment(
-            loader=BaseLoader(),
-            autoescape=False,
-            trim_blocks=True,
-            lstrip_blocks=True,
-        )
-
-    async def get_client(self, mcp_id: str) -> MCPClient | None:
+    @staticmethod
+    async def get_client(user_sub, mcp_id: str) -> MCPClient | None:
         """获取MCP客户端"""
         mongo = MongoDB()
         mcp_collection = mongo.get_collection("mcp")
 
         # 检查用户是否启用了这个mcp
-        mcp_db_result = await mcp_collection.find_one({"_id": mcp_id, "activated": self._user_sub})
+        mcp_db_result = await mcp_collection.find_one({"_id": mcp_id, "activated": user_sub})
         if not mcp_db_result:
-            logger.warning("用户 %s 未启用MCP %s", self._user_sub, mcp_id)
+            logger.warning("用户 %s 未启用MCP %s", user_sub, mcp_id)
             return None
 
         # 获取MCP配置
         try:
-            return await MCPPool().get(mcp_id, self._user_sub)
+            return await MCPPool().get(mcp_id, user_sub)
         except KeyError:
-            logger.warning("用户 %s 的MCP %s 没有运行中的实例，请检查环境", self._user_sub, mcp_id)
+            logger.warning("用户 %s 的MCP %s 没有运行中的实例，请检查环境", user_sub, mcp_id)
             return None
 
-    async def assemble_memory(self) -> str:
+    @staticmethod
+    async def assemble_memory(task: Task) -> str:
         """组装记忆"""
-        task = await TaskManager.get_task_by_task_id(self._task_id)
-        if not task:
-            logger.error("任务 %s 不存在", self._task_id)
-            return ""
 
-        context_list = []
-        for ctx_id in self._context_list:
-            context = next((ctx for ctx in task.context if ctx.id == ctx_id), None)
-            if not context:
-                continue
-            context_list.append(context.model_dump(exclude_none=True, by_alias=True))
-
-        return self._env.from_string(MEMORY_TEMPLATE).render(
-            context_list=context_list,
+        return _env.from_string(MEMORY_TEMPLATE).render(
+            context_list=task.context,
         )
 
-    async def _save_memory(
-        self,
-        tool: MCPTool,
-        plan_item: MCPPlanItem,
-        input_data: dict[str, Any],
-        result: str,
-    ) -> dict[str, Any]:
-        """保存记忆"""
-        try:
-            output_data = json.loads(result)
-        except Exception:  # noqa: BLE001
-            logger.warning("[MCPHost] 得到的数据不是dict格式！尝试转换为str")
-            output_data = {
-                "message": result,
-            }
-
-        if not isinstance(output_data, dict):
-            output_data = {
-                "message": result,
-            }
-
-        # 创建context；注意用法
-        context = FlowStepHistory(
-            task_id=self._task_id,
-            flow_id=self._runtime_id,
-            flow_name=self._runtime_name,
-            flow_status=StepStatus.SUCCESS,
-            step_id=tool.name,
-            step_name=tool.name,
-            # description是规划的实际内容
-            step_description=plan_item.content,
-            step_status=StepStatus.SUCCESS,
-            input_data=input_data,
-            output_data=output_data,
-        )
-
-        # 保存到task
-        task = await TaskManager.get_task_by_task_id(self._task_id)
-        if not task:
-            logger.error("任务 %s 不存在", self._task_id)
-            return {}
-        self._context_list.append(context.id)
-        task.context.append(context)
-        await TaskManager.save_task(self._task_id, task)
-
-        return output_data
-
-    async def _fill_params(self, schema: dict[str, Any], query: str) -> dict[str, Any]:
+    async def _get_first_input_params(schema: dict[str, Any], query: str) -> dict[str, Any]:
         """填充工具参数"""
         # 更清晰的输入·指令，这样可以调用generate
         llm_query = rf"""
@@ -137,23 +74,48 @@ class MCPHost:
             llm_query,
             [
                 {"role": "system", "content": "You are a helpful assistant."},
-                {"role": "user", "content": await self.assemble_memory()},
+                {"role": "user", "content": await MCPHost.assemble_memory()},
             ],
             schema,
         )
         return await json_generator.generate()
 
-    async def call_tool(self, tool: MCPTool, plan_item: MCPPlanItem) -> list[dict[str, Any]]:
+    async def _fill_params(mcp_tool: MCPTool, schema: dict[str, Any],
+                           current_input: dict[str, Any],
+                           error_message: str = "", params: dict[str, Any] = {},
+                           params_description: str = "") -> dict[str, Any]:
+        llm_query = "请生成修复之后的工具参数"
+        prompt = _env.from_string(REPAIR_PARAMS).render(
+            tool_name=mcp_tool.name,
+            tool_description=mcp_tool.description,
+            input_schema=schema,
+            current_input=current_input,
+            error_message=error_message,
+            params=params,
+            params_description=params_description,
+        )
+
+        json_generator = JsonGenerator(
+            llm_query,
+            [
+                {"role": "system", "content": "You are a helpful assistant."},
+                {"role": "user", "content": prompt},
+            ],
+            schema,
+        )
+        return await json_generator.generate()
+
+    async def call_tool(user_sub: str, tool: MCPTool, plan_item: MCPPlanItem) -> list[dict[str, Any]]:
         """调用工具"""
         # 拿到Client
-        client = await MCPPool().get(tool.mcp_id, self._user_sub)
+        client = await MCPPool().get(tool.mcp_id, user_sub)
         if client is None:
             err = f"[MCPHost] MCP Server不合法: {tool.mcp_id}"
             logger.error(err)
             raise ValueError(err)
 
         # 填充参数
-        params = await self._fill_params(tool, plan_item.instruction)
+        params = await MCPHost._fill_params(tool, plan_item.instruction)
         # 调用工具
         result = await client.call_tool(tool.name, params)
         # 保存记忆
@@ -162,29 +124,12 @@ class MCPHost:
             if not isinstance(item, TextContent):
                 logger.error("MCP结果类型不支持: %s", item)
                 continue
-            processed_result.append(await self._save_memory(tool, plan_item, params, item.text))
+            result = item.text
+            try:
+                json_result = json.loads(result)
+            except Exception as e:
+                logger.error("MCP结果解析失败: %s, 错误: %s", result, e)
+                continue
+            processed_result.append(json_result)
 
         return processed_result
-
-    async def get_tool_list(self, mcp_id_list: list[str]) -> list[MCPTool]:
-        """获取工具列表"""
-        mongo = MongoDB()
-        mcp_collection = mongo.get_collection("mcp")
-
-        # 获取工具列表
-        tool_list = []
-        for mcp_id in mcp_id_list:
-            # 检查用户是否启用了这个mcp
-            mcp_db_result = await mcp_collection.find_one({"_id": mcp_id, "activated": self._user_sub})
-            if not mcp_db_result:
-                logger.warning("用户 %s 未启用MCP %s", self._user_sub, mcp_id)
-                continue
-            # 获取MCP工具配置
-            try:
-                for tool in mcp_db_result["tools"]:
-                    tool_list.extend([MCPTool.model_validate(tool)])
-            except KeyError:
-                logger.warning("用户 %s 的MCP Tool %s 配置错误", self._user_sub, mcp_id)
-                continue
-
-        return tool_list

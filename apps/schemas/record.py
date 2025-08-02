@@ -44,6 +44,7 @@ class RecordFlow(BaseModel):
     id: str
     record_id: str = Field(alias="recordId")
     flow_id: str = Field(alias="flowId")
+    flow_name: str = Field(alias="flowName", default="")
     flow_status: StepStatus = Field(alias="flowStatus", default=StepStatus.SUCCESS)
     step_num: int = Field(alias="stepNum")
     steps: list[RecordFlowStep]
@@ -129,6 +130,7 @@ class Record(RecordData):
 
     user_sub: str
     key: dict[str, Any] = {}
+    task_id: str
     content: str
     comment: RecordComment = Field(default=RecordComment())
     flow: FlowHistory = Field(
@@ -149,5 +151,4 @@ class RecordGroup(BaseModel):
     records: list[Record] = []
     docs: list[RecordGroupDocument] = []    # 问题不变，所用到的文档不变
     conversation_id: str
-    task_id: str
     created_at: float = Field(default_factory=lambda: round(datetime.now(tz=UTC).timestamp(), 3))

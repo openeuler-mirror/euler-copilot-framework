@@ -140,4 +140,4 @@ class ConversationManager:
             await record_group_collection.delete_many({"conversation_id": conversation_id}, session=session)
             await session.commit_transaction()
 
-        await TaskManager.delete_tasks_by_conversation_id(conversation_id)
+        await TaskManager.delete_tasks_and_flow_context_by_conversation_id(conversation_id)

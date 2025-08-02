@@ -1,6 +1,6 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2023-2025. All rights reserved.
 """MCP 用户目标拆解与规划"""
-from typing import Any
+from typing import Any, AsyncGenerator
 from jinja2 import BaseLoader
 from jinja2.sandbox import SandboxedEnvironment
 
@@ -57,8 +57,8 @@ class MCPPlanner:
             result += chunk
 
         # 保存token用量
-        self.input_tokens = self.resoning_llm.input_tokens
-        self.output_tokens = self.resoning_llm.output_tokens
+        self.input_tokens += self.resoning_llm.input_tokens
+        self.output_tokens += self.resoning_llm.output_tokens
         return result
 
     async def _parse_result(self, result: str, schema: dict[str, Any]) -> str:
@@ -171,7 +171,8 @@ class MCPPlanner:
         """获取推理大模型的风险评估结果"""
         template = self._env.from_string(RISK_EVALUATE)
         prompt = template.render(
-            tool=tool,
+            tool_name=tool.name,
+            tool_description=tool.description,
             input_param=input_param,
             additional_info=additional_info,
         )
@@ -194,7 +195,8 @@ class MCPPlanner:
         schema_with_null = slot.add_null_to_basic_types()
         template = self._env.from_string(GET_MISSING_PARAMS)
         prompt = template.render(
-            tool=tool,
+            tool_name=tool.name,
+            tool_description=tool.description,
             input_param=input_param,
             schema=schema_with_null,
             error_message=error_message,
@@ -204,7 +206,7 @@ class MCPPlanner:
         input_param_with_null = await self._parse_result(result, schema_with_null)
         return input_param_with_null
 
-    async def generate_answer(self, plan: MCPPlan, memory: str) -> str:
+    async def generate_answer(self, plan: MCPPlan, memory: str) -> AsyncGenerator[str, None]:
         """生成最终回答"""
         template = self._env.from_string(FINAL_ANSWER)
         prompt = template.render(
@@ -213,16 +215,12 @@ class MCPPlanner:
             goal=self.user_goal,
         )
 
-        llm = ReasoningLLM()
-        result = ""
-        async for chunk in llm.call(
+        async for chunk in self.resoning_llm.call(
             [{"role": "user", "content": prompt}],
             streaming=False,
             temperature=0.07,
         ):
-            result += chunk
+            yield chunk
 
-        self.input_tokens = llm.input_tokens
-        self.output_tokens = llm.output_tokens
-
-        return result
+            self.input_tokens = self.resoning_llm.input_tokens
+            self.output_tokens = self.resoning_llm.output_tokens

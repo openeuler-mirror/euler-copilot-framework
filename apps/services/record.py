@@ -9,7 +9,7 @@ from apps.schemas.record import (
     Record,
     RecordGroup,
 )
-
+from apps.schemas.enum_var import FlowStatus
 logger = logging.getLogger(__name__)
 
 
@@ -17,7 +17,7 @@ class RecordManager:
     """问答对相关操作"""
 
     @staticmethod
-    async def create_record_group(group_id: str, user_sub: str, conversation_id: str, task_id: str) -> str | None:
+    async def create_record_group(group_id: str, user_sub: str, conversation_id: str) -> str | None:
         """创建问答组"""
         mongo = MongoDB()
         record_group_collection = mongo.get_collection("record_group")
@@ -26,7 +26,6 @@ class RecordManager:
             _id=group_id,
             user_sub=user_sub,
             conversation_id=conversation_id,
-            task_id=task_id,
         )
 
         try:
@@ -136,6 +135,19 @@ class RecordManager:
         except Exception:
             logger.exception("[RecordManager] 查询问答组失败")
             return []
+
+    @staticmethod
+    async def update_record_flow_status_to_cancelled_by_task_ids(task_ids: list[str]) -> None:
+        """更新Record关联的Flow状态"""
+        record_group_collection = MongoDB().get_collection("record_group")
+        try:
+            await record_group_collection.update_many(
+                {"records.flow.flow_id": {"$in": task_ids}, "records.flow.flow_status": {"$nin": [FlowStatus.ERROR.value, FlowStatus.SUCCESS.value]}},
+                {"$set": {"records.$[elem].flow.flow_status": FlowStatus.CANCELLED}},
+                array_filters=[{"elem.flow.flow_id": {"$in": task_ids}}],
+            )
+        except Exception:
+            logger.exception("[RecordManager] 更新Record关联的Flow状态失败")
 
     @staticmethod
     async def verify_record_in_group(group_id: str, record_id: str, user_sub: str) -> bool:

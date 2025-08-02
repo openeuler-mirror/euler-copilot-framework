@@ -421,8 +421,8 @@ RISK_EVALUATE = dedent(r"""
     ```
     # 工具
     <tool>
-        <name>{{ tool.name }}</name>
-        <description>{{ tool.description }}</description>
+        <name>{{ tool_name }}</name>
+        <description>{{ tool_description }}</description>
     </tool>
     # 工具入参
     {{ input_param }}
@@ -464,7 +464,7 @@ JUDGE_NEXT_STEP = dedent(r"""
         {
             "content": "任务执行完成，端口扫描结果为Result[2]",
             "tool": "Final",
-            "instruction": ""  
+            "instruction": ""
         }
     ]}
     ## 当前使用的工具
@@ -489,8 +489,8 @@ JUDGE_NEXT_STEP = dedent(r"""
     {{ current_plan }}
     # 当前使用的工具
     <tool>
-        <name>{{ tool.name }}</name>
-        <description>{{ tool.description }}</description>
+        <name>{{ tool_name }}</name>
+        <description>{{ tool_description }}</description>
     </tool>
     # 工具入参
     {{ input_param }}
@@ -571,8 +571,8 @@ GET_MISSING_PARAMS = dedent(r"""
     ```
     # 工具
     < tool >
-        < name > {{tool.name}} < /name >
-        < description > {{tool.description}} < /description >
+        < name > {{tool_name}} < /name >
+        < description > {{tool_description}} < /description >
     < / tool >
     # 工具入参
     {{input_param}}
@@ -583,32 +583,107 @@ GET_MISSING_PARAMS = dedent(r"""
     # 输出
     """
                             )
+REPAIR_PARAMS = dedent(r"""
+    你是一个工具参数修复器。
+    你的任务是根据当前的工具信息、工具入参的schema、工具当前的入参、工具的报错、补充的参数和补充的参数描述，修复当前工具的入参。
+
+    # 样例
+    ## 工具信息
+    <tool>
+        <name>mysql_analyzer</name>
+        <description>分析MySQL数据库性能</description>
+    </tool>
+    ## 工具入参的schema
+    {
+        "type": "object",
+        "properties": {
+            "host": {
+                "type": "string",
+                "description": "MySQL数据库的主机地址"
+            },
+            "port": {
+                "type": "integer",
+                "description": "MySQL数据库的端口号"
+            },
+            "username": {
+                "type": "string",
+                "description": "MySQL数据库的用户名"
+            },
+            "password": {
+                "type": "string",
+                "description": "MySQL数据库的密码"
+            }
+        },
+        "required": ["host", "port", "username", "password"]
+    }
+    ## 工具当前的入参
+    {
+        "host": "192.0.0.1",
+        "port": 3306,
+        "username": "root",
+        "password": "password"
+    }
+    ## 工具的报错
+    执行端口扫描命令时，出现了错误：`password is not correct`。
+    ## 补充的参数
+    {
+        "username": "admin",
+        "password": "admin123"
+    }
+    ## 补充的参数描述
+    用户希望使用admin用户和admin123密码来连接MySQL数据库。
+    # 输出
+    ```json
+    {
+        "host": "192.0.0.1",
+        "port": 3306,
+        "username": "admin",
+        "password": "admin123"
+    }
+    ```
+    # 工具
+    <tool>
+        <name>{{tool_name}}</name>
+        <description>{{tool_description}}</description>
+    </tool>
+    # 工具入参scheme
+    {{input_schema}}
+    # 工具入参
+    {{input_param}}
+    # 运行报错
+    {{error_message}}
+    # 补充的参数
+    {{params}}
+    # 补充的参数描述
+    {{params_description}}
+    # 输出
+    """
+                       )
 FINAL_ANSWER = dedent(r"""
     综合理解计划执行结果和背景信息，向用户报告目标的完成情况。
 
     # 用户目标
 
-    {{goal}}
+    {{ goal }}
 
     # 计划执行情况
 
     为了完成上述目标，你实施了以下计划：
 
-    {{memory}}
+    {{ memory }}
 
     # 其他背景信息：
 
-    {{status}}
+    {{ status }}
 
     # 现在，请根据以上信息，向用户报告目标的完成情况：
 
 """)
-
 MEMORY_TEMPLATE = dedent(r"""
-    { % for ctx in context_list % }
+    {% for ctx in context_list % }
     - 第{{loop.index}}步：{{ctx.step_description}}
       - 调用工具 `{{ctx.step_id}}`，并提供参数 `{{ctx.input_data}}`
       - 执行状态：{{ctx.status}}
       - 得到数据：`{{ctx.output_data}}`
-    { % endfor % }
+    {% endfor % }
 """)

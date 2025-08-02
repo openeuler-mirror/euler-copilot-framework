@@ -114,6 +114,28 @@ class TaskManager:
             return flow_context
 
     @staticmethod
+    async def init_new_task(
+        cls,
+        user_sub: str,
+        session_id: str | None = None,
+        post_body: RequestData | None = None,
+    ) -> Task:
+        """获取任务块"""
+        return Task(
+            _id=str(uuid.uuid4()),
+            ids=TaskIds(
+                user_sub=user_sub if user_sub else "",
+                session_id=session_id if session_id else "",
+                conversation_id=post_body.conversation_id,
+                group_id=post_body.group_id if post_body.group_id else "",
+            ),
+            question=post_body.question if post_body else "",
+            group_id=post_body.group_id if post_body else "",
+            tokens=TaskTokens(),
+            runtime=TaskRuntime(),
+        )
+
+    @staticmethod
     async def save_flow_context(task_id: str, flow_context: list[FlowStepHistory]) -> None:
         """保存flow信息到flow_context"""
         flow_context_collection = MongoDB().get_collection("flow_context")
@@ -145,7 +167,25 @@ class TaskManager:
             await task_collection.delete_one({"_id": task_id})
 
     @staticmethod
-    async def delete_tasks_by_conversation_id(conversation_id: str) -> None:
+    async def delete_tasks_by_conversation_id(conversation_id: str) -> list[str]:
+        """通过ConversationID删除Task信息"""
+        mongo = MongoDB()
+        task_collection = mongo.get_collection("task")
+        task_ids = []
+        try:
+            async for task in task_collection.find(
+                {"conversation_id": conversation_id},
+                {"_id": 1},
+            ):
+                task_ids.append(task["_id"])
+            if task_ids:
+                await task_collection.delete_many({"conversation_id": conversation_id})
+        except Exception:
+            logger.exception("[TaskManager] 删除ConversationID的Task信息失败")
+            return []
+
+    @staticmethod
+    async def delete_tasks_and_flow_context_by_conversation_id(conversation_id: str) -> None:
         """通过ConversationID删除Task信息"""
         mongo = MongoDB()
         task_collection = mongo.get_collection("task")
@@ -161,49 +201,6 @@ class TaskManager:
             ]
             await task_collection.delete_many({"conversation_id": conversation_id}, session=session)
             await flow_context_collection.delete_many({"task_id": {"$in": task_ids}}, session=session)
-
-    @classmethod
-    async def get_task(
-        cls,
-        task_id: str | None = None,
-        session_id: str | None = None,
-        post_body: RequestData | None = None,
-        user_sub: str | None = None,
-    ) -> Task:
-        """获取任务块"""
-        if task_id:
-            try:
-                task = await cls.get_task_by_task_id(task_id)
-                if task:
-                    return task
-            except Exception:
-                logger.exception("[TaskManager] 通过task_id获取任务失败")
-
-        logger.info("[TaskManager] 未提供task_id，通过session_id获取任务")
-        if not session_id or not post_body:
-            err = (
-                "session_id 和 conversation_id 或 group_id 和 conversation_id 是恢复/创建任务的必要条件。"
-            )
-            raise ValueError(err)
-
-        if post_body.group_id:
-            task = await cls.get_task_by_group_id(post_body.group_id, post_body.conversation_id)
-        else:
-            task = await cls.get_task_by_conversation_id(post_body.conversation_id)
-
-        if task:
-            return task
-        return Task(
-            _id=str(uuid.uuid4()),
-            ids=TaskIds(
-                user_sub=user_sub if user_sub else "",
-                session_id=session_id if session_id else "",
-                conversation_id=post_body.conversation_id,
-                group_id=post_body.group_id if post_body.group_id else "",
-            ),
-            tokens=TaskTokens(),
-            runtime=TaskRuntime(),
-        )
 
     @classmethod
     async def save_task(cls, task_id: str, task: Task) -> None:

@@ -65,7 +65,7 @@ async def get_record(conversation_id: str, user_sub: Annotated[str, Depends(get_
             tmp_record = RecordData(
                 id=record.id,
                 groupId=record_group.id,
-                taskId=record_group.task_id,
+                taskId=record.task_id,
                 conversationId=conversation_id,
                 content=record_data,
                 metadata=record.metadata
@@ -87,8 +87,9 @@ async def get_record(conversation_id: str, user_sub: Annotated[str, Depends(get_
                 tmp_record.flow = RecordFlow(
                     id=record.flow.flow_id,  # TODO: 此处前端应该用name
                     recordId=record.id,
-                    flowStatus=record.flow.flow_staus,
                     flowId=record.flow.flow_id,
+                    flowName=record.flow.flow_name,
+                    flowStatus=record.flow.flow_staus,
                     stepNum=len(flow_step_list),
                     steps=[],
                 )
