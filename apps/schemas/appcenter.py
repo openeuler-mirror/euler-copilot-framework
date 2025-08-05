@@ -50,6 +50,14 @@ class AppFlowInfo(BaseModel):
     debug: bool = Field(..., description="是否经过调试")
 
 
+class AppMcpServiceInfo(BaseModel):
+    """应用关联的MCP服务信息"""
+
+    id: str = Field(..., description="MCP服务ID")
+    name: str = Field(..., description="MCP服务名称")
+    description: str = Field(..., description="MCP服务简介")
+
+
 class AppData(BaseModel):
     """应用信息数据结构"""
 
@@ -64,4 +72,4 @@ class AppData(BaseModel):
     permission: AppPermissionData = Field(
         default_factory=lambda: AppPermissionData(authorizedUsers=None), description="权限配置")
     workflows: list[AppFlowInfo] = Field(default=[], description="工作流信息列表")
-    mcp_service: list[str] = Field(default=[], alias="mcpService", description="MCP服务id列表")
+    mcp_service: list[AppMcpServiceInfo] = Field(default=[], alias="mcpService", description="MCP服务id列表")

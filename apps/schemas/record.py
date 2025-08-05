@@ -130,8 +130,8 @@ class Record(RecordData):
 
     user_sub: str
     key: dict[str, Any] = {}
-    task_id: str
-    content: str
+    task_id: str | None = Field(default=None, description="任务ID")
+    content: str = Field(default="", description="Record内容，已加密")
     comment: RecordComment = Field(default=RecordComment())
     flow: FlowHistory = Field(
         default=FlowHistory(), description="Flow执行历史信息")

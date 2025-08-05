@@ -78,6 +78,7 @@ class MCPServiceManager:
             user_sub: str,
             keyword: str | None,
             page: int,
+            is_active: bool | None = None,
     ) -> list[MCPServiceCardItem]:
         """
         获取所有MCP服务列表
@@ -89,6 +90,11 @@ class MCPServiceManager:
         :return: MCP服务列表
         """
         filters = MCPServiceManager._build_filters(search_type, keyword)
+        if is_active is not None:
+            if is_active:
+                filters["activated"] = {"$in": [user_sub]}
+            else:
+                filters["activated"] = {"$nin": [user_sub]}
         mcpservice_pools = await MCPServiceManager._search_mcpservice(filters, page)
         return [
             MCPServiceCardItem(
