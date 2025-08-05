@@ -60,7 +60,7 @@ class MCPHost:
             context_list=task.context,
         )
 
-    async def _get_first_input_params(schema: dict[str, Any], query: str) -> dict[str, Any]:
+    async def _get_first_input_params(mcp_tool: MCPTool, query: str, task: Task) -> dict[str, Any]:
         """填充工具参数"""
         # 更清晰的输入·指令，这样可以调用generate
         llm_query = rf"""
@@ -74,13 +74,13 @@ class MCPHost:
             llm_query,
             [
                 {"role": "system", "content": "You are a helpful assistant."},
-                {"role": "user", "content": await MCPHost.assemble_memory()},
+                {"role": "user", "content": await MCPHost.assemble_memory(task)},
             ],
-            schema,
+            mcp_tool.input_schema,
         )
         return await json_generator.generate()
 
-    async def _fill_params(mcp_tool: MCPTool, schema: dict[str, Any],
+    async def _fill_params(mcp_tool: MCPTool,
                            current_input: dict[str, Any],
                            error_message: str = "", params: dict[str, Any] = {},
                            params_description: str = "") -> dict[str, Any]:
@@ -88,7 +88,7 @@ class MCPHost:
         prompt = _env.from_string(REPAIR_PARAMS).render(
             tool_name=mcp_tool.name,
             tool_description=mcp_tool.description,
-            input_schema=schema,
+            input_schema=mcp_tool.input_schema,
             current_input=current_input,
             error_message=error_message,
             params=params,
@@ -101,7 +101,7 @@ class MCPHost:
                 {"role": "system", "content": "You are a helpful assistant."},
                 {"role": "user", "content": prompt},
             ],
-            schema,
+            mcp_tool.input_schema,
         )
         return await json_generator.generate()
 

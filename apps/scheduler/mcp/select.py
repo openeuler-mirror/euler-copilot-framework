@@ -39,7 +39,6 @@ class MCPSelector:
             sql += f"'{mcp_id}', "
         return sql.rstrip(", ") + ")"
 
-
     async def _get_top_mcp_by_embedding(
         self,
         query: str,
@@ -72,7 +71,6 @@ class MCPSelector:
             }])
         return llm_mcp_list
 
-
     async def _get_mcp_by_llm(
         self,
         query: str,
@@ -100,7 +98,6 @@ class MCPSelector:
         # 使用小模型提取JSON
         return await self._call_function_mcp(result, mcp_ids)
 
-
     async def _call_reasoning(self, prompt: str) -> str:
         """调用大模型进行推理"""
         logger.info("[MCPHelper] 调用推理大模型")
@@ -115,7 +112,6 @@ class MCPSelector:
         self.input_tokens += llm.input_tokens
         self.output_tokens += llm.output_tokens
         return result
-
 
     async def _call_function_mcp(self, reasoning_result: str, mcp_ids: list[str]) -> MCPSelectResult:
         """调用结构化输出小模型提取JSON"""
@@ -136,7 +132,6 @@ class MCPSelector:
             raise
         return result
 
-
     async def select_top_mcp(
         self,
         query: str,
@@ -152,7 +147,6 @@ class MCPSelector:
 
         # 通过LLM选择最合适的
         return await self._get_mcp_by_llm(query, llm_mcp_list, mcp_list)
-
 
     @staticmethod
     async def select_top_tool(query: str, mcp_list: list[str], top_n: int = 10) -> list[MCPTool]:

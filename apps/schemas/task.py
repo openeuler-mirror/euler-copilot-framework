@@ -30,6 +30,7 @@ class FlowStepHistory(BaseModel):
     step_status: StepStatus = Field(description="当前步骤状态")
     input_data: dict[str, Any] = Field(description="当前Step执行的输入", default={})
     output_data: dict[str, Any] = Field(description="当前Step执行后的结果", default={})
+    ex_data: dict[str, Any] | None = Field(description="额外数据", default=None)
     created_at: float = Field(default_factory=lambda: round(datetime.now(tz=UTC).timestamp(), 3))
 
 
@@ -43,14 +44,13 @@ class ExecutorState(BaseModel):
     flow_status: FlowStatus = Field(description="Flow状态", default=FlowStatus.INIT)
     # 任务级数据
     step_id: str = Field(description="当前步骤ID", default="")
+    step_index: int = Field(description="当前步骤索引", default=0)
     step_name: str = Field(description="当前步骤名称", default="")
     step_status: StepStatus = Field(description="当前步骤状态", default=StepStatus.UNKNOWN)
     step_description: str = Field(description="当前步骤描述", default="")
     app_id: str = Field(description="应用ID", default="")
     current_input: dict[str, Any] = Field(description="当前输入数据", default={})
-    params: dict[str, Any] = Field(description="补充的参数", default={})
-    params_description: str = Field(description="补充的参数描述", default="")
-    error_info: str = Field(description="错误信息", default="")
+    error_message: str = Field(description="错误信息", default="")
     retry_times: int = Field(description="当前步骤重试次数", default=0)
 
 

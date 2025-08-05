@@ -110,3 +110,6 @@ class AppPool(BaseData):
     flows: list[AppFlow] = Field(description="Flow列表", default=[])
     hashes: dict[str, str] = Field(description="关联文件的hash值", default={})
     mcp_service: list[str] = Field(default=[], alias="mcpService", description="MCP服务id列表")
+    llm_id: str = Field(
+        default="empty", alias="llmId", description="应用使用的大模型ID（如果有的话）"
+    )

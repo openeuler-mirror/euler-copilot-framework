@@ -111,6 +111,13 @@ class GoalEvaluationResult(BaseModel):
     reason: str = Field(description="评估原因")
 
 
+class RestartStepIndex(BaseModel):
+    """MCP重新规划的步骤索引"""
+
+    start_index: int = Field(description="重新规划的起始步骤索引")
+    reasoning: str = Field(description="重新规划的原因")
+
+
 class Risk(str, Enum):
     """MCP工具风险类型"""
 
@@ -126,6 +133,20 @@ class ToolRisk(BaseModel):
     reason: str = Field(description="风险原因", default="")
 
 
+class ErrorType(str, Enum):
+    """MCP工具错误类型"""
+
+    MISSING_PARAM = "missing_param"
+    DECORRECT_PLAN = "decorrect_plan"
+
+
+class ToolExcutionErrorType(BaseModel):
+    """MCP工具执行错误"""
+
+    type: ErrorType = Field(description="错误类型", default=ErrorType.MISSING_PARAM)
+    reason: str = Field(description="错误原因", default="")
+
+
 class MCPSelectResult(BaseModel):
     """MCP选择结果"""
 
@@ -136,6 +157,12 @@ class MCPToolSelectResult(BaseModel):
     """MCP工具选择结果"""
 
     name: str = Field(description="工具名称")
+
+
+class MCPToolIdsSelectResult(BaseModel):
+    """MCP工具ID选择结果"""
+
+    tool_ids: list[str] = Field(description="工具ID列表")
 
 
 class MCPPlanItem(BaseModel):

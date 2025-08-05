@@ -15,6 +15,7 @@ class SlotType(str, Enum):
 class StepStatus(str, Enum):
     """步骤状态"""
     UNKNOWN = "unknown"
+    INIT = "init"
     WAITING = "waiting"
     RUNNING = "running"
     SUCCESS = "success"
@@ -55,12 +56,15 @@ class EventType(str, Enum):
     STEP_WAITING_FOR_START = "step.waiting_for_start"
     STEP_WAITING_FOR_PARAM = "step.waiting_for_param"
     FLOW_START = "flow.start"
+    STEP_INIT = "step.init"
     STEP_INPUT = "step.input"
     STEP_OUTPUT = "step.output"
+    STEP_CANCEL = "step.cancel"
+    STEP_ERROR = "step.error"
     FLOW_STOP = "flow.stop"
     FLOW_FAILED = "flow.failed"
     FLOW_SUCCESS = "flow.success"
-    FLOW_CANCELLED = "flow.cancelled"
+    FLOW_CANCEL = "flow.cancel"
     DONE = "done"
 
 

@@ -84,7 +84,7 @@ class FlowStartContent(BaseModel):
     """flow.start消息的content"""
 
     question: str = Field(description="用户问题")
-    params: dict[str, Any] = Field(description="预先提供的参数")
+    params: dict[str, Any] | None = Field(description="预先提供的参数", default=None)
 
 
 class MessageBase(HeartbeatData):
@@ -95,5 +95,5 @@ class MessageBase(HeartbeatData):
     conversation_id: str = Field(min_length=36, max_length=36, alias="conversationId")
     task_id: str = Field(min_length=36, max_length=36, alias="taskId")
     flow: MessageFlow | None = None
-    content: dict[str, Any] = {}
+    content: Any | None = Field(default=None, description="消息内容")
     metadata: MessageMetadata

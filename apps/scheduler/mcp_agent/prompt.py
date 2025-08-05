@@ -62,6 +62,62 @@ MCP_SELECT = dedent(r"""
     ### 请一步一步思考：
 
 """)
+TOOL_SELECT = dedent(r"""
+    你是一个乐于助人的智能助手。
+    你的任务是：根据当前目标，附加信息，选择最合适的MCP工具。
+    ## 选择MCP工具时的注意事项：
+    1. 确保充分理解当前目标，选择实现目标所需的MCP工具。
+    2. 请在给定的MCP工具列表中选择，不要自己生成MCP工具。
+    3. 可以选择一些辅助工具，但必须确保这些工具与当前目标相关。
+    必须按照以下格式生成选择结果，不要输出任何其他内容：
+    ```json
+    {
+        "tool_ids": ["工具ID1", "工具ID2", ...]
+    }
+    ```
+
+    # 示例
+    ## 目标
+    调优mysql性能
+    ## MCP工具列表
+    <tools>
+    - <id>mcp_tool_1</id> <description>MySQL链接池工具；用于优化MySQL链接池</description>
+    - <id>mcp_tool_2</id> <description>MySQL性能调优工具；用于分析MySQL性能瓶颈</description>
+    - <id>mcp_tool_3</id> <description>MySQL查询优化工具；用于优化MySQL查询语句</description>
+    - <id>mcp_tool_4</id> <description>MySQL索引优化工具；用于优化MySQL索引</description>
+    - <id>mcp_tool_5</id> <description>文件存储工具；用于存储文件</description>
+    - <id>mcp_tool_6</id> <description>mongoDB工具；用于操作MongoDB数据库</description>
+    </tools>
+    ## 附加信息
+    1. 当前MySQL数据库的版本是8.0.26
+    2. 当前MySQL数据库的配置文件路径是/etc/my.cnf，并含有以下配置项
+    ```json
+    {
+        "max_connections": 1000,
+        "innodb_buffer_pool_size": "1G",
+        "query_cache_size": "64M"
+    }
+    ##输出
+    ```json
+    {
+        "tool_ids": ["mcp_tool_1", "mcp_tool_2", "mcp_tool_3", "mcp_tool_4"]
+    }
+    ```
+    # 现在开始！
+    ## 目标
+    {{goal}}
+    ## MCP工具列表
+    <tools>
+    {% for tool in tools %}
+    - <id>{{tool.id}}</id> <description>{{tool.name}}；{{tool.description}}</description>
+    {% endfor %}
+    </tools>
+    ## 附加信息
+    {{additional_info}}
+    # 输出
+    """
+                     )
+
 EVALUATE_GOAL = dedent(r"""
     你是一个计划评估器。
     请根据用户的目标和当前的工具集合以及一些附加信息，判断基于当前的工具集合，是否能够完成用户的目标。
@@ -76,18 +132,18 @@ EVALUATE_GOAL = dedent(r"""
     ```
 
     # 样例
-    ## 目标
-    我需要扫描当前mysql数据库，分析性能瓶颈,并调优
+    # 目标
+    我需要扫描当前mysql数据库，分析性能瓶颈, 并调优
 
-    ## 工具集合
-    你可以访问并使用一些工具，这些工具将在<tools></tools> XML标签中给出。
+    # 工具集合
+    你可以访问并使用一些工具，这些工具将在 <tools> </tools> XML标签中给出。
     <tools>
-        - <id>mysql_analyzer</id><description>分析MySQL数据库性能</description>
-        - <id>performance_tuner</id><description>调优数据库性能</description>
-        - <id>Final</id><description>结束步骤，当执行到这一步时，表示计划执行结束，所得到的结果将作为最终结果。</description>
+        - <id> mysql_analyzer </id> <description> 分析MySQL数据库性能 </description>
+        - <id> performance_tuner </id> <description> 调优数据库性能 </description>
+        - <id> Final </id> <description> 结束步骤，当执行到这一步时，表示计划执行结束，所得到的结果将作为最终结果。</description>
     </tools>
 
-    ## 附加信息
+    # 附加信息
     1. 当前MySQL数据库的版本是8.0.26
     2. 当前MySQL数据库的配置文件路径是/etc/my.cnf
 
@@ -100,17 +156,17 @@ EVALUATE_GOAL = dedent(r"""
     ```
 
     # 目标
-    {{ goal }}
+    {{goal}}
 
     # 工具集合
     <tools>
-        {% for tool in tools %}
-        - <id>{{ tool.id }}</id><description>{{tool.name}}；{{ tool.description }}</description>
-        {% endfor %}
+        { % for tool in tools % }
+        - <id> {{tool.id}} </id> <description> {{tool.name}}；{{tool.description}} </description>
+        { % endfor % }
     </tools>
 
     # 附加信息
-    {{ additional_info }}
+    {{additional_info}}
 
 """)
 GENERATE_FLOW_NAME = dedent(r"""
@@ -123,15 +179,79 @@ GENERATE_FLOW_NAME = dedent(r"""
     4. 流程名称应该尽量简短，小于20个字或者单词。
     5. 只输出流程名称，不要输出其他内容。
     # 样例
-    ## 目标
-    我需要扫描当前mysql数据库，分析性能瓶颈,并调优
-    ## 输出
+    # 目标
+    我需要扫描当前mysql数据库，分析性能瓶颈, 并调优
+    # 输出
     扫描MySQL数据库并分析性能瓶颈，进行调优
     # 现在开始生成流程名称：
     # 目标
-    {{ goal }}
+    {{goal}}
     # 输出
     """)
+GET_REPLAN_START_STEP_INDEX = dedent(r"""
+    你是一个智能助手，你的任务是根据用户的目标、报错信息和当前计划和历史，获取重新规划的步骤起始索引。
+
+    # 样例
+    # 目标
+    我需要扫描当前mysql数据库，分析性能瓶颈, 并调优
+    # 报错信息
+    执行端口扫描命令时，出现了错误：`- bash: curl: command not found`。
+    # 当前计划
+    ```json
+    {
+        "plans": [
+            {
+                "step_id": "step_1",
+                "content": "生成端口扫描命令",
+                "tool": "command_generator",
+                "instruction": "生成端口扫描命令：扫描
+            },
+            {
+                "step_id": "step_2",
+                "content": "在执行Result[0]生成的命令",
+                "tool": "command_executor",
+                "instruction": "执行端口扫描命令"
+            }
+        ]
+    }
+    # 历史
+    [
+        {
+            id: "0",
+            task_id: "task_1",
+            flow_id: "flow_1",
+            flow_name: "MYSQL性能调优",
+            flow_status: "RUNNING",
+            step_id: "step_1",
+            step_name: "生成端口扫描命令",
+            step_description: "生成端口扫描命令：扫描当前MySQL数据库的端口",
+            step_status: "FAILED",
+            input_data: {
+                "command": "nmap -p 3306
+                "target": "localhost"
+            },
+            output_data: {
+                "error": "- bash: curl: command not found"
+            }
+        }
+    ]
+    # 输出
+    {
+        "start_index": 0,
+        "reasoning": "当前计划的第一步就失败了，报错信息显示curl命令未找到，可能是因为没有安装curl工具，因此需要从第一步重新规划。"
+    }
+    # 现在开始获取重新规划的步骤起始索引：
+    # 目标
+    {{goal}}
+    # 报错信息
+    {{error_message}}
+    # 当前计划
+    {{current_plan}}
+    # 历史
+    {{history}}
+    # 输出
+    """)
+
 CREATE_PLAN = dedent(r"""
     你是一个计划生成器。
     请分析用户的目标，并生成一个计划。你后续将根据这个计划，一步一步地完成用户的目标。
@@ -163,40 +283,38 @@ CREATE_PLAN = dedent(r"""
     }
     ```
 
-    - 在生成计划之前，请一步一步思考，解析用户的目标，并指导你接下来的生成。\
-思考过程应放置在<thinking></thinking> XML标签中。
+    - 在生成计划之前，请一步一步思考，解析用户的目标，并指导你接下来的生成。
+思考过程应放置在 <thinking> </thinking> XML标签中。
     - 计划内容中，可以使用"Result[]"来引用之前计划步骤的结果。例如："Result[3]"表示引用第三条计划执行后的结果。
-    - 计划不得多于{{ max_num }}条，且每条计划内容应少于150字。
+    - 计划不得多于{{max_num}}条，且每条计划内容应少于150字。
 
     # 工具
 
-    你可以访问并使用一些工具，这些工具将在<tools></tools> XML标签中给出。
+    你可以访问并使用一些工具，这些工具将在 <tools> </tools> XML标签中给出。
 
     <tools>
-        {% for tool in tools %}
-        - <id>{{ tool.id }}</id><description>{{tool.name}}；{{ tool.description }}</description>
-        {% endfor %}
+        { % for tool in tools % }
+        - <id> {{tool.id}} </id> <description> {{tool.name}}；{{tool.description}} </description>
+        { % endfor % }
     </tools>
 
     # 样例
 
-    ## 目标
+    # 目标
 
-    在后台运行一个新的alpine:latest容器，将主机/root文件夹挂载至/data，并执行top命令。
+    在后台运行一个新的alpine: latest容器，将主机/root文件夹挂载至/data，并执行top命令。
 
-    ## 计划
+    # 计划
 
     <thinking>
-    1. 这个目标需要使用Docker来完成,首先需要选择合适的MCP Server
+    1. 这个目标需要使用Docker来完成, 首先需要选择合适的MCP Server
     2. 目标可以拆解为以下几个部分:
-       - 运行alpine:latest容器
+       - 运行alpine: latest容器
        - 挂载主机目录
        - 在后台运行
        - 执行top命令
-    3. 需要先选择MCP Server,然后生成Docker命令,最后执行命令
-    </thinking>
-
-    ```json
+    3. 需要先选择MCP Server, 然后生成Docker命令, 最后执行命令
+    </thinking> ```json
     {
         "plans": [
             {
@@ -225,7 +343,7 @@ CREATE_PLAN = dedent(r"""
 
     # 现在开始生成计划：
 
-    ## 目标
+    # 目标
 
     {{goal}}
 
@@ -263,26 +381,24 @@ RECREATE_PLAN = dedent(r"""
     }
     ```
 
-    - 在生成计划之前，请一步一步思考，解析用户的目标，并指导你接下来的生成。\
-思考过程应放置在<thinking></thinking> XML标签中。
+    - 在生成计划之前，请一步一步思考，解析用户的目标，并指导你接下来的生成。
+思考过程应放置在 <thinking> </thinking> XML标签中。
     - 计划内容中，可以使用"Result[]"来引用之前计划步骤的结果。例如："Result[3]"表示引用第三条计划执行后的结果。
-    - 计划不得多于{{ max_num }}条，且每条计划内容应少于150字。
+    - 计划不得多于{{max_num}}条，且每条计划内容应少于150字。
 
     # 样例
 
-    ## 目标
+    # 目标
 
     请帮我扫描一下192.168.1.1的这台机器的端口，看看有哪些端口开放。
-    ## 工具
-    你可以访问并使用一些工具，这些工具将在<tools></tools> XML标签中给出。
+    # 工具
+    你可以访问并使用一些工具，这些工具将在 <tools> </tools> XML标签中给出。
     <tools>
-        - <id>command_generator</id><description>生成命令行指令</description>
-        - <id>tool_selector</id><description>选择合适的工具</description>
-        - <id>command_executor</id><description>执行命令行指令</description>
-        - <id>Final</id><description>结束步骤，当执行到这一步时，表示计划执行结束，所得到的结果将作为最终结果。</description>
-    </tools>
-
-    ## 当前计划
+        - <id> command_generator </id> <description> 生成命令行指令 </description>
+        - <id> tool_selector </id> <description> 选择合适的工具 </description>
+        - <id> command_executor </id> <description> 执行命令行指令 </description>
+        - <id> Final </id> <description> 结束步骤，当执行到这一步时，表示计划执行结束，所得到的结果将作为最终结果。</description>
+    </tools>     # 当前计划
     ```json
     {
         "plans": [
@@ -304,25 +420,23 @@ RECREATE_PLAN = dedent(r"""
         ]
     }
     ```
-    ## 运行报错
-    执行端口扫描命令时，出现了错误：`-bash: curl: command not found`。
-    ## 重新生成的计划
+    # 运行报错
+    执行端口扫描命令时，出现了错误：`- bash: curl: command not found`。
+    # 重新生成的计划
 
     <thinking>
-    1. 这个目标需要使用网络扫描工具来完成,首先需要选择合适的网络扫描工具
+    1. 这个目标需要使用网络扫描工具来完成, 首先需要选择合适的网络扫描工具
     2. 目标可以拆解为以下几个部分:
         - 生成端口扫描命令
         - 执行端口扫描命令
-    3.但是在执行端口扫描命令时，出现了错误：`-bash: curl: command not found`。
+    3.但是在执行端口扫描命令时，出现了错误：`- bash: curl: command not found`。
     4.我将计划调整为：
         - 需要先生成一个命令，查看当前机器支持哪些网络扫描工具
         - 执行这个命令，查看当前机器支持哪些网络扫描工具
         - 然后从中选择一个网络扫描工具
         - 基于选择的网络扫描工具，生成端口扫描命令
         - 执行端口扫描命令
-    </thinking>
-
-    ```json
+    </thinking> ```json
     {
         "plans": [
             {
@@ -367,19 +481,19 @@ RECREATE_PLAN = dedent(r"""
 
     # 工具
 
-    你可以访问并使用一些工具，这些工具将在<tools></tools> XML标签中给出。
+    你可以访问并使用一些工具，这些工具将在 <tools> </tools> XML标签中给出。
 
     <tools>
-        {% for tool in tools %}
-        - <id>{{ tool.id }}</id><description>{{tool.name}}；{{ tool.description }}</description>
-        {% endfor %}
+        { % for tool in tools % }
+        - <id> {{tool.id}} </id> <description> {{tool.name}}；{{tool.description}} </description>
+        { % endfor % }
     </tools>
 
     # 当前计划
-    {{ current_plan }}
+    {{current_plan}}
 
     # 运行报错
-    {{ error_message }}
+    {{error_message}}
 
     # 重新生成的计划
 """)
@@ -393,18 +507,18 @@ RISK_EVALUATE = dedent(r"""
     }
     ```
     # 样例
-    ## 工具名称
+    # 工具名称
     mysql_analyzer
-    ## 工具描述
+    # 工具描述
     分析MySQL数据库性能
-    ## 工具入参
+    # 工具入参
     {
         "host": "192.0.0.1",
         "port": 3306,
         "username": "root",
         "password": "password"
     }
-    ## 附加信息
+    # 附加信息
     1. 当前MySQL数据库的版本是8.0.26
     2. 当前MySQL数据库的配置文件路径是/etc/my.cnf，并含有以下配置项
     ```ini
@@ -412,7 +526,7 @@ RISK_EVALUATE = dedent(r"""
     innodb_buffer_pool_size=1G
     innodb_log_file_size=256M
     ```
-    ## 输出
+    # 输出
     ```json
     {
         "risk": "中",
@@ -421,35 +535,35 @@ RISK_EVALUATE = dedent(r"""
     ```
     # 工具
     <tool>
-        <name>{{ tool_name }}</name>
-        <description>{{ tool_description }}</description>
+        <name> {{tool_name}} </name>
+        <description> {{tool_description}} </description>
     </tool>
     # 工具入参
-    {{ input_param }}
+    {{input_param}}
     # 附加信息
-    {{ additional_info }}
+    {{additional_info}}
     # 输出
     """
                        )
 # 根据当前计划和报错信息决定下一步执行，具体计划有需要用户补充工具入参、重计划当前步骤、重计划接下来的所有计划
-JUDGE_NEXT_STEP = dedent(r"""
+TOOL_EXECUTE_ERROR_TYPE_ANALYSIS = dedent(r"""
     你是一个计划决策器。
-    你的任务是根据当前计划、当前使用的工具、工具入参和工具运行报错，决定下一步执行的操作。
+    你的任务是根据用户目标、当前计划、当前使用的工具、工具入参和工具运行报错，决定下一步执行的操作。
     请根据以下规则进行判断：
-    1. 仅通过补充工具入参来解决问题的，返回 fill_params;
-    2. 需要重计划当前步骤的，返回 replan_current_step;
-    3. 需要重计划接下来的所有计划的，返回 replan_all_steps;
+    1. 仅通过补充工具入参来解决问题的，返回 missing_param;
+    2. 需要重计划当前步骤的，返回 decorrect_plan
+    3.推理过程必须清晰明了，能够让人理解你的判断依据，并且不超过100字。
     你的输出要以json格式返回，格式如下：
     ```json
     {
-        "next_step": "fill_params/replan_current_step/replan_all_steps",
-        "reason": "你的判断依据"
+        "error_type": "missing_param/decorrect_plan,
+        "reason": "你的推理过程"
     }
     ```
-    注意：
-    reason字段必须清晰明了，能够让人理解你的判断依据，并且不超过50个中文字或者100个英文单词。
     # 样例
-    ## 当前计划
+    # 用户目标
+    我需要扫描当前mysql数据库，分析性能瓶颈, 并调优
+    # 当前计划
     {"plans": [
         {
             "content": "生成端口扫描命令",
@@ -467,38 +581,40 @@ JUDGE_NEXT_STEP = dedent(r"""
             "instruction": ""
         }
     ]}
-    ## 当前使用的工具
+    # 当前使用的工具
     <tool>
-        <name>command_executor</name>
-        <description>执行命令行指令</description>
+        <name> command_executor </name>
+        <description> 执行命令行指令 </description>
     </tool>
-    ## 工具入参
+    # 工具入参
     {
         "command": "nmap -sS -p--open 192.168.1.1"
     }
-    ## 工具运行报错
-    执行端口扫描命令时，出现了错误：`-bash: nmap: command not found`。
-    ## 输出
+    # 工具运行报错
+    执行端口扫描命令时，出现了错误：`- bash: nmap: command not found`。
+    # 输出
     ```json
     {
-        "next_step": "replan_all_steps",
-        "reason": "当前工具执行报错，提示nmap命令未找到,需要增加command_generator和command_executor的步骤，生成nmap安装命令并执行，之后再生成端口扫描命令并执行。"
+        "error_type": "decorrect_plan",
+        "reason": "当前计划的第二步执行失败，报错信息显示nmap命令未找到，可能是因为没有安装nmap工具，因此需要重计划当前步骤。"
     }
     ```
+    # 用户目标
+    {{goal}}
     # 当前计划
-    {{ current_plan }}
+    {{current_plan}}
     # 当前使用的工具
     <tool>
-        <name>{{ tool_name }}</name>
-        <description>{{ tool_description }}</description>
+        <name> {{tool_name}} </name>
+        <description> {{tool_description}} </description>
     </tool>
     # 工具入参
-    {{ input_param }}
+    {{input_param}}
     # 工具运行报错
-    {{ error_message }}
+    {{error_message}}
     # 输出
     """
-                         )
+                                          )
 # 获取缺失的参数的json结构体
 GET_MISSING_PARAMS = dedent(r"""
     你是一个工具参数获取器。
@@ -570,10 +686,10 @@ GET_MISSING_PARAMS = dedent(r"""
     }
     ```
     # 工具
-    < tool >
-        < name > {{tool_name}} < /name >
-        < description > {{tool_description}} < /description >
-    < / tool >
+    <tool>
+        <name> {{tool_name}} </name>
+        <description> {{tool_description}} </description>
+    </tool>
     # 工具入参
     {{input_param}}
     # 工具入参schema（部分字段允许为null）
@@ -588,12 +704,12 @@ REPAIR_PARAMS = dedent(r"""
     你的任务是根据当前的工具信息、工具入参的schema、工具当前的入参、工具的报错、补充的参数和补充的参数描述，修复当前工具的入参。
 
     # 样例
-    ## 工具信息
+    # 工具信息
     <tool>
-        <name>mysql_analyzer</name>
-        <description>分析MySQL数据库性能</description>
+        <name> mysql_analyzer </name>
+        <description> 分析MySQL数据库性能 </description>
     </tool>
-    ## 工具入参的schema
+    # 工具入参的schema
     {
         "type": "object",
         "properties": {
@@ -616,21 +732,21 @@ REPAIR_PARAMS = dedent(r"""
         },
         "required": ["host", "port", "username", "password"]
     }
-    ## 工具当前的入参
+    # 工具当前的入参
     {
         "host": "192.0.0.1",
         "port": 3306,
         "username": "root",
         "password": "password"
     }
-    ## 工具的报错
+    # 工具的报错
     执行端口扫描命令时，出现了错误：`password is not correct`。
-    ## 补充的参数
+    # 补充的参数
     {
         "username": "admin",
         "password": "admin123"
     }
-    ## 补充的参数描述
+    # 补充的参数描述
     用户希望使用admin用户和admin123密码来连接MySQL数据库。
     # 输出
     ```json
@@ -643,8 +759,8 @@ REPAIR_PARAMS = dedent(r"""
     ```
     # 工具
     <tool>
-        <name>{{tool_name}}</name>
-        <description>{{tool_description}}</description>
+        <name> {{tool_name}} </name>
+        <description> {{tool_description}} </description>
     </tool>
     # 工具入参scheme
     {{input_schema}}
@@ -664,17 +780,17 @@ FINAL_ANSWER = dedent(r"""
 
     # 用户目标
 
-    {{ goal }}
+    {{goal}}
 
     # 计划执行情况
 
     为了完成上述目标，你实施了以下计划：
 
-    {{ memory }}
+    {{memory}}
 
     # 其他背景信息：
 
-    {{ status }}
+    {{status}}
 
     # 现在，请根据以上信息，向用户报告目标的完成情况：
 

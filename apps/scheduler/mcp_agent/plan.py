@@ -9,38 +9,36 @@ from apps.llm.function import JsonGenerator
 from apps.scheduler.mcp_agent.prompt import (
     EVALUATE_GOAL,
     GENERATE_FLOW_NAME,
+    GET_REPLAN_START_STEP_INDEX,
     CREATE_PLAN,
     RECREATE_PLAN,
     RISK_EVALUATE,
+    TOOL_EXECUTE_ERROR_TYPE_ANALYSIS,
     GET_MISSING_PARAMS,
     FINAL_ANSWER
 )
 from apps.schemas.mcp import (
     GoalEvaluationResult,
+    RestartStepIndex,
     ToolRisk,
+    ToolExcutionErrorType,
     MCPPlan,
     MCPTool
 )
 from apps.scheduler.slot.slot import Slot
 
+_env = SandboxedEnvironment(
+    loader=BaseLoader,
+    autoescape=True,
+    trim_blocks=True,
+    lstrip_blocks=True,
+)
+
 
 class MCPPlanner:
     """MCP 用户目标拆解与规划"""
-
-    def __init__(self, user_goal: str, resoning_llm: ReasoningLLM = None) -> None:
-        """初始化MCP规划器"""
-        self.user_goal = user_goal
-        self._env = SandboxedEnvironment(
-            loader=BaseLoader,
-            autoescape=True,
-            trim_blocks=True,
-            lstrip_blocks=True,
-        )
-        self.resoning_llm = resoning_llm or ReasoningLLM()
-        self.input_tokens = 0
-        self.output_tokens = 0
-
-    async def get_resoning_result(self, prompt: str) -> str:
+    @staticmethod
+    async def get_resoning_result(prompt: str, resoning_llm: ReasoningLLM = ReasoningLLM()) -> str:
         """获取推理结果"""
         # 调用推理大模型
         message = [
@@ -48,7 +46,7 @@ class MCPPlanner:
             {"role": "user", "content": prompt},
         ]
         result = ""
-        async for chunk in self.resoning_llm.call(
+        async for chunk in resoning_llm.call(
             message,
             streaming=False,
             temperature=0.07,
@@ -56,12 +54,10 @@ class MCPPlanner:
         ):
             result += chunk
 
-        # 保存token用量
-        self.input_tokens += self.resoning_llm.input_tokens
-        self.output_tokens += self.resoning_llm.output_tokens
         return result
 
-    async def _parse_result(self, result: str, schema: dict[str, Any]) -> str:
+    @staticmethod
+    async def _parse_result(result: str, schema: dict[str, Any]) -> str:
         """解析推理结果"""
         json_generator = JsonGenerator(
             result,
@@ -74,126 +70,210 @@ class MCPPlanner:
         json_result = await json_generator.generate()
         return json_result
 
-    async def evaluate_goal(self, tool_list: list[MCPTool]) -> GoalEvaluationResult:
+    @staticmethod
+    async def evaluate_goal(
+            tool_list: list[MCPTool],
+            resoning_llm: ReasoningLLM = ReasoningLLM()) -> GoalEvaluationResult:
         """评估用户目标的可行性"""
         # 获取推理结果
-        result = await self._get_reasoning_evaluation(tool_list)
+        result = await MCPPlanner._get_reasoning_evaluation(tool_list, resoning_llm)
 
         # 解析为结构化数据
-        evaluation = await self._parse_evaluation_result(result)
+        evaluation = await MCPPlanner._parse_evaluation_result(result)
 
         # 返回评估结果
         return evaluation
 
-    async def _get_reasoning_evaluation(self, tool_list: list[MCPTool]) -> str:
+    @staticmethod
+    async def _get_reasoning_evaluation(
+            goal, tool_list: list[MCPTool],
+            resoning_llm: ReasoningLLM = ReasoningLLM()) -> str:
         """获取推理大模型的评估结果"""
-        template = self._env.from_string(EVALUATE_GOAL)
+        template = _env.from_string(EVALUATE_GOAL)
         prompt = template.render(
-            goal=self.user_goal,
+            goal=goal,
             tools=tool_list,
         )
-        result = await self.get_resoning_result(prompt)
+        result = await MCPPlanner.get_resoning_result(prompt, resoning_llm)
         return result
 
-    async def _parse_evaluation_result(self, result: str) -> GoalEvaluationResult:
+    @staticmethod
+    async def _parse_evaluation_result(result: str) -> GoalEvaluationResult:
         """将推理结果解析为结构化数据"""
         schema = GoalEvaluationResult.model_json_schema()
-        evaluation = await self._parse_result(result, schema)
+        evaluation = await MCPPlanner._parse_result(result, schema)
         # 使用GoalEvaluationResult模型解析结果
         return GoalEvaluationResult.model_validate(evaluation)
 
-    async def get_flow_name(self) -> str:
+    async def get_flow_name(user_goal: str, resoning_llm: ReasoningLLM = ReasoningLLM()) -> str:
         """获取当前流程的名称"""
-        result = await self._get_reasoning_flow_name()
+        result = await MCPPlanner._get_reasoning_flow_name(user_goal, resoning_llm)
         return result
 
-    async def _get_reasoning_flow_name(self) -> str:
+    @staticmethod
+    async def _get_reasoning_flow_name(user_goal: str, resoning_llm: ReasoningLLM = ReasoningLLM()) -> str:
         """获取推理大模型的流程名称"""
-        template = self._env.from_string(GENERATE_FLOW_NAME)
-        prompt = template.render(goal=self.user_goal)
-        result = await self.get_resoning_result(prompt)
+        template = _env.from_string(GENERATE_FLOW_NAME)
+        prompt = template.render(goal=user_goal)
+        result = await MCPPlanner.get_resoning_result(prompt, resoning_llm)
         return result
 
-    async def create_plan(self, tool_list: list[MCPTool], max_steps: int = 6) -> MCPPlan:
+    @staticmethod
+    async def get_replan_start_step_index(
+            user_goal: str, error_message: str, current_plan: MCPPlan | None = None,
+            history: str = "",
+            reasoning_llm: ReasoningLLM = ReasoningLLM()) -> MCPPlan:
+        """获取重新规划的步骤索引"""
+        # 获取推理结果
+        template = _env.from_string(GET_REPLAN_START_STEP_INDEX)
+        prompt = template.render(
+            goal=user_goal,
+            error_message=error_message,
+            current_plan=current_plan.model_dump(exclude_none=True, by_alias=True),
+            history=history,
+        )
+        result = await MCPPlanner.get_resoning_result(prompt, reasoning_llm)
+        # 解析为结构化数据
+        schema = RestartStepIndex.model_json_schema()
+        schema["properties"]["start_index"]["maximum"] = len(current_plan.plans) - 1
+        schema["properties"]["start_index"]["minimum"] = 0
+        restart_index = await MCPPlanner._parse_result(result, schema)
+        # 使用RestartStepIndex模型解析结果
+        return RestartStepIndex.model_validate(restart_index)
+
+    @staticmethod
+    async def create_plan(
+            user_goal: str, is_replan: bool = False, error_message: str = "", current_plan: MCPPlan | None = None,
+            tool_list: list[MCPTool] = [],
+            max_steps: int = 6, reasoning_llm: ReasoningLLM = ReasoningLLM()) -> MCPPlan:
         """规划下一步的执行流程，并输出"""
         # 获取推理结果
-        result = await self._get_reasoning_plan(tool_list, max_steps)
+        result = await MCPPlanner._get_reasoning_plan(user_goal, is_replan, error_message, current_plan, tool_list, max_steps, reasoning_llm)
 
         # 解析为结构化数据
-        return await self._parse_plan_result(result, max_steps)
+        return await MCPPlanner._parse_plan_result(result, max_steps)
 
+    @staticmethod
     async def _get_reasoning_plan(
-            self, is_replan: bool = False, error_message: str = "", current_plan: MCPPlan = MCPPlan(),
+            user_goal: str, is_replan: bool = False, error_message: str = "", current_plan: MCPPlan | None = None,
             tool_list: list[MCPTool] = [],
-            max_steps: int = 10) -> str:
+            max_steps: int = 10, reasoning_llm: ReasoningLLM = ReasoningLLM()) -> str:
         """获取推理大模型的结果"""
         # 格式化Prompt
         if is_replan:
-            template = self._env.from_string(RECREATE_PLAN)
+            template = _env.from_string(RECREATE_PLAN)
             prompt = template.render(
-                current_plan=current_plan,
+                current_plan=current_plan.model_dump(exclude_none=True, by_alias=True),
                 error_message=error_message,
-                goal=self.user_goal,
+                goal=user_goal,
                 tools=tool_list,
                 max_num=max_steps,
             )
         else:
-            template = self._env.from_string(CREATE_PLAN)
+            template = _env.from_string(CREATE_PLAN)
             prompt = template.render(
-                goal=self.user_goal,
+                goal=user_goal,
                 tools=tool_list,
                 max_num=max_steps,
             )
-        result = await self.get_resoning_result(prompt)
+        result = await MCPPlanner.get_resoning_result(prompt, reasoning_llm)
         return result
 
-    async def _parse_plan_result(self, result: str, max_steps: int) -> MCPPlan:
+    @staticmethod
+    async def _parse_plan_result(result: str, max_steps: int) -> MCPPlan:
         """将推理结果解析为结构化数据"""
         # 格式化Prompt
         schema = MCPPlan.model_json_schema()
         schema["properties"]["plans"]["maxItems"] = max_steps
-        plan = await self._parse_result(result, schema)
+        plan = await MCPPlanner._parse_result(result, schema)
         # 使用Function模型解析结果
         return MCPPlan.model_validate(plan)
 
-    async def get_tool_risk(self, tool: MCPTool, input_parm: dict[str, Any], additional_info: str = "") -> ToolRisk:
+    @staticmethod
+    async def get_tool_risk(
+            tool: MCPTool, input_parm: dict[str, Any],
+            additional_info: str = "", resoning_llm: ReasoningLLM = ReasoningLLM()) -> ToolRisk:
         """获取MCP工具的风险评估结果"""
         # 获取推理结果
-        result = await self._get_reasoning_risk(tool, input_parm, additional_info)
+        result = await MCPPlanner._get_reasoning_risk(tool, input_parm, additional_info, resoning_llm)
 
         # 解析为结构化数据
-        risk = await self._parse_risk_result(result)
+        risk = await MCPPlanner._parse_risk_result(result)
 
         # 返回风险评估结果
         return risk
 
-    async def _get_reasoning_risk(self, tool: MCPTool, input_param: dict[str, Any], additional_info: str) -> str:
+    @staticmethod
+    async def _get_reasoning_risk(
+            tool: MCPTool, input_param: dict[str, Any],
+            additional_info: str, resoning_llm: ReasoningLLM) -> str:
         """获取推理大模型的风险评估结果"""
-        template = self._env.from_string(RISK_EVALUATE)
+        template = _env.from_string(RISK_EVALUATE)
         prompt = template.render(
             tool_name=tool.name,
             tool_description=tool.description,
             input_param=input_param,
             additional_info=additional_info,
         )
-        result = await self.get_resoning_result(prompt)
+        result = await MCPPlanner.get_resoning_result(prompt, resoning_llm)
         return result
 
-    async def _parse_risk_result(self, result: str) -> ToolRisk:
+    @staticmethod
+    async def _parse_risk_result(result: str) -> ToolRisk:
         """将推理结果解析为结构化数据"""
         schema = ToolRisk.model_json_schema()
-        risk = await self._parse_result(result, schema)
+        risk = await MCPPlanner._parse_result(result, schema)
         # 使用ToolRisk模型解析结果
         return ToolRisk.model_validate(risk)
 
+    @staticmethod
+    async def _get_reasoning_tool_execute_error_type(
+            user_goal: str, current_plan: MCPPlan,
+            tool: MCPTool, input_param: dict[str, Any],
+            error_message: str, reasoning_llm: ReasoningLLM = ReasoningLLM()) -> str:
+        """获取推理大模型的工具执行错误类型"""
+        template = _env.from_string(TOOL_EXECUTE_ERROR_TYPE_ANALYSIS)
+        prompt = template.render(
+            goal=user_goal,
+            current_plan=current_plan.model_dump(exclude_none=True, by_alias=True),
+            tool_name=tool.name,
+            tool_description=tool.description,
+            input_param=input_param,
+            error_message=error_message,
+        )
+        result = await MCPPlanner.get_resoning_result(prompt, reasoning_llm)
+        return result
+
+    @staticmethod
+    async def _parse_tool_execute_error_type_result(result: str) -> ToolExcutionErrorType:
+        """将推理结果解析为工具执行错误类型"""
+        schema = ToolExcutionErrorType.model_json_schema()
+        error_type = await MCPPlanner._parse_result(result, schema)
+        # 使用ToolExcutionErrorType模型解析结果
+        return ToolExcutionErrorType.model_validate(error_type)
+
+    @staticmethod
+    async def get_tool_execute_error_type(
+            user_goal: str, current_plan: MCPPlan,
+            tool: MCPTool, input_param: dict[str, Any],
+            error_message: str, reasoning_llm: ReasoningLLM = ReasoningLLM()) -> ToolExcutionErrorType:
+        """获取MCP工具执行错误类型"""
+        # 获取推理结果
+        result = await MCPPlanner._get_reasoning_tool_execute_error_type(
+            user_goal, current_plan, tool, input_param, error_message, reasoning_llm)
+        error_type = await MCPPlanner._parse_tool_execute_error_type_result(result)
+        # 返回工具执行错误类型
+        return error_type
+
+    @staticmethod
     async def get_missing_param(
-            self, tool: MCPTool, schema: dict[str, Any],
+            tool: MCPTool,
             input_param: dict[str, Any],
-            error_message: str) -> list[str]:
+            error_message: str, reasoning_llm: ReasoningLLM = ReasoningLLM()) -> list[str]:
         """获取缺失的参数"""
-        slot = Slot(schema=schema)
+        slot = Slot(schema=tool.input_schema)
+        template = _env.from_string(GET_MISSING_PARAMS)
         schema_with_null = slot.add_null_to_basic_types()
-        template = self._env.from_string(GET_MISSING_PARAMS)
         prompt = template.render(
             tool_name=tool.name,
             tool_description=tool.description,
@@ -201,26 +281,26 @@ class MCPPlanner:
             schema=schema_with_null,
             error_message=error_message,
         )
-        result = await self.get_resoning_result(prompt)
+        result = await MCPPlanner.get_resoning_result(prompt, reasoning_llm)
         # 解析为结构化数据
-        input_param_with_null = await self._parse_result(result, schema_with_null)
+        input_param_with_null = await MCPPlanner._parse_result(result, schema_with_null)
         return input_param_with_null
 
-    async def generate_answer(self, plan: MCPPlan, memory: str) -> AsyncGenerator[str, None]:
+    @staticmethod
+    async def generate_answer(
+            user_goal: str, plan: MCPPlan, memory: str, resoning_llm: ReasoningLLM = ReasoningLLM()) -> AsyncGenerator[
+            str, None]:
         """生成最终回答"""
-        template = self._env.from_string(FINAL_ANSWER)
+        template = _env.from_string(FINAL_ANSWER)
         prompt = template.render(
-            plan=plan,
+            plan=plan.model_dump(exclude_none=True, by_alias=True),
             memory=memory,
-            goal=self.user_goal,
+            goal=user_goal,
         )
 
-        async for chunk in self.resoning_llm.call(
+        async for chunk in resoning_llm.call(
             [{"role": "user", "content": prompt}],
             streaming=False,
             temperature=0.07,
         ):
             yield chunk
-
-            self.input_tokens = self.resoning_llm.input_tokens
-            self.output_tokens = self.resoning_llm.output_tokens

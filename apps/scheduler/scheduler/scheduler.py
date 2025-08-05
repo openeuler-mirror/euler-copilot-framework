@@ -4,7 +4,9 @@
 import asyncio
 import logging
 from datetime import UTC, datetime
-
+from apps.llm.reasoning import ReasoningLLM
+from apps.schemas.config import LLMConfig
+from apps.llm.patterns.rewrite import QuestionRewrite
 from apps.common.config import Config
 from apps.common.mongo import MongoDB
 from apps.common.queue import MessageQueue
@@ -67,8 +69,8 @@ class Scheduler:
         except Exception as e:
             logger.error(f"[Scheduler] 活动监控过程中发生错误: {e}")
 
-    async def run(self) -> None:  # noqa: PLR0911
-        """运行调度器"""
+    async def get_llm_use_in_chat_with_rag(self) -> LLM:
+        """获取RAG大模型"""
         try:
             # 获取当前会话使用的大模型
             llm_id = await LLMManager.get_llm_id_by_conversation_id(
@@ -97,14 +99,25 @@ class Scheduler:
             logger.exception("[Scheduler] 获取大模型失败")
             await self.queue.close()
             return
+
+    async def get_kb_ids_use_in_chat_with_rag(self) -> list[str]:
+        """获取知识库ID列表"""
         try:
-            # 获取当前会话使用的知识库
             kb_ids = await KnowledgeBaseManager.get_kb_ids_by_conversation_id(
-                self.task.ids.user_sub, self.task.ids.conversation_id)
+                self.task.ids.user_sub, self.task.ids.conversation_id,
+            )
+            if not kb_ids:
+                logger.error("[Scheduler] 获取知识库ID失败")
+                await self.queue.close()
+                return []
+            return kb_ids
         except Exception:
             logger.exception("[Scheduler] 获取知识库ID失败")
             await self.queue.close()
-            return
+            return []
+
+    async def run(self) -> None:  # noqa: PLR0911
+        """运行调度器"""
         try:
             # 获取当前问答可供关联的文档
             docs, doc_ids = await get_docs(self.task.ids.user_sub, self.post_body)
@@ -114,13 +127,18 @@ class Scheduler:
             return
         history, _ = await get_context(self.task.ids.user_sub, self.post_body, 3)
         # 已使用文档
-
         # 如果是智能问答，直接执行
         logger.info("[Scheduler] 开始执行")
         # 创建用于通信的事件
         kill_event = asyncio.Event()
         monitor = asyncio.create_task(self._monitor_activity(kill_event, self.task.ids.user_sub))
         if not self.post_body.app or self.post_body.app.app_id == "":
+            llm = await self.get_llm_use_in_chat_with_rag()
+            kb_ids = await self.get_kb_ids_use_in_chat_with_rag()
+            if not llm:
+                logger.error("[Scheduler] 获取大模型失败")
+                await self.queue.close()
+                return
             self.task = await push_init_message(self.task, self.queue, 3, is_flow=False)
             rag_data = RAGQueryReq(
                 kbIds=kb_ids,
@@ -199,6 +217,27 @@ class Scheduler:
         if not app_metadata:
             logger.error("[Scheduler] 未找到Agent应用")
             return
+        llm = await LLMManager.get_llm_by_id(
+            self.task.ids.user_sub, app_metadata.llm_id,
+        )
+        if not llm:
+            logger.error("[Scheduler] 获取大模型失败")
+            await self.queue.close()
+            return
+        reasion_llm = ReasoningLLM(
+            LLMConfig(
+                endpoint=llm.openai_base_url,
+                key=llm.openai_api_key,
+                model=llm.model_name,
+                max_tokens=llm.max_tokens,
+            )
+        )
+        if background.conversation:
+            try:
+                question_obj = QuestionRewrite()
+                post_body.question = await question_obj.generate(history=background.conversation, question=post_body.question, llm=reasion_llm)
+            except Exception:
+                logger.exception("[Scheduler] 问题重写失败")
         if app_metadata.app_type == AppType.FLOW.value:
             logger.info("[Scheduler] 获取工作流元数据")
             flow_info = await Pool().get_flow_metadata(app_info.app_id)
@@ -229,8 +268,6 @@ class Scheduler:
 
             # 初始化Executor
             logger.info("[Scheduler] 初始化Executor")
-            logger.error(f"{flow_data}")
-            logger.error(f"{self.task}")
             flow_exec = FlowExecutor(
                 flow_id=flow_id,
                 flow=flow_data,
@@ -258,6 +295,7 @@ class Scheduler:
                 servers_id=servers_id,
                 background=background,
                 agent_id=app_info.app_id,
+                params=post_body.app.params
             )
             # 开始运行
             logger.info("[Scheduler] 运行Executor")
