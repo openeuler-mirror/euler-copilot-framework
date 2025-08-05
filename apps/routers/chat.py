@@ -41,7 +41,7 @@ async def init_task(post_body: RequestData, user_sub: str) -> Task:
         post_body.group_id = str(uuid.uuid4())
 
     # 更改信息并刷新数据库
-    if post_body.new_task:
+    if post_body.task_id is None:
         conversation = await ConversationManager.get_conversation_by_conversation_id(
             user_sub=user_sub,
             conversation_id=post_body.conversation_id,

@@ -48,7 +48,6 @@ class RequestData(BaseModel):
     app: RequestDataApp | None = Field(default=None, description="应用")
     debug: bool = Field(default=False, description="是否调试")
     task_id: str | None = Field(default=None, alias="taskId", description="任务ID")
-    new_task: bool = Field(default=True, description="是否新建任务")
 
 
 class QuestionBlacklistRequest(BaseModel):

@@ -142,7 +142,7 @@ class RecordManager:
         record_group_collection = MongoDB().get_collection("record_group")
         try:
             await record_group_collection.update_many(
-                {"records.flow.flow_id": {"$in": task_ids}, "records.flow.flow_status": {"$nin": [FlowStatus.ERROR.value, FlowStatus.SUCCESS.value]}},
+                {"records.task_id": {"$in": task_ids}, "records.flow.flow_status": {"$nin": [FlowStatus.ERROR.value, FlowStatus.SUCCESS.value]}},
                 {"$set": {"records.$[elem].flow.flow_status": FlowStatus.CANCELLED}},
                 array_filters=[{"elem.flow.flow_id": {"$in": task_ids}}],
             )
