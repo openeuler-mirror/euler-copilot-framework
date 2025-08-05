@@ -120,7 +120,7 @@ class StepExecutor(BaseExecutor):
             params.update(self.step.step.params)
 
         # 对于需要扁平化处理的Call类型，将input_parameters中的内容提取到顶级
-        if self._call_id in ["Choice", "DirectReply"] and "input_parameters" in params:
+        if self._call_id in ["Choice", "DirectReply", "Loop"] and "input_parameters" in params:
             # 提取input_parameters中的所有字段到顶级
             input_params = params.get("input_parameters", {})
             if isinstance(input_params, dict):

@@ -151,6 +151,7 @@ class SpecialCallType(str, Enum):
     START = "start"
     END = "end"
     CHOICE = "Choice"
+    LOOP = "Loop"
 
 
 class CommentType(str, Enum):
