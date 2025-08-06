@@ -82,9 +82,11 @@ class BaseVariable(ABC):
         if self.scope == VariableScope.SYSTEM and not getattr(self, '_initializing', False):
             raise ValueError("系统级变量不能修改")
         
-        # 验证类型
-        if not self._validate_type(new_value):
-            raise TypeError(f"变量 {self.name} 的值类型不匹配，期望: {self.var_type}")
+        # 对于None值，跳过类型验证（允许任意类型的变量设置为None）
+        if new_value is not None:
+            # 验证类型
+            if not self._validate_type(new_value):
+                raise TypeError(f"变量 {self.name} 的值类型不匹配，期望: {self.var_type}")
         
         self._value = new_value
         self.metadata.updated_at = datetime.now(UTC)
