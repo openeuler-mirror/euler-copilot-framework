@@ -409,6 +409,7 @@ class AppCenterManager:
             "name": source.name,
             "description": source.description,
             "history_len": source.history_len,
+            "llm_id": source.llm_id,
         }
 
     @staticmethod

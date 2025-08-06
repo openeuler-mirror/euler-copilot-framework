@@ -207,9 +207,19 @@ class Scheduler:
         if not app_metadata:
             logger.error("[Scheduler] 未找到Agent应用")
             return
-        llm = await LLMManager.get_llm_by_id(
-            self.task.ids.user_sub, app_metadata.llm_id,
-        )
+        if app_metadata.llm_id == "empty":
+            llm = LLM(
+                _id="empty",
+                user_sub=self.task.ids.user_sub,
+                openai_base_url=Config().get_config().llm.endpoint,
+                openai_api_key=Config().get_config().llm.key,
+                model_name=Config().get_config().llm.model,
+                max_tokens=Config().get_config().llm.max_tokens,
+            )
+        else:
+            llm = await LLMManager.get_llm_by_id(
+                self.task.ids.user_sub, app_metadata.llm_id,
+            )
         if not llm:
             logger.error("[Scheduler] 获取大模型失败")
             await self.queue.close()
