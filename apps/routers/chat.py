@@ -34,7 +34,7 @@ router = APIRouter(
 )
 
 
-async def init_task(post_body: RequestData, user_sub: str) -> Task:
+async def init_task(post_body: RequestData, user_sub: str, session_id: str) -> Task:
     """初始化Task"""
     # 生成group_id
     if not post_body.group_id:
@@ -51,7 +51,9 @@ async def init_task(post_body: RequestData, user_sub: str) -> Task:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=err)
         task_ids = await TaskManager.delete_tasks_by_conversation_id(post_body.conversation_id)
         await RecordManager.update_record_flow_status_to_cancelled_by_task_ids(task_ids)
-        task = await TaskManager.init_new_task(user_sub=user_sub, conversation_id=post_body.conversation_id, post_body=post_body)
+        task = await TaskManager.init_new_task(user_sub=user_sub, session_id=session_id, post_body=post_body)
+        task.runtime.question = post_body.question
+        task.ids.group_id = post_body.group_id
     else:
         if not post_body.task_id:
             err = "[Chat] task_id 不可为空！"
@@ -60,7 +62,7 @@ async def init_task(post_body: RequestData, user_sub: str) -> Task:
     return task
 
 
-async def chat_generator(post_body: RequestData, user_sub: str) -> AsyncGenerator[str, None]:
+async def chat_generator(post_body: RequestData, user_sub: str, session_id: str) -> AsyncGenerator[str, None]:
     """进行实际问答，并从MQ中获取消息"""
     try:
         await Activity.set_active(user_sub)
@@ -72,7 +74,7 @@ async def chat_generator(post_body: RequestData, user_sub: str) -> AsyncGenerato
             await Activity.remove_active(user_sub)
             return
 
-        task = await init_task(post_body, user_sub)
+        task = await init_task(post_body, user_sub, session_id)
 
         # 创建queue；由Scheduler进行关闭
         queue = MessageQueue()
@@ -80,6 +82,7 @@ async def chat_generator(post_body: RequestData, user_sub: str) -> AsyncGenerato
 
         # 在单独Task中运行Scheduler，拉齐queue.get的时机
         scheduler = Scheduler(task, queue, post_body)
+        logger.info(f"[Chat] 用户是否活跃: {await Activity.is_active(user_sub)}")
         scheduler_task = asyncio.create_task(scheduler.run())
 
         # 处理每一条消息
@@ -130,6 +133,7 @@ async def chat_generator(post_body: RequestData, user_sub: str) -> AsyncGenerato
 async def chat(
     post_body: RequestData,
     user_sub: Annotated[str, Depends(get_user)],
+    session_id: Annotated[str, Depends(get_session)],
 ) -> StreamingResponse:
     """LLM流式对话接口"""
     # 问题黑名单检测
@@ -142,7 +146,7 @@ async def chat(
     if await Activity.is_active(user_sub):
         raise HTTPException(status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail="Too many requests")
 
-    res = chat_generator(post_body, user_sub)
+    res = chat_generator(post_body, user_sub, session_id)
     return StreamingResponse(
         content=res,
         media_type="text/event-stream",

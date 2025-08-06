@@ -56,7 +56,6 @@ class Scheduler:
             while not kill_event.is_set():
                 # 检查用户活动状态
                 is_active = await Activity.is_active(user_sub)
-
                 if not is_active:
                     logger.warning("[Scheduler] 用户 %s 不活跃，终止工作流", user_sub)
                     kill_event.set()
@@ -78,8 +77,7 @@ class Scheduler:
             )
             if not llm_id:
                 logger.error("[Scheduler] 获取大模型ID失败")
-                await self.queue.close()
-                return
+                return None
             if llm_id == "empty":
                 llm = LLM(
                     _id="empty",
@@ -89,16 +87,16 @@ class Scheduler:
                     model_name=Config().get_config().llm.model,
                     max_tokens=Config().get_config().llm.max_tokens,
                 )
+                return llm
             else:
                 llm = await LLMManager.get_llm_by_id(self.task.ids.user_sub, llm_id)
                 if not llm:
                     logger.error("[Scheduler] 获取大模型失败")
-                    await self.queue.close()
-                    return
+                    return None
+                return llm
         except Exception:
             logger.exception("[Scheduler] 获取大模型失败")
-            await self.queue.close()
-            return
+            return None
 
     async def get_kb_ids_use_in_chat_with_rag(self) -> list[str]:
         """获取知识库ID列表"""
@@ -106,10 +104,6 @@ class Scheduler:
             kb_ids = await KnowledgeBaseManager.get_kb_ids_by_conversation_id(
                 self.task.ids.user_sub, self.task.ids.conversation_id,
             )
-            if not kb_ids:
-                logger.error("[Scheduler] 获取知识库ID失败")
-                await self.queue.close()
-                return []
             return kb_ids
         except Exception:
             logger.exception("[Scheduler] 获取知识库ID失败")
@@ -135,10 +129,6 @@ class Scheduler:
         if not self.post_body.app or self.post_body.app.app_id == "":
             llm = await self.get_llm_use_in_chat_with_rag()
             kb_ids = await self.get_kb_ids_use_in_chat_with_rag()
-            if not llm:
-                logger.error("[Scheduler] 获取大模型失败")
-                await self.queue.close()
-                return
             self.task = await push_init_message(self.task, self.queue, 3, is_flow=False)
             rag_data = RAGQueryReq(
                 kbIds=kb_ids,

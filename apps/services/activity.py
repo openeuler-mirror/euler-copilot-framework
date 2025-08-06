@@ -3,10 +3,12 @@
 
 import uuid
 from datetime import UTC, datetime
-
+import logging
 from apps.common.mongo import MongoDB
 from apps.constants import SLIDE_WINDOW_QUESTION_COUNT, SLIDE_WINDOW_TIME
 from apps.exceptions import ActivityError
+
+logger = logging.getLogger(__name__)
 
 
 class Activity:

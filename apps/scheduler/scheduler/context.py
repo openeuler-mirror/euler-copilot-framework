@@ -158,7 +158,6 @@ async def save_data(task: Task, user_sub: str, post_body: RequestData) -> None:
         facts=task.runtime.facts,
         data={},
     )
-
     try:
         # 加密Record数据
         encrypt_data, encrypt_config = Security.encrypt(record_content.model_dump_json(by_alias=True))

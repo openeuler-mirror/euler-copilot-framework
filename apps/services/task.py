@@ -115,7 +115,6 @@ class TaskManager:
 
     @staticmethod
     async def init_new_task(
-        cls,
         user_sub: str,
         session_id: str | None = None,
         post_body: RequestData | None = None,
@@ -180,6 +179,7 @@ class TaskManager:
                 task_ids.append(task["_id"])
             if task_ids:
                 await task_collection.delete_many({"conversation_id": conversation_id})
+            return task_ids
         except Exception:
             logger.exception("[TaskManager] 删除ConversationID的Task信息失败")
             return []

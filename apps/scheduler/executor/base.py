@@ -49,10 +49,8 @@ class BaseExecutor(BaseModel, ABC):
                 question=self.question,
                 params=self.task.runtime.filled,
             ).model_dump(exclude_none=True, by_alias=True)
-        elif event_type == EventType.FLOW_STOP.value:
-            data = {}
         elif event_type == EventType.TEXT_ADD.value and isinstance(data, str):
-            data=TextAddContent(text=data).model_dump(exclude_none=True, by_alias=True)
+            data = TextAddContent(text=data).model_dump(exclude_none=True, by_alias=True)
 
         if data is None:
             data = {}
@@ -62,7 +60,7 @@ class BaseExecutor(BaseModel, ABC):
         await self.msg_queue.push_output(
             self.task,
             event_type=event_type,
-            data=data, # type: ignore[arg-type]
+            data=data,  # type: ignore[arg-type]
         )
 
     @abstractmethod

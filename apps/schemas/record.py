@@ -94,7 +94,7 @@ class RecordData(BaseModel):
     id: str
     group_id: str = Field(alias="groupId")
     conversation_id: str = Field(alias="conversationId")
-    task_id: str = Field(alias="taskId")
+    task_id: str | None = Field(default=None, alias="taskId")
     document: list[RecordDocument] = []
     flow: RecordFlow | None = None
     content: RecordContent
