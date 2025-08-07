@@ -101,6 +101,7 @@ async def add_no_auth_user() -> None:
         await user_collection.insert_one(User(
             _id=username,
             is_admin=True,
+            auto_execute=False
         ).model_dump(by_alias=True))
     except Exception as e:
         logging.warning(f"添加无认证用户失败: {e}")

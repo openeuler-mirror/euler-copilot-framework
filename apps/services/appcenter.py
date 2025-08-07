@@ -59,7 +59,7 @@ class AppCenterManager:
         }
 
         user_favorite_app_ids = await AppCenterManager._get_favorite_app_ids_by_user(user_sub)
-
+        logger.info("[AppCenterManager] 获取应用列表: %s", filters)
         if filter_type == AppFilterType.ALL:
             # 获取所有已发布的应用
             filters["published"] = True
@@ -72,7 +72,6 @@ class AppCenterManager:
                 "_id": {"$in": user_favorite_app_ids},
                 "published": True,
             }
-
         # 添加关键字搜索条件
         if keyword:
             filters["$or"] = [
@@ -84,7 +83,6 @@ class AppCenterManager:
         # 添加应用类型过滤条件
         if app_type is not None:
             filters["app_type"] = app_type.value
-
         # 获取应用列表
         apps, total_apps = await AppCenterManager._search_apps_by_filter(filters, page, SERVICE_PAGE_SIZE)
 

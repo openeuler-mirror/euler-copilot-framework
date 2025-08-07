@@ -281,11 +281,20 @@ class BaseAppOperationRsp(ResponseData):
     result: BaseAppOperationMsg
 
 
+class AppMcpServiceInfo(BaseModel):
+    """应用关联的MCP服务信息"""
+
+    id: str = Field(..., description="MCP服务ID")
+    name: str = Field(default="", description="MCP服务名称")
+    description: str = Field(default="", description="MCP服务简介")
+
+
 class GetAppPropertyMsg(AppData):
     """GET /api/app/{appId} Result数据结构"""
 
     app_id: str = Field(..., alias="appId", description="应用ID")
     published: bool = Field(..., description="是否已发布")
+    mcp_service: list[AppMcpServiceInfo] = Field(default=[], alias="mcpService", description="MCP服务信息列表")
 
 
 class GetAppPropertyRsp(ResponseData):

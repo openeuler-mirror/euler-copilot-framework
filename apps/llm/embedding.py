@@ -1,8 +1,9 @@
 """Embedding模型"""
 
 import httpx
-
+import logging
 from apps.common.config import Config
+logger = logging.getLogger(__name__)
 
 
 class Embedding:
@@ -14,7 +15,6 @@ class Embedding:
         """获取Embedding的维度"""
         embedding = await cls.get_embedding(["测试文本"])
         return len(embedding[0])
-
 
     @classmethod
     async def _get_openai_embedding(cls, text: list[str]) -> list[list[float]]:
@@ -75,10 +75,18 @@ class Embedding:
         :param text: 待向量化文本（多条文本组成List）
         :return: 文本对应的向量（顺序与text一致，也为List）
         """
-        if Config().get_config().embedding.type == "openai":
-            return await cls._get_openai_embedding(text)
-        if Config().get_config().embedding.type == "mindie":
-            return await cls._get_tei_embedding(text)
+        try:
+            if Config().get_config().embedding.type == "openai":
+                return await cls._get_openai_embedding(text)
+            if Config().get_config().embedding.type == "mindie":
+                return await cls._get_tei_embedding(text)
 
-        err = f"不支持的Embedding API类型: {Config().get_config().embedding.type}"
-        raise ValueError(err)
+            err = f"不支持的Embedding API类型: {Config().get_config().embedding.type}"
+            raise ValueError(err)
+        except Exception as e:
+            err = f"获取Embedding失败: {e}"
+            logger.error(err)
+            rt = []
+            for i in range(len(text)):
+                rt.append([0.0]*1024)
+            return rt

@@ -11,8 +11,9 @@ from pydantic import BaseModel, Field
 
 class MCPInstallStatus(str, Enum):
     """MCP 服务状态"""
-
+    INIT = "init"
     INSTALLING = "installing"
+    CANCELLED = "cancelled"
     READY = "ready"
     FAILED = "failed"
 
@@ -23,6 +24,7 @@ class MCPStatus(str, Enum):
     UNINITIALIZED = "uninitialized"
     RUNNING = "running"
     STOPPED = "stopped"
+    ERROR = "error"
 
 
 class MCPType(str, Enum):
@@ -39,7 +41,9 @@ class MCPBasicConfig(BaseModel):
     env: dict[str, str] = Field(description="MCP 服务器环境变量", default={})
     auto_approve: list[str] = Field(description="自动批准的MCP工具ID列表", default=[], alias="autoApprove")
     disabled: bool = Field(description="MCP 服务器是否禁用", default=False)
-    auto_install: bool = Field(description="是否自动安装MCP服务器", default=True, alias="autoInstall")
+    auto_install: bool = Field(description="是否自动安装MCP服务器", default=True)
+    timeout: int = Field(description="MCP 服务器超时时间（秒）", default=60, alias="timeout")
+    description: str = Field(description="MCP 服务器自然语言描述", default="")
 
 
 class MCPServerStdioConfig(MCPBasicConfig):
@@ -85,7 +89,7 @@ class MCPCollection(BaseModel):
     type: MCPType = Field(description="MCP 类型", default=MCPType.SSE)
     activated: list[str] = Field(description="激活该MCP的用户ID列表", default=[])
     tools: list[MCPTool] = Field(description="MCP工具列表", default=[])
-    status: MCPInstallStatus = Field(description="MCP服务状态", default=MCPInstallStatus.INSTALLING)
+    status: MCPInstallStatus = Field(description="MCP服务状态", default=MCPInstallStatus.INIT)
     author: str = Field(description="MCP作者", default="")
 
 

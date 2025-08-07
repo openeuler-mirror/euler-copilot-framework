@@ -448,3 +448,6 @@ class MCPAgentExecutor(BaseExecutor):
                     output_data={},
                 )
             )
+        finally:
+            for client in self.mcp_client.values():
+                await client.stop()

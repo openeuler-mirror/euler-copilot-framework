@@ -236,10 +236,6 @@ class ConditionHandler(BaseModel):
             return left_value == right_value
         elif operate == BoolOperate.NOT_EQUAL:
             return left_value != right_value
-        elif operate == BoolOperate.IS_EMPTY:
-            return not left_value
-        elif operate == BoolOperate.NOT_EMPTY:
-            return left_value
         return False
 
     @staticmethod

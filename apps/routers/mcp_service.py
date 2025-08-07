@@ -92,7 +92,7 @@ async def get_mcpservice_list(
 @router.post("", response_model=UpdateMCPServiceRsp)
 async def create_or_update_mcpservice(
         user_sub: Annotated[str, Depends(get_user)],  # TODO: get_user直接获取所有用户信息
-        data: UpdateMCPServiceRequest,
+        data: UpdateMCPServiceRequest
 ) -> JSONResponse:
     """新建或更新MCP服务"""
     await _check_user_admin(user_sub)
@@ -131,6 +131,35 @@ async def create_or_update_mcpservice(
             name=data.name,
         ),
     ).model_dump(exclude_none=True, by_alias=True))
+
+
+@router.post("/{serviceId}/install")
+async def install_mcp_service(
+        user_sub: Annotated[str, Depends(get_user)],
+        service_id: Annotated[str, Path(..., alias="serviceId", description="服务ID")],
+        install: Annotated[bool, Query(..., description="是否安装")] = True,
+) -> JSONResponse:
+    try:
+        await MCPServiceManager.install_mcpservice(user_sub, service_id, install)
+    except Exception as e:
+        err = f"[MCPService] 安装mcp服务失败: {e!s}" if install else f"[MCPService] 卸载mcp服务失败: {e!s}"
+        logger.exception(err)
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content=ResponseData(
+                code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                message=err,
+                result={},
+            ).model_dump(exclude_none=True, by_alias=True),
+        )
+    return JSONResponse(
+        status_code=status.HTTP_200_OK,
+        content=ResponseData(
+            code=status.HTTP_200_OK,
+            message="OK",
+            result={},
+        ).model_dump(exclude_none=True, by_alias=True),
+    )
 
 
 @router.get("/{serviceId}", response_model=GetMCPServiceDetailRsp)

@@ -2,6 +2,7 @@
 """MCP服务管理器"""
 
 import logging
+from logging import config
 import random
 import re
 from typing import Any
@@ -30,6 +31,7 @@ from apps.schemas.mcp import (
 )
 from apps.schemas.request_data import UpdateMCPServiceRequest
 from apps.schemas.response_data import MCPServiceCardItem
+from apps.constants import MCP_PATH
 
 logger = logging.getLogger(__name__)
 sqids = Sqids(min_length=6)
@@ -66,10 +68,8 @@ class MCPServiceManager:
         mcp_list = await mcp_collection.find({"_id": mcp_id}, {"status": True}).to_list(None)
         for db_item in mcp_list:
             status = db_item.get("status")
-            if MCPInstallStatus.READY.value == status:
-                return MCPInstallStatus.READY
-            if MCPInstallStatus.INSTALLING.value == status:
-                return MCPInstallStatus.INSTALLING
+            if status in MCPInstallStatus.__members__.values():
+                return status
         return MCPInstallStatus.FAILED
 
     @staticmethod
@@ -214,9 +214,9 @@ class MCPServiceManager:
         """
         # 检查config
         if data.mcp_type == MCPType.SSE:
-            config = MCPServerSSEConfig.model_validate_json(data.config)
+            config = MCPServerSSEConfig.model_validate(data.config)
         else:
-            config = MCPServerStdioConfig.model_validate_json(data.config)
+            config = MCPServerStdioConfig.model_validate(data.config)
 
         # 构造Server
         mcp_server = MCPServerConfig(
@@ -238,8 +238,17 @@ class MCPServiceManager:
 
         # 保存并载入配置
         logger.info("[MCPServiceManager] 创建mcp：%s", mcp_server.name)
+        mcp_path = MCP_PATH / "template" / mcp_id / "project"
+        index = None
+        for i in range(len(config.args)):
+            if not config.args[i].startswith("-"):
+                index = i
+                break
+        if index is not None:
+            config.args[index] = str(mcp_path)
+        await MCPLoader._insert_template_db(mcp_id=mcp_id, config=mcp_server)
         await MCPLoader.save_one(mcp_id, mcp_server)
-        await MCPLoader.init_one_template(mcp_id=mcp_id, config=mcp_server)
+        await MCPLoader.update_template_status(mcp_id, MCPInstallStatus.INIT)
         return mcp_id
 
     @staticmethod
@@ -263,19 +272,21 @@ class MCPServiceManager:
         db_service = MCPCollection.model_validate(db_service)
         for user_id in db_service.activated:
             await MCPServiceManager.deactive_mcpservice(user_sub=user_id, service_id=data.service_id)
-
-        await MCPLoader.init_one_template(mcp_id=data.service_id, config=MCPServerConfig(
+        mcp_config = MCPServerConfig(
             name=data.name,
             overview=data.overview,
             description=data.description,
-            config=MCPServerStdioConfig.model_validate_json(
+            config=MCPServerStdioConfig.model_validate(
                 data.config,
-            ) if data.mcp_type == MCPType.STDIO else MCPServerSSEConfig.model_validate_json(
+            ) if data.mcp_type == MCPType.STDIO else MCPServerSSEConfig.model_validate(
                 data.config,
             ),
             type=data.mcp_type,
             author=user_sub,
-        ))
+        )
+        await MCPLoader._insert_template_db(mcp_id=data.service_id, config=mcp_config)
+        await MCPLoader.save_one(mcp_id=data.service_id, config=mcp_config)
+        await MCPLoader.update_template_status(data.service_id, MCPInstallStatus.INIT)
         # 返回服务ID
         return data.service_id
 
@@ -302,7 +313,7 @@ class MCPServiceManager:
     async def active_mcpservice(
             user_sub: str,
             service_id: str,
-            mcp_env: dict[str, Any] = {},
+            mcp_env: dict[str, Any] | None = None,
     ) -> None:
         """
         激活MCP服务
@@ -377,3 +388,28 @@ class MCPServiceManager:
         image.save(MCP_ICON_PATH / f"{service_id}.png", format="PNG", optimize=True, compress_level=9)
 
         return f"/static/mcp/{service_id}.png"
+
+    @staticmethod
+    async def install_mcpservice(user_sub: str, service_id: str, install: bool) -> None:
+        """
+        安装或卸载MCP服务
+
+        :param user_sub: str: 用户ID
+        :param service_id: str: MCP服务ID
+        :param install: bool: 是否安装
+        :return: 无
+        """
+        service_collection = MongoDB().get_collection("mcp")
+        db_service = await service_collection.find_one({"_id": service_id, "author": user_sub})
+        db_service = MCPCollection.model_validate(db_service)
+        if install:
+            if db_service.status == MCPInstallStatus.INSTALLING or db_service.status == MCPInstallStatus.READY:
+                err = "[MCPServiceManager] MCP服务已处于安装中或已准备就绪"
+                raise Exception(err)
+            mcp_config = await MCPLoader.get_config(service_id)
+            await MCPLoader.init_one_template(mcp_id=service_id, config=mcp_config)
+        else:
+            if db_service.status != MCPInstallStatus.INSTALLING:
+                err = "[MCPServiceManager] 只能卸载处于安装中的MCP服务"
+                raise Exception(err)
+            await MCPLoader.cancel_installing_task([service_id])
