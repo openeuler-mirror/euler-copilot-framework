@@ -26,6 +26,7 @@ from apps.schemas.mcp import MCPInstallStatus, MCPTool, MCPType
 from apps.schemas.record import RecordData
 from apps.schemas.user import UserInfo
 from apps.templates.generate_llm_operator_config import llm_provider_dict
+from apps.common.config import Config
 
 
 class ResponseData(BaseModel):
@@ -99,7 +100,7 @@ class LLMIteam(BaseModel):
 
     icon: str = Field(default=llm_provider_dict["ollama"]["icon"])
     llm_id: str = Field(alias="llmId", default="empty")
-    model_name: str = Field(alias="modelName", default="Ollama LLM")
+    model_name: str = Field(alias="modelName", default=Config().get_config().llm.model)
 
 
 class KbIteam(BaseModel):
@@ -295,6 +296,7 @@ class GetAppPropertyMsg(AppData):
     app_id: str = Field(..., alias="appId", description="应用ID")
     published: bool = Field(..., description="是否已发布")
     mcp_service: list[AppMcpServiceInfo] = Field(default=[], alias="mcpService", description="MCP服务信息列表")
+    llm: LLMIteam | None = Field(alias="llm", default=None)
 
 
 class GetAppPropertyRsp(ResponseData):

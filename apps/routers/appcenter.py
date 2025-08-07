@@ -13,6 +13,7 @@ from apps.schemas.appcenter import AppFlowInfo, AppMcpServiceInfo, AppPermission
 from apps.schemas.enum_var import AppFilterType, AppType
 from apps.schemas.request_data import CreateAppRequest, ModFavAppRequest
 from apps.schemas.response_data import (
+    LLMIteam,
     BaseAppOperationMsg,
     BaseAppOperationRsp,
     GetAppListMsg,
@@ -25,6 +26,7 @@ from apps.schemas.response_data import (
     ResponseData,
 )
 from apps.services.appcenter import AppCenterManager
+from apps.services.llm import LLMManager
 from apps.services.mcp_service import MCPServiceManager
 logger = logging.getLogger(__name__)
 router = APIRouter(
@@ -223,6 +225,15 @@ async def get_application(
                 name=mcp_collection.name,
                 description=mcp_collection.description,
             ))
+    if app_data.llm_id == "empty":
+        llm_item = LLMIteam()
+    else:
+        llm_collection = await LLMManager.get_llm_by_id(app_data.user_sub, app_data.llm_id)
+        llm_item = LLMIteam(
+            llmId=llm_collection.id,
+            modelName=llm_collection.model_name,
+            icon=llm_collection.icon
+        )
     return JSONResponse(
         status_code=status.HTTP_200_OK,
         content=GetAppPropertyRsp(
@@ -244,6 +255,7 @@ async def get_application(
                 ),
                 workflows=workflows,
                 mcpService=mcp_service,
+                llm=llm_item,
             ),
         ).model_dump(exclude_none=True, by_alias=True),
     )
