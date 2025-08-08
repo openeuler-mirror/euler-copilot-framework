@@ -83,6 +83,7 @@ class AppCenterManager:
         if app_type is not None:
             filters["app_type"] = app_type.value
         # 获取应用列表
+        logger.error(f"[AppCenterManager] 搜索条件: {filters}, 页码: {page}, 每页大小: {SERVICE_PAGE_SIZE}")
         apps, total_apps = await AppCenterManager._search_apps_by_filter(filters, page, SERVICE_PAGE_SIZE)
 
         # 构建返回的应用卡片列表
@@ -406,7 +407,6 @@ class AppCenterManager:
             "name": source.name,
             "description": source.description,
             "history_len": source.history_len,
-            "llm_id": source.llm_id,
         }
 
     @staticmethod
@@ -485,10 +485,10 @@ class AppCenterManager:
         # 处理llm_id字段
         if data is not None and hasattr(data, "llm") and data.llm:
             # 创建应用场景，验证传入的 llm_id 状态 (create_app)
-            metadata.llm_id = data.llm.llm_id if data.llm.llm_id else "empty"
+            metadata.llm_id = data.llm if data.llm else "empty"
         elif data is not None and hasattr(data, "llm_id"):
             # 更新应用场景，使用 data 中的 llm_id (update_app)
-            metadata.llm_id = data.llm_id if data.llm_id else "empty"
+            metadata.llm_id = data.llm if data.llm else "empty"
         elif app_data is not None and hasattr(app_data, "llm_id"):
             # 更新应用发布状态场景，使用 app_data 中的 llm_id (update_app_publish_status)
             metadata.llm_id = app_data.llm_id if app_data.llm_id else "empty"

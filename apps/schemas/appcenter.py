@@ -50,14 +50,6 @@ class AppFlowInfo(BaseModel):
     debug: bool = Field(default=False, description="是否经过调试")
 
 
-class AppMcpServiceInfo(BaseModel):
-    """应用关联的MCP服务信息"""
-
-    id: str = Field(..., description="MCP服务ID")
-    name: str = Field(default="", description="MCP服务名称")
-    description: str = Field(default="", description="MCP服务简介")
-
-
 class AppData(BaseModel):
     """应用信息数据结构"""
 

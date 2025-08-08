@@ -54,6 +54,7 @@ async def init_task(post_body: RequestData, user_sub: str, session_id: str) -> T
         task = await TaskManager.init_new_task(user_sub=user_sub, session_id=session_id, post_body=post_body)
         task.runtime.question = post_body.question
         task.ids.group_id = post_body.group_id
+        task.state.app_id = post_body.app.app_id if post_body.app else ""
     else:
         if not post_body.task_id:
             err = "[Chat] task_id 不可为空！"

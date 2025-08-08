@@ -98,7 +98,7 @@ class MCPServiceManager:
             else:
                 filters["activated"] = {"$nin": [user_sub]}
         if not is_installed:
-            user_info = await UserManager.get_user_info(user_sub)
+            user_info = await UserManager.get_userinfo_by_user_sub(user_sub)
             if not user_info.is_admin:
                 filters["status"] = MCPInstallStatus.READY.value
         else:
@@ -247,13 +247,20 @@ class MCPServiceManager:
         # 保存并载入配置
         logger.info("[MCPServiceManager] 创建mcp：%s", mcp_server.name)
         mcp_path = MCP_PATH / "template" / mcp_id / "project"
-        index = None
-        for i in range(len(config.args)):
-            if not config.args[i].startswith("-"):
-                index = i
+        if isinstance(config, MCPServerStdioConfig):
+            index = None
+            for i in range(len(config.args)):
+                if not config.args[i] == "--directory":
+                    continue
+                index = i + 1
                 break
-        if index is not None:
-            config.args[index] = str(mcp_path)
+            if index is not None:
+                if index >= len(config.args):
+                    config.args.append(str(mcp_path))
+                else:
+                    config.args[index+1] = str(mcp_path)
+            else:
+                config.args += ["--directory", str(mcp_path)]
         await MCPLoader._insert_template_db(mcp_id=mcp_id, config=mcp_server)
         await MCPLoader.save_one(mcp_id, mcp_server)
         await MCPLoader.update_template_status(mcp_id, MCPInstallStatus.INIT)

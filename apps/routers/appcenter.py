@@ -9,10 +9,11 @@ from fastapi.responses import JSONResponse
 
 from apps.dependency.user import get_user, verify_user
 from apps.exceptions import InstancePermissionError
-from apps.schemas.appcenter import AppFlowInfo, AppMcpServiceInfo, AppPermissionData
+from apps.schemas.appcenter import AppFlowInfo, AppPermissionData
 from apps.schemas.enum_var import AppFilterType, AppType
 from apps.schemas.request_data import CreateAppRequest, ModFavAppRequest
 from apps.schemas.response_data import (
+    AppMcpServiceInfo,
     LLMIteam,
     BaseAppOperationMsg,
     BaseAppOperationRsp,

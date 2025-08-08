@@ -434,6 +434,19 @@ class MCPLoader(metaclass=SingletonMeta):
                 )
             )
             await f.aclose()
+        if mcp_config.type == MCPType.STDIO:
+            index = None
+            for i in range(len(mcp_config.config.args)):
+                if mcp_config.config.args[i] == "--directory":
+                    index = i + 1
+                    break
+            if index is not None:
+                if index < len(mcp_config.config.args):
+                    mcp_config.config.args[index] = str(user_path)+'/project'
+                else:
+                    mcp_config.config.args.append(str(user_path)+'/project')
+            else:
+                mcp_config.config.args = ["--directory", str(user_path)+'/project'] + mcp_config.config.args
         # 更新数据库
         mongo = MongoDB()
         mcp_collection = mongo.get_collection("mcp")

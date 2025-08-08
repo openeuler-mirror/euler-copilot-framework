@@ -78,6 +78,7 @@ class AppLoader:
             # 加载模型
             try:
                 metadata = AgentAppMetadata.model_validate(metadata)
+                logger.info(f"[AppLoader] Agent应用元数据验证成功: {metadata}")
             except Exception as e:
                 err = "[AppLoader] Agent应用元数据验证失败"
                 logger.exception(err)
@@ -101,7 +102,6 @@ class AppLoader:
         file_checker = FileChecker()
         await file_checker.diff_one(app_path)
         await self.load(app_id, file_checker.hashes[f"app/{app_id}"])
-
 
     @staticmethod
     async def delete(app_id: str, *, is_reload: bool = False) -> None:
@@ -157,5 +157,7 @@ class AppLoader:
                 },
                 upsert=True,
             )
+            app_pool = await app_collection.find_one({"_id": metadata.id})
+            logger.error(f"[AppLoader] 更新 MongoDB 成功: {app_pool}")
         except Exception:
             logger.exception("[AppLoader] 更新 MongoDB 失败")

@@ -109,7 +109,7 @@ class AppPool(BaseData):
     permission: Permission = Field(description="应用权限配置", default=Permission())
     flows: list[AppFlow] = Field(description="Flow列表", default=[])
     hashes: dict[str, str] = Field(description="关联文件的hash值", default={})
-    mcp_service: list[str] = Field(default=[], alias="mcpService", description="MCP服务id列表")
+    mcp_service: list[str] = Field(default=[], description="MCP服务id列表")
     llm_id: str = Field(
-        default="empty", alias="llmId", description="应用使用的大模型ID（如果有的话）"
+        default="empty", description="应用使用的大模型ID（如果有的话）"
     )

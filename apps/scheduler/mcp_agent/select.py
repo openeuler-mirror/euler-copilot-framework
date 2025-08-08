@@ -47,7 +47,8 @@ class MCPSelector:
         random.shuffle(tool_list)
         max_tokens = Config().get_config().function_call.max_tokens
         template = _env.from_string(TOOL_SELECT)
-        if TokenCalculator.calculate_token_length(
+        token_calculator = TokenCalculator()
+        if token_calculator.calculate_token_length(
                 messages=[{"role": "user", "content": template.render(
                     goal=goal, tools=[], additional_info=additional_info
                 )}],
@@ -62,7 +63,7 @@ class MCPSelector:
             sub_tools = []
             while index < len(tool_list):
                 tool = tool_list[index]
-                tokens = TokenCalculator.calculate_token_length(
+                tokens = token_calculator.calculate_token_length(
                     messages=[{"role": "user", "content": template.render(
                         goal=goal, tools=[tool],
                         additional_info=additional_info
@@ -73,7 +74,7 @@ class MCPSelector:
                     continue
                 sub_tools.append(tool)
 
-                tokens = TokenCalculator.calculate_token_length(messages=[{"role": "user", "content": template.render(
+                tokens = token_calculator.calculate_token_length(messages=[{"role": "user", "content": template.render(
                     goal=goal, tools=sub_tools, additional_info=additional_info)}, ], pure_text=True)
                 if tokens > max_tokens:
                     del sub_tools[-1]
