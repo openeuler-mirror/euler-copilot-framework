@@ -29,6 +29,7 @@ from apps.schemas.mcp import (
     MCPTool,
     MCPType,
 )
+from apps.services.user import UserManager
 from apps.schemas.request_data import UpdateMCPServiceRequest
 from apps.schemas.response_data import MCPServiceCardItem
 from apps.constants import MCP_PATH
@@ -78,6 +79,7 @@ class MCPServiceManager:
             user_sub: str,
             keyword: str | None,
             page: int,
+            is_installed: bool | None = None,
             is_active: bool | None = None,
     ) -> list[MCPServiceCardItem]:
         """
@@ -95,6 +97,12 @@ class MCPServiceManager:
                 filters["activated"] = {"$in": [user_sub]}
             else:
                 filters["activated"] = {"$nin": [user_sub]}
+        if not is_installed:
+            user_info = await UserManager.get_user_info(user_sub)
+            if not user_info.is_admin:
+                filters["status"] = MCPInstallStatus.READY.value
+        else:
+            filters["status"] = MCPInstallStatus.READY.value
         mcpservice_pools = await MCPServiceManager._search_mcpservice(filters, page)
         return [
             MCPServiceCardItem(

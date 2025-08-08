@@ -53,6 +53,7 @@ async def get_mcpservice_list(
         ] = SearchType.ALL,
         keyword: Annotated[str | None, Query(..., alias="keyword", description="搜索关键字")] = None,
         page: Annotated[int, Query(..., alias="page", ge=1, description="页码")] = 1,
+        is_installed: Annotated[bool | None, Query(..., alias="isInstall", description="是否已安装")] = None,
         is_active: Annotated[bool | None, Query(..., alias="isActive", description="是否激活")] = None,
 ) -> JSONResponse:
     """获取服务列表"""
@@ -62,6 +63,7 @@ async def get_mcpservice_list(
             user_sub,
             keyword,
             page,
+            is_installed,
             is_active
         )
     except Exception as e:

@@ -18,7 +18,6 @@ class RequestDataApp(BaseModel):
 
     app_id: str = Field(description="应用ID", alias="appId")
     flow_id: str | None = Field(default=None, description="Flow ID", alias="flowId")
-    params: param | None = Field(default=None, description="流执行过程中的参数补充", alias="params")
 
 
 class MockRequestData(BaseModel):
@@ -40,14 +39,15 @@ class RequestDataFeatures(BaseModel):
 class RequestData(BaseModel):
     """POST /api/chat 请求的总的数据结构"""
 
-    question: str = Field(max_length=2000, description="用户输入")
-    conversation_id: str = Field(default="", alias="conversationId", description="聊天ID")
+    question: str | None = Field(default=None, max_length=2000, description="用户输入")
+    conversation_id: str | None = Field(default=None, alias="conversationId", description="聊天ID")
     group_id: str | None = Field(default=None, alias="groupId", description="问答组ID")
     language: str = Field(default="zh", description="语言")
     files: list[str] = Field(default=[], description="文件列表")
     app: RequestDataApp | None = Field(default=None, description="应用")
     debug: bool = Field(default=False, description="是否调试")
     task_id: str | None = Field(default=None, alias="taskId", description="任务ID")
+    params: param | None = Field(default=None, description="流执行过程中的参数补充", alias="params")
 
 
 class QuestionBlacklistRequest(BaseModel):
