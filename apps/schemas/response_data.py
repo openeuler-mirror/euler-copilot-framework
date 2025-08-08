@@ -593,7 +593,7 @@ class FlowStructureDeleteRsp(ResponseData):
 
 class UserGetMsp(BaseModel):
     """GET /api/user result"""
-
+    total: int = Field(default=0)
     user_info_list: list[UserInfo] = Field(alias="userInfoList", default=[])
 
 

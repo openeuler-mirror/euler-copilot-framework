@@ -29,7 +29,7 @@ class UserManager:
         ).model_dump(by_alias=True))
 
     @staticmethod
-    async def get_all_user_sub() -> list[str]:
+    async def get_all_user_sub(page_size: int = 20, page_cnt: int = 1, filter_user_subs: list[str] = []) -> tuple[list[str], int]:
         """
         获取所有用户的sub
 
@@ -37,7 +37,13 @@ class UserManager:
         """
         mongo = MongoDB()
         user_collection = mongo.get_collection("user")
-        return [user["_id"] async for user in user_collection.find({}, {"_id": 1})]
+        total = await user_collection.count_documents({}) - len(filter_user_subs)
+
+        users = await user_collection.find(
+            {"_id": {"$nin": filter_user_subs}},
+            {"_id": 1},
+        ).skip((page_cnt - 1) * page_size).limit(page_size).to_list(length=page_size)
+        return [user["_id"] for user in users], total
 
     @staticmethod
     async def get_userinfo_by_user_sub(user_sub: str) -> User | None:

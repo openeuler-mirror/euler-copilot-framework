@@ -160,9 +160,9 @@ EVALUATE_GOAL = dedent(r"""
 
     # 工具集合
     <tools>
-        { % for tool in tools % }
+        {% for tool in tools %}
         - <id> {{tool.id}} </id> <description> {{tool.name}}；{{tool.description}} </description>
-        { % endfor % }
+        {% endfor %}
     </tools>
 
     # 附加信息
@@ -293,9 +293,9 @@ CREATE_PLAN = dedent(r"""
     你可以访问并使用一些工具，这些工具将在 <tools> </tools> XML标签中给出。
 
     <tools>
-        { % for tool in tools % }
+        {% for tool in tools %}
         - <id> {{tool.id}} </id> <description> {{tool.name}}；{{tool.description}} </description>
-        { % endfor % }
+        {% endfor %}
     </tools>
 
     # 样例
@@ -484,9 +484,9 @@ RECREATE_PLAN = dedent(r"""
     你可以访问并使用一些工具，这些工具将在 <tools> </tools> XML标签中给出。
 
     <tools>
-        { % for tool in tools % }
+        {% for tool in tools %}
         - <id> {{tool.id}} </id> <description> {{tool.name}}；{{tool.description}} </description>
-        { % endfor % }
+        {% endfor %}
     </tools>
 
     # 当前计划
@@ -796,10 +796,10 @@ FINAL_ANSWER = dedent(r"""
 
 """)
 MEMORY_TEMPLATE = dedent(r"""
-    {% for ctx in context_list % }
+    {% for ctx in context_list %}
     - 第{{loop.index}}步：{{ctx.step_description}}
       - 调用工具 `{{ctx.step_id}}`，并提供参数 `{{ctx.input_data}}`
       - 执行状态：{{ctx.status}}
       - 得到数据：`{{ctx.output_data}}`
-    {% endfor % }
+    {% endfor %}
 """)

@@ -295,7 +295,7 @@ class Scheduler:
                 servers_id=servers_id,
                 background=background,
                 agent_id=app_info.app_id,
-                params=post_body.app.params
+                params=post_body.params
             )
             # 开始运行
             logger.info("[Scheduler] 运行Executor")

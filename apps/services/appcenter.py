@@ -59,7 +59,6 @@ class AppCenterManager:
         }
 
         user_favorite_app_ids = await AppCenterManager._get_favorite_app_ids_by_user(user_sub)
-        logger.info("[AppCenterManager] 获取应用列表: %s", filters)
         if filter_type == AppFilterType.ALL:
             # 获取所有已发布的应用
             filters["published"] = True

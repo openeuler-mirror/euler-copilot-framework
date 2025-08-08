@@ -11,7 +11,7 @@ from apps.schemas.record import RecordMetadata
 
 class param(BaseModel):
     """流执行过程中的参数补充"""
-    content: dict[str, Any] | bool = Field(default={}, description="流执行过程中的参数补充内容")
+    content: dict[str, Any] = Field(default={}, description="流执行过程中的参数补充内容")
     description: str = Field(default="", description="流执行过程中的参数补充描述")
 
 

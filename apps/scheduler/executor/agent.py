@@ -46,7 +46,7 @@ class MCPAgentExecutor(BaseExecutor):
     tools: dict[str, MCPTool] = Field(
         description="MCP工具列表，key为tool_id", default={}
     )
-    params: param | None = Field(
+    params: param | bool | None = Field(
         default=None, description="流执行过程中的参数补充", alias="params"
     )
     resoning_llm: ReasoningLLM = Field(
@@ -405,11 +405,21 @@ class MCPAgentExecutor(BaseExecutor):
         self.load_mcp()
         if self.task.state.flow_status == FlowStatus.INIT:
             # 初始化状态
-            self.task.state.flow_id = str(uuid.uuid4())
-            self.task.state.flow_name = await MCPPlanner.get_flow_name(self.task.runtime.question, self.resoning_llm)
-            await self.plan(is_replan=False)
-            self.reset_step_to_index(0)
-            TaskManager.save_task(self.task.id, self.task)
+            try:
+                self.task.state.flow_id = str(uuid.uuid4())
+                self.task.state.flow_name = await MCPPlanner.get_flow_name(self.task.runtime.question, self.resoning_llm)
+                await self.plan(is_replan=False)
+                self.reset_step_to_index(0)
+                TaskManager.save_task(self.task.id, self.task)
+            except Exception as e:
+                logger.error("[MCPAgentExecutor] 初始化失败: %s", str(e))
+                self.task.state.flow_status = FlowStatus.ERROR
+                self.task.state.error_message = str(e)
+                self.push_message(
+                    EventType.FLOW_FAILED,
+                    data={}
+                )
+                return
         self.task.state.flow_status = FlowStatus.RUNNING
         self.push_message(
             EventType.FLOW_START,

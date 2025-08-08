@@ -3,7 +3,7 @@
 
 from typing import Annotated
 
-from fastapi import APIRouter, Body, Depends, status
+from fastapi import APIRouter, Body, Depends, status, Query
 from fastapi.responses import JSONResponse
 
 from apps.dependency import get_user
@@ -18,12 +18,14 @@ router = APIRouter(
 )
 
 
-@router.get("")
+@router.get("", response_model=UserGetRsp)
 async def get_user_sub(
     user_sub: Annotated[str, Depends(get_user)],
+    page_size: Annotated[int, Query(description="每页用户数量")] = 20,
+    page_cnt: Annotated[int, Query(description="当前页码")] = 1,
 ) -> JSONResponse:
     """查询所有用户接口"""
-    user_list = await UserManager.get_all_user_sub()
+    user_list, total = await UserManager.get_all_user_sub(page_cnt=page_cnt, page_size=page_size, filter_user_subs=[user_sub])
     user_info_list = []
     for user in user_list:
         # user_info = await UserManager.get_userinfo_by_user_sub(user) 暂时不需要查询user_name
@@ -40,7 +42,7 @@ async def get_user_sub(
         content=UserGetRsp(
             code=status.HTTP_200_OK,
             message="用户数据详细信息获取成功",
-            result=UserGetMsp(userInfoList=user_info_list),
+            result=UserGetMsp(userInfoList=user_info_list, total=total),
         ).model_dump(exclude_none=True, by_alias=True),
     )
 
