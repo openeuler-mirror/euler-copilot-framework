@@ -98,6 +98,7 @@ class Task(BaseModel):
     state: ExecutorState = Field(description="Flow的状态", default=ExecutorState())
     tokens: TaskTokens = Field(description="Token信息")
     runtime: TaskRuntime = Field(description="任务运行时数据")
+    language: str = Field(description="语言", default="zh")
     created_at: float = Field(default_factory=lambda: round(datetime.now(tz=UTC).timestamp(), 3))
 
 

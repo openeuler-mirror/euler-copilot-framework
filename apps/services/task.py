@@ -94,19 +94,18 @@ class TaskManager:
             return flow_context_list
 
     @staticmethod
-    async def get_context_by_task_id(task_id: str, length: int = 0) -> list[FlowStepHistory]:
+    async def get_context_by_task_id(task_id: str, length: int | None = None) -> list[FlowStepHistory]:
         """根据task_id获取flow信息"""
         flow_context_collection = MongoDB().get_collection("flow_context")
 
         flow_context = []
         try:
-            async for history in flow_context_collection.find(
-                {"task_id": task_id},
-            ).sort(
-                "created_at", -1,
-            ).limit(length):
-                for i in range(len(flow_context)):
-                    flow_context.append(FlowStepHistory.model_validate(history))
+            if length is None:
+                async for context in flow_context_collection.find({"task_id": task_id}):
+                    flow_context.append(FlowStepHistory.model_validate(context))
+            else:
+                async for context in flow_context_collection.find({"task_id": task_id}).limit(length):
+                    flow_context.append(FlowStepHistory.model_validate(context))
         except Exception:
             logger.exception("[TaskManager] 获取task_id的flow信息失败")
             return []

@@ -16,7 +16,7 @@ from apps.dependency import get_session, get_user
 from apps.schemas.enum_var import FlowStatus
 from apps.scheduler.scheduler import Scheduler
 from apps.scheduler.scheduler.context import save_data
-from apps.schemas.request_data import RequestData
+from apps.schemas.request_data import RequestData, RequestDataApp
 from apps.schemas.response_data import ResponseData
 from apps.schemas.task import Task
 from apps.services.activity import Activity
@@ -59,7 +59,12 @@ async def init_task(post_body: RequestData, user_sub: str, session_id: str) -> T
         if not post_body.task_id:
             err = "[Chat] task_id 不可为空！"
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="task_id cannot be empty")
-        task = await TaskManager.get_task_by_conversation_id(post_body.task_id)
+        task = await TaskManager.get_task_by_task_id(post_body.task_id)
+        post_body.app = RequestDataApp(appId=task.state.app_id)
+        post_body.group_id = task.ids.group_id
+        post_body.conversation_id = task.ids.conversation_id
+        post_body.language = task.language
+        post_body.question = task.runtime.question
     return task
 
 
@@ -138,7 +143,7 @@ async def chat(
 ) -> StreamingResponse:
     """LLM流式对话接口"""
     # 问题黑名单检测
-    if not await QuestionBlacklistManager.check_blacklisted_questions(input_question=post_body.question):
+    if post_body.question is not None and not await QuestionBlacklistManager.check_blacklisted_questions(input_question=post_body.question):
         # 用户扣分
         await UserBlacklistManager.change_blacklisted_users(user_sub, -10)
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="question is blacklisted")

@@ -55,9 +55,10 @@ class MCPClient:
         """
         # 创建Client
         if isinstance(config, MCPServerSSEConfig):
+            env = config.env or {}
             client = sse_client(
                 url=config.url,
-                headers=config.env,
+                headers=env,
             )
         elif isinstance(config, MCPServerStdioConfig):
             if user_sub:
@@ -93,9 +94,9 @@ class MCPClient:
 
         self.ready_sign.set()
         self.status = MCPStatus.RUNNING
-
         # 等待关闭信号
         await self.stop_sign.wait()
+        logger.error("[MCPClient] MCP %s：收到停止信号，正在关闭", mcp_id)
 
         # 关闭Client
         try:
@@ -147,5 +148,5 @@ class MCPClient:
         self.stop_sign.set()
         try:
             await self.task
-        except Exception:
-            logger.exception("[MCPClient] MCP %s：停止失败", self.mcp_id)
+        except Exception as e:
+            logger.warning("[MCPClient] MCP %s：停止时发生异常：%s", self.mcp_id, e)

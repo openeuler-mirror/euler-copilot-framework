@@ -34,25 +34,6 @@ class MCPHost:
     """MCP宿主服务"""
 
     @staticmethod
-    async def get_client(user_sub, mcp_id: str) -> MCPClient | None:
-        """获取MCP客户端"""
-        mongo = MongoDB()
-        mcp_collection = mongo.get_collection("mcp")
-
-        # 检查用户是否启用了这个mcp
-        mcp_db_result = await mcp_collection.find_one({"_id": mcp_id, "activated": user_sub})
-        if not mcp_db_result:
-            logger.warning("用户 %s 未启用MCP %s", user_sub, mcp_id)
-            return None
-
-        # 获取MCP配置
-        try:
-            return await MCPPool().get(mcp_id, user_sub)
-        except KeyError:
-            logger.warning("用户 %s 的MCP %s 没有运行中的实例，请检查环境", user_sub, mcp_id)
-            return None
-
-    @staticmethod
     async def assemble_memory(task: Task) -> str:
         """组装记忆"""
 
@@ -104,32 +85,3 @@ class MCPHost:
             mcp_tool.input_schema,
         )
         return await json_generator.generate()
-
-    async def call_tool(user_sub: str, tool: MCPTool, plan_item: MCPPlanItem) -> list[dict[str, Any]]:
-        """调用工具"""
-        # 拿到Client
-        client = await MCPPool().get(tool.mcp_id, user_sub)
-        if client is None:
-            err = f"[MCPHost] MCP Server不合法: {tool.mcp_id}"
-            logger.error(err)
-            raise ValueError(err)
-
-        # 填充参数
-        params = await MCPHost._fill_params(tool, plan_item.instruction)
-        # 调用工具
-        result = await client.call_tool(tool.name, params)
-        # 保存记忆
-        processed_result = []
-        for item in result.content:
-            if not isinstance(item, TextContent):
-                logger.error("MCP结果类型不支持: %s", item)
-                continue
-            result = item.text
-            try:
-                json_result = json.loads(result)
-            except Exception as e:
-                logger.error("MCP结果解析失败: %s, 错误: %s", result, e)
-                continue
-            processed_result.append(json_result)
-
-        return processed_result

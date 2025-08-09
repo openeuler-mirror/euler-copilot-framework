@@ -63,7 +63,7 @@ class MCPPlanner:
             result,
             [
                 {"role": "system", "content": "You are a helpful assistant."},
-                {"role": "user", "content": result},
+                {"role": "user", "content": "请提取下面内容中的json\n\n"+result},
             ],
             schema,
         )
@@ -123,7 +123,7 @@ class MCPPlanner:
     async def get_replan_start_step_index(
             user_goal: str, error_message: str, current_plan: MCPPlan | None = None,
             history: str = "",
-            reasoning_llm: ReasoningLLM = ReasoningLLM()) -> MCPPlan:
+            reasoning_llm: ReasoningLLM = ReasoningLLM()) -> RestartStepIndex:
         """获取重新规划的步骤索引"""
         # 获取推理结果
         template = _env.from_string(GET_REPLAN_START_STEP_INDEX)
@@ -301,7 +301,7 @@ class MCPPlanner:
 
         async for chunk in resoning_llm.call(
             [{"role": "user", "content": prompt}],
-            streaming=False,
+            streaming=True,
             temperature=0.07,
         ):
             yield chunk

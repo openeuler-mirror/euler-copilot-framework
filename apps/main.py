@@ -107,6 +107,16 @@ async def add_no_auth_user() -> None:
         logging.warning(f"添加无认证用户失败: {e}")
 
 
+async def clear_user_activity() -> None:
+    """清除所有用户的活跃状态"""
+    from apps.services.activity import Activity
+    from apps.common.mongo import MongoDB
+    mongo = MongoDB()
+    activity_collection = mongo.get_collection("activity")
+    await activity_collection.delete_many({})
+    logging.info("清除所有用户活跃状态完成")
+
+
 async def init_resources() -> None:
     """初始化必要资源"""
     WordsCheck()
@@ -115,7 +125,7 @@ async def init_resources() -> None:
     TokenCalculator()
     if Config().get_config().no_auth.enable:
         await add_no_auth_user()
-
+    await clear_user_activity()
 # 运行
 if __name__ == "__main__":
     # 初始化必要资源
