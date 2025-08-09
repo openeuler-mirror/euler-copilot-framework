@@ -7,6 +7,7 @@ import logging
 from apps.exceptions import FlowBranchValidationError, FlowEdgeValidationError, FlowNodeValidationError
 from apps.schemas.enum_var import NodeType
 from apps.schemas.flow_topology import EdgeItem, FlowItem, NodeItem
+from pydantic import ValidationError
 
 logger = logging.getLogger(__name__)
 
@@ -265,3 +266,109 @@ class FlowService:
 
         # 检查是否能到达终止节点
         return end_id in vis
+
+    @classmethod
+    async def validate_subflow_illegal(cls, flow: FlowItem) -> None:
+        """
+        验证子工作流是否违法（子工作流专用验证，不强制要求end节点）
+        
+        :param flow: 子工作流
+        :raises ValidationError: 验证失败
+        """
+        await cls._validate_flow_nodes(flow, is_subflow=True)
+
+    @classmethod
+    async def validate_subflow_connectivity(cls, flow: FlowItem) -> bool:
+        """
+        验证子工作流连通性（子工作流专用，不要求连接到end节点）
+        
+        :param flow: 子工作流
+        :return: 是否连通
+        """
+        if not flow.nodes:
+            return True
+            
+        # 构建图结构
+        graph = {}
+        start_nodes = []
+        
+        for node in flow.nodes:
+            graph[node.step_id] = []
+            if node.call_id == 'start' or not any(
+                edge.target_node == node.step_id for edge in flow.edges
+            ):
+                start_nodes.append(node.step_id)
+        
+        for edge in flow.edges:
+            if edge.source_node in graph:
+                graph[edge.source_node].append(edge.target_node)
+        
+        # 检查从开始节点是否能到达所有其他节点
+        if not start_nodes:
+            return len(flow.nodes) <= 1  # 如果没有开始节点且只有一个或零个节点，认为连通
+            
+        visited = set()
+        
+        def dfs(node_id):
+            if node_id in visited:
+                return
+            visited.add(node_id)
+            for neighbor in graph.get(node_id, []):
+                dfs(neighbor)
+        
+        # 从所有开始节点开始遍历
+        for start_node in start_nodes:
+            dfs(start_node)
+        
+        # 检查是否所有节点都被访问到
+        all_node_ids = {node.step_id for node in flow.nodes}
+        return len(visited) == len(all_node_ids)
+
+    @classmethod
+    async def _validate_flow_nodes(cls, flow: FlowItem, is_subflow: bool = False) -> None:
+        """
+        验证工作流节点（支持子工作流模式）
+        
+        :param flow: 工作流
+        :param is_subflow: 是否为子工作流
+        :raises ValidationError: 验证失败
+        """
+        if not flow.nodes:
+            raise ValidationError("工作流不能为空")
+
+        start_count = 0
+        end_count = 0
+        
+        for node in flow.nodes:
+            if node.call_id == "start":
+                start_count += 1
+            elif node.call_id == "end":
+                end_count += 1
+                
+        # 主工作流必须有start和end节点
+        if not is_subflow:
+            if start_count != 1:
+                raise ValidationError("工作流必须有且仅有一个start节点")
+            if end_count != 1:
+                raise ValidationError("工作流必须有且仅有一个end节点")
+        else:
+            # 子工作流可以没有end节点，但如果有start节点，应该只有一个
+            if start_count > 1:
+                raise ValidationError("子工作流最多只能有一个start节点")
+            if end_count > 1:
+                raise ValidationError("子工作流最多只能有一个end节点")
+
+        # 验证节点ID唯一性
+        node_ids = [node.step_id for node in flow.nodes]
+        if len(node_ids) != len(set(node_ids)):
+            raise ValidationError("节点ID必须唯一")
+
+        # 验证边引用的节点存在
+        for edge in flow.edges:
+            source_exists = any(node.step_id == edge.source_node for node in flow.nodes)
+            target_exists = any(node.step_id == edge.target_node for node in flow.nodes)
+            
+            if not source_exists:
+                raise ValidationError(f"边引用的源节点不存在: {edge.source_node}")
+            if not target_exists:
+                raise ValidationError(f"边引用的目标节点不存在: {edge.target_node}")

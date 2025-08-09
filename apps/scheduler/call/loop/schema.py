@@ -20,7 +20,7 @@ class LoopStopCondition(DataBase):
 class LoopInput(DataBase):
     """循环节点的输入"""
     
-    variables: dict[str, Any] = Field(description="循环变量", default={})
+    variables: dict[str, Any] = Field(description="循环变量，保存flow时会自动创建对话变量模板conversation.{step_id}.k=v供后续节点引用", default={})
     stop_condition: LoopStopCondition = Field(description="循环终止条件", default=LoopStopCondition())
     max_iteration: int = Field(description="最大循环次数", default=10, ge=1, le=100)
     sub_flow_id: str = Field(description="子工作流ID", default="")
@@ -31,4 +31,4 @@ class LoopOutput(DataBase):
     
     iteration_count: int = Field(description="实际执行的循环次数", default=0)
     stop_reason: str = Field(description="停止原因", default="")  # "max_iteration_reached" 或 "condition_met"
-    variables: dict[str, Any] = Field(description="循环后的变量状态", default={})
+    current_iteration: int = Field(description="当前循环次数", default=0)

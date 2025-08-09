@@ -255,7 +255,8 @@ class CoreCall(BaseModel):
                     match.strip(),
                     user_sub=call_vars.ids.user_sub,
                     flow_id=call_vars.ids.flow_id,
-                    conversation_id=call_vars.ids.conversation_id
+                    conversation_id=call_vars.ids.conversation_id,
+                    current_step_id=getattr(self, '_step_id', None)
                 )
                 # 替换原始文本中的变量引用
                 resolved_text = resolved_text.replace(f'{{{{{match}}}}}', str(resolved_value))
@@ -266,36 +267,63 @@ class CoreCall(BaseModel):
         
         return resolved_text
 
-    async def _resolve_single_value(self, value: "Value", call_vars: CallVars) -> "Value":
-        """解析Value对象中的变量引用（{{...}} 语法）
+    async def _resolve_single_value(self, value, call_vars: CallVars):
+        """解析单个变量引用
         
         Args:
-            value: Value对象
-            call_vars: Call变量
+            value: Value对象，包含type和value字段
+            call_vars: Call变量上下文
             
         Returns:
-            解析后的Value对象
+            Value: 解析后的Value对象，如果是引用类型则解析为具体值和类型
         """
-        # 运行时导入避免循环依赖
+        # 🔑 将导入语句放在方法开头，避免作用域问题
+        from apps.schemas.parameters import ValueType
+        from apps.scheduler.variable.type import VariableType as VarType
         from apps.scheduler.call.choice.schema import Value
-            
-        # 检查是否包含变量引用语法
-        match = re.match(r'^\{\{.*?\}\}$', value.value)
-        if not value.type == ValueType.REFERENCE or not match:
-            return value
         
+        # 如果不是引用类型，直接返回
+        if value.type != ValueType.REFERENCE:
+            return value
+            
         try:
             # 解析变量引用
             resolved_value, resolved_type = await VariableIntegration.resolve_variable_reference(
-                match.group().strip(),
+                reference=value.value,
                 user_sub=call_vars.ids.user_sub,
                 flow_id=call_vars.ids.flow_id,
-                conversation_id=call_vars.ids.conversation_id
+                conversation_id=call_vars.ids.conversation_id,
+                current_step_id=getattr(self, '_step_id', None)
             )
+            
+            # 🔑 关键修复：将VariableType转换为ValueType
+            # VariableType到ValueType的映射
+            type_mapping = {
+                VarType.STRING: ValueType.STRING,
+                VarType.NUMBER: ValueType.NUMBER,
+                VarType.BOOLEAN: ValueType.BOOL,
+                VarType.OBJECT: ValueType.DICT,
+                VarType.ARRAY_STRING: ValueType.LIST,
+                VarType.ARRAY_NUMBER: ValueType.LIST,
+                VarType.ARRAY_OBJECT: ValueType.LIST,
+                VarType.ARRAY_ANY: ValueType.LIST,
+                VarType.ARRAY_FILE: ValueType.LIST,
+                VarType.ARRAY_BOOLEAN: ValueType.LIST,
+                VarType.ARRAY_SECRET: ValueType.LIST,
+            }
+            
+            # 转换类型
+            if resolved_type in type_mapping:
+                converted_type = type_mapping[resolved_type]
+            else:
+                # 如果没有映射，默认为STRING
+                converted_type = ValueType.STRING
+                
         except Exception as e:
-            logger.warning(f"[CoreCall] 解析变量引用 '{match.group()}' 失败: {e}")
+            logger.warning(f"[CoreCall] 解析变量引用 '{value.value}' 失败: {e}")
+            return value
         
-        return Value(value=resolved_value, type=resolved_type)
+        return Value(value=resolved_value, type=converted_type)
 
     async def _set_input(self, executor: "StepExecutor") -> None:
         """获取Call的输入"""

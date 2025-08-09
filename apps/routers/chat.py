@@ -82,11 +82,17 @@ async def chat_generator(post_body: RequestData, user_sub: str, session_id: str)
 
         # 获取最终答案
         task = scheduler.task
-        if not task.runtime.answer:
-            logger.error("[Chat] 答案为空")
+        # 🔑 修复：对于工作流调试模式或纯逻辑节点，允许答案为空
+        is_flow_debug = post_body.app and post_body.app.flow_id
+        if not task.runtime.answer and not is_flow_debug:
+            logger.error("[Chat] 答案为空且非工作流调试模式")
             yield "data: [ERROR]\n\n"
             await Activity.remove_active(user_sub)
             return
+        elif not task.runtime.answer and is_flow_debug:
+            logger.info("[Chat] 工作流调试模式，答案为空是正常的（可能是纯逻辑节点）")
+            # 为工作流调试提供默认响应
+            task.runtime.answer = "工作流执行完成"
 
         # 对结果进行敏感词检查
         if await WordsCheck().check(task.runtime.answer) != 1:

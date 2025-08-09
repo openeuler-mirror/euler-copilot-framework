@@ -4,7 +4,7 @@ import uuid
 
 from enum import Enum
 
-from pydantic import Field
+from pydantic import BaseModel, Field
 
 from apps.schemas.parameters import (
     NumberOperate,
@@ -37,7 +37,7 @@ class Condition(DataBase):
 
     left: Value = Field(description="左值", default=Value())
     right: Value = Field(description="右值", default=Value())
-    operate: NumberOperate | StringOperate | ListOperate | BoolOperate | DictOperate | None = Field(
+    operator: NumberOperate | StringOperate | ListOperate | BoolOperate | DictOperate | None = Field(
         description="运算符", default=None)
     id: str = Field(description="条件ID", default_factory=lambda: str(uuid.uuid4()))
 

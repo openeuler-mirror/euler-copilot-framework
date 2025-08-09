@@ -594,6 +594,7 @@ async def list_variables(
     flow_id: Optional[str] = Query(default=None, description="流程ID（环境级和对话级变量必需）"),
     conversation_id: Optional[str] = Query(default=None, description="对话ID（系统级和对话级变量必需）"),
     current_step_id: Optional[str] = Query(default=None, description="当前步骤ID（用于获取前置节点变量）"),
+    exclude_pattern: Optional[str] = Query(default=None, description="排除模式：'step_id'排除包含.的变量名")
 ) -> VariableListResponse:
     """列出指定作用域的变量"""
     try:
@@ -613,6 +614,11 @@ async def list_variables(
                 user_sub, flow_id, conversation_id, current_step_id
             )
             variables.extend(predecessor_variables)
+        
+        # 应用排除模式过滤
+        if exclude_pattern == "step_id" and scope == VariableScope.CONVERSATION:
+            # 排除包含"."的变量名（即节点特定变量），只保留全局对话变量
+            variables = [var for var in variables if "." not in var.name]
         
         # 过滤权限并构建响应
         filtered_variables = []

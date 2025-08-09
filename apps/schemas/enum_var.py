@@ -137,6 +137,7 @@ class CallOutputType(str, Enum):
 
     TEXT = "text"
     DATA = "data"
+    PROGRESS = "progress"
 
 
 class SpecialCallType(str, Enum):

@@ -20,7 +20,8 @@ class VariableParser:
                  user_id: Optional[str] = None,
                  flow_id: Optional[str] = None,
                  conversation_id: Optional[str] = None,
-                 user_sub: Optional[str] = None):
+                 user_sub: Optional[str] = None,
+                 current_step_id: Optional[str] = None):
         """初始化变量解析器
         
         Args:
@@ -28,11 +29,13 @@ class VariableParser:
             flow_id: 流程ID
             conversation_id: 对话ID
             user_sub: 用户订阅ID (优先使用，用于未来鉴权等需求)
+            current_step_id: 当前步骤ID，用于支持{{self.xxx}}语法
         """
         # 优先使用 user_sub，如果没有则使用 user_id
         self.user_id = user_sub if user_sub is not None else user_id
         self.flow_id = flow_id
         self.conversation_id = conversation_id
+        self.current_step_id = current_step_id
         self._pool_manager = None
     
     async def _get_pool_manager(self):
@@ -95,6 +98,14 @@ class VariableParser:
             raise ValueError(f"无效的变量引用格式: {reference}")
         
         scope_str, var_path = parts
+        
+        # 处理特殊的self作用域
+        if scope_str == "self":
+            if not self.current_step_id:
+                raise ValueError("使用{{self.xxx}}语法时，当前步骤ID不可用")
+            # 将self.xxx转换为conversation.current_step_id.xxx
+            scope_str = "conversation"
+            var_path = f"{self.current_step_id}.{var_path}"
         
         # 确定作用域
         scope_map = {

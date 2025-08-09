@@ -97,10 +97,31 @@ class NodeManager:
             err = f"[NodeManager] Call {call_id} 不存在"
             logger.error(err)
             raise ValueError(err)
+        # 生成输出参数Schema
+        output_schema = call_class.output_model.model_json_schema(  # type: ignore[attr-defined]
+            override=node_data.override_output if node_data.override_output else {},
+        )
+        
+        # 特殊处理：对于循环节点，直接返回扁平化的输出参数结构
+        if call_id == "Loop":
+            # 直接使用正确的扁平化格式，避免依赖JSON Schema转换
+            output_schema = {
+                "iteration_count": {
+                    "type": "integer",
+                    "description": "实际执行的循环次数"
+                },
+                "stop_reason": {
+                    "type": "string", 
+                    "description": "停止原因"
+                },
+                "variables": {
+                    "type": "object",
+                    "description": "循环后的变量状态"
+                }
+            }
+        
         # 返回参数Schema
         return (
             NodeManager.merge_params_schema(call_class.model_json_schema(), node_data.known_params or {}),
-            call_class.output_model.model_json_schema(  # type: ignore[attr-defined]
-                override=node_data.override_output if node_data.override_output else {},
-            ),
+            output_schema,
         )

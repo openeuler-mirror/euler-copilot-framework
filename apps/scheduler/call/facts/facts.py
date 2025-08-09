@@ -1,6 +1,7 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2023-2025. All rights reserved.
 """提取事实工具"""
 
+import logging
 from collections.abc import AsyncGenerator
 from typing import TYPE_CHECKING, Any, Self
 
@@ -84,18 +85,28 @@ class FactsCall(CoreCall, input_model=FactsInput, output_model=FactsOutput):
         # 提取事实信息
         facts_tpl = env.from_string(FACTS_PROMPT)
         facts_prompt = facts_tpl.render(conversation=data.message)
-        facts_obj: FactsGen = await self._json([
-            {"role": "system", "content": "You are a helpful assistant."},
-            {"role": "user", "content": facts_prompt},
-        ], FactsGen) # type: ignore[arg-type]
+        try:
+            facts_obj: FactsGen = await self._json([
+                {"role": "system", "content": "You are a helpful assistant."},
+                {"role": "user", "content": facts_prompt},
+            ], FactsGen) # type: ignore[arg-type]
+        except Exception as e:
+            # 如果 LLM 返回格式不正确，使用默认空列表
+            logging.warning(f"[FactsCall] 事实提取失败，使用默认值: {e}")
+            facts_obj = FactsGen(facts=[])
 
         # 更新用户画像
         domain_tpl = env.from_string(DOMAIN_PROMPT)
         domain_prompt = domain_tpl.render(conversation=data.message)
-        domain_list: DomainGen = await self._json([
-            {"role": "system", "content": "You are a helpful assistant."},
-            {"role": "user", "content": domain_prompt},
-        ], DomainGen) # type: ignore[arg-type]
+        try:
+            domain_list: DomainGen = await self._json([
+                {"role": "system", "content": "You are a helpful assistant."},
+                {"role": "user", "content": domain_prompt},
+            ], DomainGen) # type: ignore[arg-type]
+        except Exception as e:
+            # 如果 LLM 返回格式不正确，使用默认空列表
+            logging.warning(f"[FactsCall] 域名提取失败，使用默认值: {e}")
+            domain_list = DomainGen(keywords=[])
 
         for domain in domain_list.keywords:
             await UserDomainManager.update_user_domain_by_user_sub_and_domain_name(data.user_sub, domain)

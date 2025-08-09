@@ -9,13 +9,13 @@ from apps.scheduler.call.core import DataBase
 class DomainGen(BaseModel):
     """生成的领域信息结果"""
 
-    keywords: list[str] = Field(description="关键词或标签列表，可以为空。")
+    keywords: list[str] = Field(default=[], description="关键词或标签列表，可以为空。")
 
 
 class FactsGen(BaseModel):
     """生成的提取事实结果"""
 
-    facts: list[str] = Field(description="从对话中提取的事实条目，可以为空。")
+    facts: list[str] = Field(default=[], description="从对话中提取的事实条目，可以为空。")
 
 
 class FactsInput(DataBase):

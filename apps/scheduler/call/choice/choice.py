@@ -224,18 +224,18 @@ class Choice(CoreCall, input_model=ChoiceInput, output_model=ChoiceOutput):
         condition.right = _right
 
         # 检查运算符是否有效
-        if condition.operate is None:
+        if condition.operator is None:
             return False, "条件缺少运算符"
         
         # 根据运算符确定期望的值类型
         try:
-            expected_type = ConditionHandler.get_value_type_from_operate(condition.operate)
+            expected_type = ConditionHandler.get_value_type_from_operate(condition.operator)
         except Exception as e:
-            return False, f"不支持的运算符: {condition.operate}"
+            return False, f"不支持的运算符: {condition.operator}"
         
         # 检查类型是否与运算符匹配
         if not expected_type == _left.type == _right.type:
-            return False, f"左值类型 {_left.type.value} 与运算符 {condition.operate} 不匹配"
+            return False, f"左值类型 {_left.type.value} 与运算符 {condition.operator} 不匹配"
                 
         return True, ""
 
@@ -303,16 +303,21 @@ class Choice(CoreCall, input_model=ChoiceInput, output_model=ChoiceOutput):
 
     async def _init(self, call_vars: CallVars) -> ChoiceInput:
         """初始化Choice工具"""
+        
+        prepared_choices = await self._prepare_message(call_vars)
+        
         return ChoiceInput(
-            choices=await self._prepare_message(call_vars),
+            choices=prepared_choices,
         )
 
     async def _exec(
         self, input_data: dict[str, Any]
     ) -> AsyncGenerator[CallOutputChunk, None]:
         """执行Choice工具"""
+        
         # 解析输入数据
         data = ChoiceInput(**input_data)
+        
         try:
             branch_id = ConditionHandler.handler(data.choices)
             yield CallOutputChunk(
