@@ -39,7 +39,7 @@ from apps.routers import (
     parameter
 )
 from apps.scheduler.pool.pool import Pool
-
+logger = logging.getLogger(__name__)
 # 定义FastAPI app
 app = FastAPI(redoc_url=None)
 # 定义FastAPI全局中间件
@@ -104,7 +104,7 @@ async def add_no_auth_user() -> None:
             auto_execute=False
         ).model_dump(by_alias=True))
     except Exception as e:
-        logging.warning(f"添加无认证用户失败: {e}")
+        logger.error(f"[add_no_auth_user] 默认用户 {username} 已存在")
 
 
 async def clear_user_activity() -> None:
