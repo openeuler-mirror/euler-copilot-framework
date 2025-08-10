@@ -6,6 +6,7 @@ from jinja2.sandbox import SandboxedEnvironment
 
 from apps.llm.reasoning import ReasoningLLM
 from apps.llm.function import JsonGenerator
+from apps.scheduler.mcp_agent.base import McpBase
 from apps.scheduler.mcp_agent.prompt import (
     EVALUATE_GOAL,
     GENERATE_FLOW_NAME,
@@ -14,6 +15,7 @@ from apps.scheduler.mcp_agent.prompt import (
     RECREATE_PLAN,
     RISK_EVALUATE,
     TOOL_EXECUTE_ERROR_TYPE_ANALYSIS,
+    CHANGE_ERROR_MESSAGE_TO_DESCRIPTION,
     GET_MISSING_PARAMS,
     FINAL_ANSWER
 )
@@ -35,40 +37,8 @@ _env = SandboxedEnvironment(
 )
 
 
-class MCPPlanner:
+class MCPPlanner(McpBase):
     """MCP 用户目标拆解与规划"""
-    @staticmethod
-    async def get_resoning_result(prompt: str, resoning_llm: ReasoningLLM = ReasoningLLM()) -> str:
-        """获取推理结果"""
-        # 调用推理大模型
-        message = [
-            {"role": "system", "content": "You are a helpful assistant."},
-            {"role": "user", "content": prompt},
-        ]
-        result = ""
-        async for chunk in resoning_llm.call(
-            message,
-            streaming=False,
-            temperature=0.07,
-            result_only=True,
-        ):
-            result += chunk
-
-        return result
-
-    @staticmethod
-    async def _parse_result(result: str, schema: dict[str, Any]) -> str:
-        """解析推理结果"""
-        json_generator = JsonGenerator(
-            result,
-            [
-                {"role": "system", "content": "You are a helpful assistant."},
-                {"role": "user", "content": "请提取下面内容中的json\n\n"+result},
-            ],
-            schema,
-        )
-        json_result = await json_generator.generate()
-        return json_result
 
     @staticmethod
     async def evaluate_goal(
@@ -265,6 +235,22 @@ class MCPPlanner:
         error_type = await MCPPlanner._parse_tool_execute_error_type_result(result)
         # 返回工具执行错误类型
         return error_type
+
+    @staticmethod
+    async def change_err_message_to_description(
+            error_message: str, tool: MCPTool, input_params: dict[str, Any],
+            reasoning_llm: ReasoningLLM = ReasoningLLM()) -> str:
+        """将错误信息转换为工具描述"""
+        template = _env.from_string(CHANGE_ERROR_MESSAGE_TO_DESCRIPTION)
+        prompt = template.render(
+            error_message=error_message,
+            tool_name=tool.name,
+            tool_description=tool.description,
+            input_schema=tool.input_schema,
+            input_params=input_params,
+        )
+        result = await MCPPlanner.get_resoning_result(prompt, reasoning_llm)
+        return result
 
     @staticmethod
     async def get_missing_param(

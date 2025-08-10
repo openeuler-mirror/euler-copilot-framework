@@ -70,6 +70,7 @@ TOOL_SELECT = dedent(r"""
     2. 请在给定的MCP工具列表中选择，不要自己生成MCP工具。
     3. 可以选择一些辅助工具，但必须确保这些工具与当前目标相关。
     4. 注意，返回的工具ID必须是MCP工具的ID，而不是名称。
+    5. 不要选择不存在的工具。
     必须按照以下格式生成选择结果，不要输出任何其他内容：
     ```json
     {
@@ -616,6 +617,71 @@ TOOL_EXECUTE_ERROR_TYPE_ANALYSIS = dedent(r"""
     # 输出
     """
                                           )
+# 将当前程序运行的报错转换为自然语言
+CHANGE_ERROR_MESSAGE_TO_DESCRIPTION = dedent(r"""
+    你是一个智能助手，你的任务是将当前程序运行的报错转换为自然语言描述。
+    请根据以下规则进行转换：
+    1. 将报错信息转换为自然语言描述，描述应该简洁明了，能够让人理解报错的原因和影响。
+    2. 描述应该包含报错的具体内容和可能的解决方案。
+    3. 描述应该避免使用过于专业的术语，以便用户能够理解。
+    4. 描述应该尽量简短，控制在50字以内。
+    5. 只输出自然语言描述，不要输出其他内容。
+    # 样例
+    # 工具信息
+    <tool>
+        <name> port_scanner </name>
+        <description> 扫描主机端口 </description>
+        <input_schema>
+        {
+            "type": "object",
+            "properties": {
+                "host": {
+                    "type": "string",
+                    "description": "主机地址"
+                },
+                "port": {
+                    "type": "integer",
+                    "description": "端口号"
+                },
+                "username": {
+                    "type": "string",
+                    "description": "用户名"
+                },
+                "password": {
+                    "type": "string",
+                    "description": "密码" 
+                }
+            },
+            "required": ["host", "port", "username", "password"]
+        }
+        </input_schema>
+    </tool>
+    # 工具入参
+    {
+        "host": "192.0.0.1",
+        "port": 3306,
+        "username": "root",
+        "password": "password"
+    }
+    # 报错信息
+    执行端口扫描命令时，出现了错误：`password is not correct`。
+    # 输出
+    扫描端口时发生错误：密码不正确。请检查输入的密码是否正确，并重试。
+    # 现在开始转换报错信息：
+    # 工具信息
+    <tool>
+        <name> {{tool_name}} </name>
+        <description> {{tool_description}} </description>
+        <input_schema>
+        {{input_schema}}
+        </input_schema>
+    </tool>
+    # 工具入参
+    {{input_params}}
+    # 报错信息
+    {{error_message}}
+    # 输出
+    """)
 # 获取缺失的参数的json结构体
 GET_MISSING_PARAMS = dedent(r"""
     你是一个工具参数获取器。

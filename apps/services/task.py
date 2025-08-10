@@ -138,19 +138,12 @@ class TaskManager:
         """保存flow信息到flow_context"""
         flow_context_collection = MongoDB().get_collection("flow_context")
         try:
-            for history in flow_context:
-                # 查找是否存在
-                current_context = await flow_context_collection.find_one({
-                    "task_id": task_id,
-                    "_id": history.id,
-                })
-                if current_context:
-                    await flow_context_collection.update_one(
-                        {"_id": current_context["_id"]},
-                        {"$set": history.model_dump(exclude_none=True, by_alias=True)},
-                    )
-                else:
-                    await flow_context_collection.insert_one(history.model_dump(exclude_none=True, by_alias=True))
+            # 删除旧的flow_context
+            await flow_context_collection.delete_many({"task_id": task_id})
+            await flow_context_collection.insert_many(
+                [history.model_dump(exclude_none=True, by_alias=True) for history in flow_context],
+                ordered=False,
+            )
         except Exception:
             logger.exception("[TaskManager] 保存flow执行记录失败")
 

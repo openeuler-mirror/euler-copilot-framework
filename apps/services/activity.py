@@ -22,14 +22,6 @@ class Activity:
         :param user_sub: 用户实体ID
         :return: 判断结果，正在提问则返回True
         """
-        time = round(datetime.now(UTC).timestamp(), 3)
-
-        # 检查窗口内总请求数
-        count = await MongoDB().get_collection("activity").count_documents(
-            {"timestamp": {"$gte": time - SLIDE_WINDOW_TIME, "$lte": time}},
-        )
-        if count >= SLIDE_WINDOW_QUESTION_COUNT:
-            return True
 
         # 检查用户是否正在提问
         active = await MongoDB().get_collection("activity").find_one(

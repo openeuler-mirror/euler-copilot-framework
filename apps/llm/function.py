@@ -68,7 +68,6 @@ class FunctionLLM:
                     api_key=self._config.api_key,
                 )
 
-
     async def _call_openai(
         self,
         messages: list[dict[str, str]],
@@ -123,7 +122,7 @@ class FunctionLLM:
                 },
             ]
 
-        response = await self._client.chat.completions.create(**self._params) # type: ignore[arg-type]
+        response = await self._client.chat.completions.create(**self._params)  # type: ignore[arg-type]
         try:
             logger.info("[FunctionCall] 大模型输出：%s", response.choices[0].message.tool_calls[0].function.arguments)
             return response.choices[0].message.tool_calls[0].function.arguments
@@ -131,7 +130,6 @@ class FunctionLLM:
             ans = response.choices[0].message.content
             logger.info("[FunctionCall] 大模型输出：%s", ans)
             return await FunctionLLM.process_response(ans)
-
 
     @staticmethod
     async def process_response(response: str) -> str:
@@ -169,7 +167,6 @@ class FunctionLLM:
 
         return json_str
 
-
     async def _call_ollama(
         self,
         messages: list[dict[str, str]],
@@ -196,9 +193,8 @@ class FunctionLLM:
             "format": schema,
         })
 
-        response = await self._client.chat(**self._params) # type: ignore[arg-type]
+        response = await self._client.chat(**self._params)  # type: ignore[arg-type]
         return await self.process_response(response.message.content or "")
-
 
     async def call(
         self,
@@ -254,7 +250,6 @@ class JsonGenerator:
         )
         self._err_info = ""
 
-
     async def _assemble_message(self) -> str:
         """组装消息"""
         # 检查类型
@@ -275,12 +270,11 @@ class JsonGenerator:
         """单次尝试"""
         prompt = await self._assemble_message()
         messages = [
-            {"role": "system", "content": "You are a helpful assistant."},
-            {"role": "user", "content": prompt},
+            {"role": "system", "content": prompt},
+            {"role": "user", "content": "please generate a JSON response based on the above information and schema."},
         ]
         function = FunctionLLM()
         return await function.call(messages, self._schema, max_tokens, temperature)
-
 
     async def generate(self) -> dict[str, Any]:
         """生成JSON"""

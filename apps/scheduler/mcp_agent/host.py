@@ -24,10 +24,17 @@ logger = logging.getLogger(__name__)
 
 _env = SandboxedEnvironment(
     loader=BaseLoader,
-    autoescape=True,
+    autoescape=False,
     trim_blocks=True,
     lstrip_blocks=True,
 )
+
+
+def tojson_filter(value):
+    return json.dumps(value, ensure_ascii=False, separators=(',', ':'))
+
+
+_env.filters['tojson'] = tojson_filter
 
 
 class MCPHost:

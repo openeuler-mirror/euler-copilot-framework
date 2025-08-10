@@ -233,8 +233,8 @@ FINAL_ANSWER = dedent(r"""
 MEMORY_TEMPLATE = dedent(r"""
     {% for ctx in context_list %}
     - 第{{ loop.index }}步：{{ ctx.step_description }}
-      - 调用工具 `{{ ctx.step_id }}`，并提供参数 `{{ ctx.input_data }}`
+      - 调用工具 `{{ ctx.step_name }}`，并提供参数 `{{ ctx.input_data|tojson }}`。
       - 执行状态：{{ ctx.status }}
-      - 得到数据：`{{ ctx.output_data }}`
+      - 得到数据：`{{ ctx.output_data|tojson }}`
     {% endfor %}
 """)

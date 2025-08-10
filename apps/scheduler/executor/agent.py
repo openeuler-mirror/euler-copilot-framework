@@ -137,8 +137,9 @@ class MCPAgentExecutor(BaseExecutor):
         if is_first:
             # 获取第一个输入参数
             tool_id = self.task.runtime.temporary_plans.plans[self.task.state.step_index].tool
+            step = self.task.runtime.temporary_plans.plans[self.task.state.step_index]
             mcp_tool = self.tools[tool_id]
-            self.task.state.current_input = await MCPHost._get_first_input_params(mcp_tool, self.task.runtime.question, self.task)
+            self.task.state.current_input = await MCPHost._get_first_input_params(mcp_tool, step.instruction, self.task)
         else:
             # 获取后续输入参数
             if isinstance(self.params, param):
@@ -271,10 +272,16 @@ class MCPAgentExecutor(BaseExecutor):
             self.resoning_llm
         )
         await self.update_tokens()
+        error_message = MCPPlanner.change_err_message_to_description(
+            error_message=self.task.state.error_message,
+            tool=mcp_tool,
+            input_params=self.task.state.current_input,
+            reasoning_llm=self.resoning_llm
+        )
         await self.push_message(
             EventType.STEP_WAITING_FOR_PARAM,
             data={
-                "message": "当运行产生如下报错：\n" + self.task.state.error_message,
+                "message": error_message,
                 "params": params_with_null
             }
         )
@@ -297,7 +304,7 @@ class MCPAgentExecutor(BaseExecutor):
                 input_data={},
                 output_data={},
                 ex_data={
-                    "message": "当运行产生如下报错：\n" + self.task.state.error_message,
+                    "message": error_message,
                     "params": params_with_null
                 }
             )
