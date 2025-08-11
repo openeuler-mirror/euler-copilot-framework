@@ -150,7 +150,8 @@ class MCPAgentExecutor(BaseExecutor):
                 params_description = ""
             tool_id = self.task.runtime.temporary_plans.plans[self.task.state.step_index].tool
             mcp_tool = self.tools[tool_id]
-            self.task.state.current_input = await MCPHost._fill_params(mcp_tool, self.task.state.current_input, self.task.state.error_message, params, params_description)
+            step = self.task.runtime.temporary_plans.plans[self.task.state.step_index]
+            self.task.state.current_input = await MCPHost._fill_params(mcp_tool, step.instruction, self.task.state.current_input, self.task.state.error_message, params, params_description)
 
     async def reset_step_to_index(self, start_index: int) -> None:
         """重置步骤到开始"""

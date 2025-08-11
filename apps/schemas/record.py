@@ -36,6 +36,7 @@ class RecordFlowStep(BaseModel):
     step_status: StepStatus = Field(alias="stepStatus")
     input: dict[str, Any]
     output: dict[str, Any]
+    ex_data: dict[str, Any] | None = Field(default=None, alias="exData")
 
 
 class RecordFlow(BaseModel):

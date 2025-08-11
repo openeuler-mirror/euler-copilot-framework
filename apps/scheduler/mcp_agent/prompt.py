@@ -768,14 +768,19 @@ GET_MISSING_PARAMS = dedent(r"""
                             )
 REPAIR_PARAMS = dedent(r"""
     你是一个工具参数修复器。
-    你的任务是根据当前的工具信息、工具入参的schema、工具当前的入参、工具的报错、补充的参数和补充的参数描述，修复当前工具的入参。
-
+    你的任务是根据当前的工具信息、目标、工具入参的schema、工具当前的入参、工具的报错、补充的参数和补充的参数描述，修复当前工具的入参。
+    
+    注意：
+    1.最终修复的参数要符合目标和工具入参的schema。
+    
     # 样例
     # 工具信息
     <tool>
         <name> mysql_analyzer </name>
         <description> 分析MySQL数据库性能 </description>
     </tool>
+    # 目标
+    我要连接MySQL数据库，分析性能瓶颈，并调优。
     # 工具入参的schema
     {
         "type": "object",
@@ -829,6 +834,8 @@ REPAIR_PARAMS = dedent(r"""
         <name> {{tool_name}} </name>
         <description> {{tool_description}} </description>
     </tool>
+    # 目标
+    {{goal}}
     # 工具入参scheme
     {{input_schema}}
     # 工具入参

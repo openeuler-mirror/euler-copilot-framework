@@ -48,16 +48,16 @@ class Scheduler:
         self.queue = queue
         self.post_body = post_body
 
-    async def _monitor_activity(self, kill_event, user_sub):
+    async def _monitor_activity(self, kill_event):
         """监控用户活动状态，不活跃时终止工作流"""
         try:
             check_interval = 0.5  # 每0.5秒检查一次
 
             while not kill_event.is_set():
                 # 检查用户活动状态
-                is_active = await Activity.is_active(user_sub)
+                is_active = await Activity.is_active(self.task.ids.active_id)
                 if not is_active:
-                    logger.warning("[Scheduler] 用户 %s 不活跃，终止工作流", user_sub)
+                    logger.warning("[Scheduler] 用户 %s 不活跃，终止工作流", self.task.ids.user_sub)
                     kill_event.set()
                     break
 
@@ -125,7 +125,7 @@ class Scheduler:
         logger.info("[Scheduler] 开始执行")
         # 创建用于通信的事件
         kill_event = asyncio.Event()
-        monitor = asyncio.create_task(self._monitor_activity(kill_event, self.task.ids.user_sub))
+        monitor = asyncio.create_task(self._monitor_activity(kill_event))
         rag_method = True
         if self.post_body.app and self.post_body.app.app_id:
             rag_method = False

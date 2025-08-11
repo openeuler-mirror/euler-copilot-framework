@@ -7,7 +7,7 @@ import uuid
 from collections.abc import AsyncGenerator
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Query
 from fastapi.responses import JSONResponse, StreamingResponse
 
 from apps.common.queue import MessageQueue
@@ -71,24 +71,23 @@ async def init_task(post_body: RequestData, user_sub: str, session_id: str) -> T
 async def chat_generator(post_body: RequestData, user_sub: str, session_id: str) -> AsyncGenerator[str, None]:
     """进行实际问答，并从MQ中获取消息"""
     try:
-        await Activity.set_active(user_sub)
+        active_id = await Activity.set_active(user_sub)
 
         # 敏感词检查
         if await WordsCheck().check(post_body.question) != 1:
             yield "data: [SENSITIVE]\n\n"
             logger.info("[Chat] 问题包含敏感词！")
-            await Activity.remove_active(user_sub)
+            await Activity.remove_active(active_id)
             return
 
         task = await init_task(post_body, user_sub, session_id)
-
+        task.ids.active_id = active_id
         # 创建queue；由Scheduler进行关闭
         queue = MessageQueue()
         await queue.init()
 
         # 在单独Task中运行Scheduler，拉齐queue.get的时机
         scheduler = Scheduler(task, queue, post_body)
-        logger.info(f"[Chat] 用户是否活跃: {await Activity.is_active(user_sub)}")
         scheduler_task = asyncio.create_task(scheduler.run())
 
         # 处理每一条消息
@@ -105,14 +104,14 @@ async def chat_generator(post_body: RequestData, user_sub: str, session_id: str)
         if task.state.flow_status == FlowStatus.ERROR:
             logger.error("[Chat] 生成答案失败")
             yield "data: [ERROR]\n\n"
-            await Activity.remove_active(user_sub)
+            await Activity.remove_active(active_id)
             return
 
         # 对结果进行敏感词检查
         if await WordsCheck().check(task.runtime.answer) != 1:
             yield "data: [SENSITIVE]\n\n"
             logger.info("[Chat] 答案包含敏感词！")
-            await Activity.remove_active(user_sub)
+            await Activity.remove_active(active_id)
             return
 
         # 创建新Record，存入数据库
@@ -132,7 +131,7 @@ async def chat_generator(post_body: RequestData, user_sub: str, session_id: str)
         yield "data: [ERROR]\n\n"
 
     finally:
-        await Activity.remove_active(user_sub)
+        await Activity.remove_active(active_id)
 
 
 @router.post("/chat")
@@ -148,10 +147,6 @@ async def chat(
         await UserBlacklistManager.change_blacklisted_users(user_sub, -10)
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="question is blacklisted")
 
-    # # 限流检查
-    # if await Activity.is_active(user_sub):
-    #     raise HTTPException(status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail="Too many requests")
-
     res = chat_generator(post_body, user_sub, session_id)
     return StreamingResponse(
         content=res,
@@ -163,9 +158,12 @@ async def chat(
 
 
 @router.post("/stop", response_model=ResponseData)
-async def stop_generation(user_sub: Annotated[str, Depends(get_user)]):  # noqa: ANN201
+async def stop_generation(user_sub: Annotated[str, Depends(get_user)],
+                          task_id: Annotated[str, Query(..., alias="taskId")] = "") -> JSONResponse:
     """停止生成"""
-    await Activity.remove_active(user_sub)
+    task = await TaskManager.get_task_by_task_id(task_id)
+    if task:
+        await Activity.remove_active(task.activity_id)
     return JSONResponse(
         status_code=status.HTTP_200_OK,
         content=ResponseData(

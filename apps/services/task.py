@@ -140,6 +140,8 @@ class TaskManager:
         try:
             # 删除旧的flow_context
             await flow_context_collection.delete_many({"task_id": task_id})
+            if not flow_context:
+                return
             await flow_context_collection.insert_many(
                 [history.model_dump(exclude_none=True, by_alias=True) for history in flow_context],
                 ordered=False,

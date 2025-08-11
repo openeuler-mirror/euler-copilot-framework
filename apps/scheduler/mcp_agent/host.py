@@ -69,12 +69,14 @@ class MCPHost:
         return await json_generator.generate()
 
     async def _fill_params(mcp_tool: MCPTool,
+                           goal: str,
                            current_input: dict[str, Any],
                            error_message: str = "", params: dict[str, Any] = {},
                            params_description: str = "") -> dict[str, Any]:
         llm_query = "请生成修复之后的工具参数"
         prompt = _env.from_string(REPAIR_PARAMS).render(
             tool_name=mcp_tool.name,
+            gaol=goal,
             tool_description=mcp_tool.description,
             input_schema=mcp_tool.input_schema,
             current_input=current_input,

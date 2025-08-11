@@ -100,6 +100,7 @@ async def get_record(conversation_id: str, user_sub: Annotated[str, Depends(get_
                             stepStatus=flow_step.step_status,
                             input=flow_step.input_data,
                             output=flow_step.output_data,
+                            exData=flow_step.ex_data
                         ),
                     )
 

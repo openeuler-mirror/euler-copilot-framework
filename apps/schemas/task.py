@@ -62,6 +62,7 @@ class TaskIds(BaseModel):
     conversation_id: str = Field(description="对话ID")
     record_id: str = Field(description="记录ID", default_factory=lambda: str(uuid.uuid4()))
     user_sub: str = Field(description="用户ID")
+    active_id: str = Field(description="活动ID", default_factory=lambda: str(uuid.uuid4()))
 
 
 class TaskTokens(BaseModel):
