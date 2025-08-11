@@ -258,7 +258,7 @@ class MCPServiceManager:
                 if index >= len(config.args):
                     config.args.append(str(mcp_path))
                 else:
-                    config.args[index+1] = str(mcp_path)
+                    config.args[index] = str(mcp_path)
             else:
                 config.args += ["--directory", str(mcp_path)]
         await MCPLoader._insert_template_db(mcp_id=mcp_id, config=mcp_server)

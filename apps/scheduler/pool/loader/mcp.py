@@ -95,7 +95,6 @@ class MCPLoader(metaclass=SingletonMeta):
         try:
             if not config.config.auto_install:
                 print(f"[Installer] MCP模板无需安装: {mcp_id}")  # noqa: T201
-
             elif isinstance(config.config, MCPServerStdioConfig):
                 print(f"[Installer] Stdio方式的MCP模板，开始自动安装: {mcp_id}")  # noqa: T201
                 if "uv" in config.config.command:
@@ -388,6 +387,7 @@ class MCPLoader(metaclass=SingletonMeta):
         # 更新数据库
         mongo = MongoDB()
         mcp_collection = mongo.get_collection("mcp")
+        logger.info("[MCPLoader] 更新MCP模板状态: %s -> %s", mcp_id, status)
         await mcp_collection.update_one(
             {"_id": mcp_id},
             {"$set": {"status": status}},
@@ -423,17 +423,6 @@ class MCPLoader(metaclass=SingletonMeta):
         )
         if mcp_env is not None:
             mcp_config.config.env.update(mcp_env)
-            user_config_path = user_path / "config.json"
-            # 更新用户配置
-            f = await user_config_path.open("w", encoding="utf-8", errors="ignore")
-            await f.write(
-                json.dumps(
-                    mcp_config.model_dump(by_alias=True, exclude_none=True),
-                    indent=4,
-                    ensure_ascii=False,
-                )
-            )
-            await f.aclose()
         if mcp_config.type == MCPType.STDIO:
             index = None
             for i in range(len(mcp_config.config.args)):
@@ -447,6 +436,17 @@ class MCPLoader(metaclass=SingletonMeta):
                     mcp_config.config.args.append(str(user_path)+'/project')
             else:
                 mcp_config.config.args = ["--directory", str(user_path)+'/project'] + mcp_config.config.args
+        user_config_path = user_path / "config.json"
+        # 更新用户配置
+        f = await user_config_path.open("w", encoding="utf-8", errors="ignore")
+        await f.write(
+            json.dumps(
+                mcp_config.model_dump(by_alias=True, exclude_none=True),
+                indent=4,
+                ensure_ascii=False,
+            )
+        )
+        await f.aclose()
         # 更新数据库
         mongo = MongoDB()
         mcp_collection = mongo.get_collection("mcp")

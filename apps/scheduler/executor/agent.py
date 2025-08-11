@@ -273,7 +273,7 @@ class MCPAgentExecutor(BaseExecutor):
             self.resoning_llm
         )
         await self.update_tokens()
-        error_message = MCPPlanner.change_err_message_to_description(
+        error_message = await MCPPlanner.change_err_message_to_description(
             error_message=self.task.state.error_message,
             tool=mcp_tool,
             input_params=self.task.state.current_input,
