@@ -31,7 +31,7 @@ from apps.scheduler.slot.slot import Slot
 
 _env = SandboxedEnvironment(
     loader=BaseLoader,
-    autoescape=True,
+    autoescape=False,
     trim_blocks=True,
     lstrip_blocks=True,
 )
@@ -284,7 +284,6 @@ class MCPPlanner(McpBase):
             memory=memory,
             goal=user_goal,
         )
-
         async for chunk in resoning_llm.call(
             [{"role": "user", "content": prompt}],
             streaming=True,

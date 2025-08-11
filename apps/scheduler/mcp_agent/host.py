@@ -48,12 +48,11 @@ class MCPHost:
             context_list=task.context,
         )
 
-    async def _get_first_input_params(mcp_tool: MCPTool, query: str, task: Task) -> dict[str, Any]:
+    async def _get_first_input_params(mcp_tool: MCPTool, goal: str, query: str, task: Task) -> dict[str, Any]:
         """填充工具参数"""
         # 更清晰的输入·指令，这样可以调用generate
         llm_query = rf"""
-            请使用参数生成工具，生成满足以下目标的工具参数：
-
+            请充分利用背景中的信息，生成满足以下目标的工具参数：
             {query}
         """
 
@@ -62,7 +61,7 @@ class MCPHost:
             llm_query,
             [
                 {"role": "system", "content": "You are a helpful assistant."},
-                {"role": "user", "content": await MCPHost.assemble_memory(task)},
+                {"role": "user", "content": "用户的总目标是：\n"+goal+(await MCPHost.assemble_memory(task))},
             ],
             mcp_tool.input_schema,
         )
@@ -70,6 +69,7 @@ class MCPHost:
 
     async def _fill_params(mcp_tool: MCPTool,
                            goal: str,
+                           current_goal: str,
                            current_input: dict[str, Any],
                            error_message: str = "", params: dict[str, Any] = {},
                            params_description: str = "") -> dict[str, Any]:
@@ -77,6 +77,7 @@ class MCPHost:
         prompt = _env.from_string(REPAIR_PARAMS).render(
             tool_name=mcp_tool.name,
             gaol=goal,
+            current_goal=current_goal,
             tool_description=mcp_tool.description,
             input_schema=mcp_tool.input_schema,
             current_input=current_input,

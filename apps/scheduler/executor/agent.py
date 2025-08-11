@@ -139,7 +139,7 @@ class MCPAgentExecutor(BaseExecutor):
             tool_id = self.task.runtime.temporary_plans.plans[self.task.state.step_index].tool
             step = self.task.runtime.temporary_plans.plans[self.task.state.step_index]
             mcp_tool = self.tools[tool_id]
-            self.task.state.current_input = await MCPHost._get_first_input_params(mcp_tool, step.instruction, self.task)
+            self.task.state.current_input = await MCPHost._get_first_input_params(mcp_tool, self.task.runtime.question, step.instruction, self.task)
         else:
             # 获取后续输入参数
             if isinstance(self.params, param):
@@ -151,7 +151,7 @@ class MCPAgentExecutor(BaseExecutor):
             tool_id = self.task.runtime.temporary_plans.plans[self.task.state.step_index].tool
             mcp_tool = self.tools[tool_id]
             step = self.task.runtime.temporary_plans.plans[self.task.state.step_index]
-            self.task.state.current_input = await MCPHost._fill_params(mcp_tool, step.instruction, self.task.state.current_input, self.task.state.error_message, params, params_description)
+            self.task.state.current_input = await MCPHost._fill_params(mcp_tool, self.task.runtime.question, step.instruction, self.task.state.current_input, self.task.state.error_message, params, params_description)
 
     async def reset_step_to_index(self, start_index: int) -> None:
         """重置步骤到开始"""
@@ -415,7 +415,7 @@ class MCPAgentExecutor(BaseExecutor):
                 )
                 if error_type.type == ErrorType.DECORRECT_PLAN or user_info.auto_execute:
                     await self.plan(is_replan=True)
-                    self.reset_step_to_index(self.task.state.step_index)
+                    await self.reset_step_to_index(self.task.state.step_index)
                 elif error_type.type == ErrorType.MISSING_PARAM:
                     await self.generate_params_with_null()
         elif self.task.state.step_status == StepStatus.SUCCESS:

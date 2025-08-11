@@ -779,7 +779,9 @@ REPAIR_PARAMS = dedent(r"""
         <name> mysql_analyzer </name>
         <description> 分析MySQL数据库性能 </description>
     </tool>
-    # 目标
+    # 总目标
+    我需要扫描当前mysql数据库，分析性能瓶颈, 并调优
+    # 当前阶段目标
     我要连接MySQL数据库，分析性能瓶颈，并调优。
     # 工具入参的schema
     {
@@ -834,8 +836,10 @@ REPAIR_PARAMS = dedent(r"""
         <name> {{tool_name}} </name>
         <description> {{tool_description}} </description>
     </tool>
-    # 目标
+    # 总目标
     {{goal}}
+    # 当前阶段目标
+    {{current_goal}}
     # 工具入参scheme
     {{input_schema}}
     # 工具入参
@@ -873,7 +877,7 @@ MEMORY_TEMPLATE = dedent(r"""
     {% for ctx in context_list %}
     - 第{{loop.index}}步：{{ctx.step_description}}
       - 调用工具 `{{ctx.step_id}}`，并提供参数 `{{ctx.input_data}}`
-      - 执行状态：{{ctx.status}}
+      - 执行状态：{{ctx.step_status}}
       - 得到数据：`{{ctx.output_data}}`
     {% endfor %}
 """)

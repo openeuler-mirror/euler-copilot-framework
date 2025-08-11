@@ -113,7 +113,6 @@ async def chat_generator(post_body: RequestData, user_sub: str, session_id: str)
             logger.info("[Chat] 答案包含敏感词！")
             await Activity.remove_active(active_id)
             return
-
         # 创建新Record，存入数据库
         await save_data(task, user_sub, post_body)
 
