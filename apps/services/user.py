@@ -59,7 +59,7 @@ class UserManager:
         return User(**user_data) if user_data else None
 
     @staticmethod
-    async def update_userinfo_by_user_sub(user_sub: str, data: UserUpdateRequest) -> bool:
+    async def update_userinfo_by_user_sub(user_sub: str, data: UserUpdateRequest) -> None:
         """
         根据用户sub更新用户信息
 
@@ -74,8 +74,7 @@ class UserManager:
                 "auto_execute": data.auto_execute,
             }
         }
-        result = await user_collection.update_one({"_id": user_sub}, update_dict)
-        return result.modified_count > 0
+        await user_collection.update_one({"_id": user_sub}, update_dict)
 
     @staticmethod
     async def update_refresh_revision_by_user_sub(user_sub: str, *, refresh_revision: bool = False) -> bool:
