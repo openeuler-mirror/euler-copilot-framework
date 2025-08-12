@@ -495,7 +495,7 @@ class MCPAgentExecutor(BaseExecutor):
                     break
                 await self.work()
                 await TaskManager.save_task(self.task.id, self.task)
-                logger.error({self.task})
+                logger.error(f"{self.task}")
             tool_id = self.task.runtime.temporary_plans.plans[self.task.state.step_index].tool
             if tool_id == FINAL_TOOL_ID:
                 # 如果已经是最后一步，直接结束
