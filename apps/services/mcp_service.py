@@ -79,7 +79,7 @@ class MCPServiceManager:
             user_sub: str,
             keyword: str | None,
             page: int,
-            is_installed: bool | None = None,
+            is_install: bool | None = None,
             is_active: bool | None = None,
     ) -> list[MCPServiceCardItem]:
         """
@@ -97,7 +97,7 @@ class MCPServiceManager:
                 filters["activated"] = {"$in": [user_sub]}
             else:
                 filters["activated"] = {"$nin": [user_sub]}
-        if not is_installed:
+        if not is_install:
             user_info = await UserManager.get_userinfo_by_user_sub(user_sub)
             if not user_info.is_admin:
                 filters["status"] = MCPInstallStatus.READY.value
