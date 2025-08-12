@@ -13,18 +13,22 @@ from apps.scheduler.mcp_agent.prompt import (
     GET_REPLAN_START_STEP_INDEX,
     CREATE_PLAN,
     RECREATE_PLAN,
+    TOOL_SKIP,
     RISK_EVALUATE,
     TOOL_EXECUTE_ERROR_TYPE_ANALYSIS,
     CHANGE_ERROR_MESSAGE_TO_DESCRIPTION,
     GET_MISSING_PARAMS,
     FINAL_ANSWER
 )
+from apps.schemas.task import Task
 from apps.schemas.mcp import (
     GoalEvaluationResult,
     RestartStepIndex,
+    ToolSkip,
     ToolRisk,
     ToolExcutionErrorType,
     MCPPlan,
+    MCPPlanItem,
     MCPTool
 )
 from apps.scheduler.slot.slot import Slot
@@ -162,8 +166,33 @@ class MCPPlanner(McpBase):
         return MCPPlan.model_validate(plan)
 
     @staticmethod
+    async def tool_skip(
+            task: Task, step_id: str, step_name: str, step_instruction: str, step_content: str,
+            reasoning_llm: ReasoningLLM = ReasoningLLM()) -> ToolSkip:
+        """判断当前步骤是否需要跳过"""
+        # 获取推理结果
+        template = _env.from_string(TOOL_SKIP)
+        from apps.scheduler.mcp_agent.host import MCPHost
+        history = await MCPHost.assemble_memory(task)
+        prompt = template.render(
+            step_id=step_id,
+            step_name=step_name,
+            step_instruction=step_instruction,
+            step_content=step_content,
+            history=history,
+            goal=task.runtime.question
+        )
+        result = await MCPPlanner.get_resoning_result(prompt, reasoning_llm)
+
+        # 解析为结构化数据
+        schema = ToolSkip.model_json_schema()
+        skip_result = await MCPPlanner._parse_result(result, schema)
+        # 使用ToolSkip模型解析结果
+        return ToolSkip.model_validate(skip_result)
+
+    @staticmethod
     async def get_tool_risk(
-            tool: MCPTool, input_parm: dict[str, Any],
+        tool: MCPTool, input_parm: dict[str, Any],
             additional_info: str = "", resoning_llm: ReasoningLLM = ReasoningLLM()) -> ToolRisk:
         """获取MCP工具的风险评估结果"""
         # 获取推理结果

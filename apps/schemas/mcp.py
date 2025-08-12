@@ -130,6 +130,12 @@ class Risk(str, Enum):
     HIGH = "high"
 
 
+class ToolSkip(BaseModel):
+    """MCP工具跳过执行结果"""
+
+    skip: bool = Field(description="是否跳过当前步骤", default=False)
+
+
 class ToolRisk(BaseModel):
     """MCP工具风险评估结果"""
 

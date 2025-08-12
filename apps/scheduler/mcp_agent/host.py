@@ -58,6 +58,9 @@ class MCPHost:
         注意：
         1. 你需要根据工具的输入schema来生成参数。
         2. 如果工具的输入schema中有枚举类型的字段，请确保生成的参数符合这些枚举值。
+        下面是工具的简介：
+        工具名称：{mcp_tool.name}
+        工具描述：{mcp_tool.description}
         """
 
         # 进行生成
@@ -80,7 +83,7 @@ class MCPHost:
         llm_query = "请生成修复之后的工具参数"
         prompt = _env.from_string(REPAIR_PARAMS).render(
             tool_name=mcp_tool.name,
-            gaol=goal,
+            goal=goal,
             current_goal=current_goal,
             tool_description=mcp_tool.description,
             input_schema=mcp_tool.input_schema,

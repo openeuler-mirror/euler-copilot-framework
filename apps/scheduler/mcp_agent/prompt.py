@@ -265,6 +265,7 @@ CREATE_PLAN = dedent(r"""
     3. 计划中的步骤必须具有清晰和逻辑的步骤，没有冗余或不必要的步骤。
     4. 不要选择不存在的工具。
     5. 计划中的最后一步必须是Final工具，以确保计划执行结束。
+    6. 生成的计划必须要覆盖用户的目标，当然需要考虑一些意外情况，可以有一定的冗余步骤。
 
     # 生成计划时的注意事项：
 
@@ -364,7 +365,7 @@ RECREATE_PLAN = dedent(r"""
     4. 你的计划必须避免之前的错误，并且能够成功执行。
     5. 不要选择不存在的工具。
     6. 计划中的最后一步必须是Final工具，以确保计划执行结束。
-
+    7. 生成的计划必须要覆盖用户的目标，当然需要考虑一些意外情况，可以有一定的冗余步骤。
     # 生成计划时的注意事项：
 
     - 每一条计划包含3个部分：
@@ -501,6 +502,61 @@ RECREATE_PLAN = dedent(r"""
 
     # 重新生成的计划
 """)
+TOOL_SKIP = dedent(r"""
+    你是一个计划执行器。
+    你的任务是根据当前的计划和用户目标，判断当前步骤是否需要跳过。
+    如果需要跳过，请返回`true`，否则返回`false`。
+    必须按照以下格式回答：
+    ```json
+    {
+        "skip": true/false,
+    }
+    ```
+    注意：
+    1.你的判断要谨慎，在历史消息中有足够的上下文信息时，才可以判断是否跳过当前步骤。
+    # 样例
+    # 用户目标
+    我需要扫描当前mysql数据库，分析性能瓶颈, 并调优
+    # 历史
+    第1步：生成端口扫描命令
+      - 调用工具 `command_generator`，并提供参数 `{"command": "nmap -sS -p--open 192.168.1.1"}`
+        - 执行状态：成功
+        - 得到数据：`{"command": "nmap -sS -p--open 192.168.1.1"}`
+    第2步：执行端口扫描命令
+        - 调用工具 `command_executor`，并提供参数 `{"command": "nmap -sS -p--open 192.168.1.1"}`
+        - 执行状态：成功
+        - 得到数据：`{"result": "success"}`
+    第3步：分析端口扫描结果
+        - 调用工具 `mysql_analyzer`，并提供参数 `{"host": "192.168.1.1", "port": 3306, "username": "root", "password": "password"}`
+        - 执行状态：成功
+        - 得到数据：`{"performance": "good", "bottleneck": "none"}`
+    # 当前步骤
+    <step>
+        <step_id> step_4 </step_id>
+        <step_name> command_generator </step_name>
+        <step_instruction> 生成MySQL性能调优命令 </step_instruction>
+        <step_content> 生成MySQL性能调优命令：调优MySQL数据库性能 </step_content>
+    </step>
+    # 输出
+    ```json
+    {
+        "skip": true
+    }
+    ```
+    # 用户目标
+    {{goal}}
+    # 历史
+    {{history}}
+    # 当前步骤
+    <step>
+        <step_id> {{step_id}} </step_id>
+        <step_name> {{step_name}} </step_name>
+        <step_instruction> {{step_instruction}} </step_instruction>
+        <step_content> {{step_content}} </step_content>
+    </step>
+    # 输出
+    """
+                   )
 RISK_EVALUATE = dedent(r"""
     你是一个工具执行计划评估器。
     你的任务是根据当前工具的名称、描述和入参以及附加信息，判断当前工具执行的风险并输出提示。
@@ -538,10 +594,10 @@ RISK_EVALUATE = dedent(r"""
     }
     ```
     # 工具
-    <tool>
-        <name> {{tool_name}} </name>
-        <description> {{tool_description}} </description>
-    </tool>
+    < tool >
+    < name > {{tool_name}} < /name >
+    < description > {{tool_description}} < /description >
+    < / tool >
     # 工具入参
     {{input_param}}
     # 附加信息
@@ -586,10 +642,10 @@ TOOL_EXECUTE_ERROR_TYPE_ANALYSIS = dedent(r"""
         }
     ]}
     # 当前使用的工具
-    <tool>
-        <name> command_executor </name>
-        <description> 执行命令行指令 </description>
-    </tool>
+    < tool >
+    < name > command_executor < /name >
+    < description > 执行命令行指令 < /description >
+    < / tool >
     # 工具入参
     {
         "command": "nmap -sS -p--open 192.168.1.1"
@@ -608,10 +664,10 @@ TOOL_EXECUTE_ERROR_TYPE_ANALYSIS = dedent(r"""
     # 当前计划
     {{current_plan}}
     # 当前使用的工具
-    <tool>
-        <name> {{tool_name}} </name>
-        <description> {{tool_description}} </description>
-    </tool>
+    < tool >
+    < name > {{tool_name}} < /name >
+    < description > {{tool_description}} < /description >
+    < / tool >
     # 工具入参
     {{input_param}}
     # 工具运行报错
@@ -630,10 +686,10 @@ CHANGE_ERROR_MESSAGE_TO_DESCRIPTION = dedent(r"""
     5. 只输出自然语言描述，不要输出其他内容。
     # 样例
     # 工具信息
-    <tool>
-        <name> port_scanner </name>
-        <description> 扫描主机端口 </description>
-        <input_schema>
+    < tool >
+    < name > port_scanner < /name >
+    < description > 扫描主机端口 < /description >
+    < input_schema >
         {
             "type": "object",
             "properties": {
@@ -651,13 +707,13 @@ CHANGE_ERROR_MESSAGE_TO_DESCRIPTION = dedent(r"""
                 },
                 "password": {
                     "type": "string",
-                    "description": "密码" 
+                    "description": "密码"
                 }
             },
             "required": ["host", "port", "username", "password"]
         }
-        </input_schema>
-    </tool>
+    < /input_schema >
+    < / tool >
     # 工具入参
     {
         "host": "192.0.0.1",
@@ -671,13 +727,13 @@ CHANGE_ERROR_MESSAGE_TO_DESCRIPTION = dedent(r"""
     扫描端口时发生错误：密码不正确。请检查输入的密码是否正确，并重试。
     # 现在开始转换报错信息：
     # 工具信息
-    <tool>
-        <name> {{tool_name}} </name>
-        <description> {{tool_description}} </description>
-        <input_schema>
+    < tool >
+    < name > {{tool_name}} < /name >
+    < description > {{tool_description}} < /description >
+    < input_schema >
         {{input_schema}}
-        </input_schema>
-    </tool>
+        < /input_schema >
+    < / tool >
     # 工具入参
     {{input_params}}
     # 报错信息
@@ -755,10 +811,10 @@ GET_MISSING_PARAMS = dedent(r"""
     }
     ```
     # 工具
-    <tool>
-        <name> {{tool_name}} </name>
-        <description> {{tool_description}} </description>
-    </tool>
+    < tool >
+    < name > {{tool_name}} < /name >
+    < description > {{tool_description}} < /description >
+    < / tool >
     # 工具入参
     {{input_param}}
     # 工具入参schema（部分字段允许为null）
@@ -771,16 +827,16 @@ GET_MISSING_PARAMS = dedent(r"""
 REPAIR_PARAMS = dedent(r"""
     你是一个工具参数修复器。
     你的任务是根据当前的工具信息、目标、工具入参的schema、工具当前的入参、工具的报错、补充的参数和补充的参数描述，修复当前工具的入参。
-    
+
     注意：
     1.最终修复的参数要符合目标和工具入参的schema。
-    
+
     # 样例
     # 工具信息
-    <tool>
-        <name> mysql_analyzer </name>
-        <description> 分析MySQL数据库性能 </description>
-    </tool>
+    < tool >
+    < name > mysql_analyzer < /name >
+    < description > 分析MySQL数据库性能 < /description >
+    < / tool >
     # 总目标
     我需要扫描当前mysql数据库，分析性能瓶颈, 并调优
     # 当前阶段目标
@@ -834,10 +890,10 @@ REPAIR_PARAMS = dedent(r"""
     }
     ```
     # 工具
-    <tool>
-        <name> {{tool_name}} </name>
-        <description> {{tool_description}} </description>
-    </tool>
+    < tool >
+    < name > {{tool_name}} < /name >
+    < description > {{tool_description}} < /description >
+    < / tool >
     # 总目标
     {{goal}}
     # 当前阶段目标
@@ -846,6 +902,8 @@ REPAIR_PARAMS = dedent(r"""
     {{input_schema}}
     # 工具入参
     {{input_param}}
+    # 工具描述
+    {{tool_description}}
     # 运行报错
     {{error_message}}
     # 补充的参数
@@ -876,10 +934,10 @@ FINAL_ANSWER = dedent(r"""
 
 """)
 MEMORY_TEMPLATE = dedent(r"""
-    {% for ctx in context_list %}
+    { % for ctx in context_list % }
     - 第{{loop.index}}步：{{ctx.step_description}}
       - 调用工具 `{{ctx.step_id}}`，并提供参数 `{{ctx.input_data}}`
       - 执行状态：{{ctx.step_status}}
       - 得到数据：`{{ctx.output_data}}`
-    {% endfor %}
+    { % endfor % }
 """)

@@ -356,6 +356,17 @@ class MCPAgentExecutor(BaseExecutor):
     async def work(self) -> None:
         """执行当前步骤"""
         if self.task.state.step_status == StepStatus.INIT:
+            tool_id = self.task.runtime.temporary_plans.plans[self.task.state.step_index].tool
+            # if tool_id != FINAL_TOOL_ID:
+            #     step_id = self.task.runtime.temporary_plans.plans[self.task.state.step_index].step_id
+            #     tool_id = self.task.runtime.temporary_plans.plans[self.task.state.step_index].tool
+            #     step_name = self.tools[tool_id].name
+            #     step_instruction = self.task.runtime.temporary_plans.plans[self.task.state.step_index].instruction
+            #     step_content = self.task.runtime.temporary_plans.plans[self.task.state.step_index].content
+            #     tool_skip = await MCPPlanner.tool_skip(self.task, step_id, step_name, step_instruction, step_content, self.resoning_llm)
+            #     if tool_skip.skip:
+            #         await self.get_next_step()
+            #     return
             await self.push_message(
                 EventType.STEP_INIT,
                 data={}
@@ -495,7 +506,6 @@ class MCPAgentExecutor(BaseExecutor):
                     break
                 await self.work()
                 await TaskManager.save_task(self.task.id, self.task)
-                logger.error(f"{self.task}")
             tool_id = self.task.runtime.temporary_plans.plans[self.task.state.step_index].tool
             if tool_id == FINAL_TOOL_ID:
                 # 如果已经是最后一步，直接结束
