@@ -34,6 +34,11 @@ class MessageFlow(BaseModel):
     step_name: str = Field(description="当前步骤名称", alias="stepName")
     sub_step_id: str | None = Field(description="当前子步骤ID", alias="subStepId", default=None)
     sub_step_name: str | None = Field(description="当前子步骤名称", alias="subStepName", default=None)
+    step_description: str | None = Field(
+        description="当前步骤描述",
+        alias="stepDescription",
+        default=None,
+    )
     step_status: StepStatus = Field(description="当前步骤状态", alias="stepStatus")
 
 

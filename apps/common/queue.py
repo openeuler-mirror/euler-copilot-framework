@@ -60,6 +60,7 @@ class MessageQueue:
                 flowStatus=task.state.flow_status,
                 stepId=task.state.step_id,
                 stepName=task.state.step_name,
+                stepDescription=task.state.step_description,
                 stepStatus=task.state.step_status
             )
         else:
