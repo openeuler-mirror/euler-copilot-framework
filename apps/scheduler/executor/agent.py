@@ -459,9 +459,23 @@ class MCPAgentExecutor(BaseExecutor):
                 )
                 return
         self.task.state.flow_status = FlowStatus.RUNNING
+        plan = {
+            "plans": []
+        }
+        for p in self.task.runtime.temporary_plans.plans:
+            if p.tool == FINAL_TOOL_ID:
+                continue
+            mcp_tool = self.tools.get(p.tool, None)
+            plan["plans"].append(
+                {
+                    "stepId": p.step_id,
+                    "stepName": mcp_tool.name,
+                    "stepDescription": p.content
+                }
+            )
         await self.push_message(
             EventType.FLOW_START,
-            data={}
+            data=plan
         )
         if self.task.state.step_id == FINAL_TOOL_ID:
             # 如果已经是最后一步，直接结束
