@@ -93,6 +93,15 @@ class MCPAgentExecutor(BaseExecutor):
             for tool in mcp_service.tools:
                 self.tools[tool.id] = tool
             self.tool_list.extend(mcp_service.tools)
+        self.tools[FINAL_TOOL_ID] = MCPTool(
+            id=FINAL_TOOL_ID,
+            name="Final Tool",
+            description="结束流程的工具",
+            mcp_id="",
+            input_schema={}
+        )
+        self.tool_list.append(MCPTool(id=FINAL_TOOL_ID, name="Final Tool",
+                              description="结束流程的工具", mcp_id="", input_schema={}))
 
     async def get_tool_input_param(self, is_first: bool) -> None:
         if is_first:
@@ -260,7 +269,7 @@ class MCPAgentExecutor(BaseExecutor):
             if step is None or step.tool_id not in self.tools.keys():
                 step = Step(
                     tool_id=FINAL_TOOL_ID,
-                    step_description=FINAL_TOOL_ID
+                    description=FINAL_TOOL_ID
                 )
             tool_id = step.tool_id
             if tool_id == FINAL_TOOL_ID:
@@ -399,7 +408,6 @@ class MCPAgentExecutor(BaseExecutor):
     async def summarize(self) -> None:
         async for chunk in MCPPlanner.generate_answer(
             self.task.runtime.question,
-            self.task.runtime.temporary_plans,
             (await MCPHost.assemble_memory(self.task)),
             self.resoning_llm
         ):
@@ -420,6 +428,7 @@ class MCPAgentExecutor(BaseExecutor):
                 self.task.state.flow_id = str(uuid.uuid4())
                 self.task.state.flow_name = await MCPPlanner.get_flow_name(self.task.runtime.question, self.resoning_llm)
                 await TaskManager.save_task(self.task.id, self.task)
+                await self.get_next_step()
             except Exception as e:
                 import traceback
                 logger.error("[MCPAgentExecutor] 初始化失败: %s", traceback.format_exc())

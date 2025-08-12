@@ -181,6 +181,10 @@ class MCPPlanner(McpBase):
 
         # 解析为结构化数据
         schema = Step.model_json_schema()
+        if "enum" not in schema["properties"]["tool_id"]:
+            schema["properties"]["tool_id"]["enum"] = []
+        for tool in tools:
+            schema["properties"]["tool_id"]["enum"].append(tool.id)
         step = await MCPPlanner._parse_result(result, schema)
         # 使用Step模型解析结果
         return Step.model_validate(step)
@@ -296,7 +300,6 @@ class MCPPlanner(McpBase):
         prompt = tmplate.render(
             goal=goal,
             history=history,
-            error_message=error_message,
             step_id=tool.id,
             step_name=tool.name,
             step_description=step_description,
@@ -349,12 +352,11 @@ class MCPPlanner(McpBase):
 
     @staticmethod
     async def generate_answer(
-            user_goal: str, plan: MCPPlan, memory: str, resoning_llm: ReasoningLLM = ReasoningLLM()) -> AsyncGenerator[
+            user_goal: str, memory: str, resoning_llm: ReasoningLLM = ReasoningLLM()) -> AsyncGenerator[
             str, None]:
         """生成最终回答"""
         template = _env.from_string(FINAL_ANSWER)
         prompt = template.render(
-            plan=plan.model_dump(exclude_none=True, by_alias=True),
             memory=memory,
             goal=user_goal,
         )

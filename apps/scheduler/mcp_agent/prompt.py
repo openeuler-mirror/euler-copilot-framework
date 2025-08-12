@@ -512,9 +512,9 @@ GEN_STEP = dedent(r"""
     3.不要选择不存在的工具。
     4.如果你认为当前已经达成了用户的目标，可以直接返回Final工具，表示计划执行结束。
     
-    # 样例
+    # 样例 1
     # 目标
-    我需要扫描当前mysql数据库，分析性能瓶颈, 并调优
+    我需要扫描当前mysql数据库，分析性能瓶颈, 并调优,我的ip是192.168.1.1，数据库端口是3306，用户名是root，密码是password
     # 历史记录
     第1步：生成端口扫描命令
       - 调用工具 `command_generator`，并提供参数 `帮我生成一个mysql端口扫描命令`
@@ -534,8 +534,42 @@ GEN_STEP = dedent(r"""
     # 输出
     ```json
     {
-        "tool_id": "mcp_tool", // 选择的工具ID
-        "step_description": "分析MySQL数据库性能" // 对当前步骤的描述
+        "tool_id": "mcp_tool_1", // 选择的工具ID
+        "description": "扫描ip为192.168.1.1的MySQL数据库，端口为3306，用户名为root，密码为password的数据库性能",
+    }
+    ```
+    # 样例二
+    # 目标
+    计划从杭州到北京的旅游计划
+    # 历史记录
+    第1步：将杭州转换为经纬度坐标
+      - 调用工具 `maps_geo_planner`，并提供参数 `{"city_from": "杭州", "address": "西湖"}`
+      - 执行状态：成功
+      - 得到数据：`{"location": "123.456, 78.901"}`
+    第2步：查询杭州的天气
+        - 调用工具 `weather_query`，并提供参数 `{"location": "123.456, 78.901"}`
+        - 执行状态：成功
+        - 得到数据：`{"weather": "晴", "temperature": "25°C"}`
+    第3步：将北京转换为经纬度坐标
+        - 调用工具 `maps_geo_planner`，并提供参数 `{"city_from": "北京", "address": "天安门"}`
+        - 执行状态：成功
+        - 得到数据：`{"location": "123.456, 78.901"}`
+    第4步：查询北京的天气
+        - 调用工具 `weather_query`，并提供参数 `{"location": "123.456, 78.901"}`
+        - 执行状态：成功
+        - 得到数据：`{"weather": "晴", "temperature": "25°C"}`
+    # 工具
+    <tools>
+    - <id>mcp_tool_4</id> <description>maps_geo_planner；将详细的结构化地址转换为经纬度坐标。支持对地标性名胜景区、建筑物名称解析为经纬度坐标</description>
+    - <id>mcp_tool_5</id> <description>weather_query；天气查询，用于查询天气信息</description>
+    - <id>mcp_tool_6</id> <description>maps_direction_transit_integrated；根据用户起终点经纬度坐标规划综合各类公共（火车、公交、地铁）交通方式的通勤方案，并且返回通勤方案的数据，跨城场景下必须传起点城市与终点城市</description>
+    - <id>Final</id> <description>Final；结束步骤，当执行到这一步时，表示计划执行结束，所得到的结果将作为最终结果。</description>
+    </tools>
+    # 输出
+    ```json
+    {
+        "tool_id": "mcp_tool_6", // 选择的工具ID
+        "description": "规划从杭州到北京的综合公共交通方式的通勤方案"
     }
     ```
     # 现在开始生成步骤：
@@ -1035,9 +1069,6 @@ FINAL_ANSWER = dedent(r"""
 
     {{memory}}
 
-    # 其他背景信息：
-
-    {{status}}
 
     # 现在，请根据以上信息，向用户报告目标的完成情况：
 
