@@ -13,9 +13,11 @@ from apps.scheduler.mcp_agent.prompt import (
     GET_REPLAN_START_STEP_INDEX,
     CREATE_PLAN,
     RECREATE_PLAN,
+    GEN_STEP,
     TOOL_SKIP,
     RISK_EVALUATE,
     TOOL_EXECUTE_ERROR_TYPE_ANALYSIS,
+    IS_PARAM_ERROR,
     CHANGE_ERROR_MESSAGE_TO_DESCRIPTION,
     GET_MISSING_PARAMS,
     FINAL_ANSWER
@@ -26,8 +28,10 @@ from apps.schemas.mcp import (
     RestartStepIndex,
     ToolSkip,
     ToolRisk,
+    IsParamError,
     ToolExcutionErrorType,
     MCPPlan,
+    Step,
     MCPPlanItem,
     MCPTool
 )
@@ -166,6 +170,22 @@ class MCPPlanner(McpBase):
         return MCPPlan.model_validate(plan)
 
     @staticmethod
+    async def create_next_step(
+            goal: str, history: str, tools: list[MCPTool],
+            reasoning_llm: ReasoningLLM = ReasoningLLM()) -> Step:
+        """创建下一步的执行步骤"""
+        # 获取推理结果
+        template = _env.from_string(GEN_STEP)
+        prompt = template.render(goal=goal, history=history, tools=tools)
+        result = await MCPPlanner.get_resoning_result(prompt, reasoning_llm)
+
+        # 解析为结构化数据
+        schema = Step.model_json_schema()
+        step = await MCPPlanner._parse_result(result, schema)
+        # 使用Step模型解析结果
+        return Step.model_validate(step)
+
+    @staticmethod
     async def tool_skip(
             task: Task, step_id: str, step_name: str, step_instruction: str, step_content: str,
             reasoning_llm: ReasoningLLM = ReasoningLLM()) -> ToolSkip:
@@ -265,6 +285,30 @@ class MCPPlanner(McpBase):
         error_type = await MCPPlanner._parse_tool_execute_error_type_result(result)
         # 返回工具执行错误类型
         return error_type
+
+    @staticmethod
+    async def is_param_error(
+        goal: str, history: str, error_message: str, tool: MCPTool, step_description: str, input_params: dict
+        [str, Any],
+            reasoning_llm: ReasoningLLM = ReasoningLLM()) -> IsParamError:
+        """判断错误信息是否是参数错误"""
+        tmplate = _env.from_string(IS_PARAM_ERROR)
+        prompt = tmplate.render(
+            goal=goal,
+            history=history,
+            error_message=error_message,
+            step_id=tool.id,
+            step_name=tool.name,
+            step_description=step_description,
+            input_params=input_params,
+            error_message=error_message,
+        )
+        result = await MCPPlanner.get_resoning_result(prompt, reasoning_llm)
+        # 解析为结构化数据
+        schema = IsParamError.model_json_schema()
+        is_param_error = await MCPPlanner._parse_result(result, schema)
+        # 使用IsParamError模型解析结果
+        return IsParamError.model_validate(is_param_error)
 
     @staticmethod
     async def change_err_message_to_description(

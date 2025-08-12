@@ -157,6 +157,11 @@ class ToolExcutionErrorType(BaseModel):
     reason: str = Field(description="错误原因", default="")
 
 
+class IsParamError(BaseModel):
+    """MCP工具参数错误"""
+
+    is_param_error: bool = Field(description="是否是参数错误", default=False)
+
 class MCPSelectResult(BaseModel):
     """MCP选择结果"""
 
@@ -187,3 +192,10 @@ class MCPPlan(BaseModel):
     """MCP 计划"""
 
     plans: list[MCPPlanItem] = Field(description="计划列表", default=[])
+
+
+class Step(BaseModel):
+    """MCP步骤"""
+
+    tool_id: str = Field(description="工具ID")
+    description: str = Field(description="步骤描述")

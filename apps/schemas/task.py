@@ -43,8 +43,9 @@ class ExecutorState(BaseModel):
     description: str = Field(description="Flow描述", default="")
     flow_status: FlowStatus = Field(description="Flow状态", default=FlowStatus.INIT)
     # 任务级数据
+    step_cnt: int = Field(description="当前步骤数量", default=0)
     step_id: str = Field(description="当前步骤ID", default="")
-    step_index: int = Field(description="当前步骤索引", default=0)
+    tool_id: str = Field(description="当前工具ID", default="")
     step_name: str = Field(description="当前步骤名称", default="")
     step_status: StepStatus = Field(description="当前步骤状态", default=StepStatus.UNKNOWN)
     step_description: str = Field(description="当前步骤描述", default="")
@@ -83,7 +84,6 @@ class TaskRuntime(BaseModel):
     summary: str = Field(description="摘要", default="")
     filled: dict[str, Any] = Field(description="填充的槽位", default={})
     documents: list[dict[str, Any]] = Field(description="文档列表", default=[])
-    temporary_plans: MCPPlan | None = Field(description="临时计划列表", default=None)
 
 
 class Task(BaseModel):

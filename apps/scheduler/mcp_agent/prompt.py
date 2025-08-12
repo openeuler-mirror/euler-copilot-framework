@@ -502,6 +502,55 @@ RECREATE_PLAN = dedent(r"""
 
     # 重新生成的计划
 """)
+GEN_STEP = dedent(r"""
+    你是一个计划生成器。
+    请根据用户的目标、当前计划和历史，生成一个新的步骤。
+
+    # 一个好的计划步骤应该：
+    1.使用最适合的工具来完成当前步骤。
+    2.能够基于当前的计划和历史，完成阶段性的任务。
+    3.不要选择不存在的工具。
+    4.如果你认为当前已经达成了用户的目标，可以直接返回Final工具，表示计划执行结束。
+    
+    # 样例
+    # 目标
+    我需要扫描当前mysql数据库，分析性能瓶颈, 并调优
+    # 历史记录
+    第1步：生成端口扫描命令
+      - 调用工具 `command_generator`，并提供参数 `帮我生成一个mysql端口扫描命令`
+      - 执行状态：成功
+      - 得到数据：`{"command": "nmap -sS -p--open 192.168.1.1"}`
+    第2步：执行端口扫描命令
+        - 调用工具 `command_executor`，并提供参数 `{"command": "nmap -sS -p--open 192.168.1.1"}`
+        - 执行状态：成功
+        - 得到数据：`{"result": "success"}`
+    # 工具
+    <tools>
+    - <id>mcp_tool_1</id> <description>mysql_analyzer；用于分析数据库性能/description>
+    - <id>mcp_tool_2</id> <description>文件存储工具；用于存储文件</description>
+    - <id>mcp_tool_3</id> <description>mongoDB工具；用于操作MongoDB数据库</description>
+    - <id>Final</id> <description>结束步骤，当执行到这一步时，表示计划执行结束，所得到的结果将作为最终结果。</description>
+    </tools>
+    # 输出
+    ```json
+    {
+        "tool_id": "mcp_tool", // 选择的工具ID
+        "step_description": "分析MySQL数据库性能" // 对当前步骤的描述
+    }
+    ```
+    # 现在开始生成步骤：
+    # 目标
+    {{goal}}
+    # 历史记录
+    {{history}}
+    # 工具
+    <tools>
+    {% for tool in tools %}
+    - <id>{{tool.id}}</id> <description>{{tool.name}}；{{tool.description}}</description>
+    {% endfor %}
+    </tools>    
+""")
+
 TOOL_SKIP = dedent(r"""
     你是一个计划执行器。
     你的任务是根据当前的计划和用户目标，判断当前步骤是否需要跳过。
@@ -675,6 +724,66 @@ TOOL_EXECUTE_ERROR_TYPE_ANALYSIS = dedent(r"""
     # 输出
     """
                                           )
+IS_PARAM_ERROR = dedent(r"""
+    你是一个计划执行专家，你的任务是判断当前的步骤执行失败是否是因为参数错误导致的，
+    如果是，请返回`true`，否则返回`false`。
+    必须按照以下格式回答：
+    ```json
+    {
+        "is_param_error": true/false,
+    }
+    ```
+    # 样例
+    # 用户目标
+    我需要扫描当前mysql数据库，分析性能瓶颈, 并调优
+    # 历史
+    第1步：生成端口扫描命令
+      - 调用工具 `command_generator`，并提供参数 `{"command": "nmap -sS -p--open 192.168.1.1"}`
+        - 执行状态：成功
+        - 得到数据：`{"command": "nmap -sS -p--open 192.168.1.1"}`
+    第2步：执行端口扫描命令
+        - 调用工具 `command_executor`，并提供参数 `{"command": "nmap -sS -p--open 192.168.1.1"}`
+        - 执行状态：成功
+        - 得到数据：`{"result": "success"}`
+    # 当前步骤
+    <step>
+        <step_id> step_3 </step_id>
+        <step_name> mysql_analyzer </step_name>
+        <step_instruction> 分析MySQL数据库性能 </step_instruction>
+    </step>
+    # 工具入参
+    {
+        "host": "192.0.0.1",
+        "port": 3306,
+        "username": "root",
+        "password": "password"
+    }
+    # 工具运行报错
+    执行MySQL性能分析命令时，出现了错误：`host is not correct`。
+    
+    # 输出
+    ```json
+    {
+        "is_param_error": true
+    }
+    ```
+    # 用户目标
+    {{goal}}
+    # 历史
+    {{history}}
+    # 当前步骤
+    <step>
+        <step_id> {{step_id}} </step_id>
+        <step_name> {{step_name}} </step_name>
+        <step_instruction> {{step_instruction}} </step_instruction>
+    </step>
+    # 工具入参
+    {{input_param}}
+    # 工具运行报错
+    {{error_message}}
+    # 输出
+    """
+                        )
 # 将当前程序运行的报错转换为自然语言
 CHANGE_ERROR_MESSAGE_TO_DESCRIPTION = dedent(r"""
     你是一个智能助手，你的任务是将当前程序运行的报错转换为自然语言描述。
