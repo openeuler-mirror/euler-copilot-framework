@@ -393,7 +393,7 @@ class MCPAgentExecutor(BaseExecutor):
             max_retry = 5
             for i in range(max_retry):
                 if i != 0:
-                    await self.get_tool_input_param(is_first=False)
+                    await self.get_tool_input_param(is_first=True)
                 await self.run_step()
                 if self.task.state.step_status == StepStatus.SUCCESS:
                     break

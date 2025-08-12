@@ -131,6 +131,7 @@ class MCPPlanner(McpBase):
             max_steps: int = 10, reasoning_llm: ReasoningLLM = ReasoningLLM()) -> str:
         """获取推理大模型的结果"""
         # 格式化Prompt
+        tool_ids = [tool.id for tool in tool_list]
         if is_replan:
             template = _env.from_string(RECREATE_PLAN)
             prompt = template.render(
