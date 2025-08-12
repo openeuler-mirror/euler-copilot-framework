@@ -455,7 +455,7 @@ class MCPAgentExecutor(BaseExecutor):
             await self.summarize()
             return
         try:
-            while 1:
+            while self.task.state.flow_status == FlowStatus.RUNNING:
                 if self.task.state.tool_id == FINAL_TOOL_ID:
                     break
                 await self.work()
