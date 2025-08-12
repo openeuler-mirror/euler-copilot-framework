@@ -327,17 +327,17 @@ CREATE_PLAN = dedent(r"""
                 "instruction": "需要一个支持Docker容器运行的MCP Server"
             },
             {
-                "content": "使用Result[0]中选择的MCP Server，生成Docker命令",
+                "content": "使用第一步选择的MCP Server，生成Docker命令",
                 "tool": "command_generator",
                 "instruction": "生成Docker命令：在后台运行alpine:latest容器，挂载/root到/data，执行top命令"
             },
             {
-                "content": "在Result[0]的MCP Server上执行Result[1]生成的命令",
+                "content": "执行第二步生成的Docker命令",
                 "tool": "command_executor",
                 "instruction": "执行Docker命令"
             },
             {
-                "content": "任务执行完成，容器已在后台运行，结果为Result[2]",
+                "content": "任务执行完成，容器已在后台运行",
                 "tool": "Final",
                 "instruction": ""
             }
@@ -413,12 +413,12 @@ RECREATE_PLAN = dedent(r"""
                 "instruction": "生成端口扫描命令：扫描192.168.1.1的开放端口"
             },
             {
-                "content": "在执行Result[0]生成的命令",
+                "content": "在执行第一步生成的命令",
                 "tool": "command_executor",
                 "instruction": "执行端口扫描命令"
             },
             {
-                "content": "任务执行完成，端口扫描结果为Result[2]",
+                "content": "任务执行完成",
                 "tool": "Final",
                 "instruction": ""
             }
@@ -450,27 +450,27 @@ RECREATE_PLAN = dedent(r"""
                 "instruction": "选择一个前机器支持哪些网络扫描工具"
             },
             {
-                "content": "执行Result[0]中生成的命令，查看当前机器支持哪些网络扫描工具",
+                "content": "执行第一步中生成的命令，查看当前机器支持哪些网络扫描工具",
                 "tool": "command_executor",
-                "instruction": "执行Result[0]中生成的命令"
+                "instruction": "执行第一步中生成的命令"
             },
             {
-                "content": "从Result[1]中选择一个网络扫描工具，生成端口扫描命令",
+                "content": "从第二步执行结果中选择一个网络扫描工具，生成端口扫描命令",
                 "tool": "tool_selector",
                 "instruction": "选择一个网络扫描工具，生成端口扫描命令"
             },
             {
-                "content": "基于result[2]中选择的网络扫描工具，生成端口扫描命令",
+                "content": "基于第三步中选择的网络扫描工具，生成端口扫描命令",
                 "tool": "command_generator",
                 "instruction": "生成端口扫描命令：扫描192.168.1.1的开放端口"
             },
             {
-                "content": "在Result[0]的MCP Server上执行Result[3]生成的命令",
+                "content": "执行第四步中生成的端口扫描命令",
                 "tool": "command_executor",
                 "instruction": "执行端口扫描命令"
             },
             {
-                "content": "任务执行完成，端口扫描结果为Result[4]",
+                "content": "任务执行完成",
                 "tool": "Final",
                 "instruction": ""
             }
