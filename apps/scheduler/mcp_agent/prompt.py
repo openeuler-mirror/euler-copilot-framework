@@ -511,7 +511,7 @@ GEN_STEP = dedent(r"""
     2.能够基于当前的计划和历史，完成阶段性的任务。
     3.不要选择不存在的工具。
     4.如果你认为当前已经达成了用户的目标，可以直接返回Final工具，表示计划执行结束。
-    
+
     # 样例 1
     # 目标
     我需要扫描当前mysql数据库，分析性能瓶颈, 并调优,我的ip是192.168.1.1，数据库端口是3306，用户名是root，密码是password
@@ -582,7 +582,7 @@ GEN_STEP = dedent(r"""
     {% for tool in tools %}
     - <id>{{tool.id}}</id> <description>{{tool.name}}；{{tool.description}}</description>
     {% endfor %}
-    </tools>    
+    </tools>
 """)
 
 TOOL_SKIP = dedent(r"""
@@ -794,7 +794,7 @@ IS_PARAM_ERROR = dedent(r"""
     }
     # 工具运行报错
     执行MySQL性能分析命令时，出现了错误：`host is not correct`。
-    
+
     # 输出
     ```json
     {
@@ -967,6 +967,82 @@ GET_MISSING_PARAMS = dedent(r"""
     # 输出
     """
                             )
+GEN_PARAMS = dedent(r"""
+    你是一个工具参数生成器。
+    你的任务是根据总的目标、阶段性的目标、工具信息、工具入参的schema和背景信息生成工具的入参。
+    注意：
+    1.生成的参数在格式上必须符合工具入参的schema。
+    2.总的目标、阶段性的目标和背景信息必须被充分理解，利用其中的信息来生成工具入参。
+    3.生成的参数必须符合阶段性目标。
+
+    # 样例
+    # 工具信息
+    < tool >
+    < name > mysql_analyzer < /name >
+    < description > 分析MySQL数据库性能 < /description >
+    < / tool >
+    # 总目标
+    我需要扫描当前mysql数据库，分析性能瓶颈, 并调优，ip地址是192.168.1.1，端口是3306，用户名是root，密码是password。
+    # 当前阶段目标
+    我要连接MySQL数据库，分析性能瓶颈，并调优。
+    # 工具入参的schema
+    {
+        "type": "object",
+        "properties": {
+            "host": {
+                "type": "string",
+                "description": "MySQL数据库的主机地址"
+            },
+            "port": {
+                "type": "integer",
+                "description": "MySQL数据库的端口号"
+            },
+            "username": {
+                "type": "string",
+                "description": "MySQL数据库的用户名"
+            },
+            "password": {
+                "type": "string",
+                "description": "MySQL数据库的密码"
+            }
+        },
+        "required": ["host", "port", "username", "password"]
+    }
+    # 背景信息
+    第1步：生成端口扫描命令
+      - 调用工具 `command_generator`，并提供参数 `帮我生成一个mysql端口扫描命令`
+      - 执行状态：成功
+      - 得到数据：`{"command": "nmap -sS -p--open 192.168.1.1"}`
+    第2步：执行端口扫描命令
+        - 调用工具 `command_executor`，并提供参数 `{"command": "nmap -sS -p--open 192.168.1.1"}`
+        - 执行状态：成功
+        - 得到数据：`{"result": "success"}`
+    # 输出
+    ```json
+    {
+        "host": "192.168.1.1",
+        "port": 3306,
+        "username": "root",
+        "password": "password"
+    }
+    ```
+    # 工具
+    < tool >
+    < name > {{tool_name}} < /name >
+    < description > {{tool_description}} < /description >
+    < / tool >
+    # 总目标
+    {{goal}}
+    # 当前阶段目标
+    {{current_goal}}
+    # 工具入参scheme
+    {{input_schema}}
+    # 背景信息
+    {{background_info}}
+    # 输出
+    """
+                    )
+
 REPAIR_PARAMS = dedent(r"""
     你是一个工具参数修复器。
     你的任务是根据当前的工具信息、目标、工具入参的schema、工具当前的入参、工具的报错、补充的参数和补充的参数描述，修复当前工具的入参。
@@ -1074,10 +1150,10 @@ FINAL_ANSWER = dedent(r"""
 
 """)
 MEMORY_TEMPLATE = dedent(r"""
-    { % for ctx in context_list % }
+    {% for ctx in context_list % }
     - 第{{loop.index}}步：{{ctx.step_description}}
       - 调用工具 `{{ctx.step_id}}`，并提供参数 `{{ctx.input_data}}`
       - 执行状态：{{ctx.step_status}}
       - 得到数据：`{{ctx.output_data}}`
-    { % endfor % }
+    {% endfor % }
 """)

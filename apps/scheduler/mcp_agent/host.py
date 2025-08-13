@@ -10,11 +10,13 @@ from jinja2.sandbox import SandboxedEnvironment
 from mcp.types import TextContent
 
 from apps.common.mongo import MongoDB
+from apps.llm.reasoning import ReasoningLLM
 from apps.llm.function import JsonGenerator
+from apps.scheduler.mcp_agent.base import McpBase
 from apps.scheduler.mcp.prompt import MEMORY_TEMPLATE
 from apps.scheduler.pool.mcp.client import MCPClient
 from apps.scheduler.pool.mcp.pool import MCPPool
-from apps.scheduler.mcp_agent.prompt import REPAIR_PARAMS
+from apps.scheduler.mcp_agent.prompt import GEN_PARAMS, REPAIR_PARAMS
 from apps.schemas.enum_var import StepStatus
 from apps.schemas.mcp import MCPPlanItem, MCPTool
 from apps.schemas.task import Task, FlowStepHistory
@@ -37,7 +39,7 @@ def tojson_filter(value):
 _env.filters['tojson'] = tojson_filter
 
 
-class MCPHost:
+class MCPHost(McpBase):
     """MCP宿主服务"""
 
     @staticmethod
@@ -48,31 +50,29 @@ class MCPHost:
             context_list=task.context,
         )
 
-    async def _get_first_input_params(mcp_tool: MCPTool, goal: str, query: str, task: Task) -> dict[str, Any]:
+    async def _get_first_input_params(mcp_tool: MCPTool, goal: str, current_goal: str, task: Task,
+                                      resoning_llm: ReasoningLLM = ReasoningLLM()) -> dict[str, Any]:
         """填充工具参数"""
         # 更清晰的输入·指令，这样可以调用generate
-        llm_query = rf"""
-        你是一个MCP工具参数生成器，你的任务是根据用户的目标和查询，生成MCP工具的输入参数。
-        请充分利用背景中的信息，生成满足以下目标的工具参数：
-            {query}
-        注意：
-        1. 你需要根据工具的输入schema来生成参数。
-        2. 如果工具的输入schema中有枚举类型的字段，请确保生成的参数符合这些枚举值。
-        下面是工具的简介：
-        工具名称：{mcp_tool.name}
-        工具描述：{mcp_tool.description}
-        """
-
-        # 进行生成
-        json_generator = JsonGenerator(
-            llm_query,
-            [
-                {"role": "system", "content": "You are a helpful assistant."},
-                {"role": "user", "content": "用户的总目标是：\n"+goal+(await MCPHost.assemble_memory(task))},
-            ],
+        prompt = _env.from_string(GEN_PARAMS).render(
+            tool_name=mcp_tool.name,
+            tool_description=mcp_tool.description,
+            goal=goal,
+            current_goal=current_goal,
+            input_schema=mcp_tool.input_schema,
+            background_info=await MCPHost.assemble_memory(task),
+        )
+        logger.info("[MCPHost] 填充工具参数: %s", prompt)
+        result = await MCPHost.get_resoning_result(
+            prompt,
+            resoning_llm
+        )
+        # 使用JsonGenerator解析结果
+        result = await MCPHost._parse_result(
+            result,
             mcp_tool.input_schema,
         )
-        return await json_generator.generate()
+        return result
 
     async def _fill_params(mcp_tool: MCPTool,
                            goal: str,

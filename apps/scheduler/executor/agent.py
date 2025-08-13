@@ -364,7 +364,7 @@ class MCPAgentExecutor(BaseExecutor):
             else:
                 user_info = await UserManager.get_userinfo_by_user_sub(self.task.ids.user_sub)
                 if user_info.auto_execute:
-                    self.push_message(
+                    await self.push_message(
                         EventType.STEP_ERROR,
                         data={
                             "message": self.task.state.error_message,
@@ -390,7 +390,7 @@ class MCPAgentExecutor(BaseExecutor):
                         # 如果是参数错误，生成参数补充
                         await self.generate_params_with_null()
                     else:
-                        self.push_message(
+                        await self.push_message(
                             EventType.STEP_ERROR,
                             data={
                                 "message": self.task.state.error_message,

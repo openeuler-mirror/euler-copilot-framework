@@ -3,7 +3,7 @@
 from typing import Any, AsyncGenerator
 from jinja2 import BaseLoader
 from jinja2.sandbox import SandboxedEnvironment
-
+import logging
 from apps.llm.reasoning import ReasoningLLM
 from apps.llm.function import JsonGenerator
 from apps.scheduler.mcp_agent.base import McpBase
@@ -43,7 +43,7 @@ _env = SandboxedEnvironment(
     trim_blocks=True,
     lstrip_blocks=True,
 )
-
+logger = logging.getLogger(__name__)
 
 class MCPPlanner(McpBase):
     """MCP 用户目标拆解与规划"""
@@ -186,6 +186,7 @@ class MCPPlanner(McpBase):
         for tool in tools:
             schema["properties"]["tool_id"]["enum"].append(tool.id)
         step = await MCPPlanner._parse_result(result, schema)
+        logger.info("[MCPPlanner] 创建下一步的执行步骤: %s", step)
         # 使用Step模型解析结果
         return Step.model_validate(step)
 
