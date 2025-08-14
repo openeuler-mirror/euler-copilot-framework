@@ -285,8 +285,6 @@ class MCPServiceManager:
             raise ValueError(msg)
 
         db_service = MCPCollection.model_validate(db_service)
-        for user_id in db_service.activated:
-            await MCPServiceManager.deactive_mcpservice(user_sub=user_id, service_id=data.service_id)
         mcp_config = MCPServerConfig(
             name=data.name,
             overview=data.overview,
@@ -299,9 +297,13 @@ class MCPServiceManager:
             type=data.mcp_type,
             author=user_sub,
         )
+        old_mcp_config = await MCPLoader.get_config(data.service_id)
         await MCPLoader._insert_template_db(mcp_id=data.service_id, config=mcp_config)
         await MCPLoader.save_one(mcp_id=data.service_id, config=mcp_config)
-        await MCPLoader.update_template_status(data.service_id, MCPInstallStatus.INIT)
+        if old_mcp_config.type != mcp_config.type or old_mcp_config.config != mcp_config.config:
+            for user_id in db_service.activated:
+                await MCPServiceManager.deactive_mcpservice(user_sub=user_id, service_id=data.service_id)
+            await MCPLoader.update_template_status(data.service_id, MCPInstallStatus.INIT)
         # 返回服务ID
         return data.service_id
 
@@ -397,12 +399,13 @@ class MCPServiceManager:
         image = image.convert("RGB")
         image = image.resize((64, 64), resample=Image.Resampling.LANCZOS)
         # 检查文件夹
-        if not await MCP_ICON_PATH.exists():
-            await MCP_ICON_PATH.mkdir(parents=True, exist_ok=True)
+        image_path = MCP_PATH / "template" / service_id / "icon"
+        if not await image_path.exists():
+            await image_path.mkdir(parents=True, exist_ok=True)
         # 保存
-        image.save(MCP_ICON_PATH / f"{service_id}.png", format="PNG", optimize=True, compress_level=9)
+        image.save(image_path / f"{service_id}.png", format="PNG", optimize=True, compress_level=9)
 
-        return f"/static/mcp/{service_id}.png"
+        return f"{image_path / f'{service_id}.png'}"
 
     @staticmethod
     async def install_mcpservice(user_sub: str, service_id: str, install: bool) -> None:
@@ -421,10 +424,11 @@ class MCPServiceManager:
             if db_service.status == MCPInstallStatus.INSTALLING or db_service.status == MCPInstallStatus.READY:
                 err = "[MCPServiceManager] MCP服务已处于安装中或已准备就绪"
                 raise Exception(err)
+            await service_collection.update_one(
+                {"_id": service_id},
+                {"$set": {"status": MCPInstallStatus.INSTALLING}},
+            )
             mcp_config = await MCPLoader.get_config(service_id)
             await MCPLoader.init_one_template(mcp_id=service_id, config=mcp_config)
         else:
-            if db_service.status != MCPInstallStatus.INSTALLING:
-                err = "[MCPServiceManager] 只能卸载处于安装中的MCP服务"
-                raise Exception(err)
             await MCPLoader.cancel_installing_task([service_id])

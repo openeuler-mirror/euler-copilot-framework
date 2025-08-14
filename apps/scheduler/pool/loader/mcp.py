@@ -348,14 +348,15 @@ class MCPLoader(metaclass=SingletonMeta):
         :return: 图标
         :rtype: str
         """
-        icon_path = MCP_PATH / "template" / mcp_id / "icon.png"
+        icon_path = MCP_PATH / "template" / mcp_id / "icon" / f"{mcp_id}.png"
         if not await icon_path.exists():
             logger.warning("[MCPLoader] MCP模板图标不存在: %s", mcp_id)
             return ""
         f = await icon_path.open("rb")
         icon = await f.read()
         await f.aclose()
-        return base64.b64encode(icon).decode("utf-8")
+        header = "data:image/png;base64,"
+        return header + base64.b64encode(icon).decode("utf-8")
 
     @staticmethod
     async def get_config(mcp_id: str) -> MCPServerConfig:

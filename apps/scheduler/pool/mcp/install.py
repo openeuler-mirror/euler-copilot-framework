@@ -35,7 +35,7 @@ async def install_uvx(mcp_id: str, config: "MCPServerStdioConfig") -> "MCPServer
     # 找到包名
     package = None
     for arg in config.args:
-        if not arg.startswith("-"):
+        if not arg.startswith("-") and arg != "run":
             package = arg
             break
     logger.error(f"[Installer] MCP包名: {package}")

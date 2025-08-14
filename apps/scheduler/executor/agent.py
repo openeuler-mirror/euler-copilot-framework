@@ -263,9 +263,12 @@ class MCPAgentExecutor(BaseExecutor):
             max_retry = 3
             step = None
             for i in range(max_retry):
-                step = await MCPPlanner.create_next_step(self.task.runtime.question, history, self.tool_list)
-                if step.tool_id in self.tools.keys():
-                    break
+                try:
+                    step = await MCPPlanner.create_next_step(self.task.runtime.question, history, self.tool_list)
+                    if step.tool_id in self.tools.keys():
+                        break
+                except Exception as e:
+                    logger.warning("[MCPAgentExecutor] 获取下一步失败，重试中: %s", str(e))
             if step is None or step.tool_id not in self.tools.keys():
                 step = Step(
                     tool_id=FINAL_TOOL_ID,
@@ -375,6 +378,23 @@ class MCPAgentExecutor(BaseExecutor):
                         self.task.context[-1].output_data = {
                             "message": self.task.state.error_message,
                         }
+                    else:
+                        self.task.context.append(
+                            FlowStepHistory(
+                                task_id=self.task.id,
+                                step_id=self.task.state.step_id,
+                                step_name=self.task.state.step_name,
+                                step_description=self.task.state.step_description,
+                                step_status=StepStatus.ERROR,
+                                flow_id=self.task.state.flow_id,
+                                flow_name=self.task.state.flow_name,
+                                flow_status=self.task.state.flow_status,
+                                input_data=self.task.state.current_input,
+                                output_data={
+                                    "message": self.task.state.error_message,
+                                },
+                            )
+                        )
                     await self.get_next_step()
                 else:
                     mcp_tool = self.tools[self.task.state.tool_id]
@@ -401,6 +421,23 @@ class MCPAgentExecutor(BaseExecutor):
                             self.task.context[-1].output_data = {
                                 "message": self.task.state.error_message,
                             }
+                        else:
+                            self.task.context.append(
+                                FlowStepHistory(
+                                    task_id=self.task.id,
+                                    step_id=self.task.state.step_id,
+                                    step_name=self.task.state.step_name,
+                                    step_description=self.task.state.step_description,
+                                    step_status=StepStatus.ERROR,
+                                    flow_id=self.task.state.flow_id,
+                                    flow_name=self.task.state.flow_name,
+                                    flow_status=self.task.state.flow_status,
+                                    input_data=self.task.state.current_input,
+                                    output_data={
+                                        "message": self.task.state.error_message,
+                                    },
+                                )
+                            )
                         await self.get_next_step()
         elif self.task.state.step_status == StepStatus.SUCCESS:
             await self.get_next_step()

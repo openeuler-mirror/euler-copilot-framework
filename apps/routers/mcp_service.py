@@ -259,7 +259,7 @@ async def delete_service(
     )
 
 
-@router.post("/icon", response_model=UpdateMCPServiceRsp)
+@router.post("/icon/{serviceId}", response_model=UpdateMCPServiceRsp)
 async def update_mcp_icon(
         user_sub: Annotated[str, Depends(get_user)],
         service_id: Annotated[str, Path(..., alias="serviceId", description="服务ID")],

@@ -45,6 +45,7 @@ _env = SandboxedEnvironment(
 )
 logger = logging.getLogger(__name__)
 
+
 class MCPPlanner(McpBase):
     """MCP 用户目标拆解与规划"""
 
@@ -188,7 +189,12 @@ class MCPPlanner(McpBase):
         step = await MCPPlanner._parse_result(result, schema)
         logger.info("[MCPPlanner] 创建下一步的执行步骤: %s", step)
         # 使用Step模型解析结果
-        return Step.model_validate(step)
+
+        step = Step.model_validate(step)
+        if len(step.description) > 15:
+            # 限制步骤描述长度为15个字符
+            step.description = step.description[:15]+'...'
+        return step
 
     @staticmethod
     async def tool_skip(

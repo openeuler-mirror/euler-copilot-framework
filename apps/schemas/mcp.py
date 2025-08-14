@@ -44,6 +44,7 @@ class MCPBasicConfig(BaseModel):
     auto_install: bool = Field(description="是否自动安装MCP服务器", default=True)
     timeout: int = Field(description="MCP 服务器超时时间（秒）", default=60, alias="timeout")
     description: str = Field(description="MCP 服务器自然语言描述", default="")
+    headers: dict[str, str] = Field(description="MCP 服务器请求头", default={}, alias="headers")
 
 
 class MCPServerStdioConfig(MCPBasicConfig):
@@ -162,6 +163,7 @@ class IsParamError(BaseModel):
 
     is_param_error: bool = Field(description="是否是参数错误", default=False)
 
+
 class MCPSelectResult(BaseModel):
     """MCP选择结果"""
 
@@ -198,4 +200,4 @@ class Step(BaseModel):
     """MCP步骤"""
 
     tool_id: str = Field(description="工具ID")
-    description: str = Field(description="步骤描述")
+    description: str = Field(description="步骤描述,15个字以下")

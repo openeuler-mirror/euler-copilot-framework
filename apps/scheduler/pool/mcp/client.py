@@ -56,9 +56,10 @@ class MCPClient:
         # 创建Client
         if isinstance(config, MCPServerSSEConfig):
             env = config.env or {}
+            headers = config.headers or {}
             client = sse_client(
                 url=config.url,
-                headers=env,
+                headers=headers
             )
         elif isinstance(config, MCPServerStdioConfig):
             if user_sub:

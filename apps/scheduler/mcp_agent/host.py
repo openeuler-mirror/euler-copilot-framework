@@ -50,6 +50,7 @@ class MCPHost(McpBase):
             context_list=task.context,
         )
 
+    @staticmethod
     async def _get_first_input_params(mcp_tool: MCPTool, goal: str, current_goal: str, task: Task,
                                       resoning_llm: ReasoningLLM = ReasoningLLM()) -> dict[str, Any]:
         """填充工具参数"""
@@ -62,7 +63,6 @@ class MCPHost(McpBase):
             input_schema=mcp_tool.input_schema,
             background_info=await MCPHost.assemble_memory(task),
         )
-        logger.info("[MCPHost] 填充工具参数: %s", prompt)
         result = await MCPHost.get_resoning_result(
             prompt,
             resoning_llm
@@ -74,6 +74,7 @@ class MCPHost(McpBase):
         )
         return result
 
+    @staticmethod
     async def _fill_params(mcp_tool: MCPTool,
                            goal: str,
                            current_goal: str,
