@@ -73,6 +73,11 @@ class FlowExecutor(BaseExecutor):
         self._reached_end: bool = False
         self.step_queue: deque[StepQueueItem] = deque()
 
+        # A -> B1 -> C
+        #   -> B2 ->
+        # make sure node C run only once
+        self._executed_steps: set[str] = set()
+
     async def _invoke_runner(self) -> None:
         """单一Step执行"""
         # 创建步骤Runner
@@ -100,8 +105,16 @@ class FlowExecutor(BaseExecutor):
             except IndexError:
                 break
 
+            # Check if it has been executed
+            if self.current_step.step_id in self._executed_steps:
+                logger.info("[FlowExecutor] 步骤 %s 已经执行过，跳过执行", self.current_step.step_id)
+                continue
+
             # 执行Step
             await self._invoke_runner()
+
+            # mark as executed
+            self._executed_steps.add(self.current_step.step_id)
 
     async def _find_next_id(self, step_id: str) -> list[str]:
         """查找下一个节点"""
@@ -127,19 +140,19 @@ class FlowExecutor(BaseExecutor):
                     flow_id=self.task.state.flow_id,
                     conversation_id=self.task.ids.conversation_id
                 )
-                
+
                 if branch_id:
                     # 构建带分支ID的edge_from
                     edge_from = f"{self.task.state.step_id}.{branch_id}"
                     logger.info("[FlowExecutor] 从变量池获取分支ID：%s，查找边：%s", branch_id, edge_from)
-                    
+
                     # 在edges中查找对应的下一个节点
                     next_steps = []
                     for edge in self.flow.edges:
                         if edge.edge_from == edge_from:
                             next_steps.append(edge.edge_to)
                             logger.info("[FlowExecutor] 找到下一个节点：%s", edge.edge_to)
-                    
+
                     if not next_steps:
                         logger.warning("[FlowExecutor] 没有找到分支 %s 对应的边", edge_from)
                 else:
@@ -232,7 +245,11 @@ class FlowExecutor(BaseExecutor):
                 # 没有下一个节点，结束
                 self._reached_end = True
             for step in next_step:
-                self.step_queue.append(step)
+                # only append to queue if it's not executed
+                if step.step_id not in self._executed_steps:
+                    self.step_queue.append(step)
+                else:
+                    logger.info("[FlowExecutor] 步骤 %s 已经执行过，不再添加到队列中", step.step_id)
 
         # 尾插运行结束后的系统步骤
         for step in FIXED_STEPS_AFTER_END:
