@@ -214,7 +214,8 @@ class StepExecutor(BaseExecutor):
                     await self.push_message(EventType.TEXT_ADD.value, chunk.content)
                     self.task.runtime.answer += chunk.content
                 else:
-                    await self.push_message(self.step.step.type, chunk.content)
+                    # 🔑 修复：非字符串内容应该通过step.output事件发送，而不是使用step.type
+                    await self.push_message(EventType.STEP_OUTPUT.value, chunk.content)
 
         return content
 
@@ -434,17 +435,31 @@ class StepExecutor(BaseExecutor):
         except Exception as e:
             logger.exception("[StepExecutor] 运行步骤失败，进行异常处理步骤")
             self.task.state.status = StepStatus.ERROR  # type: ignore[arg-type]
-            await self.push_message(EventType.STEP_OUTPUT.value, {})
+            
+            # 构建错误输出数据
             if isinstance(e, CallError):
+                error_output = {
+                    "error": e.message,
+                    "message": e.message,
+                    "data": e.data,
+                }
                 self.task.state.error_info = {  # type: ignore[arg-type]
                     "err_msg": e.message,
                     "data": e.data,
                 }
             else:
+                error_output = {
+                    "error": str(e),
+                    "message": str(e),
+                    "data": {},
+                }
                 self.task.state.error_info = {  # type: ignore[arg-type]
                     "err_msg": str(e),
                     "data": {},
                 }
+            
+            # 发送包含错误信息的输出
+            await self.push_message(EventType.STEP_OUTPUT.value, error_output)
             return
 
         # 更新执行状态

@@ -1,6 +1,7 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2023-2025. All rights reserved.
 """FastAPI 变量管理 API"""
 
+import json
 import logging
 from typing import Annotated, List, Optional, Dict, Any
 from datetime import datetime, UTC
@@ -17,7 +18,6 @@ from apps.scheduler.variable.parser import VariableParser
 from apps.schemas.response_data import ResponseData
 from apps.services.flow import FlowManager
 
-import json
 import re
 
 logger = logging.getLogger(__name__)
@@ -143,6 +143,12 @@ class CreateVariableRequest(BaseModel):
     value: Optional[Any] = Field(default=None, description="变量值")
     description: Optional[str] = Field(default=None, description="变量描述")
     flow_id: Optional[str] = Field(default=None, description="流程ID（环境级和对话级变量必需）")
+    # 文件类型变量专用字段
+    supported_types: Optional[List[str]] = Field(default=None, description="支持的文件类型（文件类型变量专用）")
+    upload_methods: Optional[List[str]] = Field(default=None, description="支持的上传方式列表（文件类型变量专用）")
+    max_files: Optional[int] = Field(default=None, description="最大上传文件数（文件类型变量专用）")
+    max_file_size: Optional[int] = Field(default=None, description="单个文件最大大小（MB，文件类型变量专用）")
+    required: Optional[bool] = Field(default=None, description="文件是否必填（文件类型变量专用）")
 
 
 class UpdateVariableRequest(BaseModel):
@@ -150,6 +156,12 @@ class UpdateVariableRequest(BaseModel):
     value: Optional[Any] = Field(default=None, description="新的变量值")
     var_type: Optional[VariableType] = Field(default=None, description="新的变量类型")
     description: Optional[str] = Field(default=None, description="新的变量描述")
+    # 文件类型变量专用字段（用于更新文件配置）
+    supported_types: Optional[List[str]] = Field(default=None, description="支持的文件类型（文件类型变量专用）")
+    upload_methods: Optional[List[str]] = Field(default=None, description="支持的上传方式列表（文件类型变量专用）")
+    max_files: Optional[int] = Field(default=None, description="最大上传文件数（文件类型变量专用）")
+    max_file_size: Optional[int] = Field(default=None, description="单个文件最大大小（MB，文件类型变量专用）")
+    required: Optional[bool] = Field(default=None, description="文件是否必填（文件类型变量专用）")
 
 
 class VariableResponse(BaseModel):
@@ -214,12 +226,56 @@ async def create_variable(
         converted_value = None
         if request.value is not None:
             try:
-                converted_value = convert_value_by_type(request.value, request.var_type)
+                # 对于文件类型，使用异步转换
+                if request.var_type in [VariableType.FILE, VariableType.ARRAY_FILE]:
+                    # 构建文件类型变量的完整信息
+                    file_config = {
+                        "supported_types": request.supported_types or [],
+                        "upload_methods": request.upload_methods or ["manual"],
+                        "max_files": request.max_files or (1 if request.var_type == VariableType.FILE else 10),
+                        "max_file_size": request.max_file_size or (10 * 1024 * 1024), # 默认10MB
+                        "required": request.required if request.required is not None else False # 默认非必填
+                    }
+                    
+                    # 如果提供了value，合并到配置中
+                    if isinstance(request.value, dict):
+                        file_config.update(request.value)
+                    else:
+                        # 如果value不是字典，将其作为文件ID处理
+                        if request.var_type == VariableType.FILE:
+                            file_config["file_id"] = request.value if isinstance(request.value, str) else ""
+                        else:
+                            file_config["file_ids"] = request.value if isinstance(request.value, list) else []
+                    
+                    converted_value = await convert_file_value_by_type(
+                        file_config, 
+                        request.var_type, 
+                        user_sub, 
+                        conversation_id=None,  # 创建变量时没有conversation_id
+                        flow_id=request.flow_id
+                    )
+                else:
+                    converted_value = convert_value_by_type(request.value, request.var_type)
             except ValueError as e:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail=f"变量值类型转换失败: {str(e)}"
                 )
+        elif request.var_type in [VariableType.FILE, VariableType.ARRAY_FILE]:
+            # 文件类型变量但没有提供value，创建默认结构
+            converted_value = await convert_file_value_by_type(
+                {
+                    "supported_types": request.supported_types or [],
+                    "upload_methods": request.upload_methods or ["manual"],
+                    "max_files": request.max_files or (1 if request.var_type == VariableType.FILE else 10),
+                    "max_file_size": request.max_file_size or (10 * 1024 * 1024), # 默认10MB
+                    "required": request.required if request.required is not None else False # 默认非必填
+                }, 
+                request.var_type, 
+                user_sub, 
+                conversation_id=getattr(request, 'conversation_id', None),
+                flow_id=request.flow_id
+            )
         
         pool_manager = await get_pool_manager()
         
@@ -372,17 +428,97 @@ async def update_variable(
         converted_value = request.value
         if request.value is not None and request.var_type is not None:
             try:
-                converted_value = convert_value_by_type(request.value, request.var_type)
+                # 对于文件类型，使用异步转换
+                if request.var_type in [VariableType.FILE, VariableType.ARRAY_FILE]:
+                    # 如果提供了文件专用字段，构建完整的文件配置
+                    file_value = request.value
+                    if any([request.supported_types, request.upload_methods, request.max_files, request.max_file_size]):
+                        # 构建文件类型变量的完整信息
+                        file_config = {
+                            "supported_types": request.supported_types or [],
+                            "upload_methods": request.upload_methods or ["manual"],
+                            "max_files": request.max_files or (1 if request.var_type == VariableType.FILE else 10),
+                            "max_file_size": request.max_file_size or (10 * 1024 * 1024), # 默认10MB
+                            "required": request.required if request.required is not None else False # 默认非必填
+                        }
+                        
+                        # 如果提供了value，合并到配置中
+                        if isinstance(request.value, dict):
+                            file_config.update(request.value)
+                        else:
+                            # 如果value不是字典，将其作为文件ID处理
+                            if request.var_type == VariableType.FILE:
+                                file_config["file_id"] = request.value if isinstance(request.value, str) else ""
+                            else:
+                                file_config["file_ids"] = request.value if isinstance(request.value, list) else []
+                        
+                        file_value = file_config
+                    
+                    converted_value = await convert_file_value_by_type(
+                        file_value, 
+                        request.var_type, 
+                        user_sub, 
+                        conversation_id=conversation_id,
+                        flow_id=flow_id
+                    )
+                else:
+                    converted_value = convert_value_by_type(request.value, request.var_type)
             except ValueError as e:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail=f"变量值类型转换失败: {str(e)}"
                 )
-        elif request.value is not None:
-            # 如果只提供了值但没有类型，需要获取现有变量的类型
+        elif request.value is not None or any([request.supported_types, request.upload_methods, request.max_files, request.max_file_size]):
+            # 如果只提供了值或文件配置但没有类型，需要获取现有变量的类型
             try:
                 existing_variable = await pool.get_variable(name)
-                converted_value = convert_value_by_type(request.value, existing_variable.metadata.var_type)
+                # 对于文件类型，使用异步转换
+                if existing_variable.metadata.var_type in [VariableType.FILE, VariableType.ARRAY_FILE]:
+                    # 如果提供了文件专用字段，需要构建文件配置
+                    file_value = request.value
+                    if any([request.supported_types, request.upload_methods, request.max_files, request.max_file_size]):
+                        # 获取现有的文件配置
+                        existing_config = {}
+                        if isinstance(existing_variable.value, dict):
+                            existing_config = existing_variable.value.copy()
+                        
+                        # 构建新的文件配置
+                        file_config = {
+                            "supported_types": request.supported_types or existing_config.get("supported_types", []),
+                            "upload_methods": request.upload_methods or existing_config.get("upload_methods", ["manual"]),
+                            "max_files": request.max_files or existing_config.get("max_files", (1 if existing_variable.metadata.var_type == VariableType.FILE else 10)),
+                            "max_file_size": request.max_file_size or existing_config.get("max_file_size", (10 * 1024 * 1024)),
+                            "required": request.required if request.required is not None else existing_config.get("required", False)
+                        }
+                        
+                        # 保留现有的文件ID
+                        if existing_variable.metadata.var_type == VariableType.FILE:
+                            file_config["file_id"] = existing_config.get("file_id", "")
+                        else:
+                            file_config["file_ids"] = existing_config.get("file_ids", [])
+                        
+                        # 如果提供了新的value，使用新的value处理文件ID
+                        if request.value is not None:
+                            if isinstance(request.value, dict):
+                                file_config.update(request.value)
+                            else:
+                                # 如果value不是字典，将其作为文件ID处理
+                                if existing_variable.metadata.var_type == VariableType.FILE:
+                                    file_config["file_id"] = request.value if isinstance(request.value, str) else ""
+                                else:
+                                    file_config["file_ids"] = request.value if isinstance(request.value, list) else []
+                        
+                        file_value = file_config
+                    
+                    converted_value = await convert_file_value_by_type(
+                        file_value, 
+                        existing_variable.metadata.var_type, 
+                        user_sub, 
+                        conversation_id=conversation_id,
+                        flow_id=flow_id
+                    )
+                else:
+                    converted_value = convert_value_by_type(request.value, existing_variable.metadata.var_type)
             except ValueError as e:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
@@ -1139,8 +1275,24 @@ def convert_string_value_by_type(value: str, var_type: VariableType) -> Any:
                 return list(value)
                 
             case VariableType.FILE | VariableType.ARRAY_FILE:
-                # 文件类型暂时保持字符串格式
-                return str(value)
+                # 文件类型需要保持字典格式或正确解析字符串
+                if isinstance(value, dict):
+                    return value
+                elif isinstance(value, str):
+                    try:
+                        # 先尝试JSON解析
+                        return json.loads(value)
+                    except json.JSONDecodeError:
+                        try:
+                            # 如果JSON解析失败，尝试Python字典格式（单引号）
+                            import ast
+                            return ast.literal_eval(value)
+                        except (ValueError, SyntaxError):
+                            # 如果都失败，返回字符串（向后兼容）
+                            return str(value)
+                else:
+                    # 其他类型尝试转换为字符串
+                    return str(value)
                 
             case VariableType.ARRAY_SECRET:
                 # 密钥数组
@@ -1166,84 +1318,49 @@ def convert_string_value_by_type(value: str, var_type: VariableType) -> Any:
 
 
 def convert_value_by_type(value: Any, var_type: VariableType) -> Any:
-    """
-    根据变量类型将任意类型的值转换为对应的Python类型
-    
-    Args:
-        value: 任意类型的值
-        var_type: 变量类型
-        
-    Returns:
-        转换后的值
-        
-    Raises:
-        ValueError: 当值无法转换为指定类型时
-    """
-    if value is None:
-        return None
-    
+    """根据变量类型转换值"""
     try:
         match var_type:
-            case VariableType.STRING | VariableType.SECRET:
-                # 如果已经是字符串，直接返回
-                if isinstance(value, str):
-                    return value
-                # 如果是复杂类型，JSON序列化
-                elif isinstance(value, (dict, list)):
-                    return json.dumps(value)
-                else:
-                    return str(value)
+            case VariableType.STRING:
+                return str(value)
                 
             case VariableType.NUMBER:
-                # 如果已经是数字，直接返回
                 if isinstance(value, (int, float)):
                     return value
-                # 尝试转换为数字
-                if isinstance(value, str):
-                    if value.strip() == "":
-                        return 0
-                    # 如果包含小数点，转换为float，否则转换为int
-                    if '.' in value or 'e' in value.lower():
-                        return float(value)
-                    else:
-                        return int(value)
-                elif isinstance(value, bool):
-                    return int(value)
+                elif isinstance(value, str):
+                    return float(value) if '.' in value else int(value)
                 else:
                     return float(value)
                     
             case VariableType.BOOLEAN:
-                # 如果已经是布尔值，直接返回
                 if isinstance(value, bool):
                     return value
-                # 处理布尔值转换
-                if isinstance(value, str):
-                    lower_value = value.lower().strip()
-                    if lower_value in ('true', '1', 'yes', 'on'):
+                elif isinstance(value, str):
+                    lower_val = value.lower()
+                    if lower_val in ('true', '1', 'yes', 'on'):
                         return True
-                    elif lower_value in ('false', '0', 'no', 'off'):
+                    elif lower_val in ('false', '0', 'no', 'off'):
                         return False
                     else:
-                        return bool(value)
+                        raise ValueError(f"无法将字符串 '{value}' 转换为布尔值")
+                elif isinstance(value, (int, float)):
+                    return bool(value)
                 else:
                     return bool(value)
-                
+                    
             case VariableType.OBJECT:
-                # 如果已经是字典，直接返回
                 if isinstance(value, dict):
                     return value
-                # 处理对象类型
-                if isinstance(value, str):
+                elif isinstance(value, str):
                     try:
                         return json.loads(value)
                     except json.JSONDecodeError as e:
                         raise ValueError(f"无法解析JSON对象: {e}")
                 else:
-                    # 尝试转换为字典
-                    if hasattr(value, '__dict__'):
-                        return value.__dict__
-                    else:
-                        return dict(value)
+                    raise ValueError(f"无法将类型 {type(value).__name__} 转换为对象")
+                    
+            case VariableType.SECRET:
+                return str(value)
                 
             case VariableType.ARRAY_STRING:
                 # 如果已经是列表，检查元素类型
@@ -1323,10 +1440,6 @@ def convert_value_by_type(value: Any, var_type: VariableType) -> Any:
                 else:
                     return [value]
                 
-            case VariableType.FILE | VariableType.ARRAY_FILE:
-                # 文件类型暂时保持原样
-                return value
-                
             case VariableType.ARRAY_SECRET:
                 # 密钥数组
                 if isinstance(value, list):
@@ -1349,3 +1462,110 @@ def convert_value_by_type(value: Any, var_type: VariableType) -> Any:
                 
     except (ValueError, TypeError, json.JSONDecodeError) as e:
         raise ValueError(f"无法将值 '{value}' (类型: {type(value).__name__}) 转换为类型 '{var_type.value}': {str(e)}")
+
+
+async def convert_file_value_by_type(value: Any, var_type: VariableType, user_sub: str, conversation_id: Optional[str] = None, flow_id: Optional[str] = None) -> Any:
+    """异步处理文件类型的值转换"""
+    if var_type not in [VariableType.FILE, VariableType.ARRAY_FILE]:
+        return value
+    
+    # 文件类型变量的默认存储结构
+    if var_type == VariableType.FILE:
+        # 单个文件变量结构
+        if isinstance(value, dict):
+            # 如果已经是字典格式，验证并返回
+            if "file_id" in value:
+                return value
+            else:
+                # 缺少必要字段，使用默认结构
+                return {
+                    "file_id": "",  # 文件ID，默认为空
+                    "supported_types": value.get("supported_types", []),  # 支持的文件类型
+                    "upload_methods": value.get("upload_methods", ["manual"]),  # 支持的上传方式
+                    "max_files": value.get("max_files", 1),  # 最大文件数（单个文件为1）
+                    "max_file_size": value.get("max_file_size", 10 * 1024 * 1024), # 默认10MB
+                    "required": value.get("required", False)  # 是否必填
+                }
+        elif isinstance(value, str):
+            # 如果是字符串，可能是文件ID或文件路径
+            if len(value) == 36 and value.count('-') == 4:
+                # 是文件ID格式，转换为字典结构
+                return {
+                    "file_id": value,
+                    "supported_types": [],
+                    "upload_methods": ["manual"],
+                    "max_files": 1,
+                    "max_file_size": 10 * 1024 * 1024, # 默认10MB
+                    "required": False  # 默认非必填
+                }
+            else:
+                # 不是文件ID，使用默认结构
+                        return {
+            "file_id": "",
+            "supported_types": [],
+            "upload_methods": ["manual"],
+            "max_files": 1,
+            "max_file_size": 10 * 1024 * 1024, # 默认10MB
+            "required": False  # 默认非必填
+        }
+        else:
+            # 其他类型，使用默认结构
+            return {
+                "file_id": "",
+                "supported_types": [],
+                "upload_methods": ["manual"],
+                "max_files": 1,
+                "max_file_size": 10 * 1024 * 1024, # 默认10MB
+                "required": False  # 默认非必填
+            }
+    
+    elif var_type == VariableType.ARRAY_FILE:
+        # 文件列表变量结构
+        if isinstance(value, dict):
+            # 如果已经是字典格式，验证并返回
+            if "file_ids" in value:
+                return value
+            else:
+                # 缺少必要字段，使用默认结构
+                return {
+                    "file_ids": [],  # 文件ID列表，默认为空
+                    "supported_types": value.get("supported_types", []),  # 支持的文件类型
+                    "upload_methods": value.get("upload_methods", ["manual"]),  # 支持的上传方式
+                    "max_files": value.get("max_files", 10),  # 最大文件数
+                    "max_file_size": value.get("max_file_size", 10 * 1024 * 1024), # 默认10MB
+                    "required": value.get("required", False)  # 是否必填
+                }
+        elif isinstance(value, list):
+            # 如果是列表，可能是文件ID列表
+            if all(isinstance(item, str) and len(item) == 36 and item.count('-') == 4 for item in value):
+                # 是文件ID列表格式，转换为字典结构
+                return {
+                    "file_ids": value,
+                    "supported_types": [],
+                    "upload_methods": ["manual"],
+                    "max_files": len(value),
+                    "max_file_size": 10 * 1024 * 1024, # 默认10MB
+                    "required": False  # 默认非必填
+                }
+            else:
+                # 不是文件ID列表，使用默认结构
+                return {
+                    "file_ids": [],
+                    "supported_types": [],
+                    "upload_methods": ["manual"],
+                    "max_files": 10,
+                    "max_file_size": 10 * 1024 * 1024, # 默认10MB
+                    "required": False  # 默认非必填
+                }
+        else:
+            # 其他类型，使用默认结构
+            return {
+                "file_ids": [],
+                "supported_types": [],
+                "upload_methods": ["manual"],
+                "max_files": 10,
+                "max_file_size": 10 * 1024 * 1024, # 默认10MB
+                "required": False  # 默认非必填
+            }
+    
+    return value

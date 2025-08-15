@@ -13,6 +13,7 @@ from apps.scheduler.call.suggest.suggest import Suggestion
 from apps.scheduler.call.choice.choice import Choice
 from apps.scheduler.call.loop.loop import Loop
 from apps.scheduler.call.variable_assign.variable_assign import VariableAssign
+from apps.scheduler.call.file_extract.file_extract import FileExtract
 
 # 只包含需要在编排界面展示的工具
 __all__ = [
@@ -27,5 +28,6 @@ __all__ = [
     "Suggestion",
     "Choice",
     "Loop",
-    "VariableAssign"
+    "VariableAssign",
+    "FileExtract"
 ]

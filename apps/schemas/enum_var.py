@@ -138,6 +138,8 @@ class CallOutputType(str, Enum):
     TEXT = "text"
     DATA = "data"
     PROGRESS = "progress"
+    ATTACHMENT = "attachment"
+    FILE = "file"
 
 
 class SpecialCallType(str, Enum):

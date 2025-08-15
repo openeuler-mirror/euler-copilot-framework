@@ -265,8 +265,20 @@ class FlowManager:
             )
             for node_id, node_config in flow_config.steps.items():
                 # TODO 新增标识位区分Node是否允许用户定义output parameters，如果output固定由节点生成，则走else逻辑
-                if node_config.type == "Code" or node_config.type == "DirectReply" or node_config.type == "Choice":
+                if node_config.type == "Code" or node_config.type == "DirectReply" or node_config.type == "Choice" or node_config.type == "FileExtract":
                     parameters = node_config.params  # 直接使用保存的完整params
+                    
+                    # 为FileExtract节点确保有默认的text输出参数
+                    if node_config.type == "FileExtract":
+                        if not parameters:
+                            parameters = {}
+                        if "output_parameters" not in parameters:
+                            parameters["output_parameters"] = {}
+                        if "text" not in parameters["output_parameters"]:
+                            parameters["output_parameters"]["text"] = {
+                                "type": "string",
+                                "description": "文件提取的文本内容"
+                            }
                 else:
                     # 其他节点：使用原有逻辑
                     input_parameters = node_config.params.get("input_parameters")
@@ -869,8 +881,20 @@ class FlowManager:
             
             for node_id, node_config in flow_config.steps.items():
                 # 参数处理逻辑与主工作流保持一致
-                if node_config.type == "Code" or node_config.type == "DirectReply" or node_config.type == "Choice":
+                if node_config.type == "Code" or node_config.type == "DirectReply" or node_config.type == "Choice" or node_config.type == "FileExtract":
                     parameters = node_config.params  # 直接使用保存的完整params
+                    
+                    # 为FileExtract节点确保有默认的text输出参数
+                    if node_config.type == "FileExtract":
+                        if not parameters:
+                            parameters = {}
+                        if "output_parameters" not in parameters:
+                            parameters["output_parameters"] = {}
+                        if "text" not in parameters["output_parameters"]:
+                            parameters["output_parameters"]["text"] = {
+                                "type": "string",
+                                "description": "文件提取的文本内容"
+                            }
                 else:
                     # 其他节点：使用原有逻辑
                     input_parameters = node_config.params.get("input_parameters")
