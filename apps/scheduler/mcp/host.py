@@ -14,7 +14,7 @@ from apps.llm.function import JsonGenerator
 from apps.scheduler.mcp.prompt import MEMORY_TEMPLATE
 from apps.scheduler.pool.mcp.client import MCPClient
 from apps.scheduler.pool.mcp.pool import MCPPool
-from apps.schemas.enum_var import StepStatus
+from apps.schemas.enum_var import StepStatus, LanguageType
 from apps.schemas.mcp import MCPPlanItem, MCPTool
 from apps.schemas.task import FlowStepHistory
 from apps.services.task import TaskManager
@@ -25,10 +25,18 @@ logger = logging.getLogger(__name__)
 class MCPHost:
     """MCP宿主服务"""
 
-    def __init__(self, user_sub: str, task_id: str, runtime_id: str, runtime_name: str) -> None:
+    def __init__(
+        self,
+        user_sub: str,
+        task_id: str,
+        runtime_id: str,
+        runtime_name: str,
+        language: LanguageType = LanguageType.CHINESE,
+    ) -> None:
         """初始化MCP宿主"""
         self._user_sub = user_sub
         self._task_id = task_id
+        self.language = language
         # 注意：runtime在工作流中是flow_id和step_description，在Agent中可为标识Agent的id和description
         self._runtime_id = runtime_id
         self._runtime_name = runtime_name
@@ -72,7 +80,7 @@ class MCPHost:
                 continue
             context_list.append(context)
 
-        return self._env.from_string(MEMORY_TEMPLATE).render(
+        return self._env.from_string(MEMORY_TEMPLATE[self.language]).render(
             context_list=context_list,
         )
 

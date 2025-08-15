@@ -4,7 +4,7 @@
 import logging
 from collections.abc import AsyncGenerator
 from datetime import datetime
-from typing import Any
+from typing import Any, ClassVar
 
 import pytz
 from jinja2 import BaseLoader
@@ -15,7 +15,7 @@ from apps.llm.reasoning import ReasoningLLM
 from apps.scheduler.call.core import CoreCall
 from apps.scheduler.call.llm.prompt import LLM_CONTEXT_PROMPT, LLM_DEFAULT_PROMPT
 from apps.scheduler.call.llm.schema import LLMInput, LLMOutput
-from apps.schemas.enum_var import CallOutputType
+from apps.schemas.enum_var import CallOutputType, LanguageType
 from apps.schemas.scheduler import (
     CallError,
     CallInfo,
@@ -38,12 +38,27 @@ class LLM(CoreCall, input_model=LLMInput, output_model=LLMOutput):
     system_prompt: str = Field(description="大模型系统提示词", default="You are a helpful assistant.")
     user_prompt: str = Field(description="大模型用户提示词", default=LLM_DEFAULT_PROMPT)
 
+    i18n_info: ClassVar[dict[str, dict]] = {
+        LanguageType.CHINESE: {
+            "name": "大模型",
+            "description": "以指定的提示词和上下文信息调用大模型，并获得输出。",
+        },
+        LanguageType.ENGLISH: {
+            "name": "Foundation Model",
+            "description": "Call the foundation model with specified prompt and context, and obtain the output.",
+        },
+    }
 
     @classmethod
     def info(cls) -> CallInfo:
-        """返回Call的名称和描述"""
-        return CallInfo(name="大模型", description="以指定的提示词和上下文信息调用大模型，并获得输出。")
+        """
+        返回Call的名称和描述
 
+        :return: Call的名称和描述
+        :rtype: CallInfo
+        """
+        lang_info = cls.i18n_info.get(cls.language, cls.i18n_info[LanguageType.CHINESE])
+        return CallInfo(name=lang_info["name"], description=lang_info["description"])
 
     async def _prepare_message(self, call_vars: CallVars) -> list[dict[str, Any]]:
         """准备消息"""
@@ -100,8 +115,9 @@ class LLM(CoreCall, input_model=LLMInput, output_model=LLMOutput):
             message=await self._prepare_message(call_vars),
         )
 
-
-    async def _exec(self, input_data: dict[str, Any]) -> AsyncGenerator[CallOutputChunk, None]:
+    async def _exec(
+        self, input_data: dict[str, Any], language: LanguageType = LanguageType.CHINESE
+    ) -> AsyncGenerator[CallOutputChunk, None]:
         """运行LLM Call"""
         data = LLMInput(**input_data)
         try:

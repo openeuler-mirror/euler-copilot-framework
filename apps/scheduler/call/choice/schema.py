@@ -1,20 +1,19 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2023-2025. All rights reserved.
 """Choice Call的输入和输出"""
 import uuid
-
 from enum import Enum
 
-from pydantic import BaseModel, Field
+from pydantic import Field
 
+from apps.scheduler.call.core import DataBase
 from apps.schemas.parameters import (
-    Type,
-    NumberOperate,
-    StringOperate,
-    ListOperate,
     BoolOperate,
     DictOperate,
+    ListOperate,
+    NumberOperate,
+    StringOperate,
+    Type,
 )
-from apps.scheduler.call.core import DataBase
 
 
 class Logic(str, Enum):

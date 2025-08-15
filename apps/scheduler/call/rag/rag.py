@@ -3,7 +3,7 @@
 
 import logging
 from collections.abc import AsyncGenerator
-from typing import Any
+from typing import Any, ClassVar
 
 import httpx
 from fastapi import status
@@ -13,7 +13,7 @@ from apps.common.config import Config
 from apps.llm.patterns.rewrite import QuestionRewrite
 from apps.scheduler.call.core import CoreCall
 from apps.scheduler.call.rag.schema import RAGInput, RAGOutput, SearchMethod
-from apps.schemas.enum_var import CallOutputType
+from apps.schemas.enum_var import CallOutputType, LanguageType
 from apps.schemas.scheduler import (
     CallError,
     CallInfo,
@@ -37,10 +37,27 @@ class RAG(CoreCall, input_model=RAGInput, output_model=RAGOutput):
     is_compress: bool = Field(description="是否压缩", default=False)
     tokens_limit: int = Field(description="token限制", default=8192)
 
+    i18n_info: ClassVar[dict[str, dict]] = {
+        LanguageType.CHINESE: {
+            "name": "知识库",
+            "description": "查询知识库，从文档中获取必要信息",
+        },
+        LanguageType.ENGLISH: {
+            "name": "Knowledge Base",
+            "description": "Query the knowledge base and obtain necessary information from documents",
+        },
+    }
+
     @classmethod
     def info(cls) -> CallInfo:
-        """返回Call的名称和描述"""
-        return CallInfo(name="知识库", description="查询知识库，从文档中获取必要信息")
+        """
+        返回Call的名称和描述
+
+        :return: Call的名称和描述
+        :rtype: CallInfo
+        """
+        lang_info = cls.i18n_info.get(cls.language, cls.i18n_info[LanguageType.CHINESE])
+        return CallInfo(name=lang_info["name"], description=lang_info["description"])
 
     async def _init(self, call_vars: CallVars) -> RAGInput:
         """初始化RAG工具"""
@@ -58,7 +75,9 @@ class RAG(CoreCall, input_model=RAGInput, output_model=RAGOutput):
             tokensLimit=self.tokens_limit,
         )
 
-    async def _exec(self, input_data: dict[str, Any]) -> AsyncGenerator[CallOutputChunk, None]:
+    async def _exec(
+        self, input_data: dict[str, Any], language: LanguageType = LanguageType.CHINESE
+    ) -> AsyncGenerator[CallOutputChunk, None]:
         """调用RAG工具"""
         data = RAGInput(**input_data)
         question_obj = QuestionRewrite()

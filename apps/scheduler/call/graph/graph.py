@@ -3,7 +3,7 @@
 
 import json
 from collections.abc import AsyncGenerator
-from typing import Any
+from typing import Any, ClassVar
 
 from anyio import Path
 from pydantic import Field
@@ -11,7 +11,7 @@ from pydantic import Field
 from apps.scheduler.call.core import CoreCall
 from apps.scheduler.call.graph.schema import RenderFormat, RenderInput, RenderOutput
 from apps.scheduler.call.graph.style import RenderStyle
-from apps.schemas.enum_var import CallOutputType
+from apps.schemas.enum_var import CallOutputType, LanguageType
 from apps.schemas.scheduler import (
     CallError,
     CallInfo,
@@ -25,12 +25,27 @@ class Graph(CoreCall, input_model=RenderInput, output_model=RenderOutput):
 
     dataset_key: str = Field(description="图表的数据来源（字段名）", default="")
 
+    i18n_info: ClassVar[dict[str, dict]] = {
+        LanguageType.CHINESE: {
+            "name": "图表",
+            "description": "将SQL查询出的数据转换为图表。",
+        },
+        LanguageType.ENGLISH: {
+            "name": "Chart",
+            "description": "Convert the data queried by SQL into a chart.",
+        },
+    }
 
     @classmethod
     def info(cls) -> CallInfo:
-        """返回Call的名称和描述"""
-        return CallInfo(name="图表", description="将SQL查询出的数据转换为图表")
+        """
+        返回Call的名称和描述
 
+        :return: Call的名称和描述
+        :rtype: CallInfo
+        """
+        lang_info = cls.i18n_info.get(cls.language, cls.i18n_info[LanguageType.CHINESE])
+        return CallInfo(name=lang_info["name"], description=lang_info["description"])
 
     async def _init(self, call_vars: CallVars) -> RenderInput:
         """初始化Render Call，校验参数，读取option模板"""
@@ -54,8 +69,9 @@ class Graph(CoreCall, input_model=RenderInput, output_model=RenderOutput):
             data=data,
         )
 
-
-    async def _exec(self, input_data: dict[str, Any]) -> AsyncGenerator[CallOutputChunk, None]:
+    async def _exec(
+        self, input_data: dict[str, Any], language: LanguageType = LanguageType.CHINESE
+    ) -> AsyncGenerator[CallOutputChunk, None]:
         """运行Render Call"""
         data = RenderInput(**input_data)
 
@@ -117,8 +133,9 @@ class Graph(CoreCall, input_model=RenderInput, output_model=RenderOutput):
                 result.append({"type": key, "value": val})
         return result
 
-
-    def _parse_options(self, column_num: int, chart_style: str, additional_style: str, scale_style: str) -> None:
+    def _parse_options(
+        self, column_num: int, chart_style: str, additional_style: str, scale_style: str
+    ) -> None:
         """解析LLM做出的图表样式选择"""
         series_template = {}
 

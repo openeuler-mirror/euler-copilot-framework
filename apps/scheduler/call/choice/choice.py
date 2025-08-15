@@ -5,7 +5,7 @@ import ast
 import copy
 import logging
 from collections.abc import AsyncGenerator
-from typing import Any
+from typing import Any, ClassVar
 
 from pydantic import Field
 
@@ -15,11 +15,12 @@ from apps.scheduler.call.choice.schema import (
     ChoiceBranch,
     ChoiceInput,
     ChoiceOutput,
+    Condition,
     Logic,
 )
-from apps.schemas.parameters import Type
 from apps.scheduler.call.core import CoreCall
-from apps.schemas.enum_var import CallOutputType
+from apps.schemas.enum_var import CallOutputType, LanguageType
+from apps.schemas.parameters import Type
 from apps.schemas.scheduler import (
     CallError,
     CallInfo,
@@ -34,13 +35,36 @@ class Choice(CoreCall, input_model=ChoiceInput, output_model=ChoiceOutput):
     """Choice工具"""
 
     to_user: bool = Field(default=False)
-    choices: list[ChoiceBranch] = Field(description="分支", default=[ChoiceBranch(),
-                                        ChoiceBranch(conditions=[Condition()], is_default=False)])
+    choices: list[ChoiceBranch] = Field(
+        description="分支", default=[ChoiceBranch(), ChoiceBranch(conditions=[Condition()], is_default=False)]
+    )
+
+    i18n_info: ClassVar[dict[str, dict]] = {
+        LanguageType.CHINESE: {
+            "name": "判断",
+            "description": "使用大模型或使用程序做出判断",
+        },
+        LanguageType.ENGLISH: {
+            "name": "Choice",
+            "description": "Use a large model or a program to make a decision",
+        },
+    }
 
     @classmethod
     def info(cls) -> CallInfo:
-        """返回Call的名称和描述"""
-        return CallInfo(name="选择器", description="使用大模型或使用程序做出判断")
+        """
+        返回Call的名称和描述
+
+        :return: Call的名称和描述
+        :rtype: CallInfo
+        """
+        lang_info = cls.i18n_info.get(cls.language, cls.i18n_info[LanguageType.CHINESE])
+        return CallInfo(name=lang_info["name"], description=lang_info["description"])
+
+    def _raise_value_error(self, msg: str) -> None:
+        """统一处理 ValueError 异常抛出"""
+        logger.warning(msg)
+        raise ValueError(msg)
 
     async def _prepare_message(self, call_vars: CallVars) -> list[dict[str, Any]]:
         """替换choices中的系统变量"""
@@ -135,7 +159,7 @@ class Choice(CoreCall, input_model=ChoiceInput, output_model=ChoiceOutput):
         )
 
     async def _exec(
-        self, input_data: dict[str, Any]
+        self, input_data: dict[str, Any], language: LanguageType
     ) -> AsyncGenerator[CallOutputChunk, None]:
         """执行Choice工具"""
         # 解析输入数据
