@@ -135,7 +135,7 @@ async def put_flow(
     put_body.flow = await FlowService.remove_excess_structure_from_flow(put_body.flow)
     await FlowService.validate_flow_illegal(put_body.flow)
     put_body.flow.connectivity = await FlowService.validate_flow_connectivity(put_body.flow)
-    result = await FlowManager.put_flow_by_app_and_flow_id(app_id, flow_id, put_body.flow)
+    result = await FlowManager.put_flow_by_app_and_flow_id(app_id, flow_id, put_body.flow, user_sub)
     if result is None:
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -176,6 +176,133 @@ async def put_flow(
             code=status.HTTP_200_OK,
             message="应用下流更新成功",
             result=FlowStructurePutMsg(flow=flow),
+        ).model_dump(exclude_none=True, by_alias=True),
+    )
+
+
+@router.put(
+    "/subflow",
+    response_model=FlowStructurePutRsp,
+    responses={
+        status.HTTP_400_BAD_REQUEST: {"model": ResponseData},
+        status.HTTP_403_FORBIDDEN: {"model": ResponseData},
+        status.HTTP_404_NOT_FOUND: {"model": ResponseData},
+        status.HTTP_500_INTERNAL_SERVER_ERROR: {"model": ResponseData},
+    },
+)
+async def put_subflow(
+    user_sub: Annotated[str, Depends(get_user)],
+    app_id: Annotated[str, Query(alias="appId")],
+    flow_id: Annotated[str, Query(alias="flowId")],
+    sub_flow_id: Annotated[str, Query(alias="subFlowId")],
+    put_body: Annotated[PutFlowReq, Body(...)],
+) -> JSONResponse:
+    """修改子工作流拓扑结构"""
+    if not await AppManager.validate_app_belong_to_user(user_sub, app_id):
+        return JSONResponse(
+            status_code=status.HTTP_403_FORBIDDEN,
+            content=FlowStructurePutRsp(
+                code=status.HTTP_403_FORBIDDEN,
+                message="用户没有权限访问该流",
+                result=FlowStructurePutMsg(),
+            ).model_dump(exclude_none=True, by_alias=True),
+        )
+    
+    # 验证父工作流是否存在
+    parent_flow = await FlowManager.get_flow_by_app_and_flow_id(app_id, flow_id)
+    if parent_flow is None:
+        return JSONResponse(
+            status_code=status.HTTP_404_NOT_FOUND,
+            content=FlowStructurePutRsp(
+                code=status.HTTP_404_NOT_FOUND,
+                message="父工作流不存在",
+                result=FlowStructurePutMsg(),
+            ).model_dump(exclude_none=True, by_alias=True),
+        )
+    
+    # 子工作流特殊处理：移除多余结构，但不强制要求end节点
+    put_body.flow = await FlowService.remove_excess_structure_from_flow(put_body.flow)
+    await FlowService.validate_subflow_illegal(put_body.flow)  # 使用子工作流专用验证
+    put_body.flow.connectivity = await FlowService.validate_subflow_connectivity(put_body.flow)  # 子工作流连通性验证
+    
+    # 保存子工作流到专用路径
+    result = await FlowManager.put_subflow_by_app_flow_and_subflow_id(
+        app_id, flow_id, sub_flow_id, put_body.flow
+    )
+    if result is None:
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content=FlowStructurePutRsp(
+                code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                message="子工作流更新失败",
+                result=FlowStructurePutMsg(),
+            ).model_dump(exclude_none=True, by_alias=True),
+        )
+    
+    # 获取更新后的子工作流
+    subflow = await FlowManager.get_subflow_by_app_flow_and_subflow_id(app_id, flow_id, sub_flow_id)
+    if subflow is None:
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content=FlowStructurePutRsp(
+                code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                message="子工作流更新后获取失败",
+                result=FlowStructurePutMsg(),
+            ).model_dump(exclude_none=True, by_alias=True),
+        )
+    
+    return JSONResponse(
+        status_code=status.HTTP_200_OK,
+        content=FlowStructurePutRsp(
+            code=status.HTTP_200_OK,
+            message="子工作流更新成功",
+            result=FlowStructurePutMsg(flow=subflow),
+        ).model_dump(exclude_none=True, by_alias=True),
+    )
+
+@router.get(
+    "/subflow",
+    response_model=FlowStructureGetRsp,
+    responses={
+        status.HTTP_403_FORBIDDEN: {"model": ResponseData},
+        status.HTTP_404_NOT_FOUND: {"model": ResponseData},
+    },
+)
+async def get_subflow(
+    user_sub: Annotated[str, Depends(get_user)],
+    app_id: Annotated[str, Query(alias="appId")],
+    flow_id: Annotated[str, Query(alias="flowId")],
+    sub_flow_id: Annotated[str, Query(alias="subFlowId")],
+) -> JSONResponse:
+    """获取子工作流拓扑结构"""
+    if not await AppManager.validate_app_belong_to_user(user_sub, app_id):
+        return JSONResponse(
+            status_code=status.HTTP_403_FORBIDDEN,
+            content=FlowStructureGetRsp(
+                code=status.HTTP_403_FORBIDDEN,
+                message="用户没有权限访问该流",
+                result=FlowStructureGetMsg(),
+            ).model_dump(exclude_none=True, by_alias=True),
+        )
+    
+    # 获取子工作流
+    result = await FlowManager.get_subflow_by_app_flow_and_subflow_id(app_id, flow_id, sub_flow_id)
+    if result is None:
+        return JSONResponse(
+            status_code=status.HTTP_404_NOT_FOUND,
+            content=FlowStructureGetRsp(
+                code=status.HTTP_404_NOT_FOUND,
+                message="子工作流不存在",
+                result=FlowStructureGetMsg(),
+            ).model_dump(exclude_none=True, by_alias=True),
+        )
+    
+    return JSONResponse(
+        status_code=status.HTTP_200_OK,
+        content=FlowStructureGetRsp(
+            code=status.HTTP_200_OK,
+            message="子工作流获取成功",
+            result=FlowStructureGetMsg(flow=result),
         ).model_dump(exclude_none=True, by_alias=True),
     )
 

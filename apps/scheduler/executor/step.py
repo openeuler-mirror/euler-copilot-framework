@@ -120,7 +120,8 @@ class StepExecutor(BaseExecutor):
             params.update(self.step.step.params)
 
         # 对于需要扁平化处理的Call类型，将input_parameters中的内容提取到顶级
-        if self._call_id in ["Choice", "DirectReply"] and "input_parameters" in params:
+        # TODO Call中自带属性区分是否需要扁平化，避免逻辑判断频繁修改，或者修改Code逻辑为统一设计
+        if self._call_id not in ["Code"] and "input_parameters" in params:
             # 提取input_parameters中的所有字段到顶级
             input_params = params.get("input_parameters", {})
             if isinstance(input_params, dict):
@@ -129,7 +130,6 @@ class StepExecutor(BaseExecutor):
                     params[key] = value
                 # 移除input_parameters，避免重复
                 params.pop("input_parameters", None)
-                logger.info(f"[StepExecutor] 对 {self._call_id} 节点进行参数扁平化处理")
 
         try:
             self.obj = await call_cls.instance(self, self.node, **params)
@@ -249,15 +249,52 @@ class StepExecutor(BaseExecutor):
             # 保存每个output_parameter到变量池，并进行类型验证
             saved_count = 0
             failed_params = []
+                        
+            # 特殊处理：如果是旧格式的JSON Schema结构（主要是Loop节点）
+            if (isinstance(output_parameters, dict) and 
+                "type" in output_parameters and 
+                "items" in output_parameters and 
+                isinstance(output_parameters["items"], dict)):
+                
+                # 提取items中的真正参数配置
+                output_parameters = output_parameters["items"]
+                
+                # 清理每个参数配置中的多余字段（如嵌套的items）
+                for param_name, param_config in output_parameters.items():
+                    if isinstance(param_config, dict) and "items" in param_config:
+                        # 移除多余的items字段，保持参数配置的简洁性
+                        param_config.pop("items", None)
+                
+                logger.debug(f"[StepExecutor] 转换后的output_parameters: {output_parameters}")
             
             for param_name, param_config in output_parameters.items():
-                try:
+                try:                    
+                    # 检查param_config格式，确保它是字典
+                    if not isinstance(param_config, dict):
+                        logger.warning(f"[StepExecutor] 输出参数 {param_name} 的配置不是字典格式: {param_config} (类型: {type(param_config)})")
+                        # 如果不是字典，尝试转换为标准格式
+                        if isinstance(param_config, str):
+                            param_config = {"type": param_config, "description": ""}
+                        else:
+                            param_config = {"type": "string", "description": "", "raw_config": str(param_config)}
+                    
                     # 获取参数值
                     param_value = self._extract_value_from_output_data(param_name, data_dict, param_config)
                     
                     if param_value is not None:
                         # 获取期望的类型
-                        expected_type = param_config.get("type", "string")
+                        raw_expected_type = param_config.get("type", "string")
+                        
+                        # 映射类型到变量系统支持的类型
+                        type_mapping = {
+                            "integer": "number",  # integer 映射到 number
+                            "int": "number",      # int 映射到 number  
+                            "float": "number",    # float 映射到 number
+                            "str": "string",      # str 映射到 string
+                            "bool": "boolean",    # bool 映射到 boolean
+                            "dict": "object",     # dict 映射到 object
+                        }
+                        expected_type = type_mapping.get(raw_expected_type, raw_expected_type)
                         
                         # 进行类型验证
                         if not self._validate_output_value_type(param_value, expected_type):
@@ -379,7 +416,6 @@ class StepExecutor(BaseExecutor):
     async def run(self) -> None:
         """运行单个步骤"""
         self.validate_flow_state(self.task)
-        logger.info("[StepExecutor] 运行步骤 %s", self.step.step.name)
 
         # 进行自动参数填充
         await self._run_slot_filling()
@@ -439,6 +475,9 @@ class StepExecutor(BaseExecutor):
             output_data=output_data,
         )
         self.task.context.append(history.model_dump(exclude_none=True, by_alias=True))
-
-        # 推送输出
-        await self.push_message(EventType.STEP_OUTPUT.value, output_data)
+        
+        try:
+            await self.push_message(EventType.STEP_OUTPUT.value, output_data)
+        except Exception as e:
+            logger.error(f"[StepExecutor] {self.step.step.name} - push_message调用失败: {e}")
+            raise

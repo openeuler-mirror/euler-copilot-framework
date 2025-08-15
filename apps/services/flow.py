@@ -2,6 +2,7 @@
 """flow Manager"""
 
 import logging
+from typing import Any
 
 from pymongo import ASCENDING
 
@@ -84,9 +85,15 @@ class FlowManager:
                 params_schema, output_schema = await NodeManager.get_node_params(node_pool_record["_id"])
                 try:
                     # TODO: 由于现在没有动态表单，所以暂时使用Slot的create_empty_slot方法
+                    # 对于循环节点，输出参数已经是扁平化格式，不需要再次处理
+                    if node_pool_record["call_id"] == "Loop":
+                        output_parameters = output_schema
+                    else:
+                        output_parameters = Slot(output_schema).extract_type_desc_from_schema()
+                        
                     parameters = {
                         "input_parameters": Slot(params_schema).create_empty_slot(),
-                        "output_parameters": Slot(output_schema).extract_type_desc_from_schema(),
+                        "output_parameters": output_parameters,
                     }
                 except Exception:
                     logger.exception("[FlowManager] generate_from_schema 失败")
@@ -267,9 +274,16 @@ class FlowManager:
                         _, output_parameters = await NodeManager.get_node_params(node_config.node)
                     else:
                         output_parameters = {}
+                    
+                    # 对于循环节点，输出参数已经是扁平化格式，不需要再次处理
+                    if hasattr(node_config, 'type') and node_config.type == "Loop":
+                        processed_output_parameters = output_parameters
+                    else:
+                        processed_output_parameters = Slot(output_parameters).extract_type_desc_from_schema()
+                    
                     parameters = {
                         "input_parameters": input_parameters,
-                        "output_parameters": Slot(output_parameters).extract_type_desc_from_schema(),
+                        "output_parameters": processed_output_parameters,
                     }
                 
                 node_item = NodeItem(
@@ -360,6 +374,7 @@ class FlowManager:
         app_id: str,
         flow_id: str,
         flow_item: FlowItem,
+        user_sub: str = "",
     ) -> FlowItem | None:
         """
         存储/更新flow的数据库数据和配置文件
@@ -388,8 +403,23 @@ class FlowManager:
                 connectivity=flow_item.connectivity,
                 debug=flow_item.debug,
             )
+            
+            # 获取旧的flow配置以便比较节点变化
+            flow_loader = FlowLoader()
+            old_flow_config = await flow_loader.load(app_id, flow_id)
+            
+            # 收集新配置中的所有步骤ID
+            new_step_ids = set()
+            
             for node_item in flow_item.nodes:
                 params = node_item.parameters
+                new_step_ids.add(node_item.step_id)
+                
+                # 处理节点变量模板（支持多种节点类型）
+                if user_sub:
+                    await FlowManager._process_node_variable_templates(
+                        node_item, flow_id, user_sub
+                    )
                 
                 flow_config.steps[node_item.step_id] = Step(
                     type=node_item.call_id,
@@ -399,20 +429,47 @@ class FlowManager:
                     pos=node_item.position,
                     params=params,
                 )
+            
+            # 检查是否有节点被删除，如果有则清理相关变量
+            if old_flow_config and user_sub:
+                old_step_ids = set(old_flow_config.steps.keys())
+                deleted_step_ids = old_step_ids - new_step_ids
+                
+                if deleted_step_ids:
+                    logger.info(f"[FlowManager] 检测到删除的节点: {deleted_step_ids}")
+                    # 清理删除节点的相关变量
+                    await FlowManager._cleanup_deleted_node_variables(
+                        deleted_step_ids, flow_id, user_sub
+                    )
+            
             for edge_item in flow_item.edges:
-                edge_from = edge_item.source_node
-                if edge_item.branch_id:
-                    edge_from = edge_from + "." + edge_item.branch_id
-                edge_config = Edge(
-                    id=edge_item.edge_id,
-                    edge_from=edge_from,
-                    edge_to=edge_item.target_node,
-                    edge_type=EdgeType(edge_item.type) if edge_item.type else EdgeType.NORMAL,
-                )
-                flow_config.edges.append(edge_config)
-
-            flow_loader = FlowLoader()
-            old_flow_config = await flow_loader.load(app_id, flow_id)
+                try:
+                    edge_from = edge_item.source_node
+                    if edge_item.branch_id:
+                        edge_from = edge_from + "." + edge_item.branch_id
+                    
+                    # 安全处理EdgeType
+                    edge_type = EdgeType.NORMAL
+                    if edge_item.type:
+                        try:
+                            edge_type = EdgeType(edge_item.type)
+                        except ValueError:
+                            logger.warning(f"[FlowManager] 无效的边类型: {edge_item.type}，使用默认值")
+                            edge_type = EdgeType.NORMAL
+                    
+                    edge_config = Edge(
+                        id=edge_item.edge_id,
+                        edge_from=edge_from,
+                        edge_to=edge_item.target_node,
+                        edge_type=edge_type,
+                    )
+                    flow_config.edges.append(edge_config)
+                    logger.info(f"[FlowManager] 添加边: {edge_item.edge_id}, {edge_from} -> {edge_item.target_node}, type: {edge_type}")
+                except Exception as e:
+                    logger.error(f"[FlowManager] 创建边失败: {edge_item.edge_id}, 错误: {e}")
+                    continue
+            
+            logger.info(f"[FlowManager] 构建完成，flow_config.edges数量: {len(flow_config.edges)}")
 
             if old_flow_config is None:
                 error_msg = f"[FlowManager] 流 {flow_id} 不存在；可能为新创建"
@@ -477,3 +534,477 @@ class FlowManager:
             return False
         else:
             return True
+
+    @staticmethod
+    async def _process_node_variable_templates(
+        node_item,
+        flow_id: str,
+        user_sub: str
+    ) -> None:
+        """处理节点变量模板，将其保存到Flow变量池供后续节点引用
+        
+        支持的节点类型和配置：
+        - Loop节点：从input_parameters.variables提取
+        - 其他节点可以扩展支持
+        
+        Args:
+            node_item: 节点项
+            flow_id: 工作流ID
+            user_sub: 用户ID
+        """
+        # 根据节点类型确定变量提取策略
+        variables_config = await FlowManager._extract_node_variables_config(node_item)
+        if not variables_config:
+            return
+        
+        # 批量保存变量模板
+        await FlowManager._save_node_variables_batch(
+            variables_config, node_item.step_id, flow_id, user_sub
+        )
+
+    @staticmethod
+    async def _extract_node_variables_config(node_item) -> dict[str, any] | None:
+        """从节点中提取变量配置
+        
+        Args:
+            node_item: 节点项
+            
+        Returns:
+            dict[str, any] | None: 变量配置字典，格式为{变量名: 变量配置}
+        """
+        try:
+            if not node_item.parameters or not isinstance(node_item.parameters, dict):
+                return None
+            
+            # 根据节点类型提取变量
+            if node_item.call_id == "Loop":
+                # Loop节点：从input_parameters.variables提取
+                input_parameters = node_item.parameters.get("input_parameters", {})
+                if isinstance(input_parameters, dict):
+                    variables = input_parameters.get("variables", {})
+                    if isinstance(variables, dict) and variables:
+                        return variables
+                        
+            # 可以在这里添加其他节点类型的变量提取逻辑
+            # elif node_item.call_id == "OtherNodeType":
+            #     return FlowManager._extract_other_node_variables(node_item)
+            
+            return None
+            
+        except Exception as e:
+            logger.error(f"[FlowManager] 提取节点 {node_item.step_id} 的变量配置失败: {e}")
+            return None
+    
+    @staticmethod
+    async def _save_node_variables_batch(
+        variables_config: dict[str, any],
+        step_id: str,
+        flow_id: str,
+        user_sub: str
+    ) -> None:
+        """批量保存节点变量模板
+        
+        Args:
+            variables_config: 变量配置字典
+            step_id: 节点步骤ID
+            flow_id: 工作流ID
+            user_sub: 用户ID
+        """
+        try:
+            
+            saved_count = 0
+            failed_count = 0
+            
+            for var_name, var_value in variables_config.items():
+                try:
+                    # 构造变量名：step_id.变量名
+                    full_var_name = f"{step_id}.{var_name}"
+                    
+                    # 解析变量配置
+                    var_type, actual_value, description = FlowManager._parse_variable_config(
+                        var_value, var_name, step_id
+                    )
+                    
+                    # 保存变量模板
+                    success = await FlowManager._save_variable_template(
+                        var_name=full_var_name,
+                        value=actual_value,
+                        var_type=var_type,
+                        description=description,
+                        user_sub=user_sub,
+                        flow_id=flow_id
+                    )
+                    
+                    if success:
+                        saved_count += 1
+                        logger.debug(f"[FlowManager] 已保存节点变量: conversation.{full_var_name} = {actual_value}")
+                    else:
+                        failed_count += 1
+                        logger.warning(f"[FlowManager] 保存节点变量失败: {full_var_name}")
+                        
+                except Exception as e:
+                    failed_count += 1
+                    logger.error(f"[FlowManager] 处理节点变量 {var_name} 失败: {e}")
+            
+            if saved_count > 0:
+                logger.info(f"[FlowManager] 节点 {step_id} 成功保存了 {saved_count} 个变量模板")
+            if failed_count > 0:
+                logger.warning(f"[FlowManager] 节点 {step_id} 有 {failed_count} 个变量保存失败")
+                
+        except Exception as e:
+            logger.error(f"[FlowManager] 批量保存节点 {step_id} 的变量失败: {e}")
+
+    @staticmethod
+    def _parse_variable_config(var_value: any, var_name: str, step_id: str) -> tuple[str, any, str]:
+        """解析变量配置，返回类型、值和描述
+        
+        Args:
+            var_value: 变量值配置
+            var_name: 变量名
+            step_id: 节点步骤ID
+            
+        Returns:
+            tuple[str, any, str]: (变量类型, 实际值, 描述)
+        """
+        if isinstance(var_value, dict) and "type" in var_value:
+            # 复杂格式：{type: "string", value: "默认值", description: "描述"}
+            var_type = var_value.get("type", "string")
+            actual_value = var_value.get("value", "")
+            description = var_value.get("description", f"节点 {step_id} 的变量 {var_name}")
+        else:
+            # 简单格式：直接值，根据Python类型推断
+            actual_value = var_value
+            description = f"节点 {step_id} 的变量 {var_name}"
+            
+            # 类型推断
+            if isinstance(var_value, bool):
+                var_type = "boolean"
+            elif isinstance(var_value, (int, float)):
+                var_type = "number"
+            elif isinstance(var_value, (list, tuple)):
+                var_type = "array"
+            elif isinstance(var_value, dict):
+                var_type = "object"
+            else:
+                var_type = "string"
+        
+        return var_type, actual_value, description
+
+    @staticmethod
+    async def _save_variable_template(
+        var_name: str,
+        value: Any,
+        var_type: str,
+        description: str,
+        user_sub: str,
+        flow_id: str
+    ) -> bool:
+        """保存节点变量模板到Flow级别的对话变量模板池
+        
+        Args:
+            var_name: 变量名（格式：step_id.变量名）
+            value: 变量值
+            var_type: 变量类型
+            description: 变量描述
+            user_sub: 用户ID
+            flow_id: 流程ID
+            
+        Returns:
+            bool: 是否保存成功
+        """
+        try:
+            # 导入必要的模块
+            from apps.scheduler.variable.pool_manager import get_pool_manager
+            from apps.scheduler.variable.type import VariableType
+            
+            # 获取flow级别的变量池
+            pool_manager = await get_pool_manager()
+            flow_pool = await pool_manager.get_flow_pool(flow_id)
+            
+            if not flow_pool:
+                logger.warning(f"[FlowManager] 无法获取Flow变量池: {flow_id}")
+                return False
+            
+            # 转换变量类型
+            try:
+                var_type_enum = VariableType(var_type)
+            except ValueError:
+                var_type_enum = VariableType.STRING
+                logger.warning(f"[FlowManager] 未知的变量类型 {var_type}，使用默认类型 string")
+            
+            # 尝试更新对话变量模板，如果不存在则创建
+            try:
+                # 检查是否已存在对话变量模板
+                existing_template = await flow_pool.get_conversation_template(var_name)
+                if existing_template:
+                    # 更新现有模板 - 使用通用的update_variable方法
+                    await flow_pool.update_variable(var_name, value=value, description=description)
+                    logger.debug(f"[FlowManager] 节点变量模板已更新: {var_name} = {value}")
+                else:
+                    # 创建新的对话变量模板
+                    await flow_pool.add_conversation_template(
+                        name=var_name,
+                        var_type=var_type_enum,
+                        default_value=value,  # 注意参数名是default_value，不是value
+                        description=description,
+                        created_by=user_sub or "system"
+                    )
+                    logger.debug(f"[FlowManager] 节点变量模板已创建: {var_name} = {value}")
+                return True
+            except Exception as e:
+                logger.error(f"[FlowManager] 处理节点变量模板失败: {var_name}, 错误: {e}")
+                return False
+                    
+        except Exception as e:
+            logger.error(f"[FlowManager] 保存节点变量模板失败: {var_name}, 错误: {e}")
+            return False
+
+    @staticmethod
+    async def put_subflow_by_app_flow_and_subflow_id(
+        app_id: str,
+        flow_id: str,
+        sub_flow_id: str,
+        flow_item: FlowItem,
+    ) -> FlowItem | None:
+        """
+        存储/更新子工作流的数据库数据和配置文件
+        
+        :param app_id: 应用的id
+        :param flow_id: 父工作流的id
+        :param sub_flow_id: 子工作流的id
+        :param flow_item: 子工作流的item
+        :return: 子工作流的item
+        """
+        try:
+            app_collection = MongoDB().get_collection("app")
+            app_record = await app_collection.find_one({"_id": app_id})
+            if app_record is None:
+                logger.error("[FlowManager] 应用 %s 不存在", app_id)
+                return None
+        except Exception:
+            logger.exception("[FlowManager] 获取应用失败")
+            return None
+            
+        try:
+            # 构建子工作流配置
+            flow_config = Flow(
+                name=flow_item.name,
+                description=flow_item.description,
+                steps={},
+                edges=[],
+                focus_point=flow_item.focus_point,
+                connectivity=flow_item.connectivity,
+                debug=flow_item.debug,
+            )
+            
+            for node_item in flow_item.nodes:
+                params = node_item.parameters
+                flow_config.steps[node_item.step_id] = Step(
+                    type=node_item.call_id,
+                    node=node_item.node_id,
+                    name=node_item.name,
+                    description=node_item.description,
+                    pos=node_item.position,
+                    params=params,
+                )
+                
+            for edge_item in flow_item.edges:
+                edge_from = edge_item.source_node
+                if edge_item.branch_id:
+                    edge_from = edge_from + "." + edge_item.branch_id
+                
+                edge_config = Edge(
+                    id=edge_item.edge_id,
+                    edge_from=edge_from,
+                    edge_to=edge_item.target_node,
+                    edge_type=EdgeType.NORMAL,  # 子工作流默认使用普通边
+                )
+                flow_config.edges.append(edge_config)
+
+            # 使用子工作流专用的保存路径
+            flow_loader = FlowLoader()
+            await flow_loader.save_subflow(app_id, flow_id, sub_flow_id, flow_config)
+            
+            return flow_item
+            
+        except Exception:
+            logger.exception("[FlowManager] 保存子工作流失败")
+            return None
+
+    @staticmethod
+    async def get_subflow_by_app_flow_and_subflow_id(
+        app_id: str,
+        flow_id: str, 
+        sub_flow_id: str,
+    ) -> FlowItem | None:
+        """
+        根据应用id、父工作流id和子工作流id获取子工作流
+        
+        :param app_id: 应用的id
+        :param flow_id: 父工作流的id  
+        :param sub_flow_id: 子工作流的id
+        :return: 子工作流的FlowItem
+        """
+        try:
+            flow_loader = FlowLoader()
+            flow_config = await flow_loader.load_subflow(app_id, flow_id, sub_flow_id)
+            
+            if flow_config is None:
+                return None
+                
+            # 转换为FlowItem格式
+            focus_point = flow_config.focus_point or PositionItem(x=0, y=0)
+            flow_item = FlowItem(
+                flowId=sub_flow_id,
+                name=flow_config.name,
+                description=flow_config.description,
+                enable=True,
+                editable=True,
+                nodes=[],
+                edges=[],
+                focusPoint=focus_point,
+                connectivity=flow_config.connectivity,
+                debug=flow_config.debug,
+            )
+            
+            for node_id, node_config in flow_config.steps.items():
+                # 参数处理逻辑与主工作流保持一致
+                if node_config.type == "Code" or node_config.type == "DirectReply" or node_config.type == "Choice":
+                    parameters = node_config.params  # 直接使用保存的完整params
+                else:
+                    # 其他节点：使用原有逻辑
+                    input_parameters = node_config.params.get("input_parameters")
+                    if node_config.node not in ("Empty"):
+                        try:
+                            _, output_parameters = await NodeManager.get_node_params(node_config.node)
+                        except Exception:
+                            logger.exception("[FlowManager] 获取节点参数失败，使用空参数")
+                            output_parameters = {}
+                    else:
+                        output_parameters = {}
+                    
+                    # 对于循环节点，输出参数已经是扁平化格式，不需要再次处理
+                    if hasattr(node_config, 'type') and node_config.type == "Loop":
+                        processed_output_parameters = output_parameters
+                    else:
+                        processed_output_parameters = Slot(output_parameters).extract_type_desc_from_schema()
+                    
+                    parameters = {
+                        "input_parameters": input_parameters,
+                        "output_parameters": processed_output_parameters,
+                    }
+                
+                node_item = NodeItem(
+                    stepId=node_id,
+                    serviceId="",  # 子工作流节点默认serviceId为空
+                    nodeId=node_config.node,
+                    name=node_config.name,
+                    description=node_config.description,
+                    enable=True,
+                    editable=True,
+                    callId=node_config.type,
+                    parameters=parameters,
+                    position=PositionItem(x=node_config.pos.x, y=node_config.pos.y),
+                )
+                flow_item.nodes.append(node_item)
+                
+            for edge_config in flow_config.edges:
+                edge_from = edge_config.edge_from
+                branch_id = ""
+                tmp_list = edge_config.edge_from.split(".")
+                if len(tmp_list) == 0 or len(tmp_list) > 2:
+                    logger.error("[FlowManager] 子工作流中边的格式错误")
+                    continue
+                if len(tmp_list) == 2:
+                    edge_from = tmp_list[0]
+                    branch_id = tmp_list[1]
+                
+                edge_item = EdgeItem(
+                    edgeId=edge_config.id,
+                    sourceNode=edge_from,
+                    targetNode=edge_config.edge_to,
+                    type=edge_config.edge_type.value if edge_config.edge_type else EdgeType.NORMAL.value,
+                    branchId=branch_id,
+                )
+                flow_item.edges.append(edge_item)
+                
+            return flow_item
+            
+        except Exception:
+            logger.exception("[FlowManager] 获取子工作流失败")
+            return None
+
+    @staticmethod
+    async def delete_subflow_by_app_flow_and_subflow_id(
+        app_id: str,
+        flow_id: str,
+        sub_flow_id: str,
+    ) -> bool:
+        """
+        删除子工作流
+        
+        :param app_id: 应用的id
+        :param flow_id: 父工作流的id
+        :param sub_flow_id: 子工作流的id
+        :return: 是否删除成功
+        """
+        try:
+            flow_loader = FlowLoader()
+            return await flow_loader.delete_subflow(app_id, flow_id, sub_flow_id)
+        except Exception:
+            logger.exception("[FlowManager] 删除子工作流失败")
+            return False
+
+    @staticmethod
+    async def _cleanup_deleted_node_variables(
+        deleted_step_ids: set[str],
+        flow_id: str,
+        user_sub: str
+    ) -> None:
+        """清理被删除节点的相关变量
+        
+        Args:
+            deleted_step_ids: 被删除的步骤ID集合
+            flow_id: 工作流ID
+            user_sub: 用户ID
+        """
+        try:
+            from apps.scheduler.variable.pool_manager import get_pool_manager
+            
+            # 获取flow级别的变量池
+            pool_manager = await get_pool_manager()
+            flow_pool = await pool_manager.get_flow_pool(flow_id)
+            
+            if not flow_pool:
+                logger.warning(f"[FlowManager] 无法获取Flow变量池: {flow_id}")
+                return
+            
+            # 获取所有对话变量模板
+            conversation_variables = await flow_pool.list_conversation_templates()
+            
+            if not conversation_variables:
+                logger.info(f"[FlowManager] 没有找到对话变量需要清理")
+                return
+            
+            cleaned_count = 0
+            
+            for variable in conversation_variables:
+                try:
+                    # 检查变量名是否以被删除的步骤ID开头
+                    for deleted_step_id in deleted_step_ids:
+                        if variable.name.startswith(f"{deleted_step_id}."):
+                            # 删除该变量
+                            await flow_pool.delete_variable(variable.name)
+                            cleaned_count += 1
+                            logger.info(f"[FlowManager] 已清理删除节点的变量: {variable.name}")
+                            break
+                except Exception as e:
+                    logger.error(f"[FlowManager] 清理变量 {variable.name} 失败: {e}")
+            
+            if cleaned_count > 0:
+                logger.info(f"[FlowManager] 总共清理了 {cleaned_count} 个被删除节点的变量")
+            else:
+                logger.info(f"[FlowManager] 没有找到需要清理的节点变量")
+                
+        except Exception as e:
+            logger.error(f"[FlowManager] 清理删除节点变量失败: {e}")

@@ -70,6 +70,10 @@ class ConditionHandler(BaseModel):
             return True
         if value.type == ValueType.BOOL and isinstance(value.value, bool):
             return True
+        # 添加对REFERENCE类型的处理 - 如果是REFERENCE类型但没有被解析，说明解析失败
+        # 在这种情况下，我们将其视为字符串类型进行基本的兼容性检查
+        if value.type == ValueType.REFERENCE and isinstance(value.value, str):
+            return True
         return False
 
     @staticmethod
@@ -112,39 +116,39 @@ class ConditionHandler(BaseModel):
         判断条件是否成立。
 
         Args:
-            condition (Condition): 'left', 'operate', 'right'
+            condition (Condition): 'left', 'operator', 'right'
 
         Returns:
             bool
 
         """
         left = condition.left
-        operate = condition.operate
+        operator = condition.operator
         right = condition.right
         
         # 根据操作符动态推断值类型
         try:
-            value_type = ConditionHandler.get_value_type_from_operate(operate)
+            value_type = ConditionHandler.get_value_type_from_operate(operator)
         except Exception as e:
-            logger.error("无法推断操作符 %s 的值类型: %s", operate, e)
-            msg = f"无法推断操作符 {operate} 的值类型: {e}"
+            logger.error("无法推断操作符 %s 的值类型: %s", operator, e)
+            msg = f"无法推断操作符 {operator} 的值类型: {e}"
             raise ValueError(msg)
 
         result = None
         if value_type == ValueType.STRING:
-            result = ConditionHandler._judge_string_condition(left, operate, right)
+            result = ConditionHandler._judge_string_condition(left, operator, right)
         elif value_type == ValueType.NUMBER:
-            result = ConditionHandler._judge_number_condition(left, operate, right)
+            result = ConditionHandler._judge_number_condition(left, operator, right)
         elif value_type == ValueType.BOOL:
-            result = ConditionHandler._judge_bool_condition(left, operate, right)
+            result = ConditionHandler._judge_bool_condition(left, operator, right)
         elif value_type == ValueType.LIST:
-            result = ConditionHandler._judge_list_condition(left, operate, right)
+            result = ConditionHandler._judge_list_condition(left, operator, right)
         elif value_type == ValueType.DICT:
-            result = ConditionHandler._judge_dict_condition(left, operate, right)
+            result = ConditionHandler._judge_dict_condition(left, operator, right)
         else:
-            logger.error("不支持的数据类型: %s", value_type)
-            msg = f"不支持的数据类型: {value_type}"
+            msg = f"不支持的值类型: {value_type}"
             raise ValueError(msg)
+
         return result
 
     @staticmethod

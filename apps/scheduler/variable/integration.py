@@ -39,7 +39,8 @@ class VariableIntegration:
     async def parse_call_input(input_data: Dict[str, Any], 
                               user_sub: str,
                               flow_id: Optional[str] = None,
-                              conversation_id: Optional[str] = None) -> Union[str, Dict, List]:
+                              conversation_id: Optional[str] = None,
+                              current_step_id: Optional[str] = None) -> Union[str, Dict, List]:
         """解析Call输入中的变量引用
         
         Args:
@@ -47,6 +48,7 @@ class VariableIntegration:
             user_sub: 用户ID
             flow_id: 流程ID
             conversation_id: 对话ID
+            current_step_id: 当前步骤ID，用于支持{{self.xxx}}语法
             
         Returns:
             Dict[str, Any]: 解析后的输入数据
@@ -55,7 +57,8 @@ class VariableIntegration:
             parser = VariableParser(
                 user_sub=user_sub,
                 flow_id=flow_id,
-                conversation_id=conversation_id
+                conversation_id=conversation_id,
+                current_step_id=current_step_id
             )
             
             # 递归解析JSON模板中的变量引用
@@ -73,7 +76,8 @@ class VariableIntegration:
         reference: str,
         user_sub: str,
         flow_id: Optional[str] = None,
-        conversation_id: Optional[str] = None
+        conversation_id: Optional[str] = None,
+        current_step_id: Optional[str] = None
     ) -> Tuple[Any, Any]:
         """解析单个变量引用
         
@@ -82,6 +86,7 @@ class VariableIntegration:
             user_sub: 用户ID
             flow_id: 流程ID
             conversation_id: 对话ID
+            current_step_id: 当前步骤ID，用于支持{{self.xxx}}语法
             
         Returns:
             Tuple[Any, Any]: 解析后的变量值和变量类型
@@ -90,7 +95,8 @@ class VariableIntegration:
             parser = VariableParser(
                 user_id=user_sub,
                 flow_id=flow_id,
-                conversation_id=conversation_id
+                conversation_id=conversation_id,
+                current_step_id=current_step_id
             )
             
             # 清理引用字符串（移除花括号）

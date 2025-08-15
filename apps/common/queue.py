@@ -36,7 +36,7 @@ class MessageQueue:
         self._heartbeat_task = asyncio.get_event_loop().create_task(self._heartbeat())
 
     async def push_output(self, task: Task, event_type: str, data: dict[str, Any]) -> None:
-        """组装用于向用户（前端/Shell端）输出的消息"""
+        """组装用于向用户（前端/Shell端）输出的消息"""        
         if event_type == EventType.DONE.value:
             await self._queue.put("[DONE]")
             return
@@ -74,7 +74,12 @@ class MessageQueue:
             content=data,
         )
 
-        await self._queue.put(json.dumps(message.model_dump(by_alias=True, exclude_none=True), ensure_ascii=False))
+        try:
+            message_json = json.dumps(message.model_dump(by_alias=True, exclude_none=True), ensure_ascii=False)
+            await self._queue.put(message_json)
+        except Exception as e:
+            logger.error(f"[MessageQueue] 消息入队失败 - event_type: {event_type}, error: {e}")
+            raise
 
     async def get(self) -> AsyncGenerator[str, None]:
         """从Queue中获取消息；变为async generator"""

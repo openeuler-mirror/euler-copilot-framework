@@ -137,6 +137,7 @@ class CallOutputType(str, Enum):
 
     TEXT = "text"
     DATA = "data"
+    PROGRESS = "progress"
 
 
 class SpecialCallType(str, Enum):
@@ -151,6 +152,7 @@ class SpecialCallType(str, Enum):
     START = "start"
     END = "end"
     CHOICE = "Choice"
+    LOOP = "Loop"
 
 
 class CommentType(str, Enum):

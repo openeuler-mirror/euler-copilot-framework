@@ -49,9 +49,13 @@ class AppLoader:
 
             flow_ids = [app_flow.id for app_flow in metadata.flows]
             new_flows: list[AppFlow] = []
-            async for flow_file in flow_path.rglob("*.yaml"):
+            
+            # 只处理主工作流文件（直接在flow目录下的.yaml文件，不包括子目录中的）
+            async for flow_file in flow_path.glob("*.yaml"):
                 if flow_file.stem not in flow_ids:
                     logger.warning("[AppLoader] 工作流 %s 不在元数据中", flow_file)
+                    continue
+                    
                 flow = await flow_loader.load(app_id, flow_file.stem)
                 if not flow:
                     err = f"[AppLoader] 工作流 {flow_file} 加载失败"
