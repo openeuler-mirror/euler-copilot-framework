@@ -8,7 +8,9 @@ from apps.llm.reasoning import ReasoningLLM
 logger = logging.getLogger(__name__)
 
 
-class McpBase:
+class MCPBase:
+    """MCP基类"""
+
     @staticmethod
     async def get_resoning_result(prompt: str, resoning_llm: ReasoningLLM = ReasoningLLM()) -> str:
         """获取推理结果"""
