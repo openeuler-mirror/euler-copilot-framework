@@ -1,16 +1,18 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2023-2025. All rights reserved.
 """队列中的消息结构"""
 
-from typing import Any
 from datetime import UTC, datetime
+from typing import Any
+
 from pydantic import BaseModel, Field
 
 from apps.schemas.enum_var import EventType, FlowStatus, StepStatus
 from apps.schemas.record import RecordMetadata
 
 
-class param(BaseModel):
+class FlowParams(BaseModel):
     """流执行过程中的参数补充"""
+
     content: dict[str, Any] = Field(default={}, description="流执行过程中的参数补充内容")
     description: str = Field(default="", description="流执行过程中的参数补充描述")
 

@@ -240,7 +240,12 @@ class Scheduler:
         if background.conversation and self.task.state.flow_status == FlowStatus.INIT:
             try:
                 question_obj = QuestionRewrite()
-                post_body.question = await question_obj.generate(history=background.conversation, question=post_body.question, llm=reasion_llm)
+                post_body.question = await question_obj.generate(
+                    history=background.conversation,
+                    question=post_body.question,
+                    llm=reasion_llm,
+                    language=post_body.language,
+                )
             except Exception:
                 logger.exception("[Scheduler] 问题重写失败")
         if app_metadata.app_type == AppType.FLOW.value:

@@ -60,13 +60,20 @@ async def push_init_message(
 
 
 async def push_rag_message(
-        task: Task, queue: MessageQueue, user_sub: str, llm: LLM, history: list[dict[str, str]],
-        doc_ids: list[str],
-        rag_data: RAGQueryReq,) -> None:
+    task: Task,
+    queue: MessageQueue,
+    user_sub: str,
+    llm: LLM,
+    history: list[dict[str, str]],
+    doc_ids: list[str],
+    rag_data: RAGQueryReq,
+) -> None:
     """推送RAG消息"""
     full_answer = ""
     try:
-        async for chunk in RAG.chat_with_llm_base_on_rag(user_sub, llm, history, doc_ids, rag_data):
+        async for chunk in RAG.chat_with_llm_base_on_rag(
+            user_sub, llm, history, doc_ids, rag_data, task.language
+        ):
             task, content_obj = await _push_rag_chunk(task, queue, chunk)
             if content_obj.event_type == EventType.TEXT_ADD.value:
                 # 如果是文本消息，直接拼接到答案中

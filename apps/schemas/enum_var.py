@@ -209,3 +209,10 @@ class AgentState(str, Enum):
     RUNNING = "RUNNING"
     FINISHED = "FINISHED"
     ERROR = "ERROR"
+
+class LanguageType(str, Enum):
+    """语言类型"""
+
+    CHINESE = "zh_cn"
+    ENGLISH = "en"
+    

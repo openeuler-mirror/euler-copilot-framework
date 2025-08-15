@@ -4,11 +4,13 @@
 import logging
 
 from pydantic import BaseModel, Field
+from textwrap import dedent
 
 from apps.llm.function import JsonGenerator
 from apps.llm.patterns.core import CorePattern
 from apps.llm.reasoning import ReasoningLLM
 from apps.llm.token import TokenCalculator
+from apps.schemas.enum_var import LanguageType
 logger = logging.getLogger(__name__)
 
 
@@ -21,7 +23,8 @@ class QuestionRewriteResult(BaseModel):
 class QuestionRewrite(CorePattern):
     """问题补全与重写"""
 
-    system_prompt: str = r"""
+    system_prompt: dict[LanguageType, str] = {
+        LanguageType.CHINESE: r"""
         <instructions>
           <instruction>
             根据历史对话，推断用户的实际意图并补全用户的提问内容,历史对话被包含在<history>标签中，用户意图被包含在<question>标签中。
@@ -72,26 +75,87 @@ class QuestionRewrite(CorePattern):
         <question>
           {question}
         </question>
+    """,
+        LanguageType.ENGLISH: r"""
+        <instructions>
+          <instruction>
+            Based on the historical dialogue, infer the user's actual intent and complete the user's question. The historical dialogue is contained within the <history> tags, and the user's intent is contained within the <question> tags.
+            Requirements:
+              1. Please output in JSON format, referring to the example provided below; do not include any XML tags or any explanatory notes;
+              2. If the user's current question is unrelated to the previous dialogue or you believe the user's question is already complete enough, directly output the user's question.
+              3. The completed content must be precise and appropriate; do not fabricate any content.
+              4. Output only the completed question; do not include any other content.
+              Example output format:
+              {{
+                "question": "The completed question"
+              }}
+          </instruction>
+
+          <example>
+            <history>
+              <qa>
+                <question>
+                  What are the features of openEuler?
+                </question>
+                <answer>
+                  Compared to other operating systems, openEuler's features include support for multiple hardware architectures and providing a stable, secure, and efficient operating system platform.
+                </answer>
+              </qa>
+              <qa>
+                <question>
+                  What are the advantages of openEuler?
+                </question>
+                <answer>
+                  The advantages of openEuler include being open-source, having community support, and optimizations for cloud and edge computing.
+                </answer>
+              </qa>
+            </history>
+
+            <question>
+              More details?
+            </question>
+            <output>
+              {{
+                "question":  "What are the features of openEuler? Please elaborate on its advantages and application scenarios."
+              }}
+            </output>
+          </example>
+        </instructions>
+        <history>
+          {history}
+        </history>
+        <question>
+          {question}
+        </question>
     """
+    }
+
     """用户提示词"""
-    user_prompt: str = """
+    user_prompt: dict[LanguageType, str] = {
+        LanguageType.CHINESE: r"""
       <instructions>
         请输出补全后的问题
       </instructions>
-    """
+    """,
+        LanguageType.ENGLISH: r"""
+      <instructions>
+        Please output the completed question
+      </instructions>
+    """}
 
     async def generate(self, **kwargs) -> str:  # noqa: ANN003
         """问题补全与重写"""
         history = kwargs.get("history", [])
         question = kwargs["question"]
         llm = kwargs.get("llm", None)
+        language = kwargs.get("language", LanguageType.CHINESE)
         if not llm:
             llm = ReasoningLLM()
         leave_tokens = llm._config.max_tokens
         leave_tokens -= TokenCalculator().calculate_token_length(
             messages=[
-                {"role": "system", "content": self.system_prompt.format(history="", question=question)},
-                {"role": "user", "content": self.user_prompt}
+                {"role": "system", "content": self.system_prompt[language].format(history="", question=question)},
+                {"role": "user", "content": self.user_prompt[language]}
             ]
         )
         if leave_tokens <= 0:
@@ -113,8 +177,8 @@ class QuestionRewrite(CorePattern):
                 qa = sub_qa + qa
             index += 2
         messages = [
-            {"role": "system", "content": self.system_prompt.format(history=qa, question=question)},
-            {"role": "user", "content": self.user_prompt}
+            {"role": "system", "content": self.system_prompt[language].format(history=qa, question=question)},
+            {"role": "user", "content": self.user_prompt[language]}
         ]
         result = ""
         async for chunk in llm.call(messages, streaming=False):

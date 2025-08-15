@@ -9,7 +9,7 @@ from apps.common.mongo import MongoDB
 from apps.scheduler.pool.loader.flow import FlowLoader
 from apps.scheduler.slot.slot import Slot
 from apps.schemas.collection import User
-from apps.schemas.enum_var import EdgeType, PermissionType
+from apps.schemas.enum_var import EdgeType, PermissionType, LanguageType
 from apps.schemas.flow import Edge, Flow, Step
 from apps.schemas.flow_topology import (
     EdgeItem,
@@ -19,6 +19,7 @@ from apps.schemas.flow_topology import (
     NodeServiceItem,
     PositionItem,
 )
+from apps.scheduler.pool.pool import Pool
 from apps.services.node import NodeManager
 logger = logging.getLogger(__name__)
 
@@ -68,7 +69,9 @@ class FlowManager:
             return (result > 0)
 
     @staticmethod
-    async def get_node_id_by_service_id(service_id: str) -> list[NodeMetaDataItem] | None:
+    async def get_node_id_by_service_id(
+        service_id: str, language: LanguageType = LanguageType.CHINESE
+    ) -> list[NodeMetaDataItem] | None:
         """
         serviceId获取service的接口数据，并将接口转换为节点元数据
 
@@ -91,11 +94,21 @@ class FlowManager:
                 except Exception:
                     logger.exception("[FlowManager] generate_from_schema 失败")
                     continue
+
+                if service_id == "":
+                    call_class: type[BaseModel] = await Pool().get_call(node_pool_record["_id"])
+                    call_class.language = language
+                    node_name = call_class.info().name
+                    node_description = call_class.info().description
+                else:
+                    node_name = node_pool_record["name"]
+                    node_description = node_pool_record["description"]
+
                 node_meta_data_item = NodeMetaDataItem(
                     nodeId=node_pool_record["_id"],
                     callId=node_pool_record["call_id"],
-                    name=node_pool_record["name"],
-                    description=node_pool_record["description"],
+                    name=node_name,
+                    description=node_description,
                     editable=True,
                     createdAt=node_pool_record["created_at"],
                     parameters=parameters,  # 添加 parametersTemplate 参数
@@ -108,7 +121,9 @@ class FlowManager:
             return nodes_meta_data_items
 
     @staticmethod
-    async def get_service_by_user_id(user_sub: str) -> list[NodeServiceItem] | None:
+    async def get_service_by_user_id(
+        user_sub: str, language: LanguageType = LanguageType.CHINESE
+    ) -> list[NodeServiceItem] | None:
         """
         通过user_id获取用户自己上传的、其他人公开的且收藏的、受保护且有权限访问并收藏的service
 
@@ -148,7 +163,14 @@ class FlowManager:
                 sort=[("created_at", ASCENDING)],
             )
             service_records = await service_records_cursor.to_list(length=None)
-            service_items = [NodeServiceItem(serviceId="", name="系统", type="system", nodeMetaDatas=[])]
+            service_items = [
+                NodeServiceItem(
+                    serviceId="",
+                    name="系统" if language == LanguageType.CHINESE else "System",
+                    type="system",
+                    nodeMetaDatas=[],
+                )
+            ]
             service_items += [
                 NodeServiceItem(
                     serviceId=record["_id"],
@@ -160,7 +182,9 @@ class FlowManager:
                 for record in service_records
             ]
             for service_item in service_items:
-                node_meta_datas = await FlowManager.get_node_id_by_service_id(service_item.service_id)
+                node_meta_datas = await FlowManager.get_node_id_by_service_id(
+                    service_item.service_id, language
+                )
                 if node_meta_datas is None:
                     node_meta_datas = []
                 service_item.node_meta_datas = node_meta_datas
@@ -410,7 +434,6 @@ class FlowManager:
                 flow_config.debug = await FlowManager.is_flow_config_equal(old_flow_config, flow_config)
             else:
                 flow_config.debug = False
-            logger.error(f'{flow_config}')
             await flow_loader.save(app_id, flow_id, flow_config)
         except Exception:
             logger.exception("[FlowManager] 存储/更新流失败")
