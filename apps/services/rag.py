@@ -152,6 +152,12 @@ class RAG:
         for doc_chunk in doc_chunk_list:
             if doc_chunk["docId"] not in doc_id_map:
                 doc_cnt += 1
+                t = doc_chunk.get("docCreatedAt", None)
+                if isinstance(t, str):
+                    t = datetime.strptime(t, '%Y-%m-%d %H:%M')
+                    t = round(t.replace(tzinfo=UTC).timestamp(), 3)
+                else:
+                    t = round(datetime.now(UTC).timestamp(), 3)
                 doc_info_list.append({
                     "id": doc_chunk["docId"],
                     "order": doc_cnt,
@@ -160,7 +166,7 @@ class RAG:
                     "extension": doc_chunk.get("docExtension", ""),
                     "abstract": doc_chunk.get("docAbstract", ""),
                     "size": doc_chunk.get("docSize", 0),
-                    "created_at": doc_chunk.get("docCreatedAt", round(datetime.now(UTC).timestamp(), 3)),
+                    "created_at": t,
                 })
                 doc_id_map[doc_chunk["docId"]] = doc_cnt
             doc_index = doc_id_map[doc_chunk["docId"]]
