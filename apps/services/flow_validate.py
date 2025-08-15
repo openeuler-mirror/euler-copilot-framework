@@ -158,10 +158,11 @@ class FlowService:
 
             if e.source_node not in branches:
                 branches[e.source_node] = set()
-            if e.branch_id in branches[e.source_node]:
-                err = f"[FlowService] 边{e.edge_id}的分支{e.branch_id}重复"
-                logger.error(err)
-                raise FlowEdgeValidationError(err)
+            # FEATURE: allow one node's next_step have multiple nodes, next step node's run like stack FILO
+            # if e.branch_id in branches[e.source_node]:
+            #     err = f"[FlowService] 边{e.edge_id}的分支{e.branch_id}重复"
+            #     logger.error(err)
+            #     raise FlowEdgeValidationError(err)
             branches[e.source_node].add(e.branch_id)
 
             in_deg[e.target_node] = in_deg.get(e.target_node, 0) + 1
