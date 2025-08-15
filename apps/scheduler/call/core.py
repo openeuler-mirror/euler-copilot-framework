@@ -14,7 +14,7 @@ from pydantic.json_schema import SkipJsonSchema
 
 from apps.llm.function import FunctionLLM
 from apps.llm.reasoning import ReasoningLLM
-from apps.schemas.enum_var import CallOutputType
+from apps.schemas.enum_var import CallOutputType, LanguageType
 from apps.schemas.pool import NodePool
 from apps.schemas.scheduler import (
     CallError,
@@ -25,6 +25,7 @@ from apps.schemas.scheduler import (
     CallVars,
 )
 from apps.schemas.task import FlowStepHistory
+from apps.schemas.enum_var import LanguageType
 
 if TYPE_CHECKING:
     from apps.scheduler.executor.step import StepExecutor
@@ -52,7 +53,9 @@ class CoreCall(BaseModel):
     name: SkipJsonSchema[str] = Field(description="Step的名称", exclude=True)
     description: SkipJsonSchema[str] = Field(description="Step的描述", exclude=True)
     node: SkipJsonSchema[NodePool | None] = Field(description="节点信息", exclude=True)
-    enable_filling: SkipJsonSchema[bool] = Field(description="是否需要进行自动参数填充", default=False, exclude=True)
+    enable_filling: SkipJsonSchema[bool] = Field(
+        description="是否需要进行自动参数填充", default=False, exclude=True
+    )
     tokens: SkipJsonSchema[CallTokens] = Field(
         description="Call的输入输出Tokens信息",
         default=CallTokens(),
@@ -68,6 +71,12 @@ class CoreCall(BaseModel):
         exclude=True,
         frozen=True,
     )
+    language: ClassVar[SkipJsonSchema[LanguageType]] = Field(
+        description="语言",
+        default=LanguageType.CHINESE,
+        exclude=True,
+    )
+    i18n_info: ClassVar[SkipJsonSchema[dict[str, dict]]] = {}
 
     to_user: bool = Field(description="是否需要将输出返回给用户", default=False)
 
@@ -76,7 +85,9 @@ class CoreCall(BaseModel):
         extra="allow",
     )
 
-    def __init_subclass__(cls, input_model: type[DataBase], output_model: type[DataBase], **kwargs: Any) -> None:
+    def __init_subclass__(
+        cls, input_model: type[DataBase], output_model: type[DataBase], **kwargs: Any
+    ) -> None:
         """初始化子类"""
         super().__init_subclass__(**kwargs)
         cls.input_model = input_model
@@ -181,9 +192,14 @@ class CoreCall(BaseModel):
     async def _after_exec(self, input_data: dict[str, Any]) -> None:
         """Call类实例的执行后方法"""
 
-    async def exec(self, executor: "StepExecutor", input_data: dict[str, Any]) -> AsyncGenerator[CallOutputChunk, None]:
+    async def exec(
+        self,
+        executor: "StepExecutor",
+        input_data: dict[str, Any],
+        language: LanguageType = LanguageType.CHINESE,
+    ) -> AsyncGenerator[CallOutputChunk, None]:
         """Call类实例的执行方法"""
-        async for chunk in self._exec(input_data):
+        async for chunk in self._exec(input_data, language):
             yield chunk
         await self._after_exec(input_data)
 

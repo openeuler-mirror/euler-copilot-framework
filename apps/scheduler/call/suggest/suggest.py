@@ -3,7 +3,7 @@
 
 import random
 from collections.abc import AsyncGenerator
-from typing import TYPE_CHECKING, Any, Self
+from typing import TYPE_CHECKING, Any, Self, ClassVar
 
 from jinja2 import BaseLoader
 from jinja2.sandbox import SandboxedEnvironment
@@ -20,7 +20,7 @@ from apps.scheduler.call.suggest.schema import (
     SuggestionInput,
     SuggestionOutput,
 )
-from apps.schemas.enum_var import CallOutputType
+from apps.schemas.enum_var import CallOutputType, LanguageType
 from apps.schemas.pool import NodePool
 from apps.schemas.record import RecordContent
 from apps.schemas.scheduler import (
@@ -47,11 +47,27 @@ class Suggestion(CoreCall, input_model=SuggestionInput, output_model=SuggestionO
     context: SkipJsonSchema[list[dict[str, str]]] = Field(description="Executor的上下文", exclude=True)
     conversation_id: SkipJsonSchema[str] = Field(description="对话ID", exclude=True)
 
+    i18n_info: ClassVar[dict[str, dict]] = {
+        LanguageType.CHINESE: {
+            "name": "问题推荐",
+            "description": "在答案下方显示推荐的下一个问题",
+        },
+        LanguageType.ENGLISH: {
+            "name": "Question Suggestion",
+            "description": "Display the suggested next question under the answer",
+        },
+    }
+
     @classmethod
     def info(cls) -> CallInfo:
-        """返回Call的名称和描述"""
-        return CallInfo(name="问题推荐", description="在答案下方显示推荐的下一个问题")
+        """
+        返回Call的名称和描述
 
+        :return: Call的名称和描述
+        :rtype: CallInfo
+        """
+        lang_info = cls.i18n_info.get(cls.language, cls.i18n_info[LanguageType.CHINESE])
+        return CallInfo(name=lang_info["name"], description=lang_info["description"])
 
     @classmethod
     async def instance(cls, executor: "StepExecutor", node: NodePool | None, **kwargs: Any) -> Self:
@@ -124,8 +140,9 @@ class Suggestion(CoreCall, input_model=SuggestionInput, output_model=SuggestionO
             history_questions.append(record_data.question)
         return history_questions
 
-
-    async def _exec(self, input_data: dict[str, Any]) -> AsyncGenerator[CallOutputChunk, None]:
+    async def _exec(
+        self, input_data: dict[str, Any], language: LanguageType = LanguageType.CHINESE
+    ) -> AsyncGenerator[CallOutputChunk, None]:
         """运行问题推荐"""
         data = SuggestionInput(**input_data)
 
@@ -141,7 +158,7 @@ class Suggestion(CoreCall, input_model=SuggestionInput, output_model=SuggestionO
         # 已推送问题数量
         pushed_questions = 0
         # 初始化Prompt
-        prompt_tpl = self._env.from_string(SUGGEST_PROMPT)
+        prompt_tpl = self._env.from_string(SUGGEST_PROMPT[language])
 
         # 先处理configs
         for config in self.configs:

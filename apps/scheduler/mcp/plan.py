@@ -8,14 +8,16 @@ from apps.llm.function import JsonGenerator
 from apps.llm.reasoning import ReasoningLLM
 from apps.scheduler.mcp.prompt import CREATE_PLAN, FINAL_ANSWER
 from apps.schemas.mcp import MCPPlan, MCPTool
+from apps.schemas.enum_var import LanguageType
 
 
 class MCPPlanner:
     """MCP 用户目标拆解与规划"""
 
-    def __init__(self, user_goal: str) -> None:
+    def __init__(self, user_goal: str, language: LanguageType = LanguageType.CHINESE) -> None:
         """初始化MCP规划器"""
         self.user_goal = user_goal
+        self.language = language
         self._env = SandboxedEnvironment(
             loader=BaseLoader,
             autoescape=True,
@@ -24,7 +26,6 @@ class MCPPlanner:
         )
         self.input_tokens = 0
         self.output_tokens = 0
-
 
     async def create_plan(self, tool_list: list[MCPTool], max_steps: int = 6) -> MCPPlan:
         """规划下一步的执行流程，并输出"""
@@ -38,7 +39,7 @@ class MCPPlanner:
     async def _get_reasoning_plan(self, tool_list: list[MCPTool], max_steps: int) -> str:
         """获取推理大模型的结果"""
         # 格式化Prompt
-        template = self._env.from_string(CREATE_PLAN)
+        template = self._env.from_string(CREATE_PLAN[self.language])
         prompt = template.render(
             goal=self.user_goal,
             tools=tool_list,
@@ -88,7 +89,7 @@ class MCPPlanner:
 
     async def generate_answer(self, plan: MCPPlan, memory: str) -> str:
         """生成最终回答"""
-        template = self._env.from_string(FINAL_ANSWER)
+        template = self._env.from_string(FINAL_ANSWER[self.language])
         prompt = template.render(
             plan=plan,
             memory=memory,

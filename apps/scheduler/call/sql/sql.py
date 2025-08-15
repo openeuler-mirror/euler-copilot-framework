@@ -3,7 +3,7 @@
 
 import logging
 from collections.abc import AsyncGenerator
-from typing import Any
+from typing import Any, ClassVar
 
 import httpx
 from fastapi import status
@@ -12,7 +12,7 @@ from pydantic import Field
 from apps.common.config import Config
 from apps.scheduler.call.core import CoreCall
 from apps.scheduler.call.sql.schema import SQLInput, SQLOutput
-from apps.schemas.enum_var import CallOutputType
+from apps.schemas.enum_var import CallOutputType, LanguageType
 from apps.schemas.scheduler import (
     CallError,
     CallInfo,
@@ -21,6 +21,17 @@ from apps.schemas.scheduler import (
 )
 
 logger = logging.getLogger(__name__)
+
+MESSAGE = {
+    "invaild": {
+        LanguageType.CHINESE: "SQL查询错误：无法生成有效的SQL语句！",
+        LanguageType.ENGLISH: "SQL query error: Unable to generate valid SQL statements!",
+    },
+    "fail": {
+        LanguageType.CHINESE: "SQL查询错误：SQL语句执行失败！",
+        LanguageType.ENGLISH: "SQL query error: SQL statement execution failed!",
+    },
+}
 
 
 class SQL(CoreCall, input_model=SQLInput, output_model=SQLOutput):
@@ -31,12 +42,27 @@ class SQL(CoreCall, input_model=SQLInput, output_model=SQLOutput):
     top_k: int = Field(description="生成SQL语句数量",default=5)
     use_llm_enhancements: bool = Field(description="是否使用大模型增强", default=False)
 
+    i18n_info: ClassVar[dict[str, dict]] = {
+        LanguageType.CHINESE: {
+            "name": "SQL查询",
+            "description": "使用大模型生成SQL语句，用于查询数据库中的结构化数据",
+        },
+        LanguageType.ENGLISH: {
+            "name": "SQL Query",
+            "description": "Use the foundation model to generate SQL statements to query structured data in the databases",
+        },
+    }
 
     @classmethod
     def info(cls) -> CallInfo:
-        """返回Call的名称和描述"""
-        return CallInfo(name="SQL查询", description="使用大模型生成SQL语句，用于查询数据库中的结构化数据")
+        """
+        返回Call的名称和描述
 
+        :return: Call的名称和描述
+        :rtype: CallInfo
+        """
+        lang_info = cls.i18n_info.get(cls.language, cls.i18n_info[LanguageType.CHINESE])
+        return CallInfo(name=lang_info["name"], description=lang_info["description"])
 
     async def _init(self, call_vars: CallVars) -> SQLInput:
         """初始化SQL工具。"""
@@ -113,16 +139,17 @@ class SQL(CoreCall, input_model=SQLInput, output_model=SQLOutput):
 
         return None, None
 
-
-    async def _exec(self, input_data: dict[str, Any]) -> AsyncGenerator[CallOutputChunk, None]:
-        """运行SQL工具"""
+    async def _exec(
+        self, input_data: dict[str, Any], language: LanguageType = LanguageType.CHINESE
+    ) -> AsyncGenerator[CallOutputChunk, None]:
+        """运行SQL工具"""  
         data = SQLInput(**input_data)
 
         # 生成SQL语句
         sql_list = await self._generate_sql(data)
         if not sql_list:
             raise CallError(
-                message="SQL查询错误：无法生成有效的SQL语句！",
+                message=MESSAGE["invaild"][language],
                 data={},
             )
 
@@ -130,7 +157,7 @@ class SQL(CoreCall, input_model=SQLInput, output_model=SQLOutput):
         sql_exec_results, sql_exec = await self._execute_sql(sql_list)
         if sql_exec_results is None or sql_exec is None:
             raise CallError(
-                message="SQL查询错误：SQL语句执行失败！",
+                message=MESSAGE["fail"][language],
                 data={},
             )
 

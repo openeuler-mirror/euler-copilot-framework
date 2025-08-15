@@ -2,7 +2,7 @@
 """提取事实工具"""
 
 from collections.abc import AsyncGenerator
-from typing import TYPE_CHECKING, Any, Self
+from typing import TYPE_CHECKING, Any, Self, ClassVar
 
 from jinja2 import BaseLoader
 from jinja2.sandbox import SandboxedEnvironment
@@ -16,7 +16,7 @@ from apps.scheduler.call.facts.schema import (
     FactsInput,
     FactsOutput,
 )
-from apps.schemas.enum_var import CallOutputType
+from apps.schemas.enum_var import CallOutputType, LanguageType
 from apps.schemas.pool import NodePool
 from apps.schemas.scheduler import CallInfo, CallOutputChunk, CallVars
 from apps.services.user_domain import UserDomainManager
@@ -30,10 +30,27 @@ class FactsCall(CoreCall, input_model=FactsInput, output_model=FactsOutput):
 
     answer: str = Field(description="用户输入")
 
+    i18n_info: ClassVar[dict[str, dict]] = {
+        LanguageType.CHINESE: {
+            "name": "提取事实",
+            "description": "从对话上下文和文档片段中提取事实。",
+        },
+        LanguageType.ENGLISH: {
+            "name": "Fact Extraction",
+            "description": "Extract facts from the conversation context and document snippets.",
+        },
+    }
+
     @classmethod
     def info(cls) -> CallInfo:
-        """返回Call的名称和描述"""
-        return CallInfo(name="提取事实", description="从对话上下文和文档片段中提取事实。")
+        """
+        返回Call的名称和描述
+
+        :return: Call的名称和描述
+        :rtype: CallInfo
+        """
+        lang_info = cls.i18n_info.get(cls.language, cls.i18n_info[LanguageType.CHINESE])
+        return CallInfo(name=lang_info["name"], description=lang_info["description"])
 
     @classmethod
     async def instance(cls, executor: "StepExecutor", node: NodePool | None, **kwargs: Any) -> Self:
@@ -62,7 +79,9 @@ class FactsCall(CoreCall, input_model=FactsInput, output_model=FactsOutput):
             message=message,
         )
 
-    async def _exec(self, input_data: dict[str, Any]) -> AsyncGenerator[CallOutputChunk, None]:
+    async def _exec(
+        self, input_data: dict[str, Any], language: LanguageType = LanguageType.CHINESE
+    ) -> AsyncGenerator[CallOutputChunk, None]:
         """执行工具"""
         data = FactsInput(**input_data)
         # jinja2 环境
@@ -74,7 +93,7 @@ class FactsCall(CoreCall, input_model=FactsInput, output_model=FactsOutput):
         )
 
         # 提取事实信息
-        facts_tpl = env.from_string(FACTS_PROMPT)
+        facts_tpl = env.from_string(FACTS_PROMPT[language])
         facts_prompt = facts_tpl.render(conversation=data.message)
         facts_obj: FactsGen = await self._json([
             {"role": "system", "content": "You are a helpful assistant."},
@@ -82,7 +101,7 @@ class FactsCall(CoreCall, input_model=FactsInput, output_model=FactsOutput):
         ], FactsGen)  # type: ignore[arg-type]
 
         # 更新用户画像
-        domain_tpl = env.from_string(DOMAIN_PROMPT)
+        domain_tpl = env.from_string(DOMAIN_PROMPT[language])
         domain_prompt = domain_tpl.render(conversation=data.message)
         domain_list: DomainGen = await self._json([
             {"role": "system", "content": "You are a helpful assistant."},
@@ -100,7 +119,12 @@ class FactsCall(CoreCall, input_model=FactsInput, output_model=FactsOutput):
             ).model_dump(by_alias=True, exclude_none=True),
         )
 
-    async def exec(self, executor: "StepExecutor", input_data: dict[str, Any]) -> AsyncGenerator[CallOutputChunk, None]:
+    async def exec(
+        self,
+        executor: "StepExecutor",
+        input_data: dict[str, Any],
+        language: LanguageType = LanguageType.CHINESE,
+    ) -> AsyncGenerator[CallOutputChunk, None]:
         """执行工具"""
         async for chunk in self._exec(input_data):
             content = chunk.content

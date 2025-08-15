@@ -93,14 +93,11 @@ class MCPAgentExecutor(BaseExecutor):
                 self.tools[tool.id] = tool
             self.tool_list.extend(mcp_service.tools)
         self.tools[FINAL_TOOL_ID] = MCPTool(
-            id=FINAL_TOOL_ID,
-            name="Final Tool",
-            description="结束流程的工具",
-            mcp_id="",
-            input_schema={}
+            id=FINAL_TOOL_ID, name="Final Tool", description="结束流程的工具", mcp_id="", input_schema={},
         )
-        self.tool_list.append(MCPTool(id=FINAL_TOOL_ID, name="Final Tool",
-                              description="结束流程的工具", mcp_id="", input_schema={}))
+        self.tool_list.append(
+            MCPTool(id=FINAL_TOOL_ID, name="Final Tool", description="结束流程的工具", mcp_id="", input_schema={}),
+        )
 
     async def get_tool_input_param(self, is_first: bool) -> None:
         if is_first:

@@ -14,6 +14,7 @@ from apps.llm.reasoning import ReasoningLLM
 from apps.scheduler.mcp.prompt import (
     MCP_SELECT,
 )
+from apps.schemas.enum_var import LanguageType
 from apps.schemas.mcp import (
     MCPCollection,
     MCPSelectResult,
@@ -48,10 +49,17 @@ class MCPSelector:
         logger.info("[MCPHelper] 查询MCP Server向量: %s, %s", query, mcp_list)
         mcp_table = await LanceDB().get_table("mcp")
         query_embedding = await Embedding.get_embedding([query])
-        mcp_vecs = await (await mcp_table.search(
-            query=query_embedding,
-            vector_column_name="embedding",
-        )).where(f"id IN {MCPSelector._assemble_sql(mcp_list)}").limit(5).to_list()
+        mcp_vecs = (
+            await (
+                await mcp_table.search(
+                    query=query_embedding,
+                    vector_column_name="embedding",
+                )
+            )
+            .where(f"id IN {MCPSelector._assemble_sql(mcp_list)}")
+            .limit(5)
+            .to_list()
+        )
 
         # 拿到名称和description
         logger.info("[MCPHelper] 查询MCP Server名称和描述: %s", mcp_vecs)
@@ -72,10 +80,7 @@ class MCPSelector:
         return llm_mcp_list
 
     async def _get_mcp_by_llm(
-        self,
-        query: str,
-        mcp_list: list[dict[str, str]],
-        mcp_ids: list[str],
+        self, query: str, mcp_list: list[dict[str, str]], mcp_ids: list[str], language
     ) -> MCPSelectResult:
         """通过LLM选择最合适的MCP Server"""
         # 初始化jinja2环境
@@ -85,7 +90,7 @@ class MCPSelector:
             trim_blocks=True,
             lstrip_blocks=True,
         )
-        template = env.from_string(MCP_SELECT)
+        template = env.from_string(MCP_SELECT[language])
         # 渲染模板
         mcp_prompt = template.render(
             mcp_list=mcp_list,
@@ -133,9 +138,7 @@ class MCPSelector:
         return result
 
     async def select_top_mcp(
-        self,
-        query: str,
-        mcp_list: list[str],
+        self, query: str, mcp_list: list[str], language: LanguageType = LanguageType.CHINESE
     ) -> MCPSelectResult:
         """
         选择最合适的MCP Server
@@ -146,10 +149,12 @@ class MCPSelector:
         llm_mcp_list = await self._get_top_mcp_by_embedding(query, mcp_list)
 
         # 通过LLM选择最合适的
-        return await self._get_mcp_by_llm(query, llm_mcp_list, mcp_list)
+        return await self._get_mcp_by_llm(query, llm_mcp_list, mcp_list, language)
 
     @staticmethod
-    async def select_top_tool(query: str, mcp_list: list[str], top_n: int = 10) -> list[MCPTool]:
+    async def select_top_tool(
+        query: str, mcp_list: list[str], top_n: int = 10
+    ) -> list[MCPTool]:
         """选择最合适的工具"""
         tool_vector = await LanceDB().get_table("mcp_tool")
         query_embedding = await Embedding.get_embedding([query])
