@@ -18,6 +18,7 @@ from apps.scheduler.scheduler import Scheduler
 from apps.scheduler.scheduler.context import save_data
 from apps.schemas.request_data import RequestData, RequestDataApp
 from apps.schemas.response_data import ResponseData
+from apps.schemas.enum_var import LanguageType
 from apps.schemas.task import Task
 from apps.services.activity import Activity
 from apps.services.blacklist import QuestionBlacklistManager, UserBlacklistManager
@@ -65,6 +66,7 @@ async def init_task(post_body: RequestData, user_sub: str, session_id: str) -> T
         post_body.conversation_id = task.ids.conversation_id
         post_body.language = task.language
         post_body.question = task.runtime.question
+    task.language = post_body.language
     return task
 
 
@@ -140,6 +142,7 @@ async def chat(
     session_id: Annotated[str, Depends(get_session)],
 ) -> StreamingResponse:
     """LLM流式对话接口"""
+    post_body.language = LanguageType.CHINESE if post_body.language in {"zh", LanguageType.CHINESE} else LanguageType.ENGLISH # 前端 Flow-Debug 传输为“zh"
     # 问题黑名单检测
     if post_body.question is not None and not await QuestionBlacklistManager.check_blacklisted_questions(input_question=post_body.question):
         # 用户扣分

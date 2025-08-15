@@ -7,10 +7,11 @@ from pydantic import BaseModel, Field
 
 from apps.common.config import Config
 from apps.schemas.appcenter import AppData
-from apps.schemas.enum_var import CommentType
+from apps.schemas.enum_var import CommentType, LanguageType
 from apps.schemas.flow_topology import FlowItem
 from apps.schemas.mcp import MCPType
-from apps.schemas.message import param
+from apps.schemas.message import FlowParams
+
 
 
 class RequestDataApp(BaseModel):
@@ -42,12 +43,12 @@ class RequestData(BaseModel):
     question: str | None = Field(default=None, max_length=2000, description="用户输入")
     conversation_id: str | None = Field(default=None, alias="conversationId", description="聊天ID")
     group_id: str | None = Field(default=None, alias="groupId", description="问答组ID")
-    language: str = Field(default="zh", description="语言")
+    language: LanguageType = Field(default=LanguageType.CHINESE, description="语言")
     files: list[str] = Field(default=[], description="文件列表")
     app: RequestDataApp | None = Field(default=None, description="应用")
     debug: bool = Field(default=False, description="是否调试")
     task_id: str | None = Field(default=None, alias="taskId", description="任务ID")
-    params: param | bool | None = Field(default=None, description="流执行过程中的参数补充", alias="params")
+    params: FlowParams | bool | None = Field(default=None, description="流执行过程中的参数补充", alias="params")
 
 
 class QuestionBlacklistRequest(BaseModel):

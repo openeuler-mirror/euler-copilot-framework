@@ -215,7 +215,7 @@ class StepExecutor(BaseExecutor):
         await self.push_message(EventType.STEP_INPUT.value, self.obj.input)
 
         # 执行步骤
-        iterator = self.obj.exec(self, self.obj.input)
+        iterator = self.obj.exec(self, self.obj.input, language=self.task.language)
 
         try:
             content = await self._process_chunk(iterator, to_user=self.obj.to_user)

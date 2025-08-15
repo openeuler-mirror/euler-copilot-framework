@@ -11,6 +11,7 @@ from apps.llm.function import JsonGenerator
 from apps.llm.patterns.core import CorePattern
 from apps.llm.reasoning import ReasoningLLM
 from apps.llm.snippet import choices_to_prompt
+from apps.schemas.enum_var import LanguageType
 
 logger = logging.getLogger(__name__)
 
@@ -18,10 +19,14 @@ logger = logging.getLogger(__name__)
 class Select(CorePattern):
     """通过投票选择最佳答案"""
 
-    system_prompt: str = "You are a helpful assistant."
+    system_prompt: dict[LanguageType, str] = {
+        LanguageType.CHINESE: "你是一个有用的助手。",
+        LanguageType.ENGLISH: "You are a helpful assistant.",
+    }
     """系统提示词"""
 
-    user_prompt: str = r"""
+    user_prompt: dict[LanguageType, str] = {
+        LanguageType.CHINESE: r"""
         <instructions>
             <instruction>
                 根据历史对话（包括工具调用结果）和用户问题，从给出的选项列表中，选出最符合要求的那一项。
@@ -71,7 +76,63 @@ class Select(CorePattern):
 
         <reasoning>
           让我们一步一步思考。
-    """
+    """,
+        LanguageType.ENGLISH: r"""
+        <instructions>
+            <instruction>
+                Based on the historical dialogue (including tool call results) and user question, select the most \
+                suitable option from the given option list.
+                Before outputting, please think carefully and use the "<think>" tag to give the thinking process.
+                The output needs to be in JSON format, the output format is: {{ "choice": "option name" }}
+            </instruction>
+
+            <example>
+                <input>
+                    <question>Use the weather API to query the weather information of Hangzhou tomorrow</question>
+
+                    <options>
+                        <item>
+                            <name>API</name>
+                            <description>HTTP request, get the returned JSON data</description>
+                        </item>
+                        <item>
+                            <name>SQL</name>
+                            <description>Query the database, get the data in the database table</description>
+                        </item>
+                    </options>
+                </input>
+
+                <reasoning>
+                    The API tool can get external data through API, and the weather information may be stored in \
+                    external data. Since the user clearly mentioned the use of weather API, it should be given \
+                    priority to the API tool.\
+                    The SQL tool is used to get information from the database, considering the variability and \
+                    dynamism of weather data, it is unlikely to be stored in the database, so the priority of \
+                    the SQL tool is relatively low, \
+                    The best choice seems to be "API: request a specific API, get the returned JSON data".
+                </reasoning>
+
+                <output>
+                    {{ "choice": "API" }}
+                </output>
+            </example>
+        </instructions>
+        <input>
+                <question>
+                    {question}
+                </question>
+
+                <options>
+                    {choice_list}
+                </options>
+            </input>
+
+            <reasoning>
+                Let's think step by step.
+            </reasoning>
+        </input>
+    """,
+    }
     """用户提示词"""
 
     slot_schema: ClassVar[dict[str, Any]] = {
@@ -86,17 +147,19 @@ class Select(CorePattern):
     }
     """最终输出的JSON Schema"""
 
-
-    def __init__(self, system_prompt: str | None = None, user_prompt: str | None = None) -> None:
-        """初始化Prompt"""
+    def __init__(
+        self,
+        system_prompt: dict[LanguageType, str] | None = None,
+        user_prompt: dict[str, str] | None = None,
+    ) -> None:
+        """处理Prompt"""
         super().__init__(system_prompt, user_prompt)
-
 
     async def _generate_single_attempt(self, user_input: str, choice_list: list[str]) -> str:
         """使用ReasoningLLM进行单次尝试"""
         logger.info("[Select] 单次选择尝试: %s", user_input)
         messages = [
-            {"role": "system", "content": self.system_prompt},
+            {"role": "system", "content": self.system_prompt[self.language]},
             {"role": "user", "content": user_input},
         ]
         result = ""
@@ -128,6 +191,7 @@ class Select(CorePattern):
         result_list = []
 
         background = kwargs.get("background", "无背景信息。")
+        self.language = kwargs.get("language", LanguageType.CHINESE)
         data_str = json.dumps(kwargs.get("data", {}), ensure_ascii=False)
 
         choice_prompt, choices_list = choices_to_prompt(kwargs["choices"])
@@ -141,7 +205,7 @@ class Select(CorePattern):
             return choices_list[0]
 
         logger.info("[Select] 选项列表: %s", choice_prompt)
-        user_input = self.user_prompt.format(
+        user_input = self.user_prompt[self.language].format(
             question=kwargs["question"],
             background=background,
             data=data_str,
