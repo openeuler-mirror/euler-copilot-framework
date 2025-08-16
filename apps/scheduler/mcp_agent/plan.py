@@ -217,9 +217,6 @@ class MCPPlanner(MCPBase):
         # 使用Step模型解析结果
 
         step = Step.model_validate(step)
-        if len(step.description) > 15:
-            # 限制步骤描述长度为15个字符
-            step.description = step.description[:15]+'...'
         return step
 
     @staticmethod
