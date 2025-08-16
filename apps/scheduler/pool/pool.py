@@ -60,7 +60,6 @@ class Pool:
             await Path(root_dir + "mcp").unlink(missing_ok=True)
             await Path(root_dir + "mcp").mkdir(parents=True, exist_ok=True)
 
-
     @staticmethod
     async def init() -> None:
         """
@@ -121,12 +120,14 @@ class Pool:
         for app in changed_app:
             hash_key = Path("app/" + app).as_posix()
             if hash_key in checker.hashes:
-                await app_loader.load(app, checker.hashes[hash_key])
-
+                try:
+                    await app_loader.load(app, checker.hashes[hash_key])
+                except Exception as e:
+                    await app_loader.delete(app, is_reload=True)
+                    logger.warning("[Pool] 加载App %s 失败: %s", app, e)
         # 载入MCP
         logger.info("[Pool] 载入MCP")
         await MCPLoader.init()
-
 
     async def get_flow_metadata(self, app_id: str) -> list[AppFlow]:
         """从数据库中获取特定App的全部Flow的元数据"""
@@ -145,13 +146,11 @@ class Pool:
         else:
             return flow_metadata_list
 
-
     async def get_flow(self, app_id: str, flow_id: str) -> Flow | None:
         """从文件系统中获取单个Flow的全部数据"""
         logger.info("[Pool] 获取工作流 %s", flow_id)
         flow_loader = FlowLoader()
         return await flow_loader.load(app_id, flow_id)
-
 
     async def get_call(self, call_id: str) -> Any:
         """[Exception] 拿到Call的信息"""

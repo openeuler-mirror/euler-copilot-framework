@@ -9,7 +9,7 @@ import tempfile
 import uuid
 from collections.abc import AsyncGenerator
 from pathlib import Path
-from typing import Any
+from typing import Any, ClassVar
 
 import httpx
 
@@ -19,7 +19,7 @@ from apps.scheduler.call.core import CoreCall
 from apps.scheduler.call.file_extract.schema import FileExtractInput, FileExtractOutput
 from apps.scheduler.variable.pool_manager import get_pool_manager
 from apps.scheduler.variable.type import VariableType
-from apps.schemas.enum_var import CallType
+from apps.schemas.enum_var import CallType, LanguageType
 from apps.schemas.scheduler import CallInfo, CallVars, CallOutputChunk, CallOutputType, CallError
 from pydantic import Field
 
@@ -28,7 +28,20 @@ logger = logging.getLogger(__name__)
 
 class FileExtract(CoreCall, input_model=FileExtractInput, output_model=FileExtractOutput):
     """文件提取器Call"""
-    
+    i18n_info: ClassVar[dict[str, dict]] = {
+        LanguageType.CHINESE: {
+            "name": "文件提取器",
+            "type": CallType.TRANSFORM,
+            "description": "从文件中提取文本内容，支持多种文件格式的解析",
+        },
+        LanguageType.ENGLISH: {
+            "name": "FileExtract",
+            "type": CallType.TRANSFORM,
+            "description": "Extract text content from different kinds of document",
+        },
+    }
+
+    controlled_output: bool = Field(default=True)
     # 添加output_parameters字段支持
     output_parameters: dict[str, Any] = Field(description="输出参数配置", default={
         "text": {"type": "string", "description": "提取的文本内容"},
@@ -142,20 +155,6 @@ class FileExtract(CoreCall, input_model=FileExtractInput, output_model=FileExtra
         
         return error_msg, error_details
 
-    @classmethod
-    def info(cls) -> CallInfo:
-        """
-        返回Call的名称和描述
-
-        :return: Call的名称和描述
-        :rtype: CallInfo
-        """
-        return CallInfo(
-            name="文件提取器",
-            type=CallType.TRANSFORM,
-            description="从文件中提取文本内容，支持多种文件格式的解析"
-        )
-
     async def _init(self, call_vars: CallVars) -> FileExtractInput:
         """
         初始化Call
@@ -219,8 +218,24 @@ class FileExtract(CoreCall, input_model=FileExtractInput, output_model=FileExtra
             # 处理文件
             report_info = ""
             if var_type == VariableType.FILE:
-                # 单个文件 - 直接使用文件ID
-                file_id = file_variable.value
+                # 单个文件 - 需要从变量值中提取文件ID
+                if isinstance(file_variable.value, dict):
+                    # 如果是字典格式，提取file_id字段
+                    file_id = file_variable.value.get('file_id')
+                    if not file_id:
+                        raise CallError(
+                            message="文件变量格式错误：缺少file_id字段",
+                            data={"file_variable_value": file_variable.value}
+                        )
+                elif isinstance(file_variable.value, str):
+                    # 如果是字符串格式，直接使用
+                    file_id = file_variable.value
+                else:
+                    raise CallError(
+                        message=f"文件变量格式不支持：{type(file_variable.value)}",
+                        data={"file_variable_value": file_variable.value}
+                    )
+                
                 text_content, report_info = await self._process_single_file(file_id, parse_method, call_vars, file_variable)
             else:
                 # 文件数组 - 从变量值中提取file_ids
@@ -228,8 +243,19 @@ class FileExtract(CoreCall, input_model=FileExtractInput, output_model=FileExtra
                     file_ids = file_variable.value['file_ids']
                     text_content, report_info = await self._process_file_array(file_ids, parse_method, call_vars, file_variable)
                 else:
-                    # 兼容性处理：如果值就是文件ID列表
-                    file_ids = file_variable.value if isinstance(file_variable.value, list) else [file_variable.value]
+                    # 兼容性处理：如果值就是文件ID列表或单个文件ID
+                    if isinstance(file_variable.value, list):
+                        file_ids = file_variable.value
+                    elif isinstance(file_variable.value, str):
+                        file_ids = [file_variable.value]
+                    elif isinstance(file_variable.value, dict) and 'file_id' in file_variable.value:
+                        # 如果是单个文件字典格式，提取file_id并转为列表
+                        file_ids = [file_variable.value['file_id']]
+                    else:
+                        raise CallError(
+                            message=f"数组文件变量格式不支持：{type(file_variable.value)}",
+                            data={"file_variable_value": file_variable.value}
+                        )
                     text_content, report_info = await self._process_file_array(file_ids, parse_method, call_vars, file_variable)
             
             # 将结果存储到对话级变量池（基于conversation_id的实际对话变量）
@@ -706,7 +732,7 @@ class FileExtract(CoreCall, input_model=FileExtractInput, output_model=FileExtra
                             
                             # 使用新的/doc/full_text接口获取文档全文
                             full_text_url = f"{rag_host}/doc/temporary/text"
-                            full_text_params = {"docId": task_id}
+                            full_text_params = {"id": task_id}
                             
                             logger.info(f"获取文档全文: {full_text_url}")
                             full_text_resp = await client.get(full_text_url, headers=headers, params=full_text_params, timeout=30.0)

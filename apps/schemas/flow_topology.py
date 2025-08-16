@@ -5,6 +5,7 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
+from apps.schemas.enum_var import SpecialCallType
 from apps.schemas.enum_var import CallType, EdgeType
 
 
@@ -52,7 +53,7 @@ class NodeItem(BaseModel):
     service_id: str = Field(alias="serviceId", default="")
     node_id: str = Field(alias="nodeId", default="")
     name: str = Field(default="")
-    call_id: str = Field(alias="callId", default="Empty")
+    call_id: str = Field(alias="callId", default=SpecialCallType.EMPTY.value)
     description: str = Field(default="")
     enable: bool = Field(default=True)
     parameters: dict[str, Any] = Field(default={})
@@ -82,6 +83,6 @@ class FlowItem(BaseModel):
     nodes: list[NodeItem] = Field(default=[])
     edges: list[EdgeItem] = Field(default=[])
     created_at: float | None = Field(alias="createdAt", default=0)
-    connectivity: bool = Field(default=False,description="图的开始节点和结束节点是否联通，并且除结束节点都有出边")
+    connectivity: bool = Field(default=False, description="图的开始节点和结束节点是否联通，并且除结束节点都有出边")
     focus_point: PositionItem = Field(alias="focusPoint", default=PositionItem())
     debug: bool = Field(default=False)

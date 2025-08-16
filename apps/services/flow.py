@@ -4,13 +4,14 @@
 import logging
 from typing import Any
 
+from pydantic import BaseModel, Field
 from pymongo import ASCENDING
 
 from apps.common.mongo import MongoDB
 from apps.scheduler.pool.loader.flow import FlowLoader
 from apps.scheduler.slot.slot import Slot
 from apps.schemas.collection import User
-from apps.schemas.enum_var import EdgeType, PermissionType
+from apps.schemas.enum_var import EdgeType, PermissionType, LanguageType
 from apps.schemas.flow import Edge, Flow, Step
 from apps.schemas.flow_topology import (
     EdgeItem,
@@ -20,7 +21,10 @@ from apps.schemas.flow_topology import (
     NodeServiceItem,
     PositionItem,
 )
+from apps.scheduler.pool.pool import Pool
 from apps.services.node import NodeManager
+from apps.scheduler.executor.step import StepExecutor
+
 logger = logging.getLogger(__name__)
 
 
@@ -69,7 +73,9 @@ class FlowManager:
             return (result > 0)
 
     @staticmethod
-    async def get_node_id_by_service_id(service_id: str) -> list[NodeMetaDataItem] | None:
+    async def get_node_id_by_service_id(
+        service_id: str, language: LanguageType = LanguageType.CHINESE
+    ) -> list[NodeMetaDataItem] | None:
         """
         serviceId获取service的接口数据，并将接口转换为节点元数据
 
@@ -98,12 +104,21 @@ class FlowManager:
                 except Exception:
                     logger.exception("[FlowManager] generate_from_schema 失败")
                     continue
+
+                if service_id == "":
+                    call_class: type[BaseModel] = await Pool().get_call(node_pool_record["_id"])
+                    node_name = call_class.info(language).name
+                    node_description = call_class.info().description
+                else:
+                    node_name = node_pool_record["name"]
+                    node_description = node_pool_record["description"]
+
                 node_meta_data_item = NodeMetaDataItem(
                     nodeId=node_pool_record["_id"],
                     callId=node_pool_record["call_id"],
-                    name=node_pool_record["name"],
+                    name=node_name,
                     type=node_pool_record["type"],
-                    description=node_pool_record["description"],
+                    description=node_description,
                     editable=True,
                     createdAt=node_pool_record["created_at"],
                     parameters=parameters,  # 添加 parametersTemplate 参数
@@ -116,7 +131,9 @@ class FlowManager:
             return nodes_meta_data_items
 
     @staticmethod
-    async def get_service_by_user_id(user_sub: str) -> list[NodeServiceItem] | None:
+    async def get_service_by_user_id(
+        user_sub: str, language: LanguageType = LanguageType.CHINESE
+    ) -> list[NodeServiceItem] | None:
         """
         通过user_id获取用户自己上传的、其他人公开的且收藏的、受保护且有权限访问并收藏的service
 
@@ -156,7 +173,14 @@ class FlowManager:
                 sort=[("created_at", ASCENDING)],
             )
             service_records = await service_records_cursor.to_list(length=None)
-            service_items = [NodeServiceItem(serviceId="", name="系统", type="system", nodeMetaDatas=[])]
+            service_items = [
+                NodeServiceItem(
+                    serviceId="",
+                    name="系统" if language == LanguageType.CHINESE else "System",
+                    type="system",
+                    nodeMetaDatas=[],
+                )
+            ]
             service_items += [
                 NodeServiceItem(
                     serviceId=record["_id"],
@@ -168,7 +192,9 @@ class FlowManager:
                 for record in service_records
             ]
             for service_item in service_items:
-                node_meta_datas = await FlowManager.get_node_id_by_service_id(service_item.service_id)
+                node_meta_datas = await FlowManager.get_node_id_by_service_id(
+                    service_item.service_id, language
+                )
                 if node_meta_datas is None:
                     node_meta_datas = []
                 service_item.node_meta_datas = node_meta_datas
@@ -264,28 +290,26 @@ class FlowManager:
                 debug=flow_config.debug,
             )
             for node_id, node_config in flow_config.steps.items():
-                # TODO 新增标识位区分Node是否允许用户定义output parameters，如果output固定由节点生成，则走else逻辑
-                if node_config.type == "Code" or node_config.type == "DirectReply" or node_config.type == "Choice" or node_config.type == "FileExtract":
+                # 根据Call的controlled_output属性判断是否允许用户定义output parameters
+                # TODO 两种处理分支应该有办法统一
+                try:
+                    call_cls = await StepExecutor.get_call_cls(node_config.type)
+                    # 获取controlled_output属性值，默认为False
+                    controlled_output = getattr(call_cls, 'controlled_output', False)
+                    # 如果是类字段而不是实例属性，需要从字段定义中获取默认值
+                    if hasattr(call_cls, 'model_fields') and 'controlled_output' in call_cls.model_fields:
+                        field_info = call_cls.model_fields['controlled_output']
+                        controlled_output = getattr(field_info, 'default', False)
+                except Exception as e:
+                    logger.warning(f"[FlowManager] 获取Call类型 {node_config.type} 失败: {e}")
+                    controlled_output = False
+                
+                if controlled_output:
                     parameters = node_config.params  # 直接使用保存的完整params
-                    
-                    # 为FileExtract节点确保有默认的text输出参数
-                    if node_config.type == "FileExtract":
-                        if not parameters:
-                            parameters = {}
-                        if "output_parameters" not in parameters:
-                            parameters["output_parameters"] = {}
-                        if "text" not in parameters["output_parameters"]:
-                            parameters["output_parameters"]["text"] = {
-                                "type": "string",
-                                "description": "文件提取的文本内容"
-                            }
                 else:
                     # 其他节点：使用原有逻辑
                     input_parameters = node_config.params.get("input_parameters")
-                    if node_config.node not in ("Empty"):
-                        _, output_parameters = await NodeManager.get_node_params(node_config.node)
-                    else:
-                        output_parameters = {}
+                    _, output_parameters = await NodeManager.get_node_params(node_config.node)
                     
                     # 对于循环节点，输出参数已经是扁平化格式，不需要再次处理
                     if hasattr(node_config, 'type') and node_config.type == "Loop":
@@ -883,18 +907,6 @@ class FlowManager:
                 # 参数处理逻辑与主工作流保持一致
                 if node_config.type == "Code" or node_config.type == "DirectReply" or node_config.type == "Choice" or node_config.type == "FileExtract":
                     parameters = node_config.params  # 直接使用保存的完整params
-                    
-                    # 为FileExtract节点确保有默认的text输出参数
-                    if node_config.type == "FileExtract":
-                        if not parameters:
-                            parameters = {}
-                        if "output_parameters" not in parameters:
-                            parameters["output_parameters"] = {}
-                        if "text" not in parameters["output_parameters"]:
-                            parameters["output_parameters"]["text"] = {
-                                "type": "string",
-                                "description": "文件提取的文本内容"
-                            }
                 else:
                     # 其他节点：使用原有逻辑
                     input_parameters = node_config.params.get("input_parameters")

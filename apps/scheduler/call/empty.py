@@ -2,30 +2,27 @@
 """空白Call"""
 
 from collections.abc import AsyncGenerator
-from typing import Any
+from typing import Any, ClassVar
 
 from apps.scheduler.call.core import CoreCall, DataBase
-from apps.schemas.enum_var import CallOutputType, CallType
+from apps.schemas.enum_var import CallOutputType, CallType, LanguageType
 from apps.schemas.scheduler import CallInfo, CallOutputChunk, CallVars
 
 
 class Empty(CoreCall, input_model=DataBase, output_model=DataBase):
     """空Call"""
-
-    @classmethod
-    def info(cls) -> CallInfo:
-        """
-        返回Call的名称和描述
-
-        :return: Call的名称和描述
-        :rtype: CallInfo
-        """
-        return CallInfo(
-            name="空白", 
-            type=CallType.DEFAULT,
-            description="空白节点，用于占位"
-        )
-
+    i18n_info: ClassVar[dict[str, dict]] = {
+        LanguageType.CHINESE: {
+            "name": "空白节点",
+            "type": CallType.DEFAULT,
+            "description": "空白节点，用于占位",
+        },
+        LanguageType.ENGLISH: {
+            "name": "Empty Node",
+            "type": CallType.DEFAULT,
+            "description": "Empty node for placeholder",
+        },
+    }
 
     async def _init(self, call_vars: CallVars) -> DataBase:
         """
@@ -38,7 +35,9 @@ class Empty(CoreCall, input_model=DataBase, output_model=DataBase):
         return DataBase()
 
 
-    async def _exec(self, input_data: dict[str, Any]) -> AsyncGenerator[CallOutputChunk, None]:
+    async def _exec(
+        self, input_data: dict[str, Any], language: LanguageType = LanguageType.CHINESE
+    ) -> AsyncGenerator[CallOutputChunk, None]:
         """
         执行Call
 

@@ -15,11 +15,26 @@ class SlotType(str, Enum):
 class StepStatus(str, Enum):
     """步骤状态"""
 
+    UNKNOWN = "unknown"
+    INIT = "init"
     WAITING = "waiting"
     RUNNING = "running"
     SUCCESS = "success"
     ERROR = "error"
     PARAM = "param"
+    CANCELLED = "cancelled"
+
+
+class FlowStatus(str, Enum):
+    """Flow状态"""
+
+    UNKNOWN = "unknown"
+    INIT = "init"
+    WAITING = "waiting"
+    RUNNING = "running"
+    SUCCESS = "success"
+    ERROR = "error"
+    CANCELLED = "cancelled"
 
 
 class DocumentStatus(str, Enum):
@@ -35,16 +50,22 @@ class EventType(str, Enum):
     """事件类型"""
 
     HEARTBEAT = "heartbeat"
-    INIT = "init",
+    INIT = "init"
     TEXT_ADD = "text.add"
     GRAPH = "graph"
     DOCUMENT_ADD = "document.add"
     STEP_WAITING_FOR_START = "step.waiting_for_start"
     STEP_WAITING_FOR_PARAM = "step.waiting_for_param"
     FLOW_START = "flow.start"
+    STEP_INIT = "step.init"
     STEP_INPUT = "step.input"
     STEP_OUTPUT = "step.output"
+    STEP_CANCEL = "step.cancel"
+    STEP_ERROR = "step.error"
     FLOW_STOP = "flow.stop"
+    FLOW_FAILED = "flow.failed"
+    FLOW_SUCCESS = "flow.success"
+    FLOW_CANCEL = "flow.cancel"
     DONE = "done"
 
 
@@ -196,3 +217,10 @@ class AgentState(str, Enum):
     RUNNING = "RUNNING"
     FINISHED = "FINISHED"
     ERROR = "ERROR"
+
+
+class LanguageType(str, Enum):
+    """语言类型"""
+
+    CHINESE = "zh"
+    ENGLISH = "en"

@@ -6,7 +6,7 @@ import logging
 import uuid
 import asyncio
 from collections.abc import AsyncGenerator
-from typing import Any, TYPE_CHECKING
+from typing import Any, TYPE_CHECKING, ClassVar
 
 from pydantic import Field
 
@@ -18,7 +18,7 @@ from apps.scheduler.call.choice.condition_handler import ConditionHandler
 from apps.scheduler.call.loop.schema import LoopInput, LoopOutput, LoopStopCondition
 from apps.scheduler.pool.loader.flow import FlowLoader
 from apps.scheduler.variable.integration import VariableIntegration
-from apps.schemas.enum_var import CallOutputType, CallType
+from apps.schemas.enum_var import CallOutputType, CallType, LanguageType
 from apps.schemas.flow import Flow, Step, Edge
 from apps.schemas.flow_topology import PositionItem
 from apps.schemas.scheduler import (
@@ -49,14 +49,18 @@ class Loop(CoreCall, input_model=LoopInput, output_model=LoopOutput):
     # 保存StepExecutor引用用于子工作流执行
     step_executor: Any = Field(default=None, exclude=True)
 
-    @classmethod
-    def info(cls) -> CallInfo:
-        """返回Call的名称和描述"""
-        return CallInfo(
-            name="循环",
-            type=CallType.LOGIC,
-            description="直到循环终止条件达成或最大循环次数到达之前，子工作流将不断循环执行"
-        )
+    i18n_info: ClassVar[dict[str, dict]] = {
+        LanguageType.CHINESE: {
+            "name": "循环",
+            "type": CallType.LOGIC,
+            "description": "直到循环终止条件达成或最大循环次数到达之前，子工作流将不断循环执行",
+        },
+        LanguageType.ENGLISH: {
+            "name": "Loop",
+            "type": CallType.LOGIC,
+            "description": "Subflow will be run repeatly until reaching maximum iteration or matching ending condition",
+        },
+    }
 
     async def _process_stop_condition(self, call_vars: CallVars) -> tuple[bool, str]:
         """处理停止条件
@@ -573,13 +577,13 @@ class Loop(CoreCall, input_model=LoopInput, output_model=LoopOutput):
             sub_flow_id=sub_flow_id,
         )
     
-    async def exec(self, executor: "StepExecutor", input_data: dict[str, Any]) -> AsyncGenerator[CallOutputChunk, None]:
+    async def exec(self, executor: "StepExecutor", input_data: dict[str, Any], language: LanguageType = LanguageType.CHINESE) -> AsyncGenerator[CallOutputChunk, None]:
         """重写exec方法来保存executor引用"""
         # 保存executor引用
         self.step_executor = executor
         
         # 调用父类的exec方法
-        async for chunk in super().exec(executor, input_data):
+        async for chunk in super().exec(executor, input_data, language):
             yield chunk
 
     async def _exec(self, input_data: dict[str, Any]) -> AsyncGenerator[CallOutputChunk, None]:

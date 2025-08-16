@@ -3,7 +3,7 @@
 
 import logging
 from collections.abc import AsyncGenerator
-from typing import Any
+from typing import Any, ClassVar
 
 import httpx
 from pydantic import Field
@@ -11,7 +11,7 @@ from pydantic import Field
 from apps.common.config import Config
 from apps.scheduler.call.code.schema import CodeInput, CodeOutput
 from apps.scheduler.call.core import CoreCall
-from apps.schemas.enum_var import CallOutputType, CallType
+from apps.schemas.enum_var import CallOutputType, CallType, LanguageType
 from apps.schemas.scheduler import (
     CallError,
     CallInfo,
@@ -26,6 +26,7 @@ class Code(CoreCall, input_model=CodeInput, output_model=CodeOutput):
     """代码执行工具"""
 
     to_user: bool = Field(default=True)
+    controlled_output: bool = Field(default=True)
 
     # 代码执行参数
     code: str = Field(description="要执行的代码", default="")
@@ -36,17 +37,19 @@ class Code(CoreCall, input_model=CodeInput, output_model=CodeOutput):
     cpu_limit: float = Field(description="CPU限制", default=0.5, ge=0.1, le=2.0)
     input_parameters: dict[str, Any] = Field(description="输入参数配置", default={})
     output_parameters: dict[str, Any] = Field(description="输出参数配置", default={})
-
-
-    @classmethod
-    def info(cls) -> CallInfo:
-        """返回Call的名称和描述"""
-        return CallInfo(
-            name="代码执行", 
-            type=CallType.TRANSFORM,
-            description="在安全的沙箱环境中执行Python、JavaScript、Bash代码。"
-        )
-
+    
+    i18n_info: ClassVar[dict[str, dict]] = {
+        LanguageType.CHINESE: {
+            "name": "代码执行",
+            "type": CallType.TOOL,
+            "description": "在安全的沙箱环境中执行Python、JavaScript、Bash代码",
+        },
+        LanguageType.ENGLISH: {
+            "name": "Code",
+            "type": CallType.TOOL,
+            "description": "Executing Python, JavaScript, Bash in secure sandbox",
+        },
+    }
 
     async def _init(self, call_vars: CallVars) -> CodeInput:
         """初始化代码执行工具"""

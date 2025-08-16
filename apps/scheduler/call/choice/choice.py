@@ -5,7 +5,7 @@ import ast
 import copy
 import logging
 from collections.abc import AsyncGenerator
-from typing import Any
+from typing import Any, ClassVar
 
 from pydantic import Field
 
@@ -20,7 +20,7 @@ from apps.scheduler.call.choice.schema import (
 )
 from apps.schemas.parameters import ValueType
 from apps.scheduler.call.core import CoreCall
-from apps.schemas.enum_var import CallOutputType, CallType
+from apps.schemas.enum_var import CallOutputType, CallType, LanguageType
 from apps.schemas.scheduler import (
     CallError,
     CallInfo,
@@ -35,17 +35,23 @@ class Choice(CoreCall, input_model=ChoiceInput, output_model=ChoiceOutput):
     """Choice工具"""
 
     to_user: bool = Field(default=False)
-    choices: list[ChoiceBranch] = Field(description="分支", default=[ChoiceBranch(),
-                                        ChoiceBranch(conditions=[Condition()], is_default=False)])
+    controlled_output: bool = Field(default=True)
+    choices: list[ChoiceBranch] = Field(
+        description="分支", default=[ChoiceBranch(), ChoiceBranch(conditions=[Condition()], is_default=False)]
+    )
+    i18n_info: ClassVar[dict[str, dict]] = {
+        LanguageType.CHINESE: {
+            "name": "条件分支",
+            "type": CallType.LOGIC,
+            "description": "使用大模型或使用程序做出判断",
+        },
+        LanguageType.ENGLISH: {
+            "name": "Choice",
+            "type": CallType.LOGIC,
+            "description": "Use a large model or a program to make a decision",
+        },
 
-    @classmethod
-    def info(cls) -> CallInfo:
-        """返回Call的名称和描述"""
-        return CallInfo(
-            name="条件分支", 
-            type=CallType.LOGIC,
-            description="使用大模型或使用程序做出条件判断，决定后续分支"
-        )
+    }
 
     def _validate_branch_logic(self, choice: ChoiceBranch) -> bool:
         """验证分支的逻辑运算符是否有效

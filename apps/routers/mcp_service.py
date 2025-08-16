@@ -36,6 +36,7 @@ router = APIRouter(
     dependencies=[Depends(verify_user)],
 )
 
+
 async def _check_user_admin(user_sub: str) -> None:
     user = await UserManager.get_userinfo_by_user_sub(user_sub)
     if not user:
@@ -52,6 +53,8 @@ async def get_mcpservice_list(
         ] = SearchType.ALL,
         keyword: Annotated[str | None, Query(..., alias="keyword", description="搜索关键字")] = None,
         page: Annotated[int, Query(..., alias="page", ge=1, description="页码")] = 1,
+        is_install: Annotated[bool | None, Query(..., alias="isInstall", description="是否已安装")] = None,
+        is_active: Annotated[bool | None, Query(..., alias="isActive", description="是否激活")] = None,
 ) -> JSONResponse:
     """获取服务列表"""
     try:
@@ -60,6 +63,8 @@ async def get_mcpservice_list(
             user_sub,
             keyword,
             page,
+            is_install,
+            is_active
         )
     except Exception as e:
         err = f"[MCPServiceCenter] 获取MCP服务列表失败: {e}"
@@ -89,7 +94,7 @@ async def get_mcpservice_list(
 @router.post("", response_model=UpdateMCPServiceRsp)
 async def create_or_update_mcpservice(
         user_sub: Annotated[str, Depends(get_user)],  # TODO: get_user直接获取所有用户信息
-        data: UpdateMCPServiceRequest,
+        data: UpdateMCPServiceRequest
 ) -> JSONResponse:
     """新建或更新MCP服务"""
     await _check_user_admin(user_sub)
@@ -130,6 +135,35 @@ async def create_or_update_mcpservice(
     ).model_dump(exclude_none=True, by_alias=True))
 
 
+@router.post("/{serviceId}/install")
+async def install_mcp_service(
+        user_sub: Annotated[str, Depends(get_user)],
+        service_id: Annotated[str, Path(..., alias="serviceId", description="服务ID")],
+        install: Annotated[bool, Query(..., description="是否安装")] = True,
+) -> JSONResponse:
+    try:
+        await MCPServiceManager.install_mcpservice(user_sub, service_id, install)
+    except Exception as e:
+        err = f"[MCPService] 安装mcp服务失败: {e!s}" if install else f"[MCPService] 卸载mcp服务失败: {e!s}"
+        logger.exception(err)
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content=ResponseData(
+                code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                message=err,
+                result={},
+            ).model_dump(exclude_none=True, by_alias=True),
+        )
+    return JSONResponse(
+        status_code=status.HTTP_200_OK,
+        content=ResponseData(
+            code=status.HTTP_200_OK,
+            message="OK",
+            result={},
+        ).model_dump(exclude_none=True, by_alias=True),
+    )
+
+
 @router.get("/{serviceId}", response_model=GetMCPServiceDetailRsp)
 async def get_service_detail(
         user_sub: Annotated[str, Depends(get_user)],
@@ -166,11 +200,8 @@ async def get_service_detail(
             name=data.name,
             description=data.description,
             overview=config.overview,
-            data=json.dumps(
-                config.config.model_dump(by_alias=True, exclude_none=True),
-                indent=4,
-                ensure_ascii=False,
-            ),
+            data=config.config.model_dump(
+                exclude_none=True, by_alias=True),
             mcpType=config.type,
         )
     else:
@@ -181,6 +212,7 @@ async def get_service_detail(
             name=data.name,
             description=data.description,
             overview=config.overview,
+            status=data.status,
             tools=data.tools,
         )
 
@@ -225,7 +257,7 @@ async def delete_service(
     )
 
 
-@router.post("/icon", response_model=UpdateMCPServiceRsp)
+@router.post("/icon/{serviceId}", response_model=UpdateMCPServiceRsp)
 async def update_mcp_icon(
         user_sub: Annotated[str, Depends(get_user)],
         service_id: Annotated[str, Path(..., alias="serviceId", description="服务ID")],
@@ -282,7 +314,7 @@ async def active_or_deactivate_mcp_service(
     """激活/取消激活mcp"""
     try:
         if data.active:
-            await MCPServiceManager.active_mcpservice(user_sub, service_id)
+            await MCPServiceManager.active_mcpservice(user_sub, service_id, data.mcp_env)
         else:
             await MCPServiceManager.deactive_mcpservice(user_sub, service_id)
     except Exception as e:

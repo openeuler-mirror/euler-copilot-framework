@@ -74,7 +74,7 @@ async def oidc_login(request: Request, code: str) -> HTMLResponse:
             status_code=status.HTTP_403_FORBIDDEN,
         )
 
-    await UserManager.update_userinfo_by_user_sub(user_sub)
+    await UserManager.update_refresh_revision_by_user_sub(user_sub)
 
     current_session = await SessionManager.create_session(user_host, user_sub)
 
@@ -177,6 +177,7 @@ async def userinfo(
                 user_sub=user_sub,
                 revision=user.is_active,
                 is_admin=user.is_admin,
+                auto_execute=user.auto_execute,
             ),
         ).model_dump(exclude_none=True, by_alias=True),
     )
@@ -192,7 +193,7 @@ async def userinfo(
 )
 async def update_revision_number(request: Request, user_sub: Annotated[str, Depends(get_user)]) -> JSONResponse:  # noqa: ARG001
     """更新用户协议信息"""
-    ret: bool = await UserManager.update_userinfo_by_user_sub(user_sub, refresh_revision=True)
+    ret: bool = await UserManager.update_refresh_revision_by_user_sub(user_sub, refresh_revision=True)
     if not ret:
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

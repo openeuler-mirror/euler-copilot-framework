@@ -3,6 +3,7 @@
 
 import asyncio
 import logging
+import os
 import shutil
 
 from anyio import Path
@@ -30,6 +31,9 @@ class ServiceLoader:
         """加载单个Service"""
         service_path = BASE_PATH / service_id
         # 载入元数据
+        if not os.path.exists(service_path / "metadata.yaml"):
+            logger.error("[ServiceLoader] Service %s 的元数据不存在", service_id)
+            return
         metadata = await MetadataLoader().load_one(service_path / "metadata.yaml")
         if not isinstance(metadata, ServiceMetadata):
             err = f"[ServiceLoader] 元数据类型错误: {service_path}/metadata.yaml"
@@ -48,7 +52,6 @@ class ServiceLoader:
         # 更新数据库
         await self._update_db(nodes, metadata)
 
-
     async def save(self, service_id: str, metadata: ServiceMetadata, data: dict) -> None:
         """在文件系统上保存Service，并更新数据库"""
         service_path = BASE_PATH / service_id
@@ -66,7 +69,6 @@ class ServiceLoader:
         file_checker = FileChecker()
         await file_checker.diff_one(service_path)
         await self.load(service_id, file_checker.hashes[f"service/{service_id}"])
-
 
     async def delete(self, service_id: str, *, is_reload: bool = False) -> None:
         """删除Service，并更新数据库"""
@@ -94,7 +96,6 @@ class ServiceLoader:
             path = BASE_PATH / service_id
             if await path.exists():
                 shutil.rmtree(path)
-
 
     async def _update_db(self, nodes: list[NodePool], metadata: ServiceMetadata) -> None:  # noqa: C901, PLR0912, PLR0915
         """更新数据库"""
@@ -197,4 +198,3 @@ class ServiceLoader:
                     await asyncio.sleep(0.01)
                 else:
                     raise
-

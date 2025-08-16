@@ -8,8 +8,9 @@ import re
 from apps.common.security import Security
 from apps.llm.patterns.facts import Facts
 from apps.schemas.collection import Document
-from apps.schemas.enum_var import StepStatus
+from apps.schemas.enum_var import StepStatus, FlowStatus
 from apps.schemas.record import (
+    FlowHistory,
     Record,
     RecordContent,
     RecordDocument,
@@ -188,34 +189,38 @@ async def save_data(task: Task, user_sub: str, post_body: RequestData) -> None:
             feature={},
         ),
         createdAt=current_time,
-        flow=[context.id if hasattr(context, 'id') else context.get('_id', context.get('id', '')) for context in task.context],
+        flow=FlowHistory(
+            flow_id=task.state.flow_id,
+            flow_name=task.state.flow_name,
+            flow_status=task.state.flow_status,
+            history_ids=[context.id for context in task.context],
+        )
     )
 
     # 检查是否存在group_id
     if not await RecordManager.check_group_id(task.ids.group_id, user_sub):
-        record_group = await RecordManager.create_record_group(
-            task.ids.group_id, user_sub, post_body.conversation_id, task.id,
-        )
-        if not record_group:
+        record_group_id = await RecordManager.create_record_group(
+            task.ids.group_id, user_sub, post_body.conversation_id
+         )
+        if not record_group_id:
             logger.error("[Scheduler] 创建问答组失败")
             return
     else:
-        record_group = task.ids.group_id
+        record_group_id = task.ids.group_id
 
     # 修改文件状态
-    await DocumentManager.change_doc_status(user_sub, post_body.conversation_id, record_group)
+    await DocumentManager.change_doc_status(user_sub, post_body.conversation_id, record_group_id)
     # 保存Record
-    await RecordManager.insert_record_data_into_record_group(user_sub, record_group, record)
+    await RecordManager.insert_record_data_into_record_group(user_sub, record_group_id, record)
     # 保存与答案关联的文件
-    await DocumentManager.save_answer_doc(user_sub, record_group, used_docs)
+    await DocumentManager.save_answer_doc(user_sub, record_group_id, used_docs)
 
     if post_body.app and post_body.app.app_id:
         # 更新最近使用的应用
         await AppCenterManager.update_recent_app(user_sub, post_body.app.app_id)
 
     # 若状态为成功，删除Task
-    if not task.state or task.state.status == StepStatus.SUCCESS:
+    if not task.state or task.state.flow_status == FlowStatus.SUCCESS or task.state.flow_status == FlowStatus.ERROR or task.state.flow_status == FlowStatus.CANCELLED:
         await TaskManager.delete_task_by_task_id(task.id)
     else:
-        # 更新Task
         await TaskManager.save_task(task.id, task)

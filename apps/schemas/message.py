@@ -1,12 +1,19 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2023-2025. All rights reserved.
 """队列中的消息结构"""
 
-from typing import Any
 from datetime import UTC, datetime
+from typing import Any
 from pydantic import BaseModel, Field
 
-from apps.schemas.enum_var import EventType, StepStatus
+from apps.schemas.enum_var import EventType, FlowStatus, StepStatus
 from apps.schemas.record import RecordMetadata
+
+
+class FlowParams(BaseModel):
+    """流执行过程中的参数补充"""
+
+    content: dict[str, Any] = Field(default={}, description="流执行过程中的参数补充内容")
+    description: str = Field(default="", description="流执行过程中的参数补充描述")
 
 
 class HeartbeatData(BaseModel):
@@ -22,10 +29,17 @@ class MessageFlow(BaseModel):
 
     app_id: str = Field(description="插件ID", alias="appId")
     flow_id: str = Field(description="Flow ID", alias="flowId")
+    flow_name: str = Field(description="Flow名称", alias="flowName")
+    flow_status: FlowStatus = Field(description="Flow状态", alias="flowStatus", default=FlowStatus.UNKNOWN)
     step_id: str = Field(description="当前步骤ID", alias="stepId")
     step_name: str = Field(description="当前步骤名称", alias="stepName")
     sub_step_id: str | None = Field(description="当前子步骤ID", alias="subStepId", default=None)
     sub_step_name: str | None = Field(description="当前子步骤名称", alias="subStepName", default=None)
+    step_description: str | None = Field(
+        description="当前步骤描述",
+        alias="stepDescription",
+        default=None,
+    )
     step_status: StepStatus = Field(description="当前步骤状态", alias="stepStatus")
 
 
@@ -76,8 +90,7 @@ class FlowStartContent(BaseModel):
     """flow.start消息的content"""
 
     question: str = Field(description="用户问题")
-    params: dict[str, Any] = Field(description="预先提供的参数")
-
+    params: dict[str, Any] | None = Field(description="预先提供的参数", default=None)
 
 class MessageBase(HeartbeatData):
     """基础消息事件结构"""
@@ -87,5 +100,5 @@ class MessageBase(HeartbeatData):
     conversation_id: str = Field(min_length=36, max_length=36, alias="conversationId")
     task_id: str = Field(min_length=36, max_length=36, alias="taskId")
     flow: MessageFlow | None = None
-    content: dict[str, Any] = {}
+    content: Any | None = Field(default=None, description="消息内容")
     metadata: MessageMetadata

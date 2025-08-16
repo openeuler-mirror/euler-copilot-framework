@@ -32,6 +32,7 @@ class MinioClient:
     @classmethod
     def download_file(cls, bucket_name: str, file_path: str) -> tuple[dict[str, Any], bytes]:
         """下载文件"""
+        response = None
         try:
             obj_stat = cls.client.stat_object(bucket_name, file_path)
             metadata = obj_stat.metadata if isinstance(obj_stat.metadata, dict) else {}

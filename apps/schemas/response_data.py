@@ -26,6 +26,7 @@ from apps.schemas.mcp import MCPInstallStatus, MCPTool, MCPType
 from apps.schemas.record import RecordData
 from apps.schemas.user import UserInfo
 from apps.templates.generate_llm_operator_config import llm_provider_dict
+from apps.common.config import Config
 
 
 class ResponseData(BaseModel):
@@ -55,6 +56,7 @@ class AuthUserMsg(BaseModel):
     user_sub: str
     revision: bool
     is_admin: bool
+    auto_execute: bool
 
 
 class AuthUserRsp(ResponseData):
@@ -98,7 +100,7 @@ class LLMIteam(BaseModel):
 
     icon: str = Field(default=llm_provider_dict["ollama"]["icon"])
     llm_id: str = Field(alias="llmId", default="empty")
-    model_name: str = Field(alias="modelName", default="Ollama LLM")
+    model_name: str = Field(alias="modelName", default=Config().get_config().llm.model)
 
 
 class KbIteam(BaseModel):
@@ -106,6 +108,14 @@ class KbIteam(BaseModel):
 
     kb_id: str = Field(alias="kbId")
     kb_name: str = Field(alias="kbName")
+
+
+class AppMcpServiceInfo(BaseModel):
+    """应用关联的MCP服务信息"""
+
+    id: str = Field(..., description="MCP服务ID")
+    name: str = Field(default="", description="MCP服务名称")
+    description: str = Field(default="", description="MCP服务简介")
 
 
 class ConversationListItem(BaseModel):
@@ -285,6 +295,8 @@ class GetAppPropertyMsg(AppData):
 
     app_id: str = Field(..., alias="appId", description="应用ID")
     published: bool = Field(..., description="是否已发布")
+    mcp_service: list[AppMcpServiceInfo] = Field(default=[], alias="mcpService", description="MCP服务信息列表")
+    llm: LLMIteam | None = Field(alias="llm", default=None)
 
 
 class GetAppPropertyRsp(ResponseData):
@@ -503,6 +515,10 @@ class GetMCPServiceDetailMsg(BaseModel):
     name: str = Field(..., description="MCP服务名称")
     description: str = Field(description="MCP服务描述")
     overview: str = Field(description="MCP服务概述")
+    status: MCPInstallStatus = Field(
+        description="MCP服务状态",
+        default=MCPInstallStatus.INIT,
+    )
     tools: list[MCPTool] = Field(description="MCP服务Tools列表", default=[])
 
 
@@ -514,7 +530,7 @@ class EditMCPServiceMsg(BaseModel):
     name: str = Field(..., description="MCP服务名称")
     description: str = Field(description="MCP服务描述")
     overview: str = Field(description="MCP服务概述")
-    data: str = Field(description="MCP服务配置")
+    data: dict[str, Any] = Field(description="MCP服务配置")
     mcp_type: MCPType = Field(alias="mcpType", description="MCP 类型")
 
 
@@ -582,6 +598,7 @@ class FlowStructureDeleteRsp(ResponseData):
 class UserGetMsp(BaseModel):
     """GET /api/user result"""
 
+    total: int = Field(default=0)
     user_info_list: list[UserInfo] = Field(alias="userInfoList", default=[])
 
 

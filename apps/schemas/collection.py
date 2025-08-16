@@ -61,6 +61,7 @@ class User(BaseModel):
     fav_apps: list[str] = []
     fav_services: list[str] = []
     is_admin: bool = Field(default=False, description="是否为管理员")
+    auto_execute: bool = Field(default=True, description="是否自动执行任务")
 
 
 class LLM(BaseModel):
@@ -72,6 +73,7 @@ class LLM(BaseModel):
 
     id: str = Field(default_factory=lambda: str(uuid.uuid4()), alias="_id")
     user_sub: str = Field(default="", description="用户ID")
+    title: str = Field(default=NEW_CHAT)
     icon: str = Field(default=llm_provider_dict["ollama"]["icon"], description="图标")
     openai_base_url: str = Field(default=Config().get_config().llm.endpoint)
     openai_api_key: str = Field(default=Config().get_config().llm.key)

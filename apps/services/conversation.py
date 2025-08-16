@@ -40,6 +40,7 @@ class ConversationManager:
 
     @staticmethod
     async def add_conversation_by_user_sub(
+            title: str, 
             user_sub: str, app_id: str, llm_id: str, kb_ids: list[str],
             *, debug: bool) -> Conversation | None:
         """通过用户ID新建对话"""
@@ -75,6 +76,7 @@ class ConversationManager:
         conversation_id = str(uuid.uuid4())
         conv = Conversation(
             _id=conversation_id,
+            title=title,
             user_sub=user_sub,
             app_id=app_id,
             llm=llm_item,
@@ -183,7 +185,7 @@ class ConversationManager:
         except Exception as e:
             logger.error(f"清理对话变量池失败: {e}")
 
-        await TaskManager.delete_tasks_by_conversation_id(conversation_id)
+        await TaskManager.delete_tasks_and_flow_context_by_conversation_id(conversation_id)
 
 
 async def _cleanup_transient_file_variables_in_pool(pool, user_sub: str, already_cleaned_files: list[str]) -> None:

@@ -4,7 +4,7 @@
 import logging
 import math
 from collections.abc import AsyncGenerator
-from typing import Any
+from typing import Any, ClassVar
 
 from apps.scheduler.call.core import CoreCall
 from apps.scheduler.call.variable_assign.schema import (
@@ -17,7 +17,7 @@ from apps.scheduler.call.variable_assign.schema import (
 )
 from apps.scheduler.variable.type import VariableType
 from apps.scheduler.variable.pool_manager import get_pool_manager
-from apps.schemas.enum_var import CallType
+from apps.schemas.enum_var import CallType, LanguageType
 from apps.schemas.scheduler import CallInfo, CallVars, CallOutputChunk, CallOutputType, CallError
 
 
@@ -26,24 +26,22 @@ logger = logging.getLogger(__name__)
 
 class VariableAssign(CoreCall, input_model=VariableAssignInput, output_model=VariableAssignOutput):
     """变量赋值Call"""
+    i18n_info: ClassVar[dict[str, dict]] = {
+        LanguageType.CHINESE: {
+            "name": "变量赋值",
+            "type": CallType.TRANSFORM,
+            "description": "对已有变量进行值的操作，支持字符串、数值和数组类型变量的多种操作",
+        },
+        LanguageType.ENGLISH: {
+            "name": "VariableAssign",
+            "type": CallType.TRANSFORM,
+            "description": "Assign value for exist vairables, supporting string, number, and array, etc.",
+        },
+    }
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self._call_vars = None
-
-    @classmethod
-    def info(cls) -> CallInfo:
-        """
-        返回Call的名称和描述
-
-        :return: Call的名称和描述
-        :rtype: CallInfo
-        """
-        return CallInfo(
-            name="变量赋值",
-            type=CallType.TRANSFORM,
-            description="对已有变量进行值的操作，支持字符串、数值和数组类型变量的多种操作"
-        )
 
     async def _init(self, call_vars: CallVars) -> VariableAssignInput:
         """

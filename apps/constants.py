@@ -11,7 +11,7 @@ from apps.common.config import Config
 # 新对话默认标题
 NEW_CHAT = "新对话"
 # 滑动窗口限流 默认窗口期
-SLIDE_WINDOW_TIME = 60
+SLIDE_WINDOW_TIME = 15
 # OIDC 访问Token 过期时间（分钟）
 OIDC_ACCESS_TOKEN_EXPIRE_TIME = 30
 # OIDC 刷新Token 过期时间（分钟）
