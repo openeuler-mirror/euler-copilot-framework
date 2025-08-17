@@ -365,7 +365,9 @@ GENERATE_FLOW_NAME: dict[LanguageType, str] = {
     # 目标
     我需要扫描当前mysql数据库，分析性能瓶颈, 并调优
     # 输出
-    扫描MySQL数据库并分析性能瓶颈，进行调优
+    {
+        "flow_name": "扫描MySQL数据库并分析性能瓶颈，进行调优"
+    }
     # 现在开始生成流程名称：
     # 目标
     {{goal}}
@@ -386,7 +388,9 @@ GENERATE_FLOW_NAME: dict[LanguageType, str] = {
     # Goal
     I need to scan the current MySQL database, analyze performance bottlenecks, and optimize it.
     # Output
-    Scan MySQL database and analyze performance bottlenecks, and optimize it.
+    {
+        "flow_name": "Scan MySQL database and analyze performance bottlenecks, and optimize it."
+    }
     # Now start generating the flow name:
     # Goal
     {{goal}}
