@@ -116,6 +116,12 @@ class GoalEvaluationResult(BaseModel):
     reason: str = Field(description="评估原因")
 
 
+class FlowName(BaseModel):
+    """MCP 流程名称"""
+
+    flow_name: str = Field(description="MCP 流程名称", default="")
+
+
 class RestartStepIndex(BaseModel):
     """MCP重新规划的步骤索引"""
 

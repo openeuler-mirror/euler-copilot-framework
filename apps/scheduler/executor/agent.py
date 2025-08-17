@@ -34,7 +34,7 @@ logger = logging.getLogger(__name__)
 class MCPAgentExecutor(BaseExecutor):
     """MCP Agent执行器"""
 
-    max_steps: int = Field(default=20, description="最大步数")
+    max_steps: int = Field(default=40, description="最大步数")
     servers_id: list[str] = Field(description="MCP server id")
     agent_id: str = Field(default="", description="Agent ID")
     agent_description: str = Field(default="", description="Agent描述")
@@ -176,6 +176,7 @@ class MCPAgentExecutor(BaseExecutor):
             self.task.state.step_status = StepStatus.ERROR
             self.task.state.error_message = str(e)
             return
+        logger.error(f"当前工具名称: {mcp_tool.name}, 输出参数: {output_params}")
         if output_params.isError:
             err = ""
             for output in output_params.content:
@@ -465,9 +466,9 @@ class MCPAgentExecutor(BaseExecutor):
             # 初始化状态
             try:
                 self.task.state.flow_id = str(uuid.uuid4())
-                self.task.state.flow_name = await MCPPlanner.get_flow_name(
+                self.task.state.flow_name = (await MCPPlanner.get_flow_name(
                     self.task.runtime.question, self.resoning_llm, self.task.language
-                )
+                )).flow_name
                 await TaskManager.save_task(self.task.id, self.task)
                 await self.get_next_step()
             except Exception as e:

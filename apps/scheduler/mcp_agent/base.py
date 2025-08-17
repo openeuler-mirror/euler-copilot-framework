@@ -17,7 +17,7 @@ class MCPBase:
         # 调用推理大模型
         message = [
             {"role": "system", "content": prompt},
-            {"role": "user", "content": "Please provide a JSON response based on the above information."},
+            {"role": "user", "content": "Please provide a JSON response based on the above information and schema."},
         ]
         result = ""
         async for chunk in resoning_llm.call(
@@ -50,7 +50,7 @@ class MCPBase:
                 flag = False
         if not flag:
             json_generator = JsonGenerator(
-                "Please provide a JSON response based on the above information.\n\n",
+                "Please provide a JSON response based on the above information and schema.\n\n",
                 [
                     {"role": "system", "content": "You are a helpful assistant."},
                     {"role": "user", "content": result},

@@ -29,6 +29,7 @@ from apps.schemas.enum_var import LanguageType
 from apps.scheduler.slot.slot import Slot
 from apps.schemas.mcp import (
     GoalEvaluationResult,
+    FlowName,
     IsParamError,
     MCPPlan,
     MCPTool,
@@ -54,8 +55,9 @@ class MCPPlanner(MCPBase):
 
     @staticmethod
     async def evaluate_goal(
-        goal: str, tool_list: list[MCPTool], resoning_llm: ReasoningLLM = ReasoningLLM(), language: LanguageType = LanguageType.CHINESE,
-    ) -> GoalEvaluationResult:
+            goal: str, tool_list: list[MCPTool],
+            resoning_llm: ReasoningLLM = ReasoningLLM(),
+            language: LanguageType = LanguageType.CHINESE,) -> GoalEvaluationResult:
         """评估用户目标的可行性"""
         # 获取推理结果
         result = await MCPPlanner._get_reasoning_evaluation(goal, tool_list, resoning_llm, language)
@@ -65,8 +67,9 @@ class MCPPlanner(MCPBase):
 
     @staticmethod
     async def _get_reasoning_evaluation(
-        goal, tool_list: list[MCPTool], resoning_llm: ReasoningLLM = ReasoningLLM(), language: LanguageType = LanguageType.CHINESE,
-    ) -> str:
+            goal, tool_list: list[MCPTool],
+            resoning_llm: ReasoningLLM = ReasoningLLM(),
+            language: LanguageType = LanguageType.CHINESE,) -> str:
         """获取推理大模型的评估结果"""
         template = _env.from_string(EVALUATE_GOAL[language])
         prompt = template.render(
@@ -87,10 +90,13 @@ class MCPPlanner(MCPBase):
         user_goal: str,
         resoning_llm: ReasoningLLM = ReasoningLLM(),
         language: LanguageType = LanguageType.CHINESE,
-    ) -> str:
+    ) -> FlowName:
         """获取当前流程的名称"""
 
-        return await MCPPlanner._get_reasoning_flow_name(user_goal, resoning_llm, language)
+        result = await MCPPlanner._get_reasoning_flow_name(user_goal, resoning_llm, language)
+        result = await MCPPlanner._parse_result(result, FlowName.model_json_schema())
+        # 使用FlowName模型解析结果
+        return FlowName.model_validate(result)
 
     @staticmethod
     async def _get_reasoning_flow_name(
