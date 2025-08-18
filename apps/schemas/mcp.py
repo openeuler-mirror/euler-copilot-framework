@@ -38,7 +38,7 @@ class MCPType(str, Enum):
 class MCPBasicConfig(BaseModel):
     """MCP 基本配置"""
 
-    env: dict[str, str] = Field(description="MCP 服务器环境变量", default={})
+    env: dict[str, Any] = Field(description="MCP 服务器环境变量", default={})
     auto_approve: list[str] = Field(description="自动批准的MCP工具ID列表", default=[], alias="autoApprove")
     disabled: bool = Field(description="MCP 服务器是否禁用", default=False)
     auto_install: bool = Field(description="是否自动安装MCP服务器", default=True)
