@@ -213,6 +213,6 @@ class AgentState(str, Enum):
 class LanguageType(str, Enum):
     """语言类型"""
 
-    CHINESE = "zh_cn"
+    CHINESE = "zh"
     ENGLISH = "en"
     
