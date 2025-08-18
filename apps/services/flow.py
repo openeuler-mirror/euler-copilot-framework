@@ -2,7 +2,7 @@
 """flow Manager"""
 
 import logging
-
+from pydantic import BaseModel, Field
 from pymongo import ASCENDING
 
 from apps.common.mongo import MongoDB

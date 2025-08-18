@@ -139,7 +139,6 @@ class MCPLoader(metaclass=SingletonMeta):
         db_service_list = await mcp_collection.find(
             {"_id": {"$in": mcp_ids}, "status": {"$in": [MCPInstallStatus.READY, MCPInstallStatus.FAILED]}},
         ).to_list(None)
-        print(f"[MCPLoader] 清除状态为ready或failed的MCP安装任务: {db_service_list}")  # noqa: T201
         for db_service in db_service_list:
             try:
                 item = MCPCollection.model_validate(db_service)

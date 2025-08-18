@@ -15,14 +15,6 @@ class CorePattern(ABC):
     """输入Token数量"""
     output_tokens: int = 0
     """输出Token数量"""
-    system_prompt: dict[LanguageType, str] = Field(
-        default={},
-        description="系统提示词，f-string格式",
-    )
-    user_prompt: dict[LanguageType, str] = Field(
-        default={},
-        description="用户提示词，f-string格式",
-    )
 
     def __init__(
         self,
@@ -35,10 +27,20 @@ class CorePattern(ABC):
         :param system_prompt: 系统提示词，f-string格式
         :param user_prompt: 用户提示词，f-string格式
         """
-
-        if not self.user_prompt:
-            err = "必须设置用户提示词！"
-            raise ValueError(err)
+        if system_prompt is not None:
+            self.system_prompt = system_prompt
+        else:
+            self.system_prompt = {
+                LanguageType.CHINESE: "",
+                LanguageType.ENGLISH: "",
+            }
+        if user_prompt is not None:
+            self.user_prompt = user_prompt
+        else:
+            self.user_prompt = {
+                LanguageType.CHINESE: "",
+                LanguageType.ENGLISH: "",
+            }
 
         self.system_prompt = {lang: dedent(prompt).strip("\n") for lang, prompt in self.system_prompt.items()}
 

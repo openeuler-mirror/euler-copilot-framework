@@ -133,12 +133,8 @@ class Facts(CorePattern):
         self.output_tokens = llm.output_tokens
 
         messages += [{"role": "assistant", "content": result}]
-        if language == LanguageType.CHINESE:
-            query = "根据给定的背景信息，提取事实条目"
-        else:
-            query = "Extract fact entries based on the given background information"
         json_gen = JsonGenerator(
-            query=query,
+            query="Extract fact entries based on the given background information",
             conversation=messages,
             schema=FactsResult.model_json_schema(),
         )
