@@ -9,9 +9,6 @@ from apps.schemas.enum_var import LanguageType
 class CorePattern(ABC):
     """基础大模型范式抽象类"""
 
-    system_prompt: dict[LanguageType, str] = {}
-    """系统提示词"""
-    user_prompt: dict[LanguageType, str] = {}
     """用户提示词"""
     input_tokens: int = 0
     """输入Token数量"""
@@ -31,9 +28,13 @@ class CorePattern(ABC):
         """
         if system_prompt is not None:
             self.system_prompt = system_prompt
+        else:
+            self.system_prompt = {}
 
         if user_prompt is not None:
             self.user_prompt = user_prompt
+        else:
+            self.user_prompt = {}
 
         if not self.user_prompt:
             err = "必须设置用户提示词！"
