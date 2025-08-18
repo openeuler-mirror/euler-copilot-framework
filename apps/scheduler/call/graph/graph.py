@@ -89,7 +89,7 @@ class Graph(CoreCall, input_model=RenderInput, output_model=RenderOutput):
 
         try:
             style_obj = RenderStyle()
-            llm_output = await style_obj.generate(question=data.question)
+            llm_output = await style_obj.generate(question=data.question, language=language)
             self.tokens.input_tokens += style_obj.input_tokens
             self.tokens.output_tokens += style_obj.output_tokens
 
@@ -104,7 +104,6 @@ class Graph(CoreCall, input_model=RenderInput, output_model=RenderOutput):
                 output=RenderFormat.model_validate(self._option_template),
             ).model_dump(exclude_none=True, by_alias=True),
         )
-
 
     @staticmethod
     def _separate_key_value(data: list[dict[str, Any]]) -> list[dict[str, Any]]:
