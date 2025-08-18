@@ -209,6 +209,33 @@ class VariableIntegration:
             # 如果解析失败，返回原始模板
             return template
 
+    @staticmethod
+    async def reset_conversation_variables_to_defaults(
+        conversation_id: str,
+        flow_id: Optional[str] = None,
+        user_sub: Optional[str] = None
+    ) -> bool:
+        """将对话变量池中的所有conversation类型变量重置为Flow定义的默认值
+        
+        Args:
+            conversation_id: 对话ID
+            flow_id: 流程ID（可选，用于兼容，实际从对话池中获取）
+            user_sub: 用户ID（可选，用于日志记录）
+            
+        Returns:
+            bool: 是否重置成功
+        """
+        try:
+            # 直接委托给VariablePoolManager执行重置逻辑
+            from apps.scheduler.variable.pool_manager import get_pool_manager
+            pool_manager = await get_pool_manager()
+            
+            return await pool_manager.reset_conversation_variables_to_defaults(conversation_id)
+            
+        except Exception as e:
+            logger.error(f"[VariableIntegration] 重置对话变量池失败: conversation_id={conversation_id}, 错误: {e}")
+            return False
+
 
 # 注意：原本的 monkey_patch_scheduler 和相关扩展类已被移除
 # 因为 CoreCall 类现在已经内置了完整的变量解析功能

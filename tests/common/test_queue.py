@@ -74,7 +74,7 @@ async def test_push_output_with_flow(message_queue, mock_task):
     mock_task.state.flow_id = "flow_id"
     mock_task.state.step_id = "step_id"
     mock_task.state.step_name = "step_name"
-    mock_task.state.status = "running"
+    mock_task.state.step_status = "running"
     
     await message_queue.init("test_task")
     await message_queue.push_output(mock_task, EventType.TEXT_ADD, {})

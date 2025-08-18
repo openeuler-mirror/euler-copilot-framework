@@ -498,7 +498,7 @@ class Loop(CoreCall, input_model=LoopInput, output_model=LoopOutput):
         # 保存原始的循环节点状态，确保不被子步骤状态影响
         original_loop_step_id = step_executor.task.state.step_id
         original_loop_step_name = step_executor.task.state.step_name
-        original_loop_status = step_executor.task.state.status
+        original_loop_status = step_executor.task.state.step_status
         
         # 筛选出需要执行的步骤（排除start和end）
         executable_steps = [
@@ -550,7 +550,7 @@ class Loop(CoreCall, input_model=LoopInput, output_model=LoopOutput):
         # 🔑 关键修改：确保循环节点的状态完全恢复，不受子步骤影响
         step_executor.task.state.step_id = original_loop_step_id
         step_executor.task.state.step_name = original_loop_step_name
-        step_executor.task.state.status = original_loop_status
+        step_executor.task.state.step_status = original_loop_status
         logger.info(f"[Loop] 已完全恢复循环节点状态: {original_loop_step_name} (ID: {original_loop_step_id})")
 
     async def _init(self, call_vars: CallVars) -> LoopInput:

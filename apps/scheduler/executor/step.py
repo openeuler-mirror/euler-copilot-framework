@@ -154,7 +154,7 @@ class StepExecutor(BaseExecutor):
         # 更新State
         self.task.state.step_id = str(uuid.uuid4())  # type: ignore[arg-type]
         self.task.state.step_name = "自动参数填充"  # type: ignore[arg-type]
-        self.task.state.status = StepStatus.RUNNING  # type: ignore[arg-type]
+        self.task.state.step_status = StepStatus.RUNNING  # type: ignore[arg-type]
         self.task.tokens.time = round(datetime.now(UTC).timestamp(), 2)
 
         # 初始化填参
@@ -340,7 +340,7 @@ class StepExecutor(BaseExecutor):
             # 如果有失败的参数，将步骤状态设置为失败
             if failed_params:
                 from apps.schemas.enum_var import StepStatus
-                self.task.state.status = StepStatus.FAILED # type: ignore[assignment]
+                self.task.state.step_status = StepStatus.FAILED # type: ignore[assignment]
                 
                 failure_msg = f"输出参数类型验证失败:\n" + "\n".join(failed_params)
                 logger.error(f"[StepExecutor] 步骤 {self.step.step_id} 执行失败: {failure_msg}")
@@ -363,7 +363,7 @@ class StepExecutor(BaseExecutor):
             logger.error(f"[StepExecutor] 保存输出参数到变量池失败: {e}")
             # 对于其他意外错误，也将步骤设置为失败
             from apps.schemas.enum_var import StepStatus
-            self.task.state.status = StepStatus.FAILED # type: ignore[assignment]
+            self.task.state.step_status = StepStatus.FAILED # type: ignore[assignment]
             raise
 
     def _extract_value_from_output_data(self, param_name: str, output_data: dict[str, Any], param_config: dict) -> Any:
