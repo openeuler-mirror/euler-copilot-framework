@@ -165,7 +165,7 @@ async def stop_generation(user_sub: Annotated[str, Depends(get_user)],
     """停止生成"""
     task = await TaskManager.get_task_by_task_id(task_id)
     if task:
-        await Activity.remove_active(task.activity_id)
+        await Activity.remove_active(task.ids.active_id)
     return JSONResponse(
         status_code=status.HTTP_200_OK,
         content=ResponseData(
