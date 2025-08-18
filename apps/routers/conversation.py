@@ -44,6 +44,7 @@ logger = logging.getLogger(__name__)
 
 
 async def create_new_conversation(
+    title: str,
     user_sub: str,
     app_id: str = "",
     llm_id: str = "empty",
@@ -57,7 +58,8 @@ async def create_new_conversation(
         err = "Invalid app_id."
         raise RuntimeError(err)
     new_conv = await ConversationManager.add_conversation_by_user_sub(
-        user_sub,
+        title=title,
+        user_sub=user_sub,
         app_id=app_id,
         llm_id=llm_id,
         kb_ids=kb_ids or [],
@@ -67,6 +69,7 @@ async def create_new_conversation(
         err = "Create new conversation failed."
         raise RuntimeError(err)
     return new_conv
+
 
 @router.get(
     "",
@@ -126,6 +129,7 @@ async def get_conversation_list(user_sub: Annotated[str, Depends(get_user)]) -> 
 @router.post("", response_model=AddConversationRsp)
 async def add_conversation(
     user_sub: Annotated[str, Depends(get_user)],
+    title: Annotated[str, Query(...)] = "New Chat",
     app_id: Annotated[str, Query(..., alias="appId")] = "",
     llm_id: Annotated[str, Body(..., alias="llmId")] = "empty",
     kb_ids: Annotated[list[str] | None, Body(..., alias="kbIds")] = None,
@@ -138,7 +142,8 @@ async def add_conversation(
         app_id = app_id if app_id else ""
         debug = debug if debug is not None else False
         new_conv = await create_new_conversation(
-            user_sub,
+            title=title,
+            user_sub=user_sub,
             app_id=app_id,
             llm_id=llm_id,
             kb_ids=kb_ids or [],
