@@ -515,6 +515,10 @@ class GetMCPServiceDetailMsg(BaseModel):
     name: str = Field(..., description="MCP服务名称")
     description: str = Field(description="MCP服务描述")
     overview: str = Field(description="MCP服务概述")
+    status: MCPInstallStatus = Field(
+        description="MCP服务状态",
+        default=MCPInstallStatus.INIT,
+    )
     tools: list[MCPTool] = Field(description="MCP服务Tools列表", default=[])
 
 
