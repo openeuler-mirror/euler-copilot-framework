@@ -5,7 +5,7 @@ from datetime import UTC, datetime
 import json
 import logging
 from collections.abc import AsyncGenerator
-
+import re
 import httpx
 from typing import Any
 from fastapi import status
@@ -335,6 +335,14 @@ class RAG:
                     chunk = chunk[:index + 1]
             else:
                 buffer = ""
+            # 匹配脚注
+            footnotes = re.findall(r"\[\[\d+\]\]", chunk)
+            # 去除编号大于doc_cnt的脚注
+            footnotes = [fn for fn in footnotes if int(fn[2:-2]) > doc_cnt]
+            footnotes = list(set(footnotes))  # 去重
+            if footnotes:
+                for fn in footnotes:
+                    chunk = chunk.replace(fn, "")
             output_tokens += TokenCalculator().calculate_token_length(
                 messages=[
                     {"role": "assistant", "content": chunk},
