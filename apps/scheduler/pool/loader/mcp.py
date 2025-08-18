@@ -163,6 +163,7 @@ class MCPLoader(metaclass=SingletonMeta):
         template_path = MCP_PATH / "template" / mcp_id
         await Path.mkdir(template_path, parents=True, exist_ok=True)
         # 安装MCP模板
+        ProcessHandler.remove_task(mcp_id)
         if not ProcessHandler.add_task(mcp_id, MCPLoader._install_template_task, mcp_id, config):
             err = f"安装任务无法执行，请稍后重试: {mcp_id}"
             logger.error(err)
@@ -266,6 +267,12 @@ class MCPLoader(metaclass=SingletonMeta):
 
         # 基本信息插入数据库
         mcp_collection = MongoDB().get_collection("mcp")
+        # 清空当前工具列表
+        await mcp_collection.update_one(
+            {"_id": mcp_id},
+            {"$set": {"tools": []}},
+            upsert=True,
+        )
         await mcp_collection.update_one(
             {"_id": mcp_id},
             {

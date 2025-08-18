@@ -40,17 +40,6 @@ class Summary(CoreCall, input_model=DataBase, output_model=SummaryOutput):
     }
 
     @classmethod
-    def info(cls) -> CallInfo:
-        """
-        返回Call的名称和描述
-
-        :return: Call的名称和描述
-        :rtype: CallInfo
-        """
-        lang_info = cls.i18n_info.get(cls.language, cls.i18n_info[LanguageType.CHINESE])
-        return CallInfo(name=lang_info["name"], description=lang_info["description"])
-
-    @classmethod
     async def instance(cls, executor: "StepExecutor", node: NodePool | None, **kwargs: Any) -> Self:
         """实例化工具"""
         obj = cls(
