@@ -185,15 +185,15 @@ async def update_conversation(
         )
 
     # 更新Conversation数据
-    change_status = await ConversationManager.update_conversation_by_conversation_id(
-        user_sub,
-        conversation_id,
-        {
-            "title": post_body.title,
-        },
-    )
-
-    if not change_status:
+    try:
+        await ConversationManager.update_conversation_by_conversation_id(
+            user_sub,
+            conversation_id,
+            {
+                "title": post_body.title,
+            },
+        )
+    except Exception as e:
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             content=ResponseData(

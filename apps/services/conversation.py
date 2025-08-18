@@ -113,11 +113,10 @@ class ConversationManager:
         """通过ConversationID更新对话信息"""
         mongo = MongoDB()
         conv_collection = mongo.get_collection("conversation")
-        result = await conv_collection.update_one(
+        await conv_collection.update_one(
             {"_id": conversation_id, "user_sub": user_sub},
             {"$set": data},
         )
-        return result.modified_count > 0
 
     @staticmethod
     async def delete_conversation_by_conversation_id(user_sub: str, conversation_id: str) -> None:
