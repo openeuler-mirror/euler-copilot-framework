@@ -421,7 +421,7 @@ class MCPServiceManager:
         db_service = await service_collection.find_one({"_id": service_id, "author": user_sub})
         db_service = MCPCollection.model_validate(db_service)
         if install:
-            if db_service.status == MCPInstallStatus.INSTALLING or db_service.status == MCPInstallStatus.READY:
+            if db_service.status == MCPInstallStatus.INSTALLING:
                 err = "[MCPServiceManager] MCP服务已处于安装中或已准备就绪"
                 raise Exception(err)
             await service_collection.update_one(
