@@ -49,17 +49,6 @@ class LLM(CoreCall, input_model=LLMInput, output_model=LLMOutput):
         },
     }
 
-    @classmethod
-    def info(cls) -> CallInfo:
-        """
-        返回Call的名称和描述
-
-        :return: Call的名称和描述
-        :rtype: CallInfo
-        """
-        lang_info = cls.i18n_info.get(cls.language, cls.i18n_info[LanguageType.CHINESE])
-        return CallInfo(name=lang_info["name"], description=lang_info["description"])
-
     async def _prepare_message(self, call_vars: CallVars) -> list[dict[str, Any]]:
         """准备消息"""
         # 创建共享的 Environment 实例

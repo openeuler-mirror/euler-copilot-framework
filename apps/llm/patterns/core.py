@@ -16,6 +16,15 @@ class CorePattern(ABC):
     output_tokens: int = 0
     """输出Token数量"""
 
+    def get_default_prompt(self) -> dict[LanguageType, str]:
+        """
+        获取默认的用户提示词
+
+        :return: 默认的用户提示词
+        :rtype: dict[LanguageType, str]
+        """
+        return {}, {}
+
     def __init__(
         self,
         system_prompt: dict[LanguageType, str] | None = None,
@@ -27,20 +36,15 @@ class CorePattern(ABC):
         :param system_prompt: 系统提示词，f-string格式
         :param user_prompt: 用户提示词，f-string格式
         """
+        default_system_prompt, default_user_prompt = self.get_default_prompt()
         if system_prompt is not None:
             self.system_prompt = system_prompt
         else:
-            self.system_prompt = {
-                LanguageType.CHINESE: "",
-                LanguageType.ENGLISH: "",
-            }
+            self.system_prompt = default_system_prompt
         if user_prompt is not None:
             self.user_prompt = user_prompt
         else:
-            self.user_prompt = {
-                LanguageType.CHINESE: "",
-                LanguageType.ENGLISH: "",
-            }
+            self.user_prompt = default_user_prompt
 
         self.system_prompt = {lang: dedent(prompt).strip("\n") for lang, prompt in self.system_prompt.items()}
 

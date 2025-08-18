@@ -50,17 +50,6 @@ class Choice(CoreCall, input_model=ChoiceInput, output_model=ChoiceOutput):
         },
     }
 
-    @classmethod
-    def info(cls) -> CallInfo:
-        """
-        返回Call的名称和描述
-
-        :return: Call的名称和描述
-        :rtype: CallInfo
-        """
-        lang_info = cls.i18n_info.get(cls.language, cls.i18n_info[LanguageType.CHINESE])
-        return CallInfo(name=lang_info["name"], description=lang_info["description"])
-
     def _raise_value_error(self, msg: str) -> None:
         """统一处理 ValueError 异常抛出"""
         logger.warning(msg)

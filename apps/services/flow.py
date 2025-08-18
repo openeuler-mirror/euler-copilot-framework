@@ -97,8 +97,7 @@ class FlowManager:
 
                 if service_id == "":
                     call_class: type[BaseModel] = await Pool().get_call(node_pool_record["_id"])
-                    call_class.language = language
-                    node_name = call_class.info().name
+                    node_name = call_class.info(language).name
                     node_description = call_class.info().description
                 else:
                     node_name = node_pool_record["name"]

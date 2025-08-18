@@ -71,11 +71,6 @@ class CoreCall(BaseModel):
         exclude=True,
         frozen=True,
     )
-    language: ClassVar[SkipJsonSchema[LanguageType]] = Field(
-        description="语言",
-        default=LanguageType.CHINESE,
-        exclude=True,
-    )
     i18n_info: ClassVar[SkipJsonSchema[dict[str, dict]]] = {}
 
     to_user: bool = Field(description="是否需要将输出返回给用户", default=False)
@@ -84,6 +79,17 @@ class CoreCall(BaseModel):
         arbitrary_types_allowed=True,
         extra="allow",
     )
+
+    @classmethod
+    def info(cls, language: LanguageType) -> CallInfo:
+        """
+        返回Call的名称和描述
+
+        :return: Call的名称和描述
+        :rtype: CallInfo
+        """
+        lang_info = cls.i18n_info.get(language, cls.i18n_info[LanguageType.CHINESE])
+        return CallInfo(name=lang_info["name"], description=lang_info["description"])
 
     def __init_subclass__(
         cls, input_model: type[DataBase], output_model: type[DataBase], **kwargs: Any

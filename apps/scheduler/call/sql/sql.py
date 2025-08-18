@@ -53,17 +53,6 @@ class SQL(CoreCall, input_model=SQLInput, output_model=SQLOutput):
         },
     }
 
-    @classmethod
-    def info(cls) -> CallInfo:
-        """
-        返回Call的名称和描述
-
-        :return: Call的名称和描述
-        :rtype: CallInfo
-        """
-        lang_info = cls.i18n_info.get(cls.language, cls.i18n_info[LanguageType.CHINESE])
-        return CallInfo(name=lang_info["name"], description=lang_info["description"])
-
     async def _init(self, call_vars: CallVars) -> SQLInput:
         """初始化SQL工具。"""
         return SQLInput(
