@@ -70,17 +70,6 @@ class API(CoreCall, input_model=APIInput, output_model=APIOutput):
         },
     }
 
-    @classmethod
-    def info(cls) -> CallInfo:
-        """
-        返回Call的名称和描述
-
-        :return: Call的名称和描述
-        :rtype: CallInfo
-        """
-        lang_info = cls.i18n_info.get(cls.language, cls.i18n_info[LanguageType.CHINESE])
-        return CallInfo(name=lang_info["name"], description=lang_info["description"])
-
     async def _init(self, call_vars: CallVars) -> APIInput:
         """初始化API调用工具"""
         self._service_id = ""
