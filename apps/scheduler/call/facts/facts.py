@@ -41,7 +41,6 @@ class FactsCall(CoreCall, input_model=FactsInput, output_model=FactsOutput):
         },
     }
 
-
     @classmethod
     async def instance(cls, executor: "StepExecutor", node: NodePool | None, **kwargs: Any) -> Self:
         """初始化工具"""
@@ -116,7 +115,7 @@ class FactsCall(CoreCall, input_model=FactsInput, output_model=FactsOutput):
         language: LanguageType = LanguageType.CHINESE,
     ) -> AsyncGenerator[CallOutputChunk, None]:
         """执行工具"""
-        async for chunk in self._exec(input_data):
+        async for chunk in self._exec(input_data, language):
             content = chunk.content
             if not isinstance(content, dict):
                 err = "[FactsCall] 工具输出格式错误"

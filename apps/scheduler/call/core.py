@@ -81,7 +81,7 @@ class CoreCall(BaseModel):
     )
 
     @classmethod
-    def info(cls, language: LanguageType) -> CallInfo:
+    def info(cls, language: LanguageType = LanguageType.CHINESE) -> CallInfo:
         """
         返回Call的名称和描述
 
@@ -98,12 +98,6 @@ class CoreCall(BaseModel):
         super().__init_subclass__(**kwargs)
         cls.input_model = input_model
         cls.output_model = output_model
-
-    @classmethod
-    def info(cls) -> CallInfo:
-        """返回Call的名称和描述"""
-        err = "[CoreCall] 必须手动实现info方法"
-        raise NotImplementedError(err)
 
     @staticmethod
     def _assemble_call_vars(executor: "StepExecutor") -> CallVars:

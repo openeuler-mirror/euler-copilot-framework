@@ -97,7 +97,6 @@ class LLM(CoreCall, input_model=LLMInput, output_model=LLMOutput):
             {"role": "user", "content": user_input},
         ]
 
-
     async def _init(self, call_vars: CallVars) -> LLMInput:
         """初始化LLM工具"""
         return LLMInput(
