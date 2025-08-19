@@ -129,8 +129,8 @@ async def get_conversation_list(user_sub: Annotated[str, Depends(get_user)]) -> 
 @router.post("", response_model=AddConversationRsp)
 async def add_conversation(
     user_sub: Annotated[str, Depends(get_user)],
-    title: Annotated[str, Query(...)] = "New Chat",
     app_id: Annotated[str, Query(..., alias="appId")] = "",
+    title: Annotated[str, Body(...)] = "New Chat",
     llm_id: Annotated[str, Body(..., alias="llmId")] = "empty",
     kb_ids: Annotated[list[str] | None, Body(..., alias="kbIds")] = None,
     *,
