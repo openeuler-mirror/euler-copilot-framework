@@ -75,6 +75,8 @@ class ParameterManager:
         pre_step_params = []
         for i in range(1, len(q)):
             step_id = q[i]
+            if step_id == 'start' or step_id == 'end':
+                continue
             node_id = step_id_to_node_id.get(step_id)
             _, output_schema = await NodeManager.get_node_params(node_id)
             slot = Slot(output_schema)
