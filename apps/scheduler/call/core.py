@@ -151,13 +151,7 @@ class CoreCall(BaseModel):
             if key not in data:
                 err = f"[CoreCall] 输出Key {key} 不存在"
                 logger.error(err)
-                raise CallError(
-                    message=err,
-                    data={
-                        "step_id": split_path[0],
-                        "key": key,
-                    },
-                )
+                return None
             data = data[key]
         return data
 
