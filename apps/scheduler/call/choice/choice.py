@@ -80,7 +80,7 @@ class Choice(CoreCall, input_model=ChoiceInput, output_model=ChoiceOutput):
                             logger.warning(f"[Choice] 分支 {choice.branch_id} 条件处理失败: {msg}")
                             continue
                         if not ConditionHandler.check_value_type(
-                                condition.left.value, condition.left.type):
+                                condition.left, condition.left.type):
                             msg = f"左值类型不匹配: {condition.left.value} 应为 {condition.left.type.value}"
                             logger.warning(f"[Choice] 分支 {choice.branch_id} 条件处理失败: {msg}")
                             continue
@@ -98,7 +98,7 @@ class Choice(CoreCall, input_model=ChoiceInput, output_model=ChoiceOutput):
                             logger.warning(f"[Choice] 分支 {choice.branch_id} 条件处理失败: {msg}")
                             continue
                         if not ConditionHandler.check_value_type(
-                                condition.right.value, condition.right.type):
+                                condition.right, condition.right.type):
                             msg = f"右值类型不匹配: {condition.right.value} 应为 {condition.right.type.value}"
                             logger.warning(f"[Choice] 分支 {choice.branch_id} 条件处理失败: {msg}")
                             continue
@@ -119,7 +119,7 @@ class Choice(CoreCall, input_model=ChoiceInput, output_model=ChoiceOutput):
                         else:
                             condition.right.value = ast.literal_eval(condition.right.value)
                         if not ConditionHandler.check_value_type(
-                                condition.right.value, condition.right.type):
+                                condition.right, condition.right.type):
                             msg = f"右值类型不匹配: {condition.right.value} 应为 {condition.right.type.value}"
                             logger.warning(f"[Choice] 分支 {choice.branch_id} 条件处理失败: {msg}")
                             continue

@@ -112,7 +112,7 @@ class ConditionHandler(BaseModel):
         left = condition.left
         operate = condition.operate
         right = condition.right
-        value_type = condition.type
+        value_type = left.type
 
         result = None
         if value_type == Type.STRING:

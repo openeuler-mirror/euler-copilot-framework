@@ -83,7 +83,6 @@ class AppCenterManager:
         if app_type is not None:
             filters["app_type"] = app_type.value
         # 获取应用列表
-        logger.error(f"[AppCenterManager] 搜索条件: {filters}, 页码: {page}, 每页大小: {SERVICE_PAGE_SIZE}")
         apps, total_apps = await AppCenterManager._search_apps_by_filter(filters, page, SERVICE_PAGE_SIZE)
 
         # 构建返回的应用卡片列表
