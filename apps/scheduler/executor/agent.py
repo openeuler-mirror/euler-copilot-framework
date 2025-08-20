@@ -351,8 +351,7 @@ class MCPAgentExecutor(BaseExecutor):
                     )
                     if len(self.task.context) and self.task.context[-1].step_id == self.task.state.step_id:
                         self.task.context[-1].step_status = StepStatus.CANCELLED
-            if self.task.state.step_status == StepStatus.PARAM:
-                await self.get_tool_input_param(is_first=False)
+                    return
             max_retry = 5
             for i in range(max_retry):
                 if i != 0:
