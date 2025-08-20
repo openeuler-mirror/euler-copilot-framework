@@ -95,6 +95,7 @@ class MCPPlanner(MCPBase):
 
         result = await MCPPlanner._get_reasoning_flow_name(user_goal, resoning_llm, language)
         result = await MCPPlanner._parse_result(result, FlowName.model_json_schema())
+        print(result)
         # 使用FlowName模型解析结果
         return FlowName.model_validate(result)
 
