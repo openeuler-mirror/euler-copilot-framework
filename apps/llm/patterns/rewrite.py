@@ -6,6 +6,9 @@ import logging
 from pydantic import BaseModel, Field
 from textwrap import dedent
 
+from jinja2 import BaseLoader
+from jinja2.sandbox import SandboxedEnvironment
+
 from apps.llm.function import JsonGenerator
 from apps.llm.patterns.core import CorePattern
 from apps.llm.reasoning import ReasoningLLM
@@ -20,12 +23,20 @@ class QuestionRewriteResult(BaseModel):
     question: str = Field(description="补全后的问题")
 
 
+_env = SandboxedEnvironment(
+    loader=BaseLoader,
+    autoescape=False,
+    trim_blocks=True,
+    lstrip_blocks=True,
+)
+
+
 class QuestionRewrite(CorePattern):
     """问题补全与重写"""
 
     def get_default_prompt(self) -> dict[LanguageType, str]:
         system_prompt = {
-            LanguageType.CHINESE: r"""
+            LanguageType.CHINESE: dedent(r"""
           <instructions>
             <instruction>
               根据历史对话，推断用户的实际意图并补全用户的提问内容,历史对话被包含在<history>标签中，用户意图被包含在<question>标签中。
@@ -35,9 +46,11 @@ class QuestionRewrite(CorePattern):
                 3. 补全内容必须精准、恰当，不要编造任何内容。
                 4. 请输出补全后的问题，不要输出其他内容。
                 输出格式样例：
-                {{
+                ```json
+                {
                   "question": "补全后的问题"
-                }}
+                }
+                ```
             </instruction>
 
             <example>
@@ -64,20 +77,22 @@ class QuestionRewrite(CorePattern):
                 详细点？
               </question>
               <output>
-                {{
+              ```json
+                {
                   "question": "openEuler的特点是什么？请详细说明其优势和应用场景。"
-                }}
+                }
+              ```
               </output>
             </example>
           </instructions>
           <history>
-            {history}
+            {{history}}
           </history>
           <question>
-            {question}
+            {{question}}
           </question>
-      """,
-            LanguageType.ENGLISH: r"""
+      """),
+            LanguageType.ENGLISH: dedent(r"""
           <instructions>
             <instruction>
               Based on the historical dialogue, infer the user's actual intent and complete the user's question. The historical dialogue is contained within the <history> tags, and the user's intent is contained within the <question> tags.
@@ -87,9 +102,11 @@ class QuestionRewrite(CorePattern):
                 3. The completed content must be precise and appropriate; do not fabricate any content.
                 4. Output only the completed question; do not include any other content.
                 Example output format:
-                {{
+                ```json
+                {
                   "question": "The completed question"
-                }}
+                }
+                ```
             </instruction>
 
             <example>
@@ -116,19 +133,20 @@ class QuestionRewrite(CorePattern):
                 More details?
               </question>
               <output>
-                {{
+              ```json
+                {
                   "question":  "What are the features of openEuler? Please elaborate on its advantages and application scenarios."
-                }}
+                }
               </output>
             </example>
           </instructions>
           <history>
-            {history}
+            {{history}}
           </history>
           <question>
-            {question}
+            {{question}}
           </question>
-      """
+      """)
         }
 
         """用户提示词"""
@@ -155,11 +173,9 @@ class QuestionRewrite(CorePattern):
             llm = ReasoningLLM()
         leave_tokens = llm._config.max_tokens
         leave_tokens -= TokenCalculator().calculate_token_length(
-            messages=[
-                {"role": "system", "content": self.system_prompt[language].format(history="", question=question)},
-                {"role": "user", "content": self.user_prompt[language]}
-            ]
-        )
+            messages=[{"role": "system", "content": _env.from_string(self.system_prompt[language]).render(
+                history="", question=question)},
+                {"role": "user", "content": _env.from_string(self.user_prompt[language]).render()}])
         if leave_tokens <= 0:
             logger.error("[QuestionRewrite] 大模型上下文窗口不足，无法进行问题补全与重写")
             return question
@@ -178,10 +194,8 @@ class QuestionRewrite(CorePattern):
             if leave_tokens >= 0:
                 qa = sub_qa + qa
             index += 2
-        messages = [
-            {"role": "system", "content": self.system_prompt[language].format(history=qa, question=question)},
-            {"role": "user", "content": self.user_prompt[language]}
-        ]
+        messages = [{"role": "system", "content": _env.from_string(self.system_prompt[language]).render(
+            history=qa, question=question)}, {"role": "user", "content": _env.from_string(self.user_prompt[language]).render()}]
         result = ""
         async for chunk in llm.call(messages, streaming=False):
             result += chunk
