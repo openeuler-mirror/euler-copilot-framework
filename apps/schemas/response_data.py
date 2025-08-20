@@ -530,7 +530,7 @@ class EditMCPServiceMsg(BaseModel):
     name: str = Field(..., description="MCP服务名称")
     description: str = Field(description="MCP服务描述")
     overview: str = Field(description="MCP服务概述")
-    data: str = Field(description="MCP服务配置")
+    data: dict[str, Any] = Field(description="MCP服务配置")
     mcp_type: MCPType = Field(alias="mcpType", description="MCP 类型")
 
 

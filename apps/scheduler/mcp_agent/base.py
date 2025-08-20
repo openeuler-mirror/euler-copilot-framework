@@ -24,7 +24,7 @@ class MCPBase:
             message,
             streaming=False,
             temperature=0.07,
-            result_only=True,
+            result_only=False,
         ):
             result += chunk
 
