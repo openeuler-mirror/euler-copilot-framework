@@ -280,12 +280,10 @@ class JsonGenerator:
         """生成JSON"""
         Draft7Validator.check_schema(self._schema)
         validator = Draft7Validator(self._schema)
-        logger.info("[JSONGenerator] Schema：%s", self._schema)
 
         while self._count < JSON_GEN_MAX_TRIAL:
             self._count += 1
             result = await self._single_trial()
-            logger.info("[JSONGenerator] 得到：%s", result)
             try:
                 validator.validate(result)
             except Exception as err:  # noqa: BLE001

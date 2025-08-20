@@ -48,7 +48,6 @@ JSON_GEN_BASIC = dedent(r"""
     {% endif %}
     </background>
 
-    {% if not function_call %}
     # Tools
 
     You must call one function to assist with the user query.
@@ -67,5 +66,4 @@ JSON_GEN_BASIC = dedent(r"""
 
     # Output
     <tool_call>
-    {% endif %}
 """)
