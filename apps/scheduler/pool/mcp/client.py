@@ -97,7 +97,7 @@ class MCPClient:
         self.status = MCPStatus.RUNNING
         # 等待关闭信号
         await self.stop_sign.wait()
-        logger.error("[MCPClient] MCP %s：收到停止信号，正在关闭", mcp_id)
+        logger.info("[MCPClient] MCP %s：收到停止信号，正在关闭", mcp_id)
 
         # 关闭Client
         try:

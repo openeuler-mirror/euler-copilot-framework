@@ -176,7 +176,6 @@ class MCPAgentExecutor(BaseExecutor):
             self.task.state.step_status = StepStatus.ERROR
             self.task.state.error_message = str(e)
             return
-        logger.error(f"当前工具名称: {mcp_tool.name}, 输出参数: {output_params}")
         if output_params.isError:
             err = ""
             for output in output_params.content:
