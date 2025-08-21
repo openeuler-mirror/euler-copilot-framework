@@ -8,6 +8,7 @@ from pydantic import BaseModel, Field
 
 from apps.common.config import Config
 from apps.constants import NEW_CHAT
+from apps.schemas.preferences import UserPreferences
 from apps.templates.generate_llm_operator_config import llm_provider_dict
 
 
@@ -62,6 +63,10 @@ class User(BaseModel):
     fav_services: list[str] = []
     is_admin: bool = Field(default=False, description="是否为管理员")
     auto_execute: bool = Field(default=True, description="是否自动执行任务")
+    preferences: UserPreferences = Field(
+        default_factory=UserPreferences,
+        description="用户偏好设置"
+    )
 
 
 class LLM(BaseModel):

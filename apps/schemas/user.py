@@ -3,6 +3,8 @@
 
 from pydantic import BaseModel, Field
 
+from apps.schemas.preferences import UserPreferences
+
 
 class UserInfo(BaseModel):
     """用户信息数据结构"""
@@ -10,3 +12,4 @@ class UserInfo(BaseModel):
     user_sub: str = Field(alias="userSub", default="")
     user_name: str = Field(alias="userName", default="")
     auto_execute: bool | None = Field(alias="autoExecute", default=False)
+    preferences: UserPreferences | None = Field(alias="preferences", default=None)

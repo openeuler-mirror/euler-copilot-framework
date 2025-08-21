@@ -7,7 +7,7 @@ from fastapi import APIRouter, Body, Depends, status, Query
 from fastapi.responses import JSONResponse
 
 from apps.dependency import get_user
-from apps.schemas.request_data import UserUpdateRequest
+from apps.schemas.request_data import UserUpdateRequest, UserPreferencesRequest
 from apps.schemas.response_data import UserGetMsp, UserGetRsp
 from apps.schemas.user import UserInfo
 from apps.services.user import UserManager
@@ -60,4 +60,34 @@ async def update_user_info(
     return JSONResponse(
         status_code=status.HTTP_200_OK,
         content={"code": status.HTTP_200_OK, "message": "用户信息更新成功"},
+    )
+
+
+@router.put("/preferences")
+async def update_user_preferences(
+    user_sub: Annotated[str, Depends(get_user)],
+    *,
+    data: Annotated[UserPreferencesRequest, Body(..., description="用户偏好设置更新信息")],
+) -> JSONResponse:
+    """更新用户偏好设置接口"""
+    await UserManager.update_user_preferences_by_user_sub(user_sub, data)
+    return JSONResponse(
+        status_code=status.HTTP_200_OK,
+        content={"code": status.HTTP_200_OK, "message": "用户偏好设置更新成功"},
+    )
+
+
+@router.get("/preferences")
+async def get_user_preferences(
+    user_sub: Annotated[str, Depends(get_user)],
+) -> JSONResponse:
+    """获取用户偏好设置接口"""
+    preferences = await UserManager.get_user_preferences_by_user_sub(user_sub)
+    return JSONResponse(
+        status_code=status.HTTP_200_OK,
+        content={
+            "code": status.HTTP_200_OK, 
+            "message": "用户偏好设置获取成功",
+            "result": preferences.model_dump(by_alias=True, exclude_none=True)
+        },
     )

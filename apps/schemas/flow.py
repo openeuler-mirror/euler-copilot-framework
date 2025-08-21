@@ -15,6 +15,16 @@ from apps.schemas.enum_var import (
 from apps.schemas.flow_topology import PositionItem
 
 
+class Note(BaseModel):
+    """Flow中Note的数据"""
+
+    note_id: str = Field(description="备注的ID")
+    text: str = Field(description="备注内容")
+    position: PositionItem = Field(description="备注在画布上的位置", default=PositionItem(x=0, y=0))
+    width: float = Field(description="备注的宽度", default=200.0)
+    height: float = Field(description="备注的高度", default=100.0)
+
+
 class Edge(BaseModel):
     """Flow中Edge的数据"""
 
@@ -53,6 +63,7 @@ class Flow(BaseModel):
     on_error: FlowError = FlowError(use_llm=True)
     steps: dict[str, Step] = Field(description="节点列表", default={})
     edges: list[Edge] = Field(description="边列表", default=[])
+    notes: list[Note] = Field(description="备注列表", default=[])
 
 
 class Permission(BaseModel):

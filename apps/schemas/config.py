@@ -50,6 +50,17 @@ class EmbeddingConfig(BaseModel):
     endpoint: str = Field(description="Embedding模型地址")
     api_key: str = Field(description="Embedding模型API Key")
     model: str = Field(description="Embedding模型名称")
+    icon: str = Field(description="Embedding模型图标")
+
+
+class RerankerConfig(BaseModel):
+    """Reranker配置"""
+
+    type: str = Field(description="Reranker接口类型", default="openai")
+    endpoint: str = Field(description="Reranker模型地址")
+    api_key: str = Field(description="Reranker模型API Key")
+    model: str = Field(description="Reranker模型名称")
+    icon: str = Field(description="Reranker模型图标")
 
 
 class RAGConfig(BaseModel):
@@ -152,6 +163,7 @@ class ConfigModel(BaseModel):
     deploy: DeployConfig
     login: LoginConfig
     embedding: EmbeddingConfig
+    reranker: RerankerConfig
     rag: RAGConfig
     fastapi: FastAPIConfig
     minio: MinioConfig
