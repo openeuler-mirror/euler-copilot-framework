@@ -201,7 +201,9 @@ class QuestionRewrite(CorePattern):
             result += chunk
         self.input_tokens = llm.input_tokens
         self.output_tokens = llm.output_tokens
-
+        tmp_js = await JsonGenerator._parse_result_by_stack(result, QuestionRewriteResult.model_json_schema())
+        if tmp_js is not None:
+            return tmp_js['question']
         messages += [{"role": "assistant", "content": result}]
         json_gen = JsonGenerator(
             query="根据给定的背景信息，生成预测问题",
