@@ -145,6 +145,7 @@ class ReasoningLLM:
             temperature=temperature or self._config.temperature,
             stream=True,
             stream_options={"include_usage": True},
+            timeout=10
         )  # type: ignore[]
 
     async def call(  # noqa: C901, PLR0912, PLR0913
