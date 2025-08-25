@@ -312,8 +312,9 @@ class RAG:
                 + "\n\n"
             )
         max_footnote_length = 4
-        while doc_cnt > 0:
-            doc_cnt //= 10
+        tmp_doc_cnt = doc_cnt
+        while tmp_doc_cnt > 0:
+            tmp_doc_cnt //= 10
             max_footnote_length += 1
         buffer = ""
         async for chunk in reasion_llm.call(

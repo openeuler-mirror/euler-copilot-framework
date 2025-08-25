@@ -125,7 +125,7 @@ async def _push_rag_chunk(task: Task, queue: MessageQueue, content: str) -> tupl
                     documentAbstract=content_obj.content.get("abstract", ""),
                     documentType=content_obj.content.get("extension", ""),
                     documentSize=content_obj.content.get("size", 0),
-                    createdAt=round(datetime.now(tz=UTC).timestamp(), 3),
+                    createdAt=round(content_obj.content.get("created_at", datetime.now(tz=UTC).timestamp()), 3),
                 ).model_dump(exclude_none=True, by_alias=True),
             )
     except Exception:
