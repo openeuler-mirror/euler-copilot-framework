@@ -460,6 +460,7 @@ class MCPAgentExecutor(BaseExecutor):
         # 初始化MCP服务
         await self.load_state()
         await self.load_mcp()
+        data = {}
         if self.task.state.flow_status == FlowStatus.INIT:
             # 初始化状态
             try:
@@ -467,6 +468,12 @@ class MCPAgentExecutor(BaseExecutor):
                 self.task.state.flow_name = (await MCPPlanner.get_flow_name(
                     self.task.runtime.question, self.resoning_llm, self.task.language
                 )).flow_name
+                flow_risk = await MCPPlanner.get_flow_excute_risk(
+                    self.task.runtime.question, self.tool_list, self.resoning_llm, self.task.language
+                )
+                user_info = await UserManager.get_userinfo_by_user_sub(self.task.ids.user_sub)
+                if user_info.auto_execute:
+                    data = flow_risk.model_dump(exclude_none=True, by_alias=True)
                 await TaskManager.save_task(self.task.id, self.task)
                 await self.get_next_step()
             except Exception as e:
@@ -481,7 +488,7 @@ class MCPAgentExecutor(BaseExecutor):
         self.task.state.flow_status = FlowStatus.RUNNING
         await self.push_message(
             EventType.FLOW_START,
-            data={}
+            data=data
         )
         if self.task.state.tool_id == FINAL_TOOL_ID:
             # 如果已经是最后一步，直接结束
