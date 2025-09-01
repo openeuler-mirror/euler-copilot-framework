@@ -17,6 +17,7 @@ from apps.scheduler.mcp_agent.prompt import (
     FINAL_ANSWER,
     GEN_STEP,
     GENERATE_FLOW_NAME,
+    GENERATE_FLOW_EXCUTE_RISK,
     GET_MISSING_PARAMS,
     GET_REPLAN_START_STEP_INDEX,
     IS_PARAM_ERROR,
@@ -30,6 +31,7 @@ from apps.scheduler.slot.slot import Slot
 from apps.schemas.mcp import (
     GoalEvaluationResult,
     FlowName,
+    FlowRisk,
     IsParamError,
     MCPPlan,
     MCPTool,
@@ -95,7 +97,6 @@ class MCPPlanner(MCPBase):
 
         result = await MCPPlanner._get_reasoning_flow_name(user_goal, resoning_llm, language)
         result = await MCPPlanner._parse_result(result, FlowName.model_json_schema())
-        print(result)
         # 使用FlowName模型解析结果
         return FlowName.model_validate(result)
 
@@ -108,6 +109,45 @@ class MCPPlanner(MCPBase):
         """获取推理大模型的流程名称"""
         template = _env.from_string(GENERATE_FLOW_NAME[language])
         prompt = template.render(goal=user_goal)
+        return await MCPPlanner.get_resoning_result(prompt, resoning_llm)
+
+    async def get_flow_excute_risk(
+        user_goal: str,
+        tools: list[MCPTool],
+        resoning_llm: ReasoningLLM = ReasoningLLM(),
+        language: LanguageType = LanguageType.CHINESE,
+    ) -> FlowRisk:
+        """获取当前流程的风险评估结果"""
+        result = await MCPPlanner._get_reasoning_flow_risk(user_goal, tools, resoning_llm, language)
+        result = await MCPPlanner._parse_result(result, FlowRisk.model_json_schema())
+        # 使用FlowRisk模型解析结果
+        return FlowRisk.model_validate(result)
+
+    async def _get_reasoning_flow_risk(
+        user_goal: str,
+        tools: list[MCPTool],
+        resoning_llm: ReasoningLLM = ReasoningLLM(),
+        language: LanguageType = LanguageType.CHINESE,
+    ) -> FlowRisk:
+        """获取当前流程的风险评估结果"""
+        result = await MCPPlanner._get_reasoning_flow_risk(user_goal, tools, resoning_llm, language)
+        result = await MCPPlanner._parse_result(result, FlowRisk.model_json_schema())
+        # 使用FlowRisk模型解析结果
+        return FlowRisk.model_validate(result)
+
+    @staticmethod
+    async def _get_reasoning_flow_risk(
+        user_goal: str,
+        tools: list[MCPTool],
+        resoning_llm: ReasoningLLM = ReasoningLLM(),
+        language: LanguageType = LanguageType.CHINESE,
+    ) -> str:
+        """获取推理大模型的流程风险"""
+        template = _env.from_string(GENERATE_FLOW_EXCUTE_RISK[language])
+        prompt = template.render(
+            goal=user_goal,
+            tools=tools,
+        )
         return await MCPPlanner.get_resoning_result(prompt, resoning_llm)
 
     @staticmethod

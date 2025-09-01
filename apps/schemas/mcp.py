@@ -116,10 +116,25 @@ class GoalEvaluationResult(BaseModel):
     reason: str = Field(description="评估原因")
 
 
+class Risk(str, Enum):
+    """MCP工具风险类型"""
+
+    LOW = "low"
+    MEDIUM = "medium"
+    HIGH = "high"
+
+
 class FlowName(BaseModel):
     """MCP 流程名称"""
 
     flow_name: str = Field(description="MCP 流程名称", default="")
+
+
+class FlowRisk(BaseModel):
+    """MCP 流程风险评估结果"""
+
+    risk: Risk = Field(description="风险类型", default=Risk.LOW)
+    reason: str = Field(description="风险原因", default="")
 
 
 class RestartStepIndex(BaseModel):
@@ -127,14 +142,6 @@ class RestartStepIndex(BaseModel):
 
     start_index: int = Field(description="重新规划的起始步骤索引")
     reasoning: str = Field(description="重新规划的原因")
-
-
-class Risk(str, Enum):
-    """MCP工具风险类型"""
-
-    LOW = "low"
-    MEDIUM = "medium"
-    HIGH = "high"
 
 
 class ToolSkip(BaseModel):

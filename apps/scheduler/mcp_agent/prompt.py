@@ -398,6 +398,67 @@ GENERATE_FLOW_NAME: dict[LanguageType, str] = {
     """
     ),
 }
+GENERATE_FLOW_EXCUTE_RISK: dict[LanguageType, str] = {
+    LanguageType.CHINESE: dedent(
+        r"""
+    你是一个智能助手，你的任务是根据用户的目标和当前的工具集合，评估当前流程的风险。
+    
+    # 样例
+    # 目标
+    我需要扫描当前mysql数据库，分析性能瓶颈, 并调优
+    # 工具集合
+    你可以访问并使用一些工具，这些工具将在 <tools> </tools> XML标签中给出。
+    <tools>
+        - <id> mysql_analyzer </id> <description> 分析MySQL数据库性能 </description>
+        - <id> performance_tuner </id> <description> 调优数据库性能 </description>
+    </tools>
+    # 输出
+    {
+        "risk": "high",
+        "reason": "当前目标实现带来的风险较高，因为需要通过performance_tuner工具对MySQL数据库进行调优，而该工具可能会对数据库的性能和稳定性产生较大的影响，因此风险评估为高。"
+    }
+    # 现在开始评估当前流程的风险：
+    # 目标
+    {{goal}}
+    # 工具集合
+    <tools>
+        {% for tool in tools %}
+        - <id> {{tool.id}} </id> <description> {{tool.name}}；{{tool.description}} </description>
+        {% endfor %}
+    </tools>
+    # 输出
+    """
+    ),
+    LanguageType.ENGLISH: dedent(
+        r"""
+    You are an intelligent assistant, your task is to evaluate the risk of the current process based on the user's goal and the current tool set.
+    # Example
+    # Goal
+    I need to scan the current MySQL database, analyze performance bottlenecks, and optimize it.
+    # Tool Set
+    You can access and use some tools, which will be given in the <tools> </tools> XML tag.
+    <tools>
+        - <id> mysql_analyzer </id> <description> Analyze MySQL database performance </description>
+        - <id> performance_tuner </id> <description> Tune database performance </description>
+    </tools>
+    # Output
+    {
+        "risk": "high",
+        "reason": "The risk brought by the realization of the current goal is relatively high, because it is necessary to tune the MySQL database through the performance_tuner tool, which may have a greater impact on the performance and stability of the database. Therefore, the risk assessment is high."
+    }
+    # Now start evaluating the risk of the current process:
+    # Goal
+    {{goal}}
+    # Tool Set
+    <tools>
+        {% for tool in tools %}
+        - <id> {{tool.id}} </id> <description> {{tool.name}}；{{tool.description}} </description>
+        {% endfor %}
+    </tools>
+    # Output
+    """
+    )
+}
 GET_REPLAN_START_STEP_INDEX: dict[LanguageType, str] = {
     LanguageType.CHINESE: dedent(
         r"""
