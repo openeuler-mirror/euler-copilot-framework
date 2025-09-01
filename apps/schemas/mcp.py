@@ -57,7 +57,7 @@ class MCPServerStdioConfig(MCPBasicConfig):
 class MCPServerSSEConfig(MCPBasicConfig):
     """MCP 服务器配置"""
 
-    url: str = Field(description="MCP 服务器地址", default="http://example.com/sse", pattern=r"^https?://.+/sse.*$")
+    url: str = Field(description="MCP 服务器地址", default="http://example.com/sse", pattern=r"^https?://.*$")
 
 
 class MCPServerConfig(BaseModel):
