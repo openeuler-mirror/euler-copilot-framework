@@ -1,0 +1,56 @@
+label: openEuler Intelligent Assistant
+isManual: true
+description: Deploy and use openEuler Intelligent Assistant
+sections:
+  - label: Quick Start
+    sections: 
+      - label: Web Q&A
+        sections: 
+          - label: Deployment Guide
+            sections:
+              - label: Offline Deployment Guide
+                href: ./quick_start/smart_web/deploy_guide/offline.md
+              - label: Online Deployment Guide
+                href: ./quick_start/smart_web/deploy_guide/online.md
+          - label: User Guide
+            sections: 
+              - label: Introduction
+                href: ./quick_start/smart_web/user_guide/introduction.md
+              - label: Registration and Login
+                href: ./quick_start/smart_web/user_guide/registration_and_login.md
+              - label: Intelligent Q&A Usage
+                href: ./quick_start/smart_web/user_guide/qa_guide.md
+      - label: Shell Q&A
+        sections: 
+          - label: User Guide
+            sections:
+              - label: API Key Acquisition
+                href: ./quick_start/smart_shell/user_guide/api_key.md
+              - label: Command Line Assistant Usage
+                href: ./quick_start/smart_shell/user_guide/shell.md
+  - label: Advanced Usage
+    sections:
+      - label: Intelligent Diagnosis
+        sections:
+          - label: Deployment Guide
+            href: ./advance/smart_diagnosis/deploy_guide/diagnosis_deployment.md
+          - label: User Guide
+            href: ./advance/smart_diagnosis/user_guide/diagnosis_guidance.md
+      - label: Intelligent Tuning
+        sections:
+          - label: Deployment Guide
+            href: ./advance/smart_tuning/deploy_guide/tune_deployment.md
+          - label: User Guide
+            href: ./advance/smart_tuning/user_guide/tune_guidance.md
+      - label: Knowledge Base Management
+        sections:
+          - label: Deployment Guide
+            href: ./advance/knowledge_base/deploy_guide/witchaind_deployment.md
+          - label: User Guide
+            href: ./advance/knowledge_base/user_guide/witchaind_guidance.md
+      - label: Workflow Orchestration
+        sections:
+          - label: Deployment Guide
+            href: ./advance/work_flow/deploy_guide/workflow_deployment.md
+          - label: User Guide
+            href: ./advance/work_flow/user_guide/workflow_guidance.md

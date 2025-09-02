@@ -1,0 +1,6 @@
+label: sysHAX用户指南
+isManual: true
+description: 异构协同加速运行
+sections:
+  - label: sysHAX部署指南
+    href: ./syshax_deployment_guide.md
