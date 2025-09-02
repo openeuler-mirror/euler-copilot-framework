@@ -1,0 +1,6 @@
+label: sysHAX User Guide
+isManual: true
+description: Heterogeneous Collaborative Acceleration
+sections:
+  - label: sysHAX Deployment Guide
+    href: ./syshax_deployment_guide.md
