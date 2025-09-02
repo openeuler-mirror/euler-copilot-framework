@@ -111,19 +111,8 @@ class MCPPlanner(MCPBase):
         prompt = template.render(goal=user_goal)
         return await MCPPlanner.get_resoning_result(prompt, resoning_llm)
 
+    @staticmethod
     async def get_flow_excute_risk(
-        user_goal: str,
-        tools: list[MCPTool],
-        resoning_llm: ReasoningLLM = ReasoningLLM(),
-        language: LanguageType = LanguageType.CHINESE,
-    ) -> FlowRisk:
-        """获取当前流程的风险评估结果"""
-        result = await MCPPlanner._get_reasoning_flow_risk(user_goal, tools, resoning_llm, language)
-        result = await MCPPlanner._parse_result(result, FlowRisk.model_json_schema())
-        # 使用FlowRisk模型解析结果
-        return FlowRisk.model_validate(result)
-
-    async def _get_reasoning_flow_risk(
         user_goal: str,
         tools: list[MCPTool],
         resoning_llm: ReasoningLLM = ReasoningLLM(),
