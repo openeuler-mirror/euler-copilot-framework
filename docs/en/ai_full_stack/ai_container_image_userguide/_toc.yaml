@@ -1,6 +1,6 @@
-label: AI容器镜像用户指南
+label: AI Container Image User Guide
 isManual: true
-description: openEuler AI 容器镜像封装了 AI 框架等软件，提高 AI 应用开发或使用效率
+description: The openEuler AI container image packages AI frameworks and other software to improve the efficiency of AI application development and usage.
 sections:
-  - label: AI容器镜像用户指南
-    href: ./ai-container-image-user-guide.md
+  - label: AI Container Image User Guide
+    href: ./ai_container_image_user_guide.md
