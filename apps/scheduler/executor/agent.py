@@ -333,6 +333,7 @@ class MCPAgentExecutor(BaseExecutor):
             if self.task.state.step_status == StepStatus.PARAM:
                 if len(self.task.context) and self.task.context[-1].step_id == self.task.state.step_id:
                     del self.task.context[-1]
+                await self.get_tool_input_param(is_first=False)
             elif self.task.state.step_status == StepStatus.WAITING:
                 if self.params:
                     if len(self.task.context) and self.task.context[-1].step_id == self.task.state.step_id:

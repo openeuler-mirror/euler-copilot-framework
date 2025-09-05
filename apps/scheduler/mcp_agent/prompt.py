@@ -2303,8 +2303,8 @@ REPAIR_PARAMS: dict[LanguageType, str] = {
     {{current_goal}}
     # 工具入参scheme
     {{input_schema}}
-    # 工具入参
-    {{input_param}}
+    # 工具当前的入参
+    {{input_params}}
     # 运行报错
     {{error_message}}
     # 补充的参数
@@ -2380,8 +2380,8 @@ REPAIR_PARAMS: dict[LanguageType, str] = {
     </tool>
     # Tool input schema
     {{input_schema}}
-    # Tool input parameters
-    {{input_param}}
+    # Tool current input parameters
+    {{input_params}}
     # Runtime error
     {{error_message}}
     # Supplementary parameters
