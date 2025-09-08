@@ -256,6 +256,7 @@ class MCPAgentExecutor(BaseExecutor):
 
     async def get_next_step(self) -> None:
         """获取下一步"""
+        self.task.state.retry_times = 0
         if self.task.state.step_cnt < self.max_steps:
             self.task.state.step_cnt += 1
             history = await MCPHost.assemble_memory(self.task)
@@ -361,6 +362,7 @@ class MCPAgentExecutor(BaseExecutor):
                     break
         elif self.task.state.step_status == StepStatus.ERROR:
             # 错误处理
+            self.task.state.retry_times += 1
             if self.task.state.retry_times >= 3:
                 await self.error_handle_after_step()
             else:
