@@ -42,7 +42,7 @@ class FunctionLLM:
         self._params = {
             "model": self._config.model,
             "messages": [],
-            "timeout": 10
+            "timeout": 300
         }
 
         if self._config.backend == "ollama":
