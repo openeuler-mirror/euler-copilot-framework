@@ -315,6 +315,7 @@ class MCPAgentExecutor(BaseExecutor):
                 output_data={},
             )
         )
+        self.task.state.tool_id = FINAL_TOOL_ID
 
     async def work(self) -> None:
         """执行当前步骤"""
