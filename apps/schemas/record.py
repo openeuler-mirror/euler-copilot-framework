@@ -33,6 +33,7 @@ class RecordFlowStep(BaseModel):
     """Record表子项：flow的单步数据结构"""
 
     step_id: str = Field(alias="stepId")
+    step_name: str = Field(alias="stepName", default="")
     step_status: StepStatus = Field(alias="stepStatus")
     input: dict[str, Any]
     output: dict[str, Any]
