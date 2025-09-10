@@ -1417,7 +1417,7 @@ RISK_EVALUATE: dict[LanguageType, str] = {
     # 输出
     ```json
     {
-        "risk": "中",
+        "risk": "medium",
         "reason": "当前工具将连接到MySQL数据库并分析性能，可能会对数据库性能产生一定影响。请确保在非生产环境中执行此操作。"
     }
     ```
