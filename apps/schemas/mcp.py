@@ -38,25 +38,24 @@ class MCPType(str, Enum):
 class MCPBasicConfig(BaseModel):
     """MCP 基本配置"""
 
-    env: dict[str, Any] = Field(description="MCP 服务器环境变量", default={})
     auto_approve: list[str] = Field(description="自动批准的MCP工具ID列表", default=[], alias="autoApprove")
     disabled: bool = Field(description="MCP 服务器是否禁用", default=False)
     auto_install: bool = Field(description="是否自动安装MCP服务器", default=True)
     timeout: int = Field(description="MCP 服务器超时时间（秒）", default=60, alias="timeout")
     description: str = Field(description="MCP 服务器自然语言描述", default="")
-    headers: dict[str, str] = Field(description="MCP 服务器请求头", default={})
 
 
 class MCPServerStdioConfig(MCPBasicConfig):
     """MCP 服务器配置"""
 
+    env: dict[str, Any] = Field(description="MCP 服务器环境变量", default={})
     command: str = Field(description="MCP 服务器命令")
     args: list[str] = Field(description="MCP 服务器命令参数")
 
 
 class MCPServerSSEConfig(MCPBasicConfig):
     """MCP 服务器配置"""
-
+    headers: dict[str, str] = Field(description="MCP 服务器请求头", default={})
     url: str = Field(description="MCP 服务器地址", default="http://example.com/sse", pattern=r"^https?://.*$")
 
 
