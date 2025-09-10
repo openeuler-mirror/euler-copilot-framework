@@ -430,7 +430,10 @@ class MCPLoader(metaclass=SingletonMeta):
             symlinks=True,
         )
         if mcp_env is not None:
-            mcp_config.config.env.update(mcp_env)
+            if mcp_config.type == MCPType.STDIO:
+                mcp_config.config.env.update(mcp_env)
+            else:
+                mcp_config.config.headers.update(mcp_env)
         if mcp_config.type == MCPType.STDIO:
             index = None
             for i in range(len(mcp_config.config.args)):

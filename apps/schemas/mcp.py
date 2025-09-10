@@ -44,7 +44,7 @@ class MCPBasicConfig(BaseModel):
     auto_install: bool = Field(description="是否自动安装MCP服务器", default=True)
     timeout: int = Field(description="MCP 服务器超时时间（秒）", default=60, alias="timeout")
     description: str = Field(description="MCP 服务器自然语言描述", default="")
-    headers: dict[str, str] = Field(description="MCP 服务器请求头", default={}, alias="headers")
+    headers: dict[str, str] = Field(description="MCP 服务器请求头", default={})
 
 
 class MCPServerStdioConfig(MCPBasicConfig):
