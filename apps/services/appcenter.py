@@ -482,11 +482,8 @@ class AppCenterManager:
             # 在预期的条件下，如果在 data 或 app_data 中找不到 mcp_service，则默认回退为空列表。
             metadata.mcp_service = []
         # 处理llm_id字段
-        if data is not None and hasattr(data, "llm") and data.llm:
+        if data is not None and hasattr(data, "llm"):
             # 创建应用场景，验证传入的 llm_id 状态 (create_app)
-            metadata.llm_id = data.llm if data.llm else "empty"
-        elif data is not None and hasattr(data, "llm_id"):
-            # 更新应用场景，使用 data 中的 llm_id (update_app)
             metadata.llm_id = data.llm if data.llm else "empty"
         elif app_data is not None and hasattr(app_data, "llm_id"):
             # 更新应用发布状态场景，使用 app_data 中的 llm_id (update_app_publish_status)
