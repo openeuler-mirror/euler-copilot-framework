@@ -97,12 +97,15 @@ class MCPServiceManager:
                 filters["activated"] = {"$in": [user_sub]}
             else:
                 filters["activated"] = {"$nin": [user_sub]}
-        if not is_install:
-            user_info = await UserManager.get_userinfo_by_user_sub(user_sub)
-            if not user_info.is_admin:
-                filters["status"] = MCPInstallStatus.READY.value
-        else:
+        user_info = await UserManager.get_userinfo_by_user_sub(user_sub)
+        if not user_info.is_admin:
             filters["status"] = MCPInstallStatus.READY.value
+        else:
+            if is_install is not None:
+                if is_install:
+                    filters["status"] = MCPInstallStatus.READY.value
+                else:
+                    filters["status"] = {"$ne": MCPInstallStatus.READY.value}
         mcpservice_pools = await MCPServiceManager._search_mcpservice(filters, page)
         return [
             MCPServiceCardItem(
