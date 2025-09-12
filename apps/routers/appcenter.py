@@ -183,6 +183,7 @@ async def get_recently_used_applications(
 
 @router.get("/{appId}", response_model=GetAppPropertyRsp | ResponseData)
 async def get_application(
+    user_sub: Annotated[str, Depends(get_user)],
     app_id: Annotated[str, Path(..., alias="appId", description="应用ID")],
 ) -> JSONResponse:
     """获取应用详情"""
@@ -229,7 +230,7 @@ async def get_application(
     if app_data.llm_id == "empty":
         llm_item = LLMIteam()
     else:
-        llm_collection = await LLMManager.get_llm_by_id(app_data.user_sub, app_data.llm_id)
+        llm_collection = await LLMManager.get_llm_by_id(user_sub, app_data.llm_id)
         llm_item = LLMIteam(
             llmId=llm_collection.id,
             modelName=llm_collection.model_name,
