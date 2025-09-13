@@ -25,6 +25,7 @@ _env = SandboxedEnvironment(
 
 FINAL_TOOL_ID = "FIANL"
 SUMMARIZE_TOOL_ID = "SUMMARIZE"
+SELF_DESC_TOOL_ID = "SELF_DESC"
 
 
 class MCPSelector(MCPBase):
