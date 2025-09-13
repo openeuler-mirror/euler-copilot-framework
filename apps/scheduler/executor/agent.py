@@ -167,7 +167,7 @@ class MCPAgentExecutor(BaseExecutor):
         except anyio.ClosedResourceError:
             logger.exception("[MCPAgentExecutor] MCP客户端连接已关闭: %s", mcp_tool.mcp_id)
             await self.mcp_pool.stop(mcp_tool.mcp_id, self.task.ids.user_sub)
-            await self.mcp_pool.init_mcp(mcp_tool.mcp_id, self.task.ids.user_sub)
+            await self.mcp_pool._init_mcp(mcp_tool.mcp_id, self.task.ids.user_sub)
             self.task.state.step_status = StepStatus.ERROR
             return
         except Exception as e:

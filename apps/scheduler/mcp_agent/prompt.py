@@ -2396,7 +2396,10 @@ FINAL_ANSWER: dict[LanguageType, str] = {
     LanguageType.CHINESE: dedent(
         r"""
     综合理解计划执行结果和背景信息，向用户报告目标的完成情况。
-
+    
+    # 注意
+    1.输出的图片链接需要设置高为400px,且使用html的img标签进行展示，不能直接输出链接。
+      1.1 例如：<img src="https://excample/excample.jpg" height="400px" alt="图片描述（可选）">
     # 用户目标
 
     {{goal}}
@@ -2418,7 +2421,10 @@ FINAL_ANSWER: dict[LanguageType, str] = {
     LanguageType.ENGLISH: dedent(
         r"""
     Comprehensively understand the plan execution results and background information, and report the goal completion status to the user.
-
+    
+    # Note
+    1. The output image link needs to be set to a height of 400px and displayed using the HTML img tag, not directly outputting the link.
+      1.1 For example: <img src="https://excample/excample.jpg" height="400px" alt="Image description (optional)">
     # User Goal
 
     {{goal}}
