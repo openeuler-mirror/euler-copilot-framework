@@ -1,6 +1,5 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2023-2025. All rights reserved.
 """MCP Agent执行器"""
-
 import logging
 import uuid
 
@@ -13,7 +12,7 @@ from apps.scheduler.executor.base import BaseExecutor
 from apps.schemas.enum_var import LanguageType
 from apps.scheduler.mcp_agent.host import MCPHost
 from apps.scheduler.mcp_agent.plan import MCPPlanner
-from apps.scheduler.mcp_agent.select import FINAL_TOOL_ID
+from apps.scheduler.mcp_agent.select import FINAL_TOOL_ID, SELF_DESC_TOOL_ID
 from apps.scheduler.pool.mcp.pool import MCPPool
 from apps.schemas.enum_var import EventType, FlowStatus, StepStatus
 from apps.schemas.mcp import (
@@ -92,14 +91,58 @@ class MCPAgentExecutor(BaseExecutor):
             for tool in mcp_service.tools:
                 self.tools[tool.id] = tool
             self.tool_list.extend(mcp_service.tools)
-        self.tools[FINAL_TOOL_ID] = MCPTool(
-            id=FINAL_TOOL_ID, name="Final Tool", description="结束流程的工具", mcp_id="", input_schema={},
-        )
-        self.tool_list.append(
-            MCPTool(id=FINAL_TOOL_ID, name="Final Tool", description="结束流程的工具", mcp_id="", input_schema={}),
-        )
+        if self.task.language == LanguageType.CHINESE:
+            self.tools[FINAL_TOOL_ID] = MCPTool(
+                id=FINAL_TOOL_ID, name="Final Tool", description="结束流程的工具", mcp_id="", input_schema={},
+            )
+            self.tool_list.append(
+                MCPTool(id=FINAL_TOOL_ID, name="Final Tool", description="结束流程的工具", mcp_id="", input_schema={}),
+            )
+            self.tools[SELF_DESC_TOOL_ID] = MCPTool(
+                id=SELF_DESC_TOOL_ID,
+                name="Self Description",
+                description="用于描述自身能力和背景信息的工具",
+                mcp_id="",
+                input_schema={},
+            )
+            self.tool_list.append(
+                MCPTool(
+                    id=SELF_DESC_TOOL_ID,
+                    name="Self Description",
+                    description="用于描述自身能力和背景信息的工具",
+                    mcp_id="",
+                    input_schema={},
+                )
+            )
+        else:
+            self.tools[FINAL_TOOL_ID] = MCPTool(id=FINAL_TOOL_ID, name="Final Tool",
+                                                description="The tool to end the process", mcp_id="", input_schema={},)
+            self.tool_list.append(
+                MCPTool(
+                    id=FINAL_TOOL_ID, name="Final Tool", description="The tool to end the process",
+                    mcp_id="", input_schema={}),)
+            self.tools[SELF_DESC_TOOL_ID] = MCPTool(
+                id=SELF_DESC_TOOL_ID,
+                name="Self Description",
+                description="A tool used to describe one's own abilities and background information",
+                mcp_id="",
+                input_schema={},
+            )
+            self.tool_list.append(
+                MCPTool(
+                    id=SELF_DESC_TOOL_ID,
+                    name="Self Description",
+                    description="A tool used to describe one's own abilities and background information",
+                    mcp_id="",
+                    input_schema={},
+                )
+            )
 
     async def get_tool_input_param(self, is_first: bool) -> None:
+        # 工具的入参是 {} ，不需要填充
+        if self.task.state.tool_id in [FINAL_TOOL_ID, SELF_DESC_TOOL_ID]:
+            self.task.state.current_input = {}
+            return
         if is_first:
             # 获取第一个输入参数
             mcp_tool = self.tools[self.task.state.tool_id]
@@ -161,9 +204,20 @@ class MCPAgentExecutor(BaseExecutor):
         self.task.state.flow_status = FlowStatus.RUNNING
         self.task.state.step_status = StepStatus.RUNNING
         mcp_tool = self.tools[self.task.state.tool_id]
-        mcp_client = (await self.mcp_pool.get(mcp_tool.mcp_id, self.task.ids.user_sub))
+        result_exchange = True
         try:
-            output_params = await mcp_client.call_tool(mcp_tool.name, self.task.state.current_input)
+            if self.task.state.tool_id == SELF_DESC_TOOL_ID:
+                tools = []
+                for tool in self.tool_list:
+                    if tool.id not in [SELF_DESC_TOOL_ID, FINAL_TOOL_ID]:
+                        tools.append(f"{tool.name}: {tool.description}")
+                output_params = {
+                    "message": tools
+                }
+                result_exchange = False
+            else:
+                mcp_client = (await self.mcp_pool.get(mcp_tool.mcp_id, self.task.ids.user_sub))
+                output_params = await mcp_client.call_tool(mcp_tool.name, self.task.state.current_input)
         except anyio.ClosedResourceError:
             logger.exception("[MCPAgentExecutor] MCP客户端连接已关闭: %s", mcp_tool.mcp_id)
             await self.mcp_pool.stop(mcp_tool.mcp_id, self.task.ids.user_sub)
@@ -176,21 +230,22 @@ class MCPAgentExecutor(BaseExecutor):
             self.task.state.step_status = StepStatus.ERROR
             self.task.state.error_message = str(e)
             return
-        if output_params.isError:
-            err = ""
+        if result_exchange:
+            if output_params.isError:
+                err = ""
+                for output in output_params.content:
+                    if isinstance(output, TextContent):
+                        err += output.text
+                self.task.state.step_status = StepStatus.ERROR
+                self.task.state.error_message = err
+                return
+            message = ""
             for output in output_params.content:
                 if isinstance(output, TextContent):
-                    err += output.text
-            self.task.state.step_status = StepStatus.ERROR
-            self.task.state.error_message = err
-            return
-        message = ""
-        for output in output_params.content:
-            if isinstance(output, TextContent):
-                message += output.text
-        output_params = {
-            "message": message,
-        }
+                    message += output.text
+            output_params = {
+                "message": message,
+            }
 
         await self.update_tokens()
         await self.push_message(EventType.STEP_INPUT, self.task.state.current_input)

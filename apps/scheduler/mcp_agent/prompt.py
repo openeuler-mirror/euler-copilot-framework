@@ -2400,6 +2400,7 @@ FINAL_ANSWER: dict[LanguageType, str] = {
     # 注意
     1.输出的图片链接需要设置高为400px,且使用html的img标签进行展示，不能直接输出链接。
       1.1 例如：<img src="https://excample/excample.jpg" height="400px" alt="图片描述（可选）">
+    2.不要输出模型相关的信息，例如“作为一个AI模型，我无法...”等。
     # 用户目标
 
     {{goal}}
@@ -2425,6 +2426,7 @@ FINAL_ANSWER: dict[LanguageType, str] = {
     # Note
     1. The output image link needs to be set to a height of 400px and displayed using the HTML img tag, not directly outputting the link.
       1.1 For example: <img src="https://excample/excample.jpg" height="400px" alt="Image description (optional)">
+    2. Do not output model-related information, such as "As an AI model, I cannot..." etc.
     # User Goal
 
     {{goal}}
