@@ -142,7 +142,7 @@ class ReasoningLLM:
         return await self._client.chat.completions.create(
             model=model,
             messages=messages,  # type: ignore[]
-            max_tokens=max_tokens or self._config.max_tokens,
+            max_completion_tokens=max_tokens or self._config.max_tokens,
             temperature=temperature or self._config.temperature,
             stream=True,
             stream_options={"include_usage": True},
