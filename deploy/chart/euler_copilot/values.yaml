@@ -89,8 +89,8 @@ euler_copilot:
   framework:
     # [必填] 是否部署Framework后端框架服务
     enabled: true
-    # 镜像设置；默认为hub.oepkgs.net/neocopilot/euler-copilot-framework:0.9.6-x86
-    # 镜像标签：["0.9.6-x86", "0.9.6-arm"]
+    # 镜像设置；默认为hub.oepkgs.net/neocopilot/euler-copilot-framework:0.10.0-x86
+    # 镜像标签：["0.10.0-x86", "0.10.0-arm"]
     image:
     # 容器根目录只读
     readOnly:
@@ -106,8 +106,8 @@ euler_copilot:
   web:
     # [必填] 是否部署Web前端用户界面
     enabled: true
-    # 镜像设置；默认为hub.oepkgs.net/neocopilot/euler-copilot-web:0.9.6-x86
-    # 镜像标签：["0.9.6-x86", "0.9.6-arm"]
+    # 镜像设置；默认为hub.oepkgs.net/neocopilot/euler-copilot-web:0.10.0-x86
+    # 镜像标签：["0.10.0-x86", "0.10.0-arm"]
     image:
     # 容器根目录只读
     readOnly:
@@ -123,8 +123,8 @@ euler_copilot:
   rag_web:
     # [必填] 是否部署RAG Web前端用户界面
     enabled: true
-    # 镜像设置；默认为hub.oepkgs.net/neocopilot/data_chain_web:0.9.6-x86
-    # 镜像标签：["0.9.6-x86", "0.9.6-arm"]
+    # 镜像设置；默认为hub.oepkgs.net/neocopilot/data_chain_web:0.10.0-x86
+    # 镜像标签：["0.10.0-x86", "0.10.0-arm"]
     image:
     # 容器根目录只读
     readOnly:
@@ -140,8 +140,8 @@ euler_copilot:
   rag:
     # [必填] 是否部署RAG后端服务
     enabled: true
-    # 镜像设置；默认为hub.oepkgs.net/neocopilot/data_chain_back_end:0.9.6-x86
-    # 镜像标签：["0.9.6-x86", "0.9.6-arm"]
+    # 镜像设置；默认为hub.oepkgs.net/neocopilot/data_chain_back_end:0.10.0-x86
+    # 镜像标签：["0.10.0-x86", "0.10.0-arm"]
     image:
     # 容器根目录只读
     readOnly:
@@ -154,37 +154,4 @@ euler_copilot:
       # 当类型为NodePort时，填写主机的端口号
       nodePort:
 
-  deepinsight_web:
-    # [必填] 是否部署RAG Web前端用户界面
-    enabled: true
-    # 镜像设置；默认为hub.oepkgs.net/neocopilot/web:0.9.6-x86
-    # 镜像标签：["0.9.5-x86", "0.9.5-arm"]
-    image:
-    # 容器根目录只读
-    readOnly:
-    # 性能限制设置
-    resourceLimits: {}
-    # Service设置
-    service:
-      # Service类型，例如NodePort
-      type:
-      # 当类型为NodePort时，填写主机的端口号
-      nodePort:
-
-  deepinsight:
-    # [必填] 是否部署RAG后端服务
-    enabled: true
-    # 镜像设置；默认为hub.oepkgs.net/neocopilot/backend:0.9.6-x86
-    # 镜像标签：["0.9.5-x86", "0.9.5-arm"]
-    image:
-    # 容器根目录只读
-    readOnly:
-    # 性能限制设置
-    resourceLimits: {}
-    # Service设置
-    service:
-      # Service类型，例如NodePort
-      type:
-      # 当类型为NodePort时，填写主机的端口号
-      nodePort:
 
