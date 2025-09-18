@@ -1,5 +1,5 @@
 感谢您使用openEuler Intelligence！
-当前为0.9.6版本。
+当前为0.10.0版本。
 当前Chart的功能为：AuthHub统一登录系统部署。
 
 说明：

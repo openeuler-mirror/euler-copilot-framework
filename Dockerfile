@@ -1,4 +1,4 @@
-FROM hub.oepkgs.net/neocopilot/framework_base:0.9.6-x86-test
+FROM hub.oepkgs.net/neocopilot/framework-baseimg:0.10.0-x86
 
 ENV PYTHONPATH=/app
 ENV TIKTOKEN_CACHE_DIR=/app/assets/tiktoken
