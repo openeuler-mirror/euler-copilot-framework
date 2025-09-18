@@ -8,7 +8,7 @@ BLUE='\033[0;34m'
 NC='\033[0m' # 恢复默认颜色
 
 # 默认配置
-eulercopilot_version="0.9.6"
+eulercopilot_version="0.10.0"
 ARCH_SUFFIX=""
 OUTPUT_DIR="/home/eulercopilot/images/${eulercopilot_version}"
 

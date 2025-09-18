@@ -1,6 +1,6 @@
 [project]
 name = "euler-copilot-framework"
-version = "0.9.6"
+version = "0.10.0"
 description = "EulerCopilot 后端服务"
 requires-python = "==3.11.6"
 dependencies = [
