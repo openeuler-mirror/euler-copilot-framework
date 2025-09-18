@@ -1,5 +1,6 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2023-2025. All rights reserved.
 """MCP Agent执行器"""
+from datetime import datetime,UTC
 import logging
 import uuid
 
@@ -311,6 +312,7 @@ class MCPAgentExecutor(BaseExecutor):
 
     async def get_next_step(self) -> None:
         """获取下一步"""
+        self.task.tokens.time=datetime.now(UTC).timestamp()
         self.task.state.retry_times = 0
         if self.task.state.step_cnt < self.max_steps:
             self.task.state.step_cnt += 1
