@@ -30,6 +30,9 @@ class VariablePoolManager:
         # 对话变量池缓存: conversation_id -> ConversationVariablePool
         self._conversation_pools: Dict[str, ConversationVariablePool] = {}
         
+        # 对话模板池缓存: flow_id -> ConversationVariablePool
+        self._conversation_template_pools: Dict[str, ConversationVariablePool] = {}
+        
         # 流程继承关系缓存: child_flow_id -> parent_flow_id
         self._flow_inheritance: Dict[str, str] = {}
         
@@ -107,32 +110,53 @@ class VariablePoolManager:
     async def get_flow_pool(self, flow_id: str, parent_flow_id: Optional[str] = None, 
                            auto_create: bool = True) -> Optional[FlowVariablePool]:
         """获取流程变量池"""
-        if flow_id in self._flow_pools:
-            return self._flow_pools[flow_id]
-        
-        if auto_create:
-            return await self._create_flow_pool(flow_id, parent_flow_id)
+        # 使用锁避免竞态条件
+        async with self._lock:
+            if flow_id in self._flow_pools:
+                return self._flow_pools[flow_id]
+            
+            if auto_create:
+                return await self._create_flow_pool(flow_id, parent_flow_id)
         
         return None
     
     async def create_conversation_pool(self, conversation_id: str, flow_id: str) -> ConversationVariablePool:
         """创建对话变量池（包含系统变量和对话变量）"""
-        if conversation_id in self._conversation_pools:
-            logger.warning(f"对话池 {conversation_id} 已存在，将覆盖")
+        # 使用锁避免竞态条件
+        async with self._lock:
+            # 检查是否已经存在
+            if conversation_id in self._conversation_pools:
+                existing_pool = self._conversation_pools[conversation_id]
+                logger.info(f"对话池 {conversation_id} 已存在，直接返回")
+                return existing_pool
         
-        # 创建对话变量池
-        conversation_pool = ConversationVariablePool(conversation_id, flow_id)
-        await conversation_pool.initialize()
+            # 创建对话变量池对象（但不初始化）
+            conversation_pool = ConversationVariablePool(conversation_id, flow_id)
+            
+            # 先缓存池，避免其他请求重复创建
+            self._conversation_pools[conversation_id] = conversation_pool
+            
+            logger.info(f"已创建对话变量池对象: {conversation_id}")
         
-        # 从对话模板池继承变量（如果存在）
-        conversation_template_pool = await self._get_conversation_template_pool(flow_id)
-        await conversation_pool.inherit_from_conversation_template(conversation_template_pool)
+        # 🔑 重要修复：在锁外进行初始化，避免死锁
+        try:
+            # 初始化池（在锁外进行，避免嵌套锁）
+            await conversation_pool.initialize()
         
-        # 缓存池
-        self._conversation_pools[conversation_id] = conversation_pool
+            # 从对话模板池继承变量（如果存在）
+            conversation_template_pool = await self._get_conversation_template_pool(flow_id)
+            await conversation_pool.inherit_from_conversation_template(conversation_template_pool)
         
-        logger.info(f"已创建对话变量池: {conversation_id}")
-        return conversation_pool
+            logger.info(f"对话变量池初始化完成: {conversation_id}")
+            return conversation_pool
+            
+        except Exception as e:
+            # 如果初始化失败，从缓存中移除
+            async with self._lock:
+                if conversation_id in self._conversation_pools:
+                    del self._conversation_pools[conversation_id]
+            logger.error(f"对话变量池初始化失败: {conversation_id} - {e}")
+            raise
     
     async def get_conversation_pool(self, conversation_id: str) -> Optional[ConversationVariablePool]:
         """获取对话变量池"""
@@ -267,10 +291,71 @@ class VariablePoolManager:
         return pool
     
     async def _get_conversation_template_pool(self, flow_id: str) -> Optional[ConversationVariablePool]:
-        """获取对话模板池（目前简化处理，返回None）"""
-        # 这里可以实现从数据库加载对话模板的逻辑
-        # 目前简化处理，返回None
+        """获取对话模板池 - 从MongoDB加载对应flow_id的对话变量模板"""
+        try:
+            # 检查缓存
+            if flow_id in self._conversation_template_pools:
+                logger.debug(f"从缓存获取对话模板池: {flow_id}")
+                return self._conversation_template_pools[flow_id]
+            
+            # 从MongoDB查询对话变量模板 (只查询is_template=True的)
+            collection = MongoDB().get_collection("variables")
+            cursor = collection.find({
+                "metadata.scope": VariableScope.CONVERSATION.value,
+                "metadata.flow_id": flow_id,
+                "metadata.is_template": True
+            })
+            
+            # 加载对话变量模板
+            template_variables = []
+            async for doc in cursor:
+                try:
+                    # 从VARIABLE_CLASS_MAP导入
+                    from .variables import VARIABLE_CLASS_MAP
+                    
+                    variable_class_name = doc.get("class")
+                    if variable_class_name in [cls.__name__ for cls in VARIABLE_CLASS_MAP.values()]:
+                        for var_class in VARIABLE_CLASS_MAP.values():
+                            if var_class.__name__ == variable_class_name:
+                                variable = var_class.deserialize(doc)
+                                template_variables.append(variable)
+                                break
+                except Exception as e:
+                    var_name = doc.get("metadata", {}).get("name", "unknown")
+                    logger.warning(f"对话变量模板 {var_name} 数据损坏: {e}")
+            
+            # 如果没有找到对话变量模板，返回None
+            if not template_variables:
+                logger.debug(f"流程 {flow_id} 没有找到对话变量模板")
+                return None
+            
+            # 创建对话模板池，使用特殊的模板conversation_id
+            template_conversation_id = f"template_{flow_id}"
+            template_pool = ConversationVariablePool(template_conversation_id, flow_id)
+            
+            # 手动初始化池的基础结构（不调用完整的initialize，避免从数据库重复加载）
+            template_pool._variables = {}
+            template_pool._initialized = True
+            
+            # 将模板变量加载到池中
+            for variable in template_variables:
+                template_pool._variables[variable.name] = variable
+            
+            # 缓存模板池
+            self._conversation_template_pools[flow_id] = template_pool
+            
+            logger.info(f"已为流程 {flow_id} 创建对话模板池，包含 {len(template_variables)} 个变量模板")
+            return template_pool
+            
+        except Exception as e:
+            logger.error(f"获取对话模板池失败 (flow_id: {flow_id}): {e}")
         return None
+    
+    def clear_conversation_template_cache(self, flow_id: str):
+        """清除对话模板池缓存 - 当模板更新时调用"""
+        if flow_id in self._conversation_template_pools:
+            del self._conversation_template_pools[flow_id]
+            logger.info(f"已清除对话模板池缓存: {flow_id}")
     
     async def clear_conversation_variables(self, flow_id: str):
         """清空工作流的所有对话变量池"""
@@ -299,11 +384,53 @@ class VariablePoolManager:
             if conversation_id not in active_conversations:
                 to_remove.append(conversation_id)
         
+        # 🔑 增强：在移除池之前清理文件资源
         for conversation_id in to_remove:
-            del self._conversation_pools[conversation_id]
+            try:
+                pool = self._conversation_pools[conversation_id]
+                await self._cleanup_conversation_files(pool)
+            except Exception as e:
+                logger.error(f"清理对话 {conversation_id} 的文件资源失败: {e}")
+            finally:
+                del self._conversation_pools[conversation_id]
         
         if to_remove:
             logger.info(f"清理了 {len(to_remove)} 个未使用的对话变量池")
+    
+    async def _cleanup_conversation_files(self, pool) -> None:
+        """清理对话池中的文件资源"""
+        try:
+            from .type import VariableType
+            from apps.services.document import DocumentManager
+            
+            variables = await pool.list_variables()
+            file_ids_to_cleanup = []
+            user_id = None
+            
+            for variable in variables:
+                # 记录用户ID用于文件清理
+                if not user_id and hasattr(variable.metadata, 'created_by'):
+                    user_id = variable.metadata.created_by
+                
+                if variable.metadata.var_type in [VariableType.FILE, VariableType.ARRAY_FILE]:
+                    if isinstance(variable.value, dict):
+                        if variable.metadata.var_type == VariableType.FILE:
+                            file_id = variable.value.get("file_id")
+                            if file_id:
+                                file_ids_to_cleanup.append(file_id)
+                        else:  # ARRAY_FILE
+                            file_ids = variable.value.get("file_ids", [])
+                            file_ids_to_cleanup.extend(file_ids)
+            
+            # 批量删除文件
+            if file_ids_to_cleanup and user_id:
+                await DocumentManager.delete_document(user_id, file_ids_to_cleanup)
+                logger.info(f"已清理对话池 {pool.pool_id} 中的 {len(file_ids_to_cleanup)} 个文件")
+            elif file_ids_to_cleanup:
+                logger.warning(f"对话池 {pool.pool_id} 中有 {len(file_ids_to_cleanup)} 个文件无法清理（缺少用户ID）")
+                
+        except Exception as e:
+            logger.error(f"清理对话池文件失败: {e}")
     
     @asynccontextmanager
     async def get_pool_for_scope(self, 

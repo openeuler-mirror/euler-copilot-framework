@@ -8,6 +8,7 @@ from apps.common.mongo import MongoDB
 from .base import BaseVariable, VariableMetadata
 from .type import VariableType, VariableScope
 from .variables import create_variable, VARIABLE_CLASS_MAP
+from .file_utils import FileVariableHelper
 
 logger = logging.getLogger(__name__)
 
@@ -100,33 +101,45 @@ class BaseVariablePool(ABC):
                              var_type: Optional[VariableType] = None,
                              description: Optional[str] = None,
                              force_system_update: bool = False) -> BaseVariable:
-        """更新变量"""
+        """更新变量值、类型或描述"""
+        if not self.can_modify() and not force_system_update:
+            raise PermissionError(f"不允许修改{self.scope.value}级变量")
+        
         if name not in self._variables:
             raise ValueError(f"变量 {name} 不存在")
         
         variable = self._variables[name]
         
-        # 检查系统变量的修改权限
-        if hasattr(variable.metadata, 'is_system') and variable.metadata.is_system and not force_system_update:
+        # 检查是否为系统变量（除非强制更新）
+        if (hasattr(variable.metadata, 'is_system') and 
+            variable.metadata.is_system and 
+            not force_system_update):
             raise PermissionError(f"系统变量 {name} 不允许修改")
         
-        if not self.can_modify() and not force_system_update:
-            raise PermissionError(f"不允许修改{self.scope.value}级变量")
+        # 🔑 新增：对于文件类型变量，在更新前清理旧文件资源
+        old_file_ids = await self._get_file_ids_from_variable(variable)
         
-        # 更新字段
+        # 更新值
         if value is not None:
             variable.value = value
+        
+        # 更新类型
         if var_type is not None:
             variable.metadata.var_type = var_type
+        
+        # 更新描述
         if description is not None:
             variable.metadata.description = description
-            
-        variable.metadata.updated_at = datetime.now(UTC)
         
-        # 持久化
+        # 🔑 新增：清理被替换的文件
+        if value is not None:
+            new_file_ids = await self._get_file_ids_from_variable(variable)
+            await self._cleanup_replaced_files(variable, old_file_ids, new_file_ids)
+        
+        # 持久化到数据库
         await self._persist_variable(variable)
         
-        logger.info(f"已更新变量: {name} 在池 {self.pool_id}, 值为{value}")
+        logger.info(f"已更新变量: {name} 从池 {self.pool_id}, 值为{value}")
         return variable
     
     async def delete_variable(self, name: str) -> bool:
@@ -143,6 +156,9 @@ class BaseVariablePool(ABC):
         if hasattr(variable.metadata, 'is_system') and variable.metadata.is_system:
             raise PermissionError(f"系统变量 {name} 不允许删除")
         
+        # 🔑 新增：对于文件类型变量，清理关联的文件资源
+        await self._cleanup_file_resources_if_needed(variable)
+        
         del self._variables[name]
         
         # 从数据库删除
@@ -150,6 +166,78 @@ class BaseVariablePool(ABC):
         
         logger.info(f"已删除变量: {name} 从池 {self.pool_id}")
         return True
+    
+    async def _cleanup_file_resources_if_needed(self, variable: BaseVariable) -> None:
+        """如果变量是文件类型，清理关联的文件资源（但保护已绑定历史记录的文件）"""
+        try:
+            from .type import VariableType
+            
+            if variable.metadata.var_type not in [VariableType.FILE, VariableType.ARRAY_FILE]:
+                return
+            
+            if not isinstance(variable.value, dict):
+                return
+                
+            file_ids_to_cleanup = []
+            
+            if variable.metadata.var_type == VariableType.FILE:
+                file_id = variable.value.get("file_id")
+                if file_id:
+                    file_ids_to_cleanup.append(file_id)
+            else:  # ARRAY_FILE
+                file_ids = variable.value.get("file_ids", [])
+                file_ids_to_cleanup.extend(file_ids)
+            
+            if file_ids_to_cleanup:
+                # 🔑 修正：检查文件是否已绑定历史记录
+                protected_file_ids = await self._get_protected_file_ids(file_ids_to_cleanup)
+                actual_cleanup_ids = [fid for fid in file_ids_to_cleanup if fid not in protected_file_ids]
+                
+                if actual_cleanup_ids:
+                    user_id = getattr(variable.metadata, 'created_by', None)
+                    if user_id:
+                        from apps.services.document import DocumentManager
+                        await DocumentManager.delete_document(user_id, actual_cleanup_ids)
+                        logger.info(f"已清理变量 {variable.name} 关联的 {len(actual_cleanup_ids)} 个文件")
+                        
+                        if protected_file_ids:
+                            logger.info(f"保护了变量 {variable.name} 中 {len(protected_file_ids)} 个已绑定历史记录的文件")
+                    else:
+                        logger.warning(f"无法确定变量 {variable.name} 的创建者，跳过文件清理")
+                else:
+                    logger.info(f"变量 {variable.name} 的所有文件都已绑定历史记录，跳过清理")
+                    
+        except Exception as e:
+            logger.error(f"清理变量 {variable.name} 的文件资源失败: {e}")
+            # 不抛出异常，避免影响变量删除流程
+    
+    async def _get_protected_file_ids(self, file_ids: list[str]) -> set[str]:
+        """获取已经绑定到历史记录的文件ID列表"""
+        try:
+            from apps.common.mongo import MongoDB
+            
+            mongo = MongoDB()
+            record_group_collection = mongo.get_collection("record_group")
+            
+            protected_ids = set()
+            
+            # 查询所有RecordGroup中绑定的文件
+            async for record_group in record_group_collection.find(
+                {"docs.id": {"$in": file_ids}},
+                {"docs": 1}
+            ):
+                docs = record_group.get("docs", [])
+                for doc in docs:
+                    doc_id = doc.get("id") or doc.get("_id")
+                    if doc_id in file_ids:
+                        protected_ids.add(doc_id)
+                        
+            return protected_ids
+            
+        except Exception as e:
+            logger.error(f"检查文件历史记录绑定状态失败: {e}")
+            # 出错时保护所有文件，避免误删
+            return set(file_ids)
     
     async def get_variable(self, name: str) -> Optional[BaseVariable]:
         """获取变量"""
@@ -250,6 +338,59 @@ class BaseVariablePool(ABC):
     def _add_pool_query_conditions(self, query: Dict[str, Any], variable: BaseVariable):
         """添加池特定的查询条件"""
         pass
+
+    async def _get_file_ids_from_variable(self, variable: BaseVariable) -> list[str]:
+        """从变量中提取文件ID列表 - 兼容新旧格式"""
+        try:
+            from .type import VariableType
+            from .file_utils import FileVariableHelper
+            
+            if variable.metadata.var_type not in [VariableType.FILE, VariableType.ARRAY_FILE]:
+                return []
+            
+            if not isinstance(variable.value, dict):
+                return []
+            
+            if variable.metadata.var_type == VariableType.FILE:
+                # 使用辅助函数统一处理
+                file_id = FileVariableHelper.get_file_id(variable.value)
+                return [file_id] if file_id else []
+            else:  # ARRAY_FILE
+                # 使用辅助函数统一处理，包含兼容性逻辑
+                return FileVariableHelper.get_file_ids(variable.value)
+                
+        except Exception as e:
+            logger.error(f"提取变量 {variable.name} 的文件ID失败: {e}")
+            return []
+    
+    async def _cleanup_replaced_files(self, variable: BaseVariable, old_file_ids: list[str], new_file_ids: list[str]) -> None:
+        """清理被替换的文件（不在新文件列表中的旧文件，但保护已绑定历史记录的文件）"""
+        try:
+            # 找出被替换的文件ID
+            replaced_file_ids = [fid for fid in old_file_ids if fid not in new_file_ids]
+            
+            if replaced_file_ids:
+                # 🔑 修正：检查被替换的文件是否已绑定历史记录
+                protected_file_ids = await self._get_protected_file_ids(replaced_file_ids)
+                actual_cleanup_ids = [fid for fid in replaced_file_ids if fid not in protected_file_ids]
+                
+                if actual_cleanup_ids:
+                    user_id = getattr(variable.metadata, 'created_by', None)
+                    if user_id:
+                        from apps.services.document import DocumentManager
+                        await DocumentManager.delete_document(user_id, actual_cleanup_ids)
+                        logger.info(f"已清理变量 {variable.name} 被替换的 {len(actual_cleanup_ids)} 个文件")
+                        
+                        if protected_file_ids:
+                            logger.info(f"保护了变量 {variable.name} 中 {len(protected_file_ids)} 个已绑定历史记录的文件")
+                    else:
+                        logger.warning(f"无法确定变量 {variable.name} 的创建者，跳过被替换文件的清理")
+                else:
+                    logger.info(f"变量 {variable.name} 被替换的文件都已绑定历史记录，跳过清理")
+                    
+        except Exception as e:
+            logger.error(f"清理变量 {variable.name} 被替换的文件失败: {e}")
+            # 不抛出异常，避免影响变量更新流程
 
 
 class UserVariablePool(BaseVariablePool):
@@ -509,6 +650,11 @@ class FlowVariablePool(BaseVariablePool):
         # 持久化到数据库
         await self._persist_variable(variable)
         
+        # 🔑 重要：清除对话模板池缓存，确保下次继承时使用最新的模板
+        from .pool_manager import get_pool_manager
+        pool_manager = await get_pool_manager()
+        pool_manager.clear_conversation_template_cache(self.flow_id)
+        
         logger.info(f"已添加对话变量模板: {name} 到流程 {self.flow_id}")
         return variable
     
@@ -582,6 +728,12 @@ class FlowVariablePool(BaseVariablePool):
             
             # 持久化
             await self._persist_variable(variable)
+            
+            # 🔑 重要：清除对话模板池缓存，确保下次继承时使用最新的模板
+            from .pool_manager import get_pool_manager
+            pool_manager = await get_pool_manager()
+            pool_manager.clear_conversation_template_cache(self.flow_id)
+            
             return variable
         
         else:
@@ -788,10 +940,42 @@ class ConversationVariablePool(BaseVariablePool):
         """从对话模板池继承变量（如果存在）"""
         if template_pool:
             template_variables = await template_pool.copy_variables()
-            for name, variable in template_variables.items():
-                # 只继承非系统变量
-                if not (hasattr(variable.metadata, 'is_system') and variable.metadata.is_system):
-                    variable.metadata.conversation_id = self.conversation_id
-                    self._variables[name] = variable
+            inherited_count = 0
             
-            logger.info(f"对话 {self.conversation_id} 从模板继承了 {len(template_variables)} 个变量") 
+            for name, template_variable in template_variables.items():
+                # 只继承非系统变量
+                if not (hasattr(template_variable.metadata, 'is_system') and template_variable.metadata.is_system):
+                    # 🔑 重要修复：检查变量是否已存在，如果存在则保留现有实例
+                    if name in self._variables:
+                        continue
+                    
+                    # 创建新的变量实例（从模板创建实例）
+                    from .variables import create_variable
+                    
+                    # 创建新的metadata，将模板转换为实例
+                    instance_metadata = VariableMetadata(
+                        name=template_variable.name,
+                        var_type=template_variable.metadata.var_type,
+                        scope=VariableScope.CONVERSATION,
+                        description=template_variable.metadata.description,
+                        flow_id=self.flow_id,
+                        conversation_id=self.conversation_id,
+                        created_by=template_variable.metadata.created_by,
+                        is_system=False,  # 对话变量实例
+                        is_template=False  # 这是实例，不是模板
+                    )
+                    
+                    # 使用模板的值创建实例
+                    instance_variable = create_variable(instance_metadata, template_variable.value)
+                    self._variables[name] = instance_variable
+                    inherited_count += 1
+                    
+                    # 持久化实例到数据库
+                    try:
+                        await self._persist_variable(instance_variable)
+                        inherited_count += 1
+                        logger.debug(f"已从模板继承并持久化对话变量实例: {name}")
+                    except Exception as e:
+                        logger.error(f"持久化继承的对话变量实例失败: {name} - {e}")
+            
+            logger.info(f"对话 {self.conversation_id} 从模板继承了 {inherited_count} 个变量") 

@@ -119,6 +119,14 @@ class NodeManager:
                     "description": "循环后的变量状态"
                 }
             }
+        elif call_id == "FileExtract":
+            # 文件提取器节点的输出参数
+            output_schema = {
+                "text": {
+                    "type": "string",
+                    "description": "提取的文本内容"
+                }
+            }
         
         # 返回参数Schema
         return (

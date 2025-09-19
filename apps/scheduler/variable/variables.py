@@ -286,11 +286,25 @@ class FileVariable(BaseVariable):
     """文件变量"""
     
     def _validate_type(self, value: Any) -> bool:
-        """验证值是否为文件路径或文件对象"""
-        return isinstance(value, (str, dict)) and (
-            isinstance(value, str) or 
-            (isinstance(value, dict) and "filename" in value and "content" in value)
-        )
+        """验证值是否为文件路径或文件配置对象"""
+        # 支持字符串类型（文件路径或文件ID）
+        if isinstance(value, str):
+            return True
+        
+        # 支持字典类型
+        if isinstance(value, dict):
+            # 旧格式：包含filename和content的文件对象
+            if "filename" in value and "content" in value:
+                return True
+            
+            # 新格式：包含file_id的文件配置对象
+            if "file_id" in value:
+                return True
+            
+            # 支持其他文件相关的字典结构
+            return True
+        
+        return False
     
     def to_string(self) -> str:
         """转换为字符串"""
@@ -335,6 +349,14 @@ class ArrayVariable(BaseVariable):
     
     def _validate_type(self, value: Any) -> bool:
         """验证值是否为数组类型，并检查元素类型"""
+        # 特殊处理：对于ARRAY_FILE类型，支持字典配置格式
+        if (hasattr(self, '_element_type') and 
+            self._element_type == VariableType.FILE and 
+            isinstance(value, dict) and 
+            "file_ids" in value):
+            # 这是ARRAY_FILE类型的配置字典，直接接受
+            return True
+        
         if not isinstance(value, list):
             return False
         
@@ -371,6 +393,16 @@ class ArrayVariable(BaseVariable):
         if not self._validate_element_type(item):
             raise TypeError(f"元素类型不匹配，期望: {self._element_type}")
         
+        # 特殊处理ARRAY_FILE类型的字典格式
+        if (hasattr(self, '_element_type') and 
+            self._element_type == VariableType.FILE and 
+            isinstance(self._value, dict) and 
+            "file_ids" in self._value):
+            self._value["file_ids"].append(item)
+            from datetime import datetime, UTC
+            self.metadata.updated_at = datetime.now(UTC)
+            return
+        
         if self._value is None:
             self._value = []
         self._value.append(item)
@@ -379,6 +411,17 @@ class ArrayVariable(BaseVariable):
     
     def remove(self, item: Any) -> None:
         """从数组中移除元素"""
+        # 特殊处理ARRAY_FILE类型的字典格式
+        if (hasattr(self, '_element_type') and 
+            self._element_type == VariableType.FILE and 
+            isinstance(self._value, dict) and 
+            "file_ids" in self._value):
+            if item in self._value["file_ids"]:
+                self._value["file_ids"].remove(item)
+                from datetime import datetime, UTC
+                self.metadata.updated_at = datetime.now(UTC)
+            return
+        
         if self._value and item in self._value:
             self._value.remove(item)
             from datetime import datetime, UTC
@@ -386,26 +429,45 @@ class ArrayVariable(BaseVariable):
     
     def __len__(self) -> int:
         """获取数组长度"""
+        # 特殊处理ARRAY_FILE类型的字典格式
+        if (hasattr(self, '_element_type') and 
+            self._element_type == VariableType.FILE and 
+            isinstance(self._value, dict) and 
+            "file_ids" in self._value):
+            return len(self._value["file_ids"])
+        
         return len(self._value) if self._value else 0
     
     def __getitem__(self, index: int) -> Any:
         """获取指定索引的元素"""
+        # 特殊处理ARRAY_FILE类型的字典格式
+        if (hasattr(self, '_element_type') and 
+            self._element_type == VariableType.FILE and 
+            isinstance(self._value, dict) and 
+            "file_ids" in self._value):
+            return self._value["file_ids"][index]
+        
         if self._value is None:
             raise IndexError("数组为空")
         return self._value[index]
     
     def __setitem__(self, index: int, value: Any) -> None:
         """设置指定索引的元素"""
+        # 特殊处理ARRAY_FILE类型的字典格式
+        if (hasattr(self, '_element_type') and 
+            self._element_type == VariableType.FILE and 
+            isinstance(self._value, dict) and 
+            "file_ids" in self._value):
+            self._value["file_ids"][index] = value
+            from datetime import datetime, UTC
+            self.metadata.updated_at = datetime.now(UTC)
+            return
+        
         if not self._validate_element_type(value):
             raise TypeError(f"元素类型不匹配，期望: {self._element_type}")
         
         if self._value is None:
             self._value = []
-        
-        # 扩展数组到指定索引
-        while len(self._value) <= index:
-            self._value.append(None)
-        
         self._value[index] = value
         from datetime import datetime, UTC
         self.metadata.updated_at = datetime.now(UTC)
