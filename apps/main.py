@@ -83,7 +83,7 @@ logging.basicConfig(
 )
 
 
-async def add_no_auth_user() -> None:
+async def add_defaut_admin_user():
     """
     添加无认证用户
     """
@@ -123,8 +123,7 @@ async def init_resources() -> None:
     await LanceDB().init()
     await Pool.init()
     TokenCalculator()
-    if Config().get_config().no_auth.enable:
-        await add_no_auth_user()
+    await add_defaut_admin_user()
     await clear_user_activity()
 # 运行
 if __name__ == "__main__":

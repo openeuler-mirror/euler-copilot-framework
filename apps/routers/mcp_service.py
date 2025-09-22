@@ -141,6 +141,7 @@ async def install_mcp_service(
         service_id: Annotated[str, Path(..., alias="serviceId", description="服务ID")],
         install: Annotated[bool, Query(..., description="是否安装")] = True,
 ) -> JSONResponse:
+    await _check_user_admin(user_sub)
     try:
         await MCPServiceManager.install_mcpservice(user_sub, service_id, install)
     except Exception as e:
@@ -172,10 +173,6 @@ async def get_service_detail(
         edit: Annotated[bool, Query(..., description="是否为编辑模式")] = False,
 ) -> JSONResponse:
     """获取MCP服务详情"""
-    # 检查用户权限
-    if edit:
-        await _check_user_admin(user_sub)
-
     # 获取MCP服务详情
     try:
         data = await MCPServiceManager.get_mcp_service(service_id)
