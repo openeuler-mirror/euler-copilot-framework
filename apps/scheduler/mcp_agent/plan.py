@@ -88,6 +88,7 @@ class MCPPlanner(MCPBase):
         # 使用GoalEvaluationResult模型解析结果
         return GoalEvaluationResult.model_validate(evaluation)
 
+    @staticmethod
     async def get_flow_name(
         user_goal: str,
         resoning_llm: ReasoningLLM = ReasoningLLM(),
