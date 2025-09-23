@@ -89,14 +89,9 @@ async def add_defaut_admin_user()->None:
     """
     from apps.common.mongo import MongoDB
     from apps.schemas.collection import User
-    import os
     mongo = MongoDB()
     user_collection = mongo.get_collection("user")
-    username = os.environ.get('USERNAME')  # 适用于 Windows 系统
-    if not username:
-        username = os.environ.get('USER')  # 适用于 Linux 和 macOS 系统
-    if not username:
-        username = "admin"
+    username = "openEuler"
     try:
         await user_collection.insert_one(User(
             _id=username,
