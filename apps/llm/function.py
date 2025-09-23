@@ -42,7 +42,8 @@ class FunctionLLM:
         self._params = {
             "model": self._config.model,
             "messages": [],
-            "timeout": 300
+            "timeout": 300,
+            "extra_body": {"enable_thinking": False}
         }
 
         if self._config.backend == "ollama":
@@ -62,7 +63,8 @@ class FunctionLLM:
             import openai
 
             if not self._config.api_key:
-                self._client = openai.AsyncOpenAI(base_url=self._config.endpoint)
+                self._client = openai.AsyncOpenAI(
+                    base_url=self._config.endpoint)
             else:
                 self._client = openai.AsyncOpenAI(
                     base_url=self._config.endpoint,
@@ -123,9 +125,11 @@ class FunctionLLM:
                 },
             ]
 
-        response = await self._client.chat.completions.create(**self._params)  # type: ignore[arg-type]
+        # type: ignore[arg-type]
+        response = await self._client.chat.completions.create(**self._params)
         try:
-            logger.info("[FunctionCall] 大模型输出：%s", response.choices[0].message.tool_calls[0].function.arguments)
+            logger.info("[FunctionCall] 大模型输出：%s",
+                        response.choices[0].message.tool_calls[0].function.arguments)
             return response.choices[0].message.tool_calls[0].function.arguments
         except Exception:  # noqa: BLE001
             ans = response.choices[0].message.content
@@ -194,7 +198,8 @@ class FunctionLLM:
             "format": schema,
         })
 
-        response = await self._client.chat(**self._params)  # type: ignore[arg-type]
+        # type: ignore[arg-type]
+        response = await self._client.chat(**self._params)
         return await self.process_response(response.message.content or "")
 
     async def call(

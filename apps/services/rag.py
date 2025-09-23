@@ -31,7 +31,7 @@ class RAG:
     user_prompt: dict[LanguageType, str] = {
         LanguageType.CHINESE: r"""
         <instructions>
-                你是openEuler社区的智能助手。请结合给出的背景信息, 回答用户的提问，并且基于给出的背景信息在相关句子后进行脚注。
+                你是智能助手。请结合给出的背景信息, 回答用户的提问，并且基于给出的背景信息在相关句子后进行脚注。
                 一个例子将在<example>中给出。
                 上下文背景信息将在<bac_info>中给出。
                 用户的提问将在<user_question>中给出。
@@ -41,6 +41,7 @@ class RAG:
                 3.脚注只出现在回答的句子的末尾，例如句号、问号等标点符号后面。
                 4.不要对脚注本身进行解释或说明。
                 5.请不要使用<example></example>中的文档的id作为脚注。
+                6.请详细回答用户的问题。
         </instructions>
         <example>
             <bac_info>
@@ -79,48 +80,46 @@ class RAG:
         """,
         LanguageType.ENGLISH: r"""
         <instructions>
-                You are a helpful assistant of openEuler community. Please answer the user's question based on the given background information and add footnotes after the related sentences.
-                An example will be given in <example>.
-                The background information will be given in <bac_info>.
-                The user's question will be given in <user_question>.
+                You are a helpful assistant. Please answer the user's question based on the given background information,
+                and provide footnotes based on the relevant sentences in the background information.
+                An example is given in <example>.
+                The contextual background information is given in <bac_info>.
+                The user's question is given in <user_question>.
                 Note:
-                1. Do not include any XML tags in the output, and do not make up any information. If you think the user's question is unrelated to the background information, please ignore the background information and directly answer.
-                2. Your response should not exceed 250 words.
+                1. Do not include any XML tags in the output, and do not make up any information. If you think the user's question is irrelevant to the background information, please ignore the background information and answer directly.
+                2. The format of the footnotes is [[1]], [[2]], [[3]], etc., and the content of the footnotes is the id of the provided document.
+                3. Footnotes only appear at the end of the sentences in the answer, such as after periods, question marks, and other punctuation marks.
+                4. Do not explain or elaborate on the footnotes themselves.
+                5. Please do not use the document ids in <example></example> as footnotes.
+                6. Please answer the user's question in detail.
         </instructions>
         <example>
             <bac_info>
                     <document id = 1 name = example_doc>
                         <chunk>
-                            openEuler community is an open source operating system community, committed to promoting the development of the Linux operating system.
+                            The openEuler community is an open source operating system community dedicated to promoting the development of the Linux operating system.
                         </chunk>
                         <chunk>
-                            openEuler community aims to provide users with a stable, secure, and efficient operating system platform, and support multiple hardware architectures.
+                            The goal of the openEuler community is to provide users with a stable, secure, and efficient operating system platform that supports multiple hardware architectures.
                         </chunk>
                     </document>
-                    <document id = 2 name = another_example_doc>        
+                    <document id = 2 name = another_example_doc>
                         <chunk>
                             Members of the openEuler community come from all over the world, including developers, users, and enterprises.
                         </chunk>
                         <chunk>
-                            Members of the openEuler community work together to promote the development of open source operating systems, and provide support and assistance to users.
+                            Members of the openEuler community work together to promote the development of open source operating systems and provide support and assistance to users.
                         </chunk>
                     </document>
             </bac_info>
             <user_question>
-                    What is the goal of openEuler community?
+                    What is the goal of the openEuler community?
             </user_question>
             <answer>
-                    openEuler community is an open source operating system community, committed to promoting the development of the Linux operating system. [[1]]
-                    openEuler community aims to provide users with a stable, secure, and efficient operating system platform, and support multiple hardware architectures. [[1]]
-            </answer>   
-        </example>  
-
-        <bac_info>
-                {bac_info}
-        </bac_info>
-        <user_question>
-                {user_question}
-        </user_question>
+                    The openEuler community is an open source operating system community dedicated to promoting the development of the  Linux operating system. [[1]]
+                    The goal of the openEuler community is to provide users with a stable, secure, and efficient operating system platform that supports multiple hardware architectures. [[1]]
+            </answer>
+        </example>
         """,
     }
 
@@ -151,7 +150,8 @@ class RAG:
             )
             try:
                 async with httpx.AsyncClient(timeout=30) as client:
-                    data_json = tmp_data.model_dump(exclude_none=True, by_alias=True)
+                    data_json = tmp_data.model_dump(
+                        exclude_none=True, by_alias=True)
                     response = await client.post(url, headers=headers, json=data_json)
                     if response.status_code == status.HTTP_200_OK:
                         result = response.json()
@@ -161,7 +161,8 @@ class RAG:
         if data.kb_ids:
             try:
                 async with httpx.AsyncClient(timeout=30) as client:
-                    data_json = data.model_dump(exclude_none=True, by_alias=True)
+                    data_json = data.model_dump(
+                        exclude_none=True, by_alias=True)
                     response = await client.post(url, headers=headers, json=data_json)
                     # 检查响应状态码
                     if response.status_code == status.HTTP_200_OK:
@@ -324,6 +325,7 @@ class RAG:
             temperature=0.7,
             result_only=False,
             model=llm.model_name,
+            enable_thinking=True
         ):
             chunk = buffer + chunk
             # 防止脚注被截断
