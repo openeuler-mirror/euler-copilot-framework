@@ -37,11 +37,12 @@ class RAG:
                 用户的提问将在<user_question>中给出。
                 注意：
                 1.输出不要包含任何XML标签，不要编造任何信息。若你认为用户提问与背景信息无关，请忽略背景信息直接作答。
-                2.脚注的格式为[[1]]，[[2]]，[[3]]等，脚注的内容为提供的文档的id。
+                2.脚注的格式为[[1]]，[[2]]，[[3]]等，角度注的内容为提供的文档的id。
                 3.脚注只出现在回答的句子的末尾，例如句号、问号等标点符号后面。
                 4.不要对脚注本身进行解释或说明。
-                5.请不要使用<example></example>中的文档的id作为脚注。
-                6.请详细回答用户的问题。
+                5.请不要使用<example></example>中的文档的id作为角注。
+                6.请尽可能详细地回答用户的问题。
+                7.请以markdown格式输出答案，并且适时的使用加粗、斜体、代码、表格等格式来增强可读性。
         </instructions>
         <example>
             <bac_info>
@@ -81,17 +82,19 @@ class RAG:
         LanguageType.ENGLISH: r"""
         <instructions>
                 You are a helpful assistant. Please answer the user's question based on the given background information,
-                and provide footnotes based on the relevant sentences in the background information.
+                and add footnotes based on the relevant sentences in the provided background information.
                 An example is given in <example>.
                 The contextual background information is given in <bac_info>.
                 The user's question is given in <user_question>.
-                Note:
-                1. Do not include any XML tags in the output, and do not make up any information. If you think the user's question is irrelevant to the background information, please ignore the background information and answer directly.
+                Notes:
+                1. Do not include any XML tags in the output, and do not make up
+                any information. If you think the user's question is irrelevant to the background information, please ignore the background information and answer directly.
                 2. The format of the footnotes is [[1]], [[2]], [[3]], etc., and the content of the footnotes is the id of the provided document.
-                3. Footnotes only appear at the end of the sentences in the answer, such as after periods, question marks, and other punctuation marks.
-                4. Do not explain or elaborate on the footnotes themselves.
+                3. Footnotes only appear at the end of the answer sentences, such as after periods, question marks, and other punctuation marks.
+                4. Do not explain or illustrate the footnotes themselves.
                 5. Please do not use the document ids in <example></example> as footnotes.
-                6. Please answer the user's question in detail.
+                6. Please answer the user's question as detailed as possible.
+                7. Please output the answer in markdown format, and use bold, italics, code, tables, and other formats to enhance readability as appropriate.
         </instructions>
         <example>
             <bac_info>
@@ -116,8 +119,8 @@ class RAG:
                     What is the goal of the openEuler community?
             </user_question>
             <answer>
-                    The openEuler community is an open source operating system community dedicated to promoting the development of the  Linux operating system. [[1]]
-                    The goal of the openEuler community is to provide users with a stable, secure, and efficient operating system platform that supports multiple hardware architectures. [[1]]
+                    The openEuler community is an open source operating system community dedicated to promoting the development of the Linux operating system.[[1]]
+                    The goal of the openEuler community is to provide users with a stable, secure, and efficient operating system platform that supports multiple hardware architectures.[[1]]
             </answer>
         </example>
         """,
