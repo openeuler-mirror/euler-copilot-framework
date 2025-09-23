@@ -76,10 +76,7 @@ async def get_user(request: HTTPConnection) -> str:
     """
     if Config().get_config().no_auth.enable:
         # 如果启用了无认证访问，直接返回当前操作系统用户的名称
-        username = os.environ.get('USERNAME')  # 适用于 Windows 系统
-        if not username:
-            username = os.environ.get('USER')  # 适用于 Linux 和 macOS 系统
-        return username or "admin"
+        return "openEuler"
     session_id = await _get_session_id_from_request(request)
     if not session_id:
         raise HTTPException(
@@ -107,7 +104,8 @@ async def verify_api_key(api_key: str = Depends(oauth2_scheme)) -> None:
     :return:
     """
     if not await ApiKeyManager.verify_api_key(api_key):
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid API key!")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid API key!")
 
 
 async def get_user_by_api_key(api_key: str = Depends(oauth2_scheme)) -> str:
@@ -119,5 +117,6 @@ async def get_user_by_api_key(api_key: str = Depends(oauth2_scheme)) -> str:
     """
     user_sub = await ApiKeyManager.get_user_by_api_key(api_key)
     if user_sub is None:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid API key!")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid API key!")
     return user_sub
