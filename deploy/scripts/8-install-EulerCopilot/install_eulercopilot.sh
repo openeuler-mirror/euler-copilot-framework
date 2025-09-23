@@ -470,8 +470,9 @@ show_success_message() {
     echo -e "Chart目录:  ${DEPLOY_DIR}/chart/"
 
     echo -e "${BLUE}操作指南：${NC}"
-    echo -e "1. 查看集群状态: kubectl get all -n $NAMESPACE"
-    echo -e "2. 查看实时日志: kubectl logs -n $NAMESPACE -f deployment/$NAMESPACE"
+    echo -e "1. 查看集群状态: kubectl get pod -n $NAMESPACE"
+    echo -e "2. 查看实时日志: kubectl logs -f <POD_NAME> -n $NAMESPACE "
+    echo -e "   例如：kubectl logs -f framework-deploy-5577c87b6-h82g8 -n euler-copilot"
     echo -e "3. 查看POD状态：kubectl get pods -n $NAMESPACE"
 }
 
