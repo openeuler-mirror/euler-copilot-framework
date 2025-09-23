@@ -65,7 +65,7 @@ async def get_record(conversation_id: str, user_sub: Annotated[str, Depends(get_
             tmp_record = RecordData(
                 id=record.id,
                 groupId=record_group.id,
-                taskId=record_group.task_id,
+                taskId=record.task_id,
                 conversationId=conversation_id,
                 content=record_data,
                 metadata=record.metadata
@@ -81,26 +81,27 @@ async def get_record(conversation_id: str, user_sub: Annotated[str, Depends(get_
 
             # 获得Record关联的文档
             tmp_record.document = await DocumentManager.get_used_docs_by_record_group(user_sub, record_group.id)
-
             # 获得Record关联的flow数据
-            flow_list = await TaskManager.get_context_by_record_id(record_group.id, record.id)
-            if flow_list:
-                first_flow = FlowStepHistory.model_validate(flow_list[0])
+            flow_step_list = await TaskManager.get_context_by_record_id(record_group.id, record.id)
+            if flow_step_list:
                 tmp_record.flow = RecordFlow(
-                    id=first_flow.flow_name,  #TODO: 此处前端应该用name
+                    id=record.flow.flow_id,  # TODO: 此处前端应该用name
                     recordId=record.id,
-                    flowId=first_flow.id,
-                    stepNum=len(flow_list),
+                    flowId=record.flow.flow_id,
+                    flowName=record.flow.flow_name,
+                    flowStatus=record.flow.flow_staus,
+                    stepNum=len(flow_step_list),
                     steps=[],
                 )
-                for flow in flow_list:
-                    flow_step = FlowStepHistory.model_validate(flow)
+                for flow_step in flow_step_list:
                     tmp_record.flow.steps.append(
                         RecordFlowStep(
-                            stepId=flow_step.step_name,  #TODO: 此处前端应该用name
-                            stepStatus=flow_step.status,
+                            stepId=flow_step.step_id,
+                            stepName=flow_step.step_name,
+                            stepStatus=flow_step.step_status,
                             input=flow_step.input_data,
                             output=flow_step.output_data,
+                            exData=flow_step.ex_data
                         ),
                     )
 

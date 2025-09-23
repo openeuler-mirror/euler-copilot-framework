@@ -1,10 +1,11 @@
 """搜索工具"""
 
 from collections.abc import AsyncGenerator
-from typing import Any
+from typing import Any, ClassVar
 
 from apps.scheduler.call.core import CoreCall
 from apps.scheduler.call.search.schema import SearchInput, SearchOutput
+from apps.schemas.enum_var import CallType, LanguageType
 from apps.schemas.scheduler import (
     CallError,
     CallInfo,
@@ -15,6 +16,18 @@ from apps.schemas.scheduler import (
 
 class Search(CoreCall, input_model=SearchInput, output_model=SearchOutput):
     """搜索工具"""
+    i18n_info: ClassVar[dict[str, dict]] = {
+        LanguageType.CHINESE: {
+            "name": "搜索",
+            "type": CallType.TOOL,
+            "description": "获取搜索引擎的结果。",
+        },
+        LanguageType.ENGLISH: {
+            "name": "Search",
+            "type": CallType.TOOL,
+            "description": "Get the results of the search engine.",
+        },
+    }
 
     @classmethod
     def info(cls) -> CallInfo:

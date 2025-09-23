@@ -4,6 +4,7 @@
 import logging
 from datetime import UTC, datetime
 
+from apps.schemas.request_data import UserUpdateRequest
 from apps.common.mongo import MongoDB
 from apps.schemas.collection import User
 from apps.services.conversation import ConversationManager
@@ -28,7 +29,7 @@ class UserManager:
         ).model_dump(by_alias=True))
 
     @staticmethod
-    async def get_all_user_sub() -> list[str]:
+    async def get_all_user_sub(page_size: int = 20, page_cnt: int = 1, filter_user_subs: list[str] = []) -> tuple[list[str], int]:
         """
         获取所有用户的sub
 
@@ -36,7 +37,13 @@ class UserManager:
         """
         mongo = MongoDB()
         user_collection = mongo.get_collection("user")
-        return [user["_id"] async for user in user_collection.find({}, {"_id": 1})]
+        total = await user_collection.count_documents({}) - len(filter_user_subs)
+
+        users = await user_collection.find(
+            {"_id": {"$nin": filter_user_subs}},
+            {"_id": 1},
+        ).skip((page_cnt - 1) * page_size).limit(page_size).to_list(length=page_size)
+        return [user["_id"] for user in users], total
 
     @staticmethod
     async def get_userinfo_by_user_sub(user_sub: str) -> User | None:
@@ -52,7 +59,25 @@ class UserManager:
         return User(**user_data) if user_data else None
 
     @staticmethod
-    async def update_userinfo_by_user_sub(user_sub: str, *, refresh_revision: bool = False) -> bool:
+    async def update_userinfo_by_user_sub(user_sub: str, data: UserUpdateRequest) -> None:
+        """
+        根据用户sub更新用户信息
+
+        :param user_sub: 用户sub
+        :param data: 用户更新信息
+        :return: 是否更新成功
+        """
+        mongo = MongoDB()
+        user_collection = mongo.get_collection("user")
+        update_dict = {
+            "$set": {
+                "auto_execute": data.auto_execute,
+            }
+        }
+        await user_collection.update_one({"_id": user_sub}, update_dict)
+
+    @staticmethod
+    async def update_refresh_revision_by_user_sub(user_sub: str, *, refresh_revision: bool = False) -> bool:
         """
         根据用户sub更新用户信息
 

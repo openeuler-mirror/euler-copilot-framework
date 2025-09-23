@@ -190,7 +190,7 @@ class DocumentManager:
                 logger.exception(f"[DocumentManager] 保存文件元数据到MongoDB失败: file_id={file_id}, error={e}")
                 # 尝试清理MinIO中的文件
                 try:
-                    from apps.common.minio_client import MinioClient
+                    from apps.common.minio import MinioClient
                     MinioClient.remove_object("document", file_id)
                     logger.info(f"已清理MinIO中的文件: {file_id}")
                 except Exception:
@@ -227,7 +227,7 @@ class DocumentManager:
                 # 清理MinIO文件
                 for doc in uploaded_files:
                     try:
-                        from apps.common.minio_client import MinioClient
+                        from apps.common.minio import MinioClient
                         MinioClient.remove_object("document", doc.id)
                     except Exception as cleanup_error:
                         cleanup_errors.append(f"MinIO清理失败 {doc.id}: {cleanup_error}")

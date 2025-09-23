@@ -9,6 +9,33 @@ logger = logging.getLogger(__name__)
 class TokenCalculator(metaclass=SingletonMeta):
     """用于计算Token消耗量"""
 
+    @staticmethod
+    def get_k_tokens_words_from_content(content: str, k: int | None = None) -> str:
+        """获取k个token的词"""
+        if k is None:
+            return content
+        if k <= 0:
+            return ""
+        try:
+            if TokenCalculator().calculate_token_length(messages=[
+                {"role": "user", "content": content},
+            ], pure_text=True) <= k:
+                return content
+            l = 0
+            r = len(content)
+            while l + 1 < r:
+                mid = (l + r) // 2
+                if TokenCalculator().calculate_token_length(messages=[
+                    {"role": "user", "content": content[:mid]},
+                ], pure_text=True) <= k:
+                    l = mid
+                else:
+                    r = mid
+            return content[:l]
+        except Exception:
+            logger.exception("[RAG] 获取k个token的词失败")
+        return ""
+
     def __init__(self) -> None:
         """初始化Tokenizer"""
         import tiktoken

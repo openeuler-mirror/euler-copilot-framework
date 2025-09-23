@@ -61,15 +61,16 @@ class ReasoningContent:
             return reason, text
 
         if self.reasoning_type == "args":
-            if hasattr(chunk.choices[0].delta, "reasoning_content"):
+            if hasattr(
+                    chunk.choices[0].delta, "reasoning_content") and chunk.choices[0].delta.reasoning_content is not None:  # type: ignore[attr-defined]
+                # 仍在推理中，继续添加推理内容
                 reason = chunk.choices[0].delta.reasoning_content or ""  # type: ignore[attr-defined]
             else:
                 # 推理结束，设置标志并添加结束标签
                 self.is_reasoning = False
                 reason = "</think>"
                 # 如果当前内容不是推理内容标签，将其作为文本返回
-                if content and not content.startswith("</think>"):
-                    text = content
+                text = content.lstrip("</think>")
         elif self.reasoning_type == "tokens":
             for token in REASONING_END_TOKEN:
                 if token == content:
@@ -141,10 +142,11 @@ class ReasoningLLM:
         return await self._client.chat.completions.create(
             model=model,
             messages=messages,  # type: ignore[]
-            max_tokens=max_tokens or self._config.max_tokens,
+            max_completion_tokens=max_tokens or self._config.max_tokens,
             temperature=temperature or self._config.temperature,
             stream=True,
             stream_options={"include_usage": True},
+            timeout=300
         )  # type: ignore[]
 
     async def call(  # noqa: C901, PLR0912, PLR0913

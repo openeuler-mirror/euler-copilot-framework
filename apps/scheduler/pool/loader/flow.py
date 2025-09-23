@@ -11,7 +11,7 @@ import yaml
 from anyio import Path
 
 from apps.common.config import Config
-from apps.schemas.enum_var import EdgeType
+from apps.schemas.enum_var import NodeType,EdgeType
 from apps.schemas.flow import AppFlow, Flow
 from apps.schemas.pool import AppPool
 from apps.models.vector import FlowPoolVector
@@ -82,25 +82,18 @@ class FlowLoader:
                 err = f"[FlowLoader] 步骤名称不能以下划线开头：{key}"
                 logger.error(err)
                 raise ValueError(err)
-            if key == "start":
-                step["name"] = "开始"
-                step["description"] = "开始节点"
-                step["type"] = "start"
-            elif key == "end":
-                step["name"] = "结束"
-                step["description"] = "结束节点"
-                step["type"] = "end"
-            else:
-                try:
-                    step["type"] = await NodeManager.get_node_call_id(step["node"])
-                except ValueError as e:
-                    logger.warning("[FlowLoader] 获取节点call_id失败：%s，错误信息：%s", step["node"], e)
-                    step["type"] = "Empty"
-                step["name"] = (
-                    (await NodeManager.get_node_name(step["node"]))
-                    if "name" not in step or step["name"] == ""
-                    else step["name"]
-                )
+            if step["type"]==NodeType.START.value or step["type"]==NodeType.END.value:
+                continue
+            try:
+                step["type"] = await NodeManager.get_node_call_id(step["node"])
+            except ValueError as e:
+                logger.warning("[FlowLoader] 获取节点call_id失败：%s，错误信息：%s", step["node"], e)
+                step["type"] = "Empty"
+            step["name"] = (
+                (await NodeManager.get_node_name(step["node"]))
+                if "name" not in step or step["name"] == ""
+                else step["name"]
+            )
         return flow_yaml
 
     async def load(self, app_id: str, flow_id: str) -> Flow | None:

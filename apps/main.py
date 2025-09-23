@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import asyncio
 import logging
-import logging.config
 import signal
 import sys
 from contextlib import asynccontextmanager
@@ -135,17 +134,52 @@ logging.basicConfig(
         width=160,
     ))],
 )
+logger = logging.getLogger(__name__)
 
+async def add_no_auth_user() -> None:
+    """
+    添加无认证用户
+    """
+    from apps.common.mongo import MongoDB
+    from apps.schemas.collection import User
+    import os
+    mongo = MongoDB()
+    user_collection = mongo.get_collection("user")
+    username = os.environ.get('USERNAME')  # 适用于 Windows 系统
+    if not username:
+        username = os.environ.get('USER')  # 适用于 Linux 和 macOS 系统
+    if not username:
+        username = "admin"
+    try:
+        await user_collection.insert_one(User(
+            _id=username,
+            is_admin=True,
+            auto_execute=False
+        ).model_dump(by_alias=True))
+    except Exception as e:
+        logger.error(f"[add_no_auth_user] 默认用户 {username} 已存在")
+
+async def clear_user_activity() -> None:
+    """清除所有用户的活跃状态"""
+    from apps.services.activity import Activity
+    from apps.common.mongo import MongoDB
+    mongo = MongoDB()
+    activity_collection = mongo.get_collection("activity")
+    await activity_collection.delete_many({})
+    logging.info("清除所有用户活跃状态完成")
 
 async def init_resources() -> None:
     """初始化必要资源"""
-    logger = logging.getLogger(__name__)
     
     WordsCheck()
     await LanceDB().init()
     await Pool.init()
     TokenCalculator()
     
+    if Config().get_config().no_auth.enable:
+        await add_no_auth_user()
+    await clear_user_activity()
+
     # 初始化变量池管理器
     from apps.scheduler.variable.pool_manager import initialize_pool_manager
     await initialize_pool_manager()
@@ -173,7 +207,6 @@ async def init_resources() -> None:
         logging.info("前置节点变量缓存服务初始化成功")
     except Exception as e:
         logging.warning(f"前置节点变量缓存服务初始化失败（将降级使用实时解析）: {e}")
-
 
 async def startup_file_cleanup():
     """启动时清理遗留文件（除了已绑定历史记录的文件）"""
@@ -257,7 +290,6 @@ async def startup_file_cleanup():
             
     except Exception as e:
         logger.error(f"启动时文件清理失败: {e}")
-
 
 async def cleanup_orphaned_files():
     """清理孤儿文件（不被任何变量引用且未绑定历史记录的文件）"""

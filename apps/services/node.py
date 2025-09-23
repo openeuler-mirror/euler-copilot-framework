@@ -4,6 +4,7 @@
 import logging
 from typing import TYPE_CHECKING, Any
 
+from apps.schemas.enum_var import SpecialCallType
 from apps.common.mongo import MongoDB
 from apps.schemas.node import APINode
 from apps.schemas.pool import NodePool
@@ -78,6 +79,10 @@ class NodeManager:
         """获取Node数据"""
         from apps.scheduler.pool.pool import Pool
 
+        if node_id == SpecialCallType.EMPTY.value:
+            # 如果是空节点，返回空Schema
+            return {}, {}
+        
         # 查找Node信息
         logger.info("[NodeManager] 获取节点 %s", node_id)
         node_collection = MongoDB().get_collection("node")

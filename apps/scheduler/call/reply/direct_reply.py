@@ -5,13 +5,13 @@ import logging
 import re
 import base64
 from collections.abc import AsyncGenerator
-from typing import Any, Dict, List, Optional
+from typing import Any, ClassVar, Dict, List, Optional
 
 from pydantic import Field
 
 from apps.scheduler.call.core import CoreCall
 from apps.scheduler.call.reply.schema import DirectReplyInput, DirectReplyOutput
-from apps.schemas.enum_var import CallOutputType, CallType
+from apps.schemas.enum_var import CallOutputType, CallType, LanguageType
 from apps.schemas.scheduler import (
     CallError,
     CallInfo,
@@ -30,15 +30,19 @@ class DirectReply(CoreCall, input_model=DirectReplyInput, output_model=DirectRep
     """直接回复工具，支持变量引用语法"""
 
     to_user: bool = Field(default=True)
-
-    @classmethod
-    def info(cls) -> CallInfo:
-        """返回Call的名称和描述"""
-        return CallInfo(
-            name="直接回复", 
-            type=CallType.DEFAULT,
-            description="直接回复用户输入的内容，支持变量插入"
-        )
+    controlled_output: bool = Field(default=True)
+    i18n_info: ClassVar[dict[str, dict]] = {
+        LanguageType.CHINESE: {
+            "name": "直接回复",
+            "type": CallType.DEFAULT,
+            "description": "直接回复用户输入的内容，支持变量插入",
+        },
+        LanguageType.ENGLISH: {
+            "name": "DirectReply",
+            "type": CallType.DEFAULT,
+            "description": "Reply contents defined by user, with inserted reference variables",
+        },
+    }
 
     async def _init(self, call_vars: CallVars) -> DirectReplyInput:
         """初始化DirectReply工具"""

@@ -4,6 +4,7 @@
 import collections
 import logging
 
+from apps.schemas.enum_var import SpecialCallType
 from apps.exceptions import FlowBranchValidationError, FlowEdgeValidationError, FlowNodeValidationError
 from apps.schemas.enum_var import NodeType
 from apps.schemas.flow_topology import EdgeItem, FlowItem, NodeItem
@@ -39,14 +40,11 @@ class FlowService:
         for node in flow_item.nodes:
             from apps.scheduler.pool.pool import Pool
             from pydantic import BaseModel
-            if node.node_id != 'start' and node.node_id != 'end' and node.node_id != 'Empty':
+            if node.node_id != 'start' and node.node_id != 'end' and node.node_id != SpecialCallType.EMPTY.value:
                 try:
-                    call_class: type[BaseModel] = await Pool().get_call(node.call_id)
-                    if not call_class:
-                        node.node_id = 'Empty'
-                        node.description = '【对应的api工具被删除！节点不可用！请联系相关人员！】\n\n'+node.description
+                    await Pool().get_call(node.call_id)
                 except Exception as e:
-                    node.node_id = 'Empty'
+                    node.node_id = SpecialCallType.EMPTY.value
                     node.description = '【对应的api工具被删除！节点不可用！请联系相关人员！】\n\n'+node.description
                     logger.error(f"[FlowService] 获取步骤的call_id失败{node.call_id}由于：{e}")
             node_branch_map[node.step_id] = set()

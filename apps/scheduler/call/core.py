@@ -16,7 +16,7 @@ from pydantic.json_schema import SkipJsonSchema
 from apps.llm.function import FunctionLLM
 from apps.llm.reasoning import ReasoningLLM
 from apps.scheduler.variable.integration import VariableIntegration
-from apps.schemas.enum_var import CallOutputType
+from apps.schemas.enum_var import CallOutputType, LanguageType
 from apps.schemas.pool import NodePool
 from apps.schemas.parameters import ValueType
 from apps.schemas.scheduler import (
@@ -56,7 +56,9 @@ class CoreCall(BaseModel):
     name: SkipJsonSchema[str] = Field(description="Step的名称", exclude=True)
     description: SkipJsonSchema[str] = Field(description="Step的描述", exclude=True)
     node: SkipJsonSchema[NodePool | None] = Field(description="节点信息", exclude=True)
-    enable_filling: SkipJsonSchema[bool] = Field(description="是否需要进行自动参数填充", default=False, exclude=True)
+    enable_filling: SkipJsonSchema[bool] = Field(
+        description="是否需要进行自动参数填充", default=False, exclude=True
+    )
     tokens: SkipJsonSchema[CallTokens] = Field(
         description="Call的输入输出Tokens信息",
         default=CallTokens(),
@@ -72,26 +74,34 @@ class CoreCall(BaseModel):
         exclude=True,
         frozen=True,
     )
-
     to_user: bool = Field(description="是否需要将输出返回给用户", default=False)
     enable_variable_resolution: bool = Field(description="是否启用自动变量解析", default=True)
+    controlled_output: bool = Field(description="是否允许用户定义输出参数", default=False)
+    i18n_info: ClassVar[SkipJsonSchema[dict[str, dict]]] = {}
 
     model_config = ConfigDict(
         arbitrary_types_allowed=True,
         extra="allow",
     )
 
-    def __init_subclass__(cls, input_model: type[DataBase], output_model: type[DataBase], **kwargs: Any) -> None:
+    @classmethod
+    def info(cls, language: LanguageType = LanguageType.CHINESE) -> CallInfo:
+        """
+        返回Call的名称和描述
+
+        :return: Call的名称和描述
+        :rtype: CallInfo
+        """
+        lang_info = cls.i18n_info.get(language, cls.i18n_info[LanguageType.CHINESE])
+        return CallInfo(name=lang_info["name"], type=lang_info["type"], description=lang_info["description"])
+
+    def __init_subclass__(
+        cls, input_model: type[DataBase], output_model: type[DataBase], **kwargs: Any
+    ) -> None:
         """初始化子类"""
         super().__init_subclass__(**kwargs)
         cls.input_model = input_model
         cls.output_model = output_model
-
-    @classmethod
-    def info(cls) -> CallInfo:
-        """返回Call的名称和描述"""
-        err = "[CoreCall] 必须手动实现info方法"
-        raise NotImplementedError(err)
 
     @staticmethod
     def _assemble_call_vars(executor: "StepExecutor") -> CallVars:
@@ -133,7 +143,7 @@ class CoreCall(BaseModel):
         :return: 变量
         """
         split_path = path.split("/")
-        if len(split_path) < 2:
+        if len(split_path) < 1:
             err = f"[CoreCall] 路径格式错误: {path}"
             logger.error(err)
             return None
@@ -146,13 +156,7 @@ class CoreCall(BaseModel):
             if key not in data:
                 err = f"[CoreCall] 输出Key {key} 不存在"
                 logger.error(err)
-                raise CallError(
-                    message=err,
-                    data={
-                        "step_id": split_path[0],
-                        "key": key,
-                    },
-                )
+                return None
             data = data[key]
         return data
 
@@ -350,7 +354,12 @@ class CoreCall(BaseModel):
         """Call类实例的执行后方法"""
 
 
-    async def exec(self, executor: "StepExecutor", input_data: dict[str, Any]) -> AsyncGenerator[CallOutputChunk, None]:
+    async def exec(
+        self,
+        executor: "StepExecutor",
+        input_data: dict[str, Any],
+        language: LanguageType = LanguageType.CHINESE,
+    ) -> AsyncGenerator[CallOutputChunk, None]:
         """Call类实例的执行方法"""
         self._last_output_data = {}  # 初始化输出数据存储
         
