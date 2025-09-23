@@ -126,7 +126,8 @@ class Facts(CorePattern):
 
         messages = [
             {"role": "system", "content": self.system_prompt[language]},
-            {"role": "user", "content": self.user_prompt[language].format(conversation=conversation)},
+            {"role": "user", "content": self.user_prompt[language].format(
+                conversation=conversation)},
         ]
         result = ""
         llm = ReasoningLLM()

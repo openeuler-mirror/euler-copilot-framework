@@ -35,7 +35,6 @@ class MCPPlanner:
         # 解析为结构化数据
         return await self._parse_plan_result(result, max_steps)
 
-
     async def _get_reasoning_plan(self, tool_list: list[MCPTool], max_steps: int) -> str:
         """获取推理大模型的结果"""
         # 格式化Prompt
@@ -67,7 +66,6 @@ class MCPPlanner:
 
         return result
 
-
     async def _parse_plan_result(self, result: str, max_steps: int) -> MCPPlan:
         """将推理结果解析为结构化数据"""
         # 格式化Prompt
@@ -86,7 +84,6 @@ class MCPPlanner:
         plan = await json_generator.generate()
         return MCPPlan.model_validate(plan)
 
-
     async def generate_answer(self, plan: MCPPlan, memory: str) -> str:
         """生成最终回答"""
         template = self._env.from_string(FINAL_ANSWER[self.language])
@@ -102,6 +99,7 @@ class MCPPlanner:
             [{"role": "user", "content": prompt}],
             streaming=False,
             temperature=0.07,
+            enable_thinking=True
         ):
             result += chunk
 
