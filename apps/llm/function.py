@@ -42,10 +42,10 @@ class FunctionLLM:
         self._params = {
             "model": self._config.model,
             "messages": [],
-            "timeout": 300,
             "extra_body": {"enable_thinking": False}
         }
-
+        if self._config.backend != "ollama":
+            self._params["timeout"] = 300
         if self._config.backend == "ollama":
             import ollama
 
