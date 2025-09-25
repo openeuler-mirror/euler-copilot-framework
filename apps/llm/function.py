@@ -329,7 +329,7 @@ class JsonGenerator:
         prompt = await self._assemble_message()
         messages = [
             {"role": "system", "content": prompt},
-            {"role": "user", "content": "please generate a JSON response based on the above information and schema."},
+            {"role": "user", "content": "please generate a JSON response based on the above information and schema./no_think"},
         ]
         function = FunctionLLM()
         return await function.call(messages, self._schema, max_tokens, temperature)
