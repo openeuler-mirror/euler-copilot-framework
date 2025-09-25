@@ -144,6 +144,14 @@ class ReasoningLLM:
         """创建流式响应"""
         if model is None:
             model = self._config.model
+        if not enable_thinking:
+            if len(messages):
+                if messages[-1]["role"] == "user":
+                    if not messages[-1]["content"].endswith("/no_think"):
+                        messages[-1]["content"] += "/no_think"
+                else:
+                    messages.append(
+                        {"role": "user", "content": "/no_think"})
         return await self._client.chat.completions.create(
             model=model,
             messages=messages,  # type: ignore[]
