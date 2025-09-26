@@ -273,13 +273,12 @@ Please generate a detailed, well-structured, and clearly formatted answer based 
         return doc_chunk_list
 
     @staticmethod
-    async def assemble_doc_info(doc_chunk_list: list[dict[str, Any]], max_tokens: int) -> str:
+    async def assemble_doc_info(doc_chunk_list: list[dict[str, Any]], leave_tokens: int) -> str:
         """组装文档信息"""
         bac_info = ""
         doc_info_list = []
         doc_cnt = 0
         doc_id_map = {}
-        leave_tokens = max_tokens
         token_calculator = TokenCalculator()
         for doc_chunk in doc_chunk_list:
             if doc_chunk["docId"] not in doc_id_map:
@@ -378,8 +377,10 @@ Please generate a detailed, well-structured, and clearly formatted answer based 
                 logger.exception("[RAG] 问题重写失败")
         doc_chunk_list = await RAG.get_doc_info_from_rag(
             user_sub=user_sub, max_tokens=llm.max_tokens, doc_ids=doc_ids, data=data)
+        leave_tokens = llm.max_tokens - \
+            TokenCalculator().calculate_token_length(messages=history)
         bac_info, doc_info_list = await RAG.assemble_doc_info(
-            doc_chunk_list=doc_chunk_list, max_tokens=llm.max_tokens)
+            doc_chunk_list=doc_chunk_list, leave_tokens=leave_tokens)
         messages = [
             *history,
             {
