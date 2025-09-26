@@ -19,6 +19,7 @@ OPENGAUSS_DATA_PATH="/home/omm/opengauss.sql"
 MYSQL_DATA_PATH="/home/mysql.sql"
 MYSQL_USER="authhub"
 MYSQL_DB_NAME="oauth2"
+MYSQL_TABLE_NAME="user"
 GS_USERNAME="postgres"
 GS_DB="postgres"
 
@@ -115,7 +116,7 @@ backup_mysql() {
     
     # 导出user表
     log_info "导出user表数据..."
-    kubectl exec $pod_name -n euler-copilot -- bash -c "mysqldump -u${MYSQL_USER} -p${mysql_password} --no-tablespaces ${MYSQL_DB_NAME} user > ${MYSQL_DATA_PATH}"
+    kubectl exec $pod_name -n euler-copilot -- bash -c "mysqldump -u${MYSQL_USER} -p${mysql_password} --no-tablespaces ${MYSQL_DB_NAME} ${MYSQL_TABLE_NAME} > ${MYSQL_DATA_PATH}"
     check_command "user表导出完成" "user表导出失败"
     
     # 拷贝备份文件到本地
