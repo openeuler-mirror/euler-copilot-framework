@@ -63,7 +63,8 @@ print_banner() {
 print_completion_banner() {
     echo -e "${GREEN}"
     echo "================================================================"
-    echo "                  数据备份已完成！"
+    echo "             MySQL + OpenGauss + MinIO 数据备份已完成！"
+    echo "             数据路径：$BACKUP_BASE"
     echo "================================================================"
     echo -e "${NC}"
 }
