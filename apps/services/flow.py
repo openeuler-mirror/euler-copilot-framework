@@ -12,13 +12,14 @@ from apps.scheduler.pool.loader.flow import FlowLoader
 from apps.scheduler.slot.slot import Slot
 from apps.schemas.collection import User
 from apps.schemas.enum_var import EdgeType, PermissionType, LanguageType
-from apps.schemas.flow import Edge, Flow, Step
+from apps.schemas.flow import Edge, Flow, Note, Step
 from apps.schemas.flow_topology import (
     EdgeItem,
     FlowItem,
     NodeItem,
     NodeMetaDataItem,
     NodeServiceItem,
+    NoteItem,
     PositionItem,
 )
 from apps.scheduler.pool.pool import Pool
@@ -108,7 +109,7 @@ class FlowManager:
                 if service_id == "":
                     call_class: type[BaseModel] = await Pool().get_call(node_pool_record["_id"])
                     node_name = call_class.info(language).name
-                    node_description = call_class.info().description
+                    node_description = call_class.info(language).description
                 else:
                     node_name = node_pool_record["name"]
                     node_description = node_pool_record["description"]
@@ -285,6 +286,7 @@ class FlowManager:
                 editable=True,
                 nodes=[],
                 edges=[],
+                notes=[],
                 focusPoint=focus_point,
                 connectivity=flow_config.connectivity,
                 debug=flow_config.debug,
@@ -352,6 +354,18 @@ class FlowManager:
                         targetNode=edge_config.edge_to,
                         type=edge_config.edge_type.value if edge_config.edge_type else EdgeType.NORMAL.value,
                         branchId=branch_id,
+                    ),
+                )
+            
+            # 处理notes
+            for note_config in flow_config.notes:
+                flow_item.notes.append(
+                    NoteItem(
+                        noteId=note_config.note_id,
+                        text=note_config.text,
+                        position=note_config.position,
+                        width=note_config.width,
+                        height=note_config.height,
                     ),
                 )
             return flow_item
@@ -435,6 +449,7 @@ class FlowManager:
                 description=flow_item.description,
                 steps={},
                 edges=[],
+                notes=[],
                 focus_point=flow_item.focus_point,
                 connectivity=flow_item.connectivity,
                 debug=flow_item.debug,
@@ -505,7 +520,23 @@ class FlowManager:
                     logger.error(f"[FlowManager] 创建边失败: {edge_item.edge_id}, 错误: {e}")
                     continue
             
-            logger.info(f"[FlowManager] 构建完成，flow_config.edges数量: {len(flow_config.edges)}")
+            # 处理notes
+            for note_item in flow_item.notes:
+                try:
+                    note_config = Note(
+                        note_id=note_item.note_id,
+                        text=note_item.text,
+                        position=note_item.position,
+                        width=note_item.width,
+                        height=note_item.height,
+                    )
+                    flow_config.notes.append(note_config)
+                    logger.info(f"[FlowManager] 添加备注: {note_item.note_id}")
+                except Exception as e:
+                    logger.error(f"[FlowManager] 创建备注失败: {note_item.note_id}, 错误: {e}")
+                    continue
+            
+            logger.info(f"[FlowManager] 构建完成，flow_config.edges数量: {len(flow_config.edges)}, flow_config.notes数量: {len(flow_config.notes)}")
 
             if old_flow_config is None:
                 error_msg = f"[FlowManager] 流 {flow_id} 不存在；可能为新创建"
@@ -828,6 +859,7 @@ class FlowManager:
                 description=flow_item.description,
                 steps={},
                 edges=[],
+                notes=[],
                 focus_point=flow_item.focus_point,
                 connectivity=flow_item.connectivity,
                 debug=flow_item.debug,
@@ -856,6 +888,22 @@ class FlowManager:
                     edge_type=EdgeType.NORMAL,  # 子工作流默认使用普通边
                 )
                 flow_config.edges.append(edge_config)
+            
+            # 处理notes
+            for note_item in flow_item.notes:
+                try:
+                    note_config = Note(
+                        note_id=note_item.note_id,
+                        text=note_item.text,
+                        position=note_item.position,
+                        width=note_item.width,
+                        height=note_item.height,
+                    )
+                    flow_config.notes.append(note_config)
+                    logger.info(f"[FlowManager] 子工作流添加备注: {note_item.note_id}")
+                except Exception as e:
+                    logger.error(f"[FlowManager] 子工作流创建备注失败: {note_item.note_id}, 错误: {e}")
+                    continue
 
             # 使用子工作流专用的保存路径
             flow_loader = FlowLoader()
@@ -898,6 +946,7 @@ class FlowManager:
                 editable=True,
                 nodes=[],
                 edges=[],
+                notes=[],
                 focusPoint=focus_point,
                 connectivity=flow_config.connectivity,
                 debug=flow_config.debug,
@@ -963,6 +1012,18 @@ class FlowManager:
                     branchId=branch_id,
                 )
                 flow_item.edges.append(edge_item)
+            
+            # 处理notes
+            for note_config in flow_config.notes:
+                flow_item.notes.append(
+                    NoteItem(
+                        noteId=note_config.note_id,
+                        text=note_config.text,
+                        position=note_config.position,
+                        width=note_config.width,
+                        height=note_config.height,
+                    ),
+                )
                 
             return flow_item
             

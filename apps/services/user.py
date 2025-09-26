@@ -4,9 +4,10 @@
 import logging
 from datetime import UTC, datetime
 
-from apps.schemas.request_data import UserUpdateRequest
+from apps.schemas.request_data import UserUpdateRequest, UserPreferencesRequest
 from apps.common.mongo import MongoDB
 from apps.schemas.collection import User
+from apps.schemas.preferences import UserPreferences
 from apps.services.conversation import ConversationManager
 
 logger = logging.getLogger(__name__)
@@ -129,3 +130,46 @@ class UserManager:
 
         for conv_id in result.conversations:
             await ConversationManager.delete_conversation_by_conversation_id(user_sub, conv_id)
+
+    @staticmethod
+    async def update_user_preferences_by_user_sub(user_sub: str, data: UserPreferencesRequest) -> None:
+        """
+        根据用户sub更新用户偏好设置
+
+        :param user_sub: 用户sub
+        :param data: 用户偏好设置更新信息
+        """
+        mongo = MongoDB()
+        user_collection = mongo.get_collection("user")
+        
+        # 构建更新字典，只更新非None的字段
+        preferences_update = {}
+        if data.reasoning_model_preference is not None:
+            preferences_update["preferences.reasoning_model_preference"] = data.reasoning_model_preference.model_dump()
+        if data.embedding_model_preference is not None:
+            preferences_update["preferences.embedding_model_preference"] = data.embedding_model_preference.model_dump()
+        if data.reranker_preference is not None:
+            preferences_update["preferences.reranker_preference"] = data.reranker_preference.model_dump()
+        if data.chain_of_thought_preference is not None:
+            preferences_update["preferences.chain_of_thought_preference"] = data.chain_of_thought_preference
+        
+        if preferences_update:
+            update_dict = {"$set": preferences_update}
+            await user_collection.update_one({"_id": user_sub}, update_dict)
+
+    @staticmethod
+    async def get_user_preferences_by_user_sub(user_sub: str) -> UserPreferences:
+        """
+        根据用户sub获取用户偏好设置
+
+        :param user_sub: 用户sub
+        :return: 用户偏好设置
+        """
+        mongo = MongoDB()
+        user_collection = mongo.get_collection("user")
+        user_data = await user_collection.find_one({"_id": user_sub}, {"preferences": 1})
+        if user_data and "preferences" in user_data:
+            # 使用model_validate来处理从数据库读取的数据，这样会正确处理别名映射
+            return UserPreferences.model_validate(user_data["preferences"])
+        else:
+            return UserPreferences()

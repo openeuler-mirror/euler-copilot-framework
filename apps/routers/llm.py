@@ -6,6 +6,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Query, status
 from fastapi.responses import JSONResponse
 
+from apps.common.config import Config
 from apps.dependency import get_user, verify_user
 from apps.schemas.request_data import (
     UpdateLLMReq,
@@ -129,5 +130,50 @@ async def update_conv_llm(
             code=status.HTTP_200_OK,
             message="success",
             result=llm_id,
+        ).model_dump(exclude_none=True, by_alias=True),
+    )
+
+
+@router.get("/embedding", response_model=ResponseData)
+async def get_embedding_config() -> JSONResponse:
+    """获取 Embedding 配置"""
+    config = Config().get_config()
+    embedding_config = config.embedding.__dict__
+    
+    # 如果配置中没有 icon，添加一个默认图标
+    if 'icon' not in embedding_config or not embedding_config['icon']:
+        # 根据模型名称设置默认图标
+        model_name = embedding_config.get('model', '')
+        if 'bge' in model_name.lower() and 'baai' in model_name.lower():
+            embedding_config['icon'] = 'https://sf-maas-uat-prod.oss-cn-shanghai.aliyuncs.com/Model_LOGO/BAAI.svg'
+        else:
+            embedding_config['icon'] = ''
+    
+    return JSONResponse(
+        status_code=status.HTTP_200_OK,
+        content=ResponseData(
+            code=status.HTTP_200_OK,
+            message="success",
+            result=embedding_config,
+        ).model_dump(exclude_none=True, by_alias=True),
+    )
+
+@router.get("/reranker", response_model=ResponseData)
+async def get_reranker_config() -> JSONResponse:
+    """获取 Reranker 配置"""
+    config = Config().get_config()
+    reranker_config = config.reranker.__dict__
+    return JSONResponse(
+        status_code=status.HTTP_200_OK,
+        content=ResponseData(
+            code=status.HTTP_200_OK,
+            message="success",
+            result=[
+                {
+                    'type': 'algorithm',
+                    'name': 'jaccard_dis_reranker'
+                },
+                reranker_config
+            ],
         ).model_dump(exclude_none=True, by_alias=True),
     )

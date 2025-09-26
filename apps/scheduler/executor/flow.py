@@ -293,6 +293,22 @@ class FlowExecutor(BaseExecutor):
             self.task.state.flow_status = FlowStatus.ERROR  # type: ignore[arg-type]
         else:
             self.task.state.flow_status = FlowStatus.SUCCESS  # type: ignore[arg-type]
+        
+        # 重置Conversation变量池
+        try:
+            from apps.scheduler.variable.integration import VariableIntegration
+            reset_success = await VariableIntegration.reset_conversation_variables_to_defaults(
+                conversation_id=self.task.ids.conversation_id,
+                flow_id=self.flow_id,
+                user_sub=self.task.ids.user_sub
+            )
+            if reset_success:
+                logger.info(f"[FlowExecutor] Flow {self.flow_id} 执行完成后，成功重置对话变量池到默认值")
+            else:
+                logger.warning(f"[FlowExecutor] Flow {self.flow_id} 执行完成后，重置对话变量池失败")
+        except Exception as e:
+            # 重置失败不应该影响Flow的正常完成
+            logger.error(f"[FlowExecutor] Flow {self.flow_id} 执行完成后重置对话变量池时发生异常: {e}")
 
         # 尾插运行结束后的系统步骤
         for step in FIXED_STEPS_AFTER_END:

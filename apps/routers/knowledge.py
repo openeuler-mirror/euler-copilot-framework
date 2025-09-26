@@ -64,3 +64,23 @@ async def update_conversation_kb(
             result=kb_ids_update_success,
         ).model_dump(exclude_none=True, by_alias=True),
     )
+
+
+@router.get("/team", response_model=ResponseData, responses={
+    status.HTTP_404_NOT_FOUND: {"model": ResponseData},
+})
+async def list_team_kb(
+    user_sub: Annotated[str, Depends(get_user)],
+    kb_id: Annotated[str, Query(alias="kbId")] = None,
+    kb_name: Annotated[str, Query(alias="kbName")] = "",
+) -> JSONResponse:
+    """获取团队知识库列表"""
+    team_kb_list = await KnowledgeBaseManager.get_team_kb_list_from_rag(user_sub, kb_id, kb_name)
+    return JSONResponse(
+        status_code=status.HTTP_200_OK,
+        content=ResponseData(
+            code=status.HTTP_200_OK,
+            message="success",
+            result=team_kb_list,
+        ).model_dump(exclude_none=True, by_alias=True),
+    )

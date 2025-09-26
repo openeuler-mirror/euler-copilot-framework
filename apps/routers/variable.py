@@ -82,6 +82,17 @@ async def _get_predecessor_node_variables(
                 # 将缓存的变量数据转换为Variable对象
                 for var_data in cached_var_data:
                     try:
+                        var_name = var_data['name']
+                        
+                        # 检查是否为当前步骤的输出变量
+                        if "." in var_name and not var_name.startswith("system."):
+                            # 提取节点ID
+                            node_id = var_name.split(".")[0]
+                            
+                            # 排除当前步骤的输出变量
+                            if node_id == current_step_id:
+                                continue  # 跳过当前步骤的输出变量
+                        
                         from apps.scheduler.variable.variables import create_variable
                         from apps.scheduler.variable.base import VariableMetadata
                         from apps.scheduler.variable.type import VariableType, VariableScope
@@ -89,7 +100,7 @@ async def _get_predecessor_node_variables(
                         
                         # 创建变量元数据
                         metadata = VariableMetadata(
-                            name=var_data['name'],
+                            name=var_name,
                             var_type=VariableType(var_data['var_type']),
                             scope=VariableScope(var_data['scope']),
                             description=var_data.get('description', ''),
@@ -775,6 +786,10 @@ async def list_variables(
                     parts = variable.name.split(".", 1)
                     if len(parts) == 2:
                         step_id, var_name = parts
+                        
+                        # 确保不是当前步骤的输出变量（双重保险）
+                        if current_step_id and step_id == current_step_id:
+                            continue
                         
                         # 优先使用缓存数据中的节点信息
                         if hasattr(variable, '_cache_data') and variable._cache_data:

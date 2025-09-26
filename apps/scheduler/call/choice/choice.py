@@ -82,6 +82,9 @@ class Choice(CoreCall, input_model=ChoiceInput, output_model=ChoiceOutput):
         """
         # 处理reference类型
         if value.type == ValueType.REFERENCE:
+            # 检查引用值是否为空或空白
+            if not value.value or (isinstance(value.value, str) and not value.value.strip()):
+                return False, None, f"{value_position}引用为空或无效"
             try:
                 resolved_value = await self._resolve_single_value(value, call_vars)
             except Exception as e:
@@ -255,6 +258,11 @@ class Choice(CoreCall, input_model=ChoiceInput, output_model=ChoiceOutput):
         Returns:
             tuple[bool, list[str]]: (是否成功, 错误消息列表)
         """
+        # 对于默认分支（else分支），直接返回成功，不需要处理条件
+        if choice.is_default:
+            logger.debug(f"[Choice] 分支 {choice.branch_id} 是默认分支，跳过条件处理")
+            return True, []
+            
         # 验证逻辑运算符
         if not self._validate_branch_logic(choice):
             return False, ["无效的逻辑运算符"]
@@ -274,7 +282,7 @@ class Choice(CoreCall, input_model=ChoiceInput, output_model=ChoiceOutput):
                 logger.warning(f"[Choice] 分支 {choice.branch_id} 条件处理失败: {error_msg}")
         
         # 如果没有有效条件，返回失败
-        if not valid_conditions and not choice.is_default:
+        if not valid_conditions:
             error_messages.append("分支没有有效条件")
             return False, error_messages
             

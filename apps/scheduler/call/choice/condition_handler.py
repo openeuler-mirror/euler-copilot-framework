@@ -79,7 +79,6 @@ class ConditionHandler(BaseModel):
     @staticmethod
     def handler(choices: list[ChoiceBranch]) -> str:
         """处理条件"""
-        logger.error(choices)
         default_branch = [c for c in choices if c.is_default]
 
         # 先处理所有非默认分支

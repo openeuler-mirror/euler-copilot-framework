@@ -72,6 +72,16 @@ class EdgeItem(BaseModel):
     branch_id: str = Field(alias="branchId")
 
 
+class NoteItem(BaseModel):
+    """请求/响应中的备注变量类"""
+
+    note_id: str = Field(alias="noteId")
+    text: str
+    position: PositionItem = Field(default=PositionItem())
+    width: float = Field(default=200.0)
+    height: float = Field(default=100.0)
+
+
 class FlowItem(BaseModel):
     """请求/响应中的流变量类"""
 
@@ -82,6 +92,7 @@ class FlowItem(BaseModel):
     editable: bool = Field(default=True)
     nodes: list[NodeItem] = Field(default=[])
     edges: list[EdgeItem] = Field(default=[])
+    notes: list[NoteItem] = Field(default=[])
     created_at: float | None = Field(alias="createdAt", default=0)
     connectivity: bool = Field(default=False, description="图的开始节点和结束节点是否联通，并且除结束节点都有出边")
     focus_point: PositionItem = Field(alias="focusPoint", default=PositionItem())

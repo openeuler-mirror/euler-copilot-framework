@@ -11,6 +11,7 @@ from apps.schemas.enum_var import CommentType, LanguageType
 from apps.schemas.flow_topology import FlowItem
 from apps.schemas.mcp import MCPType
 from apps.schemas.message import FlowParams
+from apps.schemas.preferences import ReasoningModelPreference, EmbeddingModelPreference, RerankerModelPreference
 
 
 class RequestDataApp(BaseModel):
@@ -192,3 +193,28 @@ class UserUpdateRequest(BaseModel):
     """更新用户信息请求体"""
 
     auto_execute: bool = Field(default=False, description="是否自动执行", alias="autoExecute")
+
+
+class UserPreferencesRequest(BaseModel):
+    """更新用户偏好设置请求体"""
+
+    reasoning_model_preference: ReasoningModelPreference | None = Field(
+        default=None, 
+        description="推理模型偏好", 
+        alias="reasoningModelPreference"
+    )
+    embedding_model_preference: EmbeddingModelPreference | None = Field(
+        default=None, 
+        description="嵌入模型偏好", 
+        alias="embeddingModelPreference"
+    )
+    reranker_preference: RerankerModelPreference | None = Field(
+        default=None, 
+        description="重排序模型偏好", 
+        alias="rerankerPreference"
+    )
+    chain_of_thought_preference: bool | None = Field(
+        default=None,
+        description="思维链偏好",
+        alias="chainOfThoughtPreference"
+    )

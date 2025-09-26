@@ -369,6 +369,67 @@ class VariablePoolManager:
         
         logger.info(f"已清空工作流 {flow_id} 的 {len(to_remove)} 个对话变量池")
     
+    async def reset_conversation_variables_to_defaults(self, conversation_id: str) -> bool:
+        """将指定对话的变量重置为Flow定义的默认值
+        
+        Args:
+            conversation_id: 对话ID
+            
+        Returns:
+            bool: 是否重置成功
+        """
+        try:
+            conversation_pool = await self.get_conversation_pool(conversation_id)
+            if not conversation_pool:
+                logger.warning(f"[VariablePoolManager] 未找到对话变量池: {conversation_id}")
+                return False
+            
+            flow_id = conversation_pool.flow_id
+            flow_pool = await self.get_flow_pool(flow_id)
+            if not flow_pool:
+                logger.warning(f"[VariablePoolManager] 未找到Flow变量池: {flow_id}")
+                return False
+            
+            # 获取所有对话变量模板
+            conversation_templates = await flow_pool.list_conversation_templates()
+            if not conversation_templates:
+                logger.info(f"[VariablePoolManager] Flow {flow_id} 没有定义对话变量模板，无需重置")
+                return True
+            
+            reset_count = 0
+            failed_count = 0
+            
+            # 重置每个对话变量到其默认值
+            for template in conversation_templates:
+                try:
+                    existing_variable = await conversation_pool.get_variable(template.name)
+                    if existing_variable:
+                        # 跳过系统变量
+                        if hasattr(existing_variable.metadata, 'is_system') and existing_variable.metadata.is_system:
+                            continue
+                        
+                        # 重置为模板的默认值
+                        await conversation_pool.update_variable(
+                            name=template.name,
+                            value=template.value,
+                            force_system_update=False
+                        )
+                        reset_count += 1
+                        logger.debug(f"[VariablePoolManager] 已重置对话变量: {template.name} = {template.value}")
+                    
+                except Exception as e:
+                    failed_count += 1
+                    logger.error(f"[VariablePoolManager] 重置对话变量 {template.name} 失败: {e}")
+            
+            if reset_count > 0:
+                logger.info(f"[VariablePoolManager] 对话 {conversation_id} 成功重置了 {reset_count} 个变量到默认值")
+            
+            return failed_count == 0
+            
+        except Exception as e:
+            logger.error(f"[VariablePoolManager] 重置对话变量池失败: conversation_id={conversation_id}, 错误: {e}")
+            return False
+    
     async def get_pool_stats(self) -> Dict[str, int]:
         """获取变量池统计信息"""
         return {
