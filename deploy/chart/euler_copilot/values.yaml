@@ -1,0 +1,155 @@
+# Global Settings
+globals:
+  # Node Architecture: default is x86
+  # [Required] Node settings: ["x86", "arm"]
+  arch:
+  # Image pull policy, default is IfNotPresent
+  imagePullPolicy:
+  # Storage class; default is local-path
+  storageClass:
+
+# Model Settings
+models:
+  # Large language model for Q&A; requires OpenAI-compatible API
+  answer:
+    # [Required] API endpoint URL (please check API provider documentation whether to include "v1" suffix)
+    endpoint:
+    # [Required] API Key; empty by default
+    key:
+    # [Required] Model name
+    name:
+    # [Required] Model maximum context length; recommended >=8192
+    ctxLength: 8192
+    # Model maximum output length, recommended >=2048
+    maxTokens: 2048
+  # Model for Function Call; recommended to use specific inference framework
+  functionCall:
+    # Inference framework type, default is ollama
+    # Available framework types: ["vllm", "sglang", "ollama", "openai"]
+    backend:
+    # [Required] Model endpoint; please check API provider documentation whether to include "v1" suffix
+    # Leave empty to use same as Q&A model
+    endpoint:
+    # API Key; leave empty to use same as Q&A model
+    key:
+    # Model name; leave empty to use same as Q&A model
+    name:
+    # Model maximum context length; leave empty to use same as Q&A model
+    ctxLength:
+    # Model maximum output length; leave empty to use same as Q&A model
+    maxTokens:
+  # Model for data embedding
+  embedding:
+    # Inference framework type, default is openai
+    # [Required] Embedding API type: ["openai", "mindie"]
+    type:
+    # [Required] Embedding URL (requires "v1" suffix)
+    endpoint:
+    # [Required] Embedding model API Key
+    key:
+    # [Required] Embedding model name
+    name:
+
+# Login Settings
+login:
+  # Client ID settings, only effective when type is authhub
+  client:
+    # [Required] Client ID
+    id: FKULtX09EKMXxaCNft5Aqtww
+    # [Required] Client secret
+    secret: Hw2QtzGP2gkuU4FQPA7v1rjbLVG5J68exq4x1eR7ITrNxtDj
+
+# Domain Settings
+domain:
+  # [Required] EulerCopilot web frontend URL; default is http://127.0.0.1:30080
+  euler_copilot: http://139.9.242.191:30080
+  # [Required] AuthHub web frontend URL; default is http://127.0.0.1:30081
+  authhub: http://139.9.242.191:30081
+
+# Storage Settings
+storage:
+  # Framework semantics
+  frameworkSemantics:
+    # Framework semantics path
+    path:
+    # Framework semantics storage size, default is 5GB
+    size:
+  # Shared storage
+  webAsset:
+    # Frontend/backend shared storage size, default is 10GB
+    size:
+
+euler_copilot:
+  # Configuration file tool
+  secretInject:
+    # Image settings; default is hub.oepkgs.net/neocopilot/secret_inject:dev-x86
+    # Image tags: ["dev-x86", "dev-arm"]
+    image:
+
+  framework:
+    # [Required] Whether to deploy Framework backend service
+    enabled: true
+    # Image settings; default is hub.oepkgs.net/neocopilot/euler-copilot-framework:0.10.0-x86
+    # Image tags: ["0.10.0-x86", "0.10.0-arm"]
+    image:
+    # Container root directory read-only
+    readOnly:
+    # Resource limits settings
+    resourceLimits: {}
+    # Service settings
+    service:
+      # Service type, e.g., NodePort
+      type:
+      # When type is nodePort, specify the host port number
+      nodePort:
+
+  web:
+    # [Required] Whether to deploy Web frontend user interface
+    enabled: true
+    # Image settings; default is hub.oepkgs.net/neocopilot/euler-copilot-web:0.10.0-x86
+    # Image tags: ["0.10.0-x86", "0.10.0-arm"]
+    image:
+    # Container root directory read-only
+    readOnly:
+    # Resource limits settings
+    resourceLimits: {}
+    # Service settings
+    service:
+      # Service type, e.g., NodePort
+      type: NodePort
+      # When type is NodePort, specify the host port number
+      nodePort: 30080
+
+  rag_web:
+    # [Required] Whether to deploy RAG Web frontend user interface
+    enabled: true
+    # Image settings; default is hub.oepkgs.net/neocopilot/data_chain_web:0.10.0-x86
+    # Image tags: ["0.10.0-x86", "0.10.0-arm"]
+    image:
+    # Container root directory read-only
+    readOnly:
+    # Resource limits settings
+    resourceLimits: {}
+    # Service settings
+    service:
+      # Service type, e.g., NodePort
+      type:
+      # When type is NodePort, specify the host port number
+      nodePort:
+
+  rag:
+    # [Required] Whether to deploy RAG backend service
+    enabled: true
+    # Image settings; default is hub.oepkgs.net/neocopilot/data_chain_back_end:0.10.0-x86
+    # Image tags: ["0.10.0-x86", "0.10.0-arm"]
+    image:
+    # Container root directory read-only
+    readOnly:
+    # Resource limits settings
+    resourceLimits: {}
+    # Service settings
+    service:
+      # Service type, e.g., NodePort
+      type:
+      # When type is NodePort, specify the host port number
+      nodePort:

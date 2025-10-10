@@ -1,0 +1,7 @@
+Thank you for using openEuler Intelligence!
+Current version is 0.10.0.
+The current Chart functionality is: AuthHub Unified Login System deployment.
+
+Notes:
+The default username for AuthHub is: administrator
+The default password for AuthHub is: changeme

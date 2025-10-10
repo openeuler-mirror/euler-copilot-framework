@@ -1,0 +1,72 @@
+# Global Settings
+globals:
+  # Node Architecture: default is x86
+  # [Required] Node settings: ["x86", "arm"]
+  arch:
+  # Image pull policy; default is IfNotPresent
+  imagePullPolicy:
+  # Replica count, default is 1
+  replicaCount:
+  # Storage class name; default is local-path
+  storageClassName:
+
+storage:
+  # MySQL persistent storage size, default is 10Gi
+  mysql:
+
+domain:
+  # [Required] AuthHub web URL, default is http://127.0.0.1:30081
+  authhub:
+
+# Deploy AuthHub local authentication service
+authhub:
+  # Configuration file tool
+  secret_inject:
+    # Image settings; default is hub.oepkgs.net/neocopilot/secret_inject:dev-x86
+    # Image tags: ["dev-x86", "dev-arm"]
+    image:
+
+  web:
+    # [Required] Whether to deploy AuthHub frontend service
+    enabled: true
+    # Image settings; default is hub.oepkgs.net/neocopilot/authhub-web:0.9.3-x86
+    # Image tags: ["0.9.3-x86", "0.9.3-arm"]
+    image:
+    # Resource limits settings
+    resourceLimits: {}
+    # Service settings
+    service:
+      # Service type, e.g., NodePort
+      type: NodePort
+      # When type is NodePort, specify the host port number
+      nodePort: 30081
+
+  backend:
+    # [Required] Whether to deploy AuthHub backend service
+    enabled: true
+    # Image settings; default is hub.oepkgs.net/neocopilot/authhub:0.9.3-x86
+    # Image tags: ["0.9.3-x86", "0.9.3-arm"]
+    image:
+    # Resource limits settings
+    resourceLimits: {}
+    # Service settings
+    service:
+      # Service type, e.g., NodePort
+      type:
+      # When type is NodePort, specify the host port number
+      nodePort:
+
+  mysql:
+    # [Required] Whether to enable MySQL
+    enabled: true
+    # Image settings; default is hub.oepkgs.net/neocopilot/mysql:8-x86
+    # Image tags: ["8-x86", "8-arm"]
+    image:
+    # Resource limits settings
+    resourceLimits: {}
+    # Service settings
+    service:
+      # Service type, e.g., NodePort
+      type:
+      # When type is NodePort, specify the host port number
+      nodePort:

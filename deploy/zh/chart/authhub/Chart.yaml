@@ -1,6 +1,0 @@
-apiVersion: v2
-name: authhub-chart
-description: AuthHub Helm部署包
-type: application
-version: 0.10.0
-appVersion: "0.10.0"
