@@ -1,0 +1,106 @@
+globals:
+  # Node Architecture: default is x86
+  # Node settings: ["x86", "arm"]
+  arch:
+  # Deployment replica count, default is 1
+  replicaCount:
+  # Image pull policy, default is IfNotPresent
+  imagePullPolicy:
+  # Storage class, default is local-path
+  storageClass:
+
+# Storage Settings
+storage:
+  # MinIO storage size, default is 10GB
+  minio:
+  # MongoDB storage size, default is 10GB
+  mongo:
+  # Vector database storage size, default is 10GB
+  opengauss:
+  # PostgreSQL storage size, default is 10GB
+  pgsql:
+
+# Domain Settings
+domain:
+  # Should be modified to the domain name bound to MinIO Console.
+  minioConsole:
+
+databases:
+  minio:
+    # [Required] Whether to deploy MinIO instance
+    enabled: true
+    # Image settings: default is hub.oepkgs.net/neocopilot/minio:empty-x86
+    # Image versions: ["empty-x86", "empty-arm"]
+    image:
+    # Resource limits settings
+    resourceLimits: {}
+    # Service settings
+    service:
+      # Service type, e.g., NodePort
+      type:
+      # When type is NodePort, specify the host port number corresponding to MinIO data port
+      dataNodePort:
+      # When type is NodePort, specify the host port number corresponding to MinIO console
+      consoleNodePort:
+    # Ingress settings
+    ingress:
+      # [Required] Whether to expose MinIO Console
+      enabled: true
+      # Ingress URL prefix
+      prefix: /
+  mongo:
+    # [Required] Whether to deploy MongoDB database instance
+    enabled: true
+    # Image settings; default is hub.oepkgs.net/neocopilot/mongo:7.0.16-x86
+    # Image versions: ["7.0.16-x86", "7.0.16-arm"]
+    image:
+    # Resource limits settings
+    resourceLimits: {}
+    # Service settings
+    service:
+      # [Required] Service type, e.g., NodePort
+      type:
+      # When type is nodePort, specify the host port number
+      nodePort:
+  redis:
+    # [Required] Whether to deploy Redis instance
+    enabled: true
+    # Image settings, default is hub.oepkgs.net/neocopilot/redis:7.4-alpine-x86
+    # Image versions: ["7.4-alpine-x86", "7.4-alpine-arm"]
+    image:
+    # Resource limits settings
+    resourceLimits: {}
+    # Service settings
+    service:
+      # Service type, e.g., NodePort
+      type:
+      # When type is nodePort, specify the host port number
+      nodePort:
+  opengauss:
+    # [Required] Whether to deploy OpenGauss instance
+    enabled: true
+    # Image settings, default is hub.oepkgs.net/neocopilot/opengauss:latest-x86
+    # Image versions: ["latest-x86", "latest-arm"]
+    image:
+    # Resource limits settings
+    resourceLimits: {}
+    # Service settings
+    service:
+      # Service type, e.g., NodePort
+      type:
+      # When type is NodePort, specify the host port number
+      nodePort:
+  pgsql:
+    # [Required] Whether to deploy PostgreSQL instance
+    enabled: false
+    # Image settings, default is hub.oepkgs.net/neocopilot/pgsql-empty:pg16-x86
+    # Image versions: ["pg16-x86", "pg16-arm"]
+    image:
+    # Resource limits settings
+    resourceLimits: {}
+    # Service settings
+    service:
+      # Service type, e.g., NodePort
+      type:
+      # When type is NodePort, specify the host port number
+      nodePort:

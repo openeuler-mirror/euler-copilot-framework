@@ -1,0 +1,3 @@
+Thank you for using openEuler Intelligence!
+The current version is 0.10.0.
+The current Chart functionality is: Database Deployment.

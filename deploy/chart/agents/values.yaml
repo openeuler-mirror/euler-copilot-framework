@@ -1,0 +1,100 @@
+# Global Settings
+globals:
+  # [Required] Image Registry
+  imageRegistry: "hub.oepkgs.net/neocopilot"
+  # [Required] Image Pull Policy
+  imagePullPolicy: IfNotPresent
+
+# OpenEuler Product Agents
+agents:
+  ai_infra:
+    # [Required] Enable AI Container Image Agent
+    enabled: true
+    # Image Settings
+    image:
+      # Image registry. Leave empty to use global settings.
+      registry: ""
+      # [Required] Image name
+      name: compatibility-ai-infra
+      # [Required] Image Tag
+      tag: "0.9.1"
+      # Pull policy. Leave empty to use global settings
+      imagePullPolicy: ""
+    # [Required] Container root directory read-only
+    readOnly: true
+    # Resource limits settings
+    resources: {}
+    # Service Settings
+    service:
+      # [Required] Service type, ClusterIP or NodePort
+      type: ClusterIP
+      nodePort:
+  rca:
+    # [Required] Enable Intelligent Diagnostics Agent. Must be used with intelligent diagnostics server.
+    enabled: true
+    # Image Settings
+    image:
+      # Image registry. Leave empty to use global settings.
+      registry: "hub.oepkgs.net/a-ops"
+      # [Required] Image name
+      name: euler-copilot-rca
+      # [Required] Image tag
+      tag: "0.9.1"
+      # Pull policy. Leave empty to use global settings.
+      imagePullPolicy: ""
+    # [Required] Container root directory read-only
+    readOnly: true
+    # Resource limits settings
+    resources: {}
+    # Service Settings
+    service:
+      # [Required] Service type, ClusterIP or NodePort
+      type: ClusterIP
+      nodePort:
+  tune:
+    # [Required] Enable Intelligent Tuning Agent.
+    enabled: true
+    # Image Settings
+    image:
+      # Image registry. Leave empty to use global settings.
+      registry: ""
+      # [Required] Image name
+      name: euler-copilot-tune
+      # [Required] Image tag
+      tag: "0.9.1"
+      # Pull policy. Leave empty to use global settings.
+      imagePullPolicy: ""
+    # [Required] Container root directory read-only
+    readOnly: true
+    # Resource limits settings
+    resources: {}
+    # Service Settings
+    service:
+      # [Required] Service type, ClusterIP or NodePort
+      type: ClusterIP
+      nodePort:
+    # Large Language Model Settings
+    llm:
+      # [Required] Model URL (must include v1 suffix)
+      url:
+      # [Required] Model name
+      name: ""
+      # [Required] Model API Key
+      key: ""
+      # [Required] Model maximum tokens
+      max_tokens: 8096
+    # [Required] Embedding URL
+    embedding: ""
+    # Target machine information for optimization
+    machine:
+      # [Required] IP address
+      ip: ""
+      # [Required] Root user password
+      # Note: Must enable Root user SSH login with password
+      password: ""
+    # Target application settings for optimization
+    mysql:
+      # [Required] Database username
+      user: "root"
+      # [Required] Database password
+      password: ""
