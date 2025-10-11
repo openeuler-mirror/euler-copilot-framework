@@ -106,7 +106,7 @@ uninstall_authhub() {
 get_authhub_address() {
     local default_address="http://127.0.0.1:30081"
     
-    echo -e "${BLUE}请输入 Authhub 的访问地址（IP或域名，直接回车使用默认值 ${default_address}）：${NC}"
+    echo -e "${BLUE}请输入 Authhub 的访问地址(e.g., http://\$IP:30081):${NC}"
     read -p "Authhub 地址: " authhub_address
 
     # 处理空输入情况

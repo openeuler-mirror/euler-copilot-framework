@@ -26,7 +26,6 @@ check_kubectl() {
     fi
     
     # 检查是否能连接到 Kubernetes 集群
-    echo -e "${COLOR_BLUE}==> 检查 kubectl 集群连接...${COLOR_NC}"
     if ! kubectl cluster-info &> /dev/null; then
         if [[ "$LANGUAGE" == "zh" ]]; then
             echo -e "${COLOR_RED}错误：无法连接到 Kubernetes 集群！${COLOR_NC}"
@@ -148,7 +147,7 @@ show_sub_menu() {
         echo "5) 部署Embedding模型"
         echo "6) 安装数据库"
         echo "7) 安装AuthHub"
-        echo "8) 安装EulerCopilot"
+        echo "8) 安装openEuler Intelligence"
         echo "9) 返回主菜单"
         echo "=============================="
         echo -n "请输入选项编号（1-9）: "
@@ -163,7 +162,7 @@ show_sub_menu() {
         echo "5) Deploy Embedding Model"
         echo "6) Install Databases"
         echo "7) Install AuthHub"
-        echo "8) Install EulerCopilot"
+        echo "8) Install openEuler Intelligence"
         echo "9) Return to Main Menu"
         echo "=============================="
         echo -n "Please enter option number (1-9): "
@@ -268,7 +267,6 @@ run_script_with_check() {
         fi
         
         # 执行脚本并捕获输出
-        echo -e "${COLOR_BLUE}执行脚本输出：${COLOR_NC}"
         local exit_code=0
         "$localized_script" 2>&1 | while IFS= read -r line; do
             echo "$line"
@@ -350,8 +348,8 @@ run_sub_script() {
             require_kubectl="true"  # 需要kubectl
             ;;
         8)
-            base_script_path="./8-install-EulerCopilot/install_eulercopilot.sh"
-            script_description=$(t "EulerCopilot安装脚本" "EulerCopilot Installation Script")
+            base_script_path="./8-install-intelligence/install_intelligence.sh"
+            script_description=$(t "openEuler Intelligence安装脚本" "openEuler Intelligence Installation Script")
             show_errors="true"  # 启用详细错误显示
             require_kubectl="true"  # 需要kubectl
             ;;

@@ -59,13 +59,13 @@ parse_arguments() {
 prompt_for_addresses() {
     # If eulercopilot_address not provided via command line, prompt user
     if [ -z "$eulercopilot_address" ]; then
-        echo -e "${YELLOW}EulerCopilot address not provided${RESET}"
-        read -p "$(echo -e "${CYAN}Enter EulerCopilot address (e.g., http://myhost:30080): ${RESET}")" eulercopilot_address
+        echo -e "${YELLOW}openEuler Intelligence address not provided${RESET}"
+        read -p "$(echo -e "${CYAN}Enter openEuler Intelligence address (e.g., http://myhost:30080): ${RESET}")" eulercopilot_address
 
         # Validate input not empty
         while [ -z "$eulercopilot_address" ]; do
-            echo -e "${RED}Error: EulerCopilot address cannot be empty${RESET}"
-            read -p "$(echo -e "${CYAN}Enter EulerCopilot address (e.g., http://myhost:30080): ${RESET}")" eulercopilot_address
+            echo -e "${RED}Error: openEuler Intelligence address cannot be empty${RESET}"
+            read -p "$(echo -e "${CYAN}Enter openEuler Intelligence address (e.g., http://myhost:30080): ${RESET}")" eulercopilot_address
         done
     fi
 
@@ -220,10 +220,10 @@ uninstall_all() {
 show_header() {
     clear
     echo -e "\n${BOLD}${MAGENTA}$(printf '✧%.0s' $(seq 1 $(tput cols)))${RESET}"
-    echo -e "${BOLD}${WHITE}                  Euler Copilot One-Click Deployment System                  ${RESET}"
+    echo -e "${BOLD}${WHITE}                  openEuler Intelligence One-Click Deployment System                  ${RESET}"
     echo -e "${BOLD}${MAGENTA}$(printf '✧%.0s' $(seq 1 $(tput cols)))${RESET}"
     echo -e "${CYAN}◈ Main directory: ${YELLOW}${MAIN_DIR}${RESET}"
-    echo -e "${CYAN}◈ EulerCopilot address: ${YELLOW}${eulercopilot_address:-Not set}${RESET}"
+    echo -e "${CYAN}◈ openEuler Intelligence address: ${YELLOW}${eulercopilot_address:-Not set}${RESET}"
     echo -e "${CYAN}◈ Authhub address: ${YELLOW}${authhub_address:-Not set}${RESET}\n"
 }
 
@@ -234,14 +234,14 @@ start_deployment() {
 
     # Step configuration (script_path script_name auto_input extra_args_array)
     local steps=(
-        "../1-check-env/check_env.sh Environment check false"
+        "../1-check-env/check_env_en.sh Environment check false"
         "_conditional_tools_step Basic tools installation(k3s+helm) true"
-        "../3-install-ollama/install_ollama.sh Ollama deployment true"
-        "../4-deploy-deepseek/deploy_deepseek.sh Deepseek model deployment false"
-        "../5-deploy-embedding/deploy-embedding.sh Embedding service deployment false"
-        "../6-install-databases/install_databases.sh Database cluster deployment false"
-        "../7-install-authhub/install_authhub.sh Authhub deployment true --authhub_address ${authhub_address}"
-        "_conditional_eulercopilot_step EulerCopilot deployment true"
+        "../3-install-ollama/install_ollama_en.sh Ollama deployment true"
+        "../4-deploy-deepseek/deploy_deepseek_en.sh Deepseek model deployment false"
+        "../5-deploy-embedding/deploy-embedding_en.sh Embedding service deployment false"
+        "../6-install-databases/install_databases_en.sh Database cluster deployment false"
+        "../7-install-authhub/install_authhub_en.sh Authhub deployment true --authhub_address ${authhub_address}"
+        "_conditional_eulercopilot_step openEuler Intelligence deployment true"
     )
 
     for step in "${steps[@]}"; do
@@ -272,7 +272,7 @@ handle_tools_step() {
         echo -e "${CYAN}🠖 k3s and helm detected, performing environment cleanup...${RESET}"
         uninstall_all
     else
-        run_script_with_check "../2-install-tools/install_tools.sh" "Basic tools installation" $current_step true
+        run_script_with_check "../2-install-tools/install_tools_en.sh" "Basic tools installation" $current_step true
     fi
 }
 
@@ -284,7 +284,7 @@ handle_eulercopilot_step() {
     [ -n "$authhub_address" ] && extra_args+=(--authhub_address "$authhub_address")
     [ -n "$eulercopilot_address" ] && extra_args+=(--eulercopilot_address "$eulercopilot_address")
 
-    run_script_with_check "../8-install-EulerCopilot/install_eulercopilot.sh" "EulerCopilot deployment" $current_step true "${extra_args[@]}"
+    run_script_with_check "../8-install-intelligence/install_intelligence_en.sh" "openEuler Intelligence deployment" $current_step true "${extra_args[@]}"
 }
 
 # Main execution flow
