@@ -10,7 +10,6 @@ COLOR_NC='\033[0m'
 
 # 检查 kubectl 命令是否可用
 check_kubectl() {
-    echo -e "${COLOR_BLUE}==> 检查 kubectl 命令...${COLOR_NC}"
     if ! command -v kubectl &> /dev/null; then
         if [[ "$LANGUAGE" == "zh" ]]; then
             echo -e "${COLOR_RED}错误：未找到 kubectl 命令！${COLOR_NC}"
@@ -378,7 +377,6 @@ run_sub_script() {
 
     # 如果需要kubectl，先进行检查
     if [[ "$require_kubectl" == "true" ]]; then
-        echo -e "${COLOR_BLUE}==> 检查前置条件: kubectl${COLOR_NC}"
         if ! check_kubectl; then
             if [[ "$LANGUAGE" == "zh" ]]; then
                 echo -e "${COLOR_RED}无法执行 $script_description，请先解决kubectl问题${COLOR_NC}"
