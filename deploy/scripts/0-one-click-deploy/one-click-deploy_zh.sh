@@ -59,13 +59,13 @@ parse_arguments() {
 prompt_for_addresses() {
     # 如果未通过命令行参数提供eulercopilot_address，则提示用户输入
     if [ -z "$eulercopilot_address" ]; then
-        echo -e "${YELLOW}未提供 EulerCopilot 访问地址${RESET}"
-        read -p "$(echo -e "${CYAN}请输入 EulerCopilot 访问地址 (格式如: http://myhost:30080): ${RESET}")" eulercopilot_address
+        echo -e "${YELLOW}未提供 openEuler Intelligence 访问地址${RESET}"
+        read -p "$(echo -e "${CYAN}请输入 openEuler Intelligence 访问地址 (格式如: http://myhost:30080): ${RESET}")" eulercopilot_address
         
         # 验证输入是否为空
         while [ -z "$eulercopilot_address" ]; do
-            echo -e "${RED}错误: EulerCopilot 访问地址不能为空${RESET}"
-            read -p "$(echo -e "${CYAN}请输入 EulerCopilot 访问地址 (格式如: http://myhost:30080): ${RESET}")" eulercopilot_address
+            echo -e "${RED}错误: openEuler Intelligence 访问地址不能为空${RESET}"
+            read -p "$(echo -e "${CYAN}请输入 openEuler Intelligence 访问地址 (格式如: http://myhost:30080): ${RESET}")" eulercopilot_address
         done
     fi
 
@@ -223,7 +223,7 @@ show_header() {
     echo -e "${BOLD}${WHITE}                  Euler Copilot 一键部署系统                  ${RESET}"
     echo -e "${BOLD}${MAGENTA}$(printf '✧%.0s' $(seq 1 $(tput cols)))${RESET}"
     echo -e "${CYAN}◈ 主工作目录：${YELLOW}${MAIN_DIR}${RESET}"
-    echo -e "${CYAN}◈ EulerCopilot地址：${YELLOW}${eulercopilot_address:-未设置}${RESET}"
+    echo -e "${CYAN}◈ openEuler Intelligence地址：${YELLOW}${eulercopilot_address:-未设置}${RESET}"
     echo -e "${CYAN}◈ Authhub地址：${YELLOW}${authhub_address:-未设置}${RESET}\n"
 }
 # 修改后的start_deployment函数中的步骤配置
@@ -233,14 +233,14 @@ start_deployment() {
 
     # 步骤配置（脚本路径 脚本名称 自动输入 额外参数数组）
     local steps=(
-        "../1-check-env/check_env.sh 环境检查 false"
+        "../1-check-env/check_env_zh.sh 环境检查 false"
         "_conditional_tools_step 基础工具安装(k3s+helm) true"
-        "../3-install-ollama/install_ollama.sh Ollama部署 true"
-        "../4-deploy-deepseek/deploy_deepseek.sh Deepseek模型部署 false"
-        "../5-deploy-embedding/deploy-embedding.sh Embedding服务部署 false"
-        "../6-install-databases/install_databases.sh 数据库集群部署 false"
-        "../7-install-authhub/install_authhub.sh Authhub部署 true --authhub_address ${authhub_address}"
-        "_conditional_eulercopilot_step EulerCopilot部署 true"
+        "../3-install-ollama/install_ollama_zh.sh Ollama部署 true"
+        "../4-deploy-deepseek/deploy_deepseek_zh.sh Deepseek模型部署 false"
+        "../5-deploy-embedding/deploy-embedding_zh.sh Embedding服务部署 false"
+        "../6-install-databases/install_databases_zh.sh 数据库集群部署 false"
+        "../7-install-authhub/install_authhub_zh.sh Authhub部署 true --authhub_address ${authhub_address}"
+        "_conditional_eulercopilot_step openEuler Intelligence部署 true"
     )
 
     for step in "${steps[@]}"; do
@@ -271,7 +271,7 @@ handle_tools_step() {
         echo -e "${CYAN}🠖 检测到已安装 k3s 和 helm，执行环境清理...${RESET}"
         uninstall_all
     else
-        run_script_with_check "../2-install-tools/install_tools.sh" "基础工具安装" $current_step true
+        run_script_with_check "../2-install-tools/install_tools_zh.sh" "基础工具安装" $current_step true
     fi
 }
 
@@ -283,7 +283,7 @@ handle_eulercopilot_step() {
     [ -n "$authhub_address" ] && extra_args+=(--authhub_address "$authhub_address")
     [ -n "$eulercopilot_address" ] && extra_args+=(--eulercopilot_address "$eulercopilot_address")
 
-    run_script_with_check "../8-install-EulerCopilot/install_eulercopilot.sh" "EulerCopilot部署" $current_step true "${extra_args[@]}"
+    run_script_with_check "../8-install-intelligence/install_intelligence_zh.sh" "openEuler Intelligence部署" $current_step true "${extra_args[@]}"
 }
 
 # 主执行流程

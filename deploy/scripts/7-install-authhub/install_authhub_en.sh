@@ -106,7 +106,7 @@ uninstall_authhub() {
 get_authhub_address() {
     local default_address="http://127.0.0.1:30081"
 
-    echo -e "${BLUE}Enter Authhub access address (IP or domain)${NC}"
+    echo -e "${BLUE}Enter Authhub access address (e.g., http://\$IP:30081):${NC}"
     read -p "Authhub address: " authhub_address
 
     # Handle empty input

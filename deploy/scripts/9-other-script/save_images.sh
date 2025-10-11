@@ -19,7 +19,7 @@ show_help() {
     echo -e ""
     echo -e "${YELLOW}Options:${NC}"
     echo -e "  --help            Show this help message"
-    echo -e "  --version <version> Specify EulerCopilot version (default: ${eulercopilot_version})"
+    echo -e "  --version <version> Specify openEuler Intelligence version (default: ${eulercopilot_version})"
     echo -e "  --arch <arch>     Specify system architecture (arm/x86, default: auto-detect)"
     echo -e ""
     echo -e "${YELLOW}Examples:${NC}"

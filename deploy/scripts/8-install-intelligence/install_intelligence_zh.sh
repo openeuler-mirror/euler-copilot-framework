@@ -33,7 +33,7 @@ show_help() {
     echo -e "${GREEN}用法: $0 [选项]"
     echo -e "选项:"
     echo -e "  --help                   显示此帮助信息"
-    echo -e "  --eulercopilot_address   指定EulerCopilot前端访问URL"
+    echo -e "  --eulercopilot_address   指定openEuler Intelligence前端访问URL"
     echo -e "  --authhub_address        指定Authhub前端访问URL"
     echo -e ""
     echo -e "示例:"
@@ -132,7 +132,7 @@ get_address_input() {
     # 如果命令行参数已经提供了地址，则直接使用，不进行交互式输入
     if [ -n "$eulercopilot_address" ] && [ -n "$authhub_address" ]; then
         echo -e "${GREEN}使用命令行参数配置："
-        echo "EulerCopilot地址: $eulercopilot_address"
+        echo "openEuler Intelligence地址: $eulercopilot_address"
         echo "Authhub地址:     $authhub_address"
         return
     fi
@@ -143,17 +143,17 @@ get_address_input() {
 
     # 非交互模式直接使用默认值
     if [ -t 0 ]; then  # 仅在交互式终端显示提示
-        echo -e "${BLUE}请输入 EulerCopilot 前端访问URL（默认：$eulercopilot_address）：${NC}"
+	echo -e "${BLUE}Enter openEuler Intelligence frontend access URL (e.g., http://\$IP:30080):${NC}"
         read -p "> " input_euler
         [ -n "$input_euler" ] && eulercopilot_address=$input_euler
 
-        echo -e "${BLUE}请输入 Authhub 前端访问URL（默认：$authhub_address）：${NC}"
+        echo -e "${BLUE}Enter Authhub frontend access URL (e.g., http://\$IP:30081):${NC}"
         read -p "> " input_auth
         [ -n "$input_auth" ] && authhub_address=$input_auth
     fi
 
     echo -e "${GREEN}使用配置："
-    echo "EulerCopilot地址: $eulercopilot_address"
+    echo "openEuler Intelligence地址: $eulercopilot_address"
     echo "Authhub地址:     $authhub_address"
 }
 
@@ -245,7 +245,7 @@ check_directories() {
 }
 
 uninstall_eulercopilot() {
-    echo -e "${YELLOW}检查是否存在已部署的 EulerCopilot...${NC}" >&2
+    echo -e "${YELLOW}检查是否存在已部署的 openEuler Intelligence...${NC}" >&2
 
     # 删除 Helm Release: euler-copilot
     if helm list -n euler-copilot --short | grep -q '^euler-copilot$'; then
@@ -351,14 +351,14 @@ pre_install_checks() {
 # 执行安装
 execute_helm_install() {
     local arch=$1
-    echo -e "${BLUE}开始部署EulerCopilot（架构: $arch）...${NC}" >&2
+    echo -e "${BLUE}开始部署openEuler Intelligence（架构: $arch）...${NC}" >&2
 
     enter_chart_directory
     helm upgrade --install $NAMESPACE -n $NAMESPACE ./euler_copilot --set globals.arch=$arch --create-namespace || {
-        echo -e "${RED}Helm 安装 EulerCopilot 失败！${NC}" >&2
+        echo -e "${RED}Helm 安装 openEuler Intelligence 失败！${NC}" >&2
         exit 1
     }
-    echo -e "${GREEN}Helm安装 EulerCopilot 成功！${NC}" >&2
+    echo -e "${GREEN}Helm安装 openEuler Intelligence 成功！${NC}" >&2
 }
 
 # 检查pod状态
@@ -424,8 +424,8 @@ main() {
         echo -e "${YELLOW}是否保留现有的模型配置？${NC}"
         echo -e "  ${BLUE}Y) 保留现有配置${NC}"
         echo -e "  ${BLUE}n) 使用默认配置${NC}"
+        read -p "请选择(Y/N): " input_preserve
         while true; do
-            read -p "请选择(Y/N): " input_preserve
             case "${input_preserve:-Y}" in
                 [YyNn]) preserve_models=${input_preserve:-Y}; break ;;
                 *) echo -e "${RED}无效输入，请选择Y或n${NC}" ;;
@@ -456,11 +456,11 @@ show_success_message() {
     
 
     echo -e "\n${GREEN}==================================================${NC}"
-    echo -e "${GREEN}          EulerCopilot 部署完成！                 ${NC}"
+    echo -e "${GREEN}          openEuler Intelligence 部署完成！                 ${NC}"
     echo -e "${GREEN}==================================================${NC}"
 
     echo -e "${YELLOW}访问信息：${NC}"
-    echo -e "EulerCopilot UI:    ${eulercopilot_address}"
+    echo -e "openEuler Intelligence UI:    ${eulercopilot_address}"
     echo -e "AuthHub 管理界面:   ${authhub_address}"
 
     echo -e "\n${YELLOW}系统信息：${NC}"

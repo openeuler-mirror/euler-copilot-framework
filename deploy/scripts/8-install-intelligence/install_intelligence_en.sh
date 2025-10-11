@@ -33,7 +33,7 @@ show_help() {
     echo -e "${GREEN}Usage: $0 [options]"
     echo -e "Options:"
     echo -e "  --help                   Show this help message"
-    echo -e "  --eulercopilot_address   Specify EulerCopilot frontend access URL"
+    echo -e "  --eulercopilot_address   Specify openEuler Intelligence frontend access URL"
     echo -e "  --authhub_address        Specify Authhub frontend access URL"
     echo -e ""
     echo -e "Example:"
@@ -132,7 +132,7 @@ get_address_input() {
     # If addresses already provided via command line, use them directly
     if [ -n "$eulercopilot_address" ] && [ -n "$authhub_address" ]; then
         echo -e "${GREEN}Using command line parameters:"
-        echo "EulerCopilot address: $eulercopilot_address"
+        echo "openEuler Intelligence address: $eulercopilot_address"
         echo "Authhub address:     $authhub_address"
         return
     fi
@@ -143,17 +143,17 @@ get_address_input() {
 
     # Non-interactive mode uses defaults directly
     if [ -t 0 ]; then  # Only show prompts in interactive terminal
-        echo -e "${BLUE}Enter EulerCopilot frontend access URL (default: $eulercopilot_address):${NC}"
+        echo -e "${BLUE}Enter openEuler Intelligence frontend access URL (e.g., http://\$IP:30080):${NC}"
         read -p "> " input_euler
         [ -n "$input_euler" ] && eulercopilot_address=$input_euler
 
-        echo -e "${BLUE}Enter Authhub frontend access URL (default: $authhub_address):${NC}"
+        echo -e "${BLUE}Enter Authhub frontend access URL (e.g., http://\$IP:30081):${NC}"
         read -p "> " input_auth
         [ -n "$input_auth" ] && authhub_address=$input_auth
     fi
 
     echo -e "${GREEN}Using configuration:"
-    echo "EulerCopilot address: $eulercopilot_address"
+    echo "openEuler Intelligence address: $eulercopilot_address"
     echo "Authhub address:     $authhub_address"
 }
 
@@ -245,7 +245,7 @@ check_directories() {
 }
 
 uninstall_eulercopilot() {
-    echo -e "${YELLOW}Checking if EulerCopilot is already deployed...${NC}" >&2
+    echo -e "${YELLOW}Checking if openEuler Intelligence is already deployed...${NC}" >&2
 
     # Delete Helm Release: euler-copilot
     if helm list -n euler-copilot --short | grep -q '^euler-copilot$'; then
@@ -351,14 +351,14 @@ pre_install_checks() {
 # Execute installation
 execute_helm_install() {
     local arch=$1
-    echo -e "${BLUE}Starting EulerCopilot deployment (architecture: $arch)...${NC}" >&2
+    echo -e "${BLUE}Starting openEuler Intelligence deployment (architecture: $arch)...${NC}" >&2
 
     enter_chart_directory
     helm upgrade --install $NAMESPACE -n $NAMESPACE ./euler_copilot --set globals.arch=$arch --create-namespace || {
-        echo -e "${RED}Helm installation of EulerCopilot failed!${NC}" >&2
+        echo -e "${RED}Helm installation of openEuler Intelligence failed!${NC}" >&2
         exit 1
     }
-    echo -e "${GREEN}Helm installation of EulerCopilot successful!${NC}" >&2
+    echo -e "${GREEN}Helm installation of openEuler Intelligence successful!${NC}" >&2
 }
 
 # Check pod status
@@ -424,8 +424,8 @@ main() {
         echo -e "${YELLOW}Keep existing model configuration?${NC}"
         echo -e "  ${BLUE}Y) Keep existing configuration${NC}"
         echo -e "  ${BLUE}n) Use default configuration${NC}"
+        read -p "Please choose (Y/N): " input_preserve
         while true; do
-            read -p "Please choose (Y/N): " input_preserve
             case "${input_preserve:-Y}" in
                 [YyNn]) preserve_models=${input_preserve:-Y}; break ;;
                 *) echo -e "${RED}Invalid input, please choose Y or n${NC}" ;;
@@ -455,11 +455,11 @@ show_success_message() {
     local arch=$2
 
     echo -e "\n${GREEN}==================================================${NC}"
-    echo -e "${GREEN}          EulerCopilot Deployment Completed!       ${NC}"
+    echo -e "${GREEN}          openEuler Intelligence Deployment Completed!       ${NC}"
     echo -e "${GREEN}==================================================${NC}"
 
     echo -e "${YELLOW}Access Information:${NC}"
-    echo -e "EulerCopilot UI:    ${eulercopilot_address}"
+    echo -e "openEuler Intelligence UI:    ${eulercopilot_address}"
     echo -e "AuthHub Admin UI:   ${authhub_address}"
 
     echo -e "\n${YELLOW}System Information:${NC}"
