@@ -8,6 +8,51 @@ COLOR_YELLOW='\033[33m'
 COLOR_BLUE='\033[34m'
 COLOR_NC='\033[0m'
 
+# 检查 kubectl 命令是否可用
+check_kubectl() {
+    echo -e "${COLOR_BLUE}==> 检查 kubectl 命令...${COLOR_NC}"
+    if ! command -v kubectl &> /dev/null; then
+        if [[ "$LANGUAGE" == "zh" ]]; then
+            echo -e "${COLOR_RED}错误：未找到 kubectl 命令！${COLOR_NC}"
+            echo -e "${COLOR_YELLOW}请先安装 kubectl 或执行选项2安装k3s和helm${COLOR_NC}"
+            echo -e "${COLOR_BLUE}验证安装：${COLOR_NC}"
+            echo -e "kubectl version --client${COLOR_NC}"
+        else
+            echo -e "${COLOR_RED}Error: kubectl command not found!${COLOR_NC}"
+            echo -e "${COLOR_YELLOW}Please install kubectl first or select option 2 to install k3s and helm${COLOR_NC}"
+            echo -e "${COLOR_BLUE}Verify installation:${COLOR_NC}"
+            echo -e "kubectl version --client${COLOR_NC}"
+        fi
+        return 1
+    fi
+    
+    # 检查是否能连接到 Kubernetes 集群
+    echo -e "${COLOR_BLUE}==> 检查 kubectl 集群连接...${COLOR_NC}"
+    if ! kubectl cluster-info &> /dev/null; then
+        if [[ "$LANGUAGE" == "zh" ]]; then
+            echo -e "${COLOR_RED}错误：无法连接到 Kubernetes 集群！${COLOR_NC}"
+            echo -e "${COLOR_YELLOW}请确保：${COLOR_NC}"
+            echo -e "1. Kubernetes 集群正在运行${COLOR_NC}"
+            echo -e "2. kubectl 配置正确${COLOR_NC}"
+            echo -e "3. 使用命令检查: kubectl cluster-info${COLOR_NC}"
+        else
+            echo -e "${COLOR_RED}Error: Cannot connect to Kubernetes cluster!${COLOR_NC}"
+            echo -e "${COLOR_YELLOW}Please ensure:${COLOR_NC}"
+            echo -e "1. Kubernetes cluster is running${COLOR_NC}"
+            echo -e "2. kubectl is properly configured${COLOR_NC}"
+            echo -e "3. Check with: kubectl cluster-info${COLOR_NC}"
+        fi
+        return 1
+    fi
+    
+    if [[ "$LANGUAGE" == "zh" ]]; then
+        echo -e "${COLOR_GREEN}✓ kubectl 命令可用且已连接到集群${COLOR_NC}"
+    else
+        echo -e "${COLOR_GREEN}✓ kubectl command is available and connected to cluster${COLOR_NC}"
+    fi
+    return 0
+}
+
 # 语言选择函数
 select_language() {
     clear
@@ -23,7 +68,7 @@ select_language() {
     case $lang_choice in
         1) LANGUAGE="en" ;;
         2) LANGUAGE="zh" ;;
-        *) 
+        *)
             echo "无效选择，默认使用中文 / Invalid selection, using Chinese by default"
             LANGUAGE="zh"
             sleep 1
@@ -38,10 +83,10 @@ get_localized_script() {
     local script_name=$(basename "$base_script")
     local name_without_ext="${script_name%.*}"
     local ext="${script_name##*.}"
-    
+
     # 构建本地化脚本路径
     local localized_script="${script_dir}/${name_without_ext}_${LANGUAGE}.${ext}"
-    
+
     # 如果本地化脚本存在，则返回本地化脚本路径，否则返回原脚本路径
     if [[ -f "$localized_script" ]]; then
         echo "$localized_script"
@@ -54,7 +99,7 @@ get_localized_script() {
 t() {
     local zh_text="$1"
     local en_text="$2"
-    
+
     if [[ "$LANGUAGE" == "zh" ]]; then
         echo "$zh_text"
     else
@@ -173,10 +218,11 @@ show_restart_menu() {
 run_script_with_check() {
     local script_path=$1
     local script_name=$2
-    
+    local show_errors=$3  # 新增参数：是否显示详细错误信息
+
     # 获取对应语言的脚本路径
     local localized_script=$(get_localized_script "$script_path")
-    
+
     echo "--------------------------------------------------"
     if [[ "$LANGUAGE" == "zh" ]]; then
         echo "开始执行：$script_name"
@@ -185,7 +231,7 @@ run_script_with_check() {
         echo "Starting: $script_name"
         echo "Script path: $localized_script"
     fi
-    
+
     # 检查脚本是否存在
     if [[ ! -f "$localized_script" ]]; then
         if [[ "$LANGUAGE" == "zh" ]]; then
@@ -195,21 +241,71 @@ run_script_with_check() {
         fi
         return 1
     fi
-    
-    # 执行脚本
-    "$localized_script" || {
+
+    # 检查脚本是否可执行
+    if [[ ! -x "$localized_script" ]]; then
         if [[ "$LANGUAGE" == "zh" ]]; then
-            echo -e "\n${COLOR_RED}$script_name 执行失败！${COLOR_NC}"
+            echo -e "\n${COLOR_YELLOW}警告：脚本没有执行权限，尝试添加执行权限...${COLOR_NC}"
         else
-            echo -e "\n${COLOR_RED}$script_name execution failed!${COLOR_NC}"
+            echo -e "\n${COLOR_YELLOW}Warning: Script is not executable, attempting to add execute permission...${COLOR_NC}"
         fi
-        return 1
-    }
-    
-    if [[ "$LANGUAGE" == "zh" ]]; then
-        echo -e "\n${COLOR_GREEN}$script_name 执行成功！${COLOR_NC}"
+        chmod +x "$localized_script" || {
+            if [[ "$LANGUAGE" == "zh" ]]; then
+                echo -e "${COLOR_RED}错误：无法添加执行权限${COLOR_NC}"
+            else
+                echo -e "${COLOR_RED}Error: Cannot add execute permission${COLOR_NC}"
+            fi
+            return 1
+        }
+    fi
+
+    # 执行脚本
+    if [[ "$show_errors" == "true" ]]; then
+        # 显示详细错误信息
+        if [[ "$LANGUAGE" == "zh" ]]; then
+            echo -e "${COLOR_YELLOW}详细错误输出模式已启用${COLOR_NC}"
+        else
+            echo -e "${COLOR_YELLOW}Detailed error output mode enabled${COLOR_NC}"
+        fi
+        
+        # 执行脚本并捕获输出
+        echo -e "${COLOR_BLUE}执行脚本输出：${COLOR_NC}"
+        local exit_code=0
+        "$localized_script" 2>&1 | while IFS= read -r line; do
+            echo "$line"
+        done
+        exit_code=${PIPESTATUS[0]}
+        
+        if [[ $exit_code -ne 0 ]]; then
+            if [[ "$LANGUAGE" == "zh" ]]; then
+                echo -e "\n${COLOR_RED}$script_name 执行失败！退出码: $exit_code${COLOR_NC}"
+            else
+                echo -e "\n${COLOR_RED}$script_name execution failed! Exit code: $exit_code${COLOR_NC}"
+            fi
+            return $exit_code
+        else
+            if [[ "$LANGUAGE" == "zh" ]]; then
+                echo -e "\n${COLOR_GREEN}$script_name 执行成功！${COLOR_NC}"
+            else
+                echo -e "\n${COLOR_GREEN}$script_name executed successfully!${COLOR_NC}"
+            fi
+        fi
     else
-        echo -e "\n${COLOR_GREEN}$script_name executed successfully!${COLOR_NC}"
+        # 原有模式：只显示简单错误信息
+        "$localized_script" || {
+            if [[ "$LANGUAGE" == "zh" ]]; then
+                echo -e "\n${COLOR_RED}$script_name 执行失败！${COLOR_NC}"
+            else
+                echo -e "\n${COLOR_RED}$script_name execution failed!${COLOR_NC}"
+            fi
+            return 1
+        }
+
+        if [[ "$LANGUAGE" == "zh" ]]; then
+            echo -e "\n${COLOR_GREEN}$script_name 执行成功！${COLOR_NC}"
+        else
+            echo -e "\n${COLOR_GREEN}$script_name executed successfully!${COLOR_NC}"
+        fi
     fi
     echo "--------------------------------------------------"
 }
@@ -218,7 +314,9 @@ run_script_with_check() {
 run_sub_script() {
     local base_script_path=""
     local script_description=""
-    
+    local show_errors="false"  # 默认不显示详细错误
+    local require_kubectl="false"  # 新增：是否需要kubectl检查
+
     case $1 in
         1)
             base_script_path="./1-check-env/check_env.sh"
@@ -243,14 +341,20 @@ run_sub_script() {
         6)
             base_script_path="./6-install-databases/install_databases.sh"
             script_description=$(t "数据库安装脚本" "Database Installation Script")
+            show_errors="true"  # 启用详细错误显示
+            require_kubectl="true"  # 需要kubectl
             ;;
         7)
             base_script_path="./7-install-authhub/install_authhub.sh"
             script_description=$(t "AuthHub安装脚本" "AuthHub Installation Script")
+            show_errors="true"  # 启用详细错误显示
+            require_kubectl="true"  # 需要kubectl
             ;;
         8)
             base_script_path="./8-install-EulerCopilot/install_eulercopilot.sh"
             script_description=$(t "EulerCopilot安装脚本" "EulerCopilot Installation Script")
+            show_errors="true"  # 启用详细错误显示
+            require_kubectl="true"  # 需要kubectl
             ;;
         9)
             if [[ "$LANGUAGE" == "zh" ]]; then
@@ -271,13 +375,36 @@ run_sub_script() {
             return 1
             ;;
     esac
-    
-    run_script_with_check "$base_script_path" "$script_description"
+
+    # 如果需要kubectl，先进行检查
+    if [[ "$require_kubectl" == "true" ]]; then
+        echo -e "${COLOR_BLUE}==> 检查前置条件: kubectl${COLOR_NC}"
+        if ! check_kubectl; then
+            if [[ "$LANGUAGE" == "zh" ]]; then
+                echo -e "${COLOR_RED}无法执行 $script_description，请先解决kubectl问题${COLOR_NC}"
+            else
+                echo -e "${COLOR_RED}Cannot execute $script_description, please resolve kubectl issue first${COLOR_NC}"
+            fi
+            return 1
+        fi
+    fi
+
+    run_script_with_check "$base_script_path" "$script_description" "$show_errors"
     return $?
 }
 
 # 卸载所有组件
 uninstall_all() {
+    # 先检查kubectl
+    if ! check_kubectl; then
+        if [[ "$LANGUAGE" == "zh" ]]; then
+            echo -e "${COLOR_RED}无法执行卸载操作，请先解决kubectl问题${COLOR_NC}"
+        else
+            echo -e "${COLOR_RED}Cannot perform uninstall operation, please resolve kubectl issue first${COLOR_NC}"
+        fi
+        return 1
+    fi
+
     if [[ "$LANGUAGE" == "zh" ]]; then
         echo -e "${COLOR_RED}警告：此操作将永久删除所有组件和数据！${COLOR_NC}"
         read -p "确认要继续吗？(y/n) " confirm
@@ -464,12 +591,20 @@ manual_deployment_loop() {
     while true; do
         show_sub_menu
         read -r sub_choice
+        
+        # 添加调试信息
+        if [[ "$LANGUAGE" == "zh" ]]; then
+            echo -e "${COLOR_BLUE}用户选择了选项: $sub_choice${COLOR_NC}"
+        else
+            echo -e "${COLOR_BLUE}User selected option: $sub_choice${COLOR_NC}"
+        fi
+        
         run_sub_script "$sub_choice"
         retval=$?
 
         if [ $retval -eq 2 ]; then  # 返回主菜单
             break
-        elif [ $retval -eq 0 ]; then
+        else
             echo "$(t "按任意键继续..." "Press any key to continue...")"
             read -r -n 1 -s
         fi
@@ -483,6 +618,16 @@ restart_pod() {
         echo -e "${COLOR_RED}错误：请输入服务名称${COLOR_NC}"
     else
         echo -e "${COLOR_RED}Error: Please enter service name${COLOR_NC}"
+    fi
+    return 1
+  fi
+
+  # 先检查kubectl
+  if ! check_kubectl; then
+    if [[ "$LANGUAGE" == "zh" ]]; then
+        echo -e "${COLOR_RED}无法重启服务，请先解决kubectl问题${COLOR_NC}"
+    else
+        echo -e "${COLOR_RED}Cannot restart service, please resolve kubectl issue first${COLOR_NC}"
     fi
     return 1
   fi
