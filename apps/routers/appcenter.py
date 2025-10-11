@@ -230,7 +230,7 @@ async def get_application(
     if app_data.llm_id == "empty":
         llm_item = LLMIteam()
     else:
-        llm_collection = await LLMManager.get_llm_by_id(user_sub, app_data.llm_id)
+        llm_collection = await LLMManager.get_llm_by_id(app_data.llm_id)
         llm_item = LLMIteam(
             llmId=llm_collection.id,
             modelName=llm_collection.model_name,

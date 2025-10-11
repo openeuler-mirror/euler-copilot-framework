@@ -51,7 +51,7 @@ class ConversationManager:
                 icon=llm_provider_dict["ollama"]["icon"],
             )
         else:
-            llm = await LLMManager.get_llm_by_id(user_sub, llm_id)
+            llm = await LLMManager.get_llm_by_user_sub_and_id(user_sub, llm_id)
             if llm is None:
                 logger.error("[ConversationManager] 获取大模型失败")
                 return None
