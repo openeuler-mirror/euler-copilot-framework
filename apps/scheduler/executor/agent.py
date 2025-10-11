@@ -80,12 +80,7 @@ class MCPAgentExecutor(BaseExecutor):
         for mcp_id in mcp_ids:
             mcp_service = await MCPServiceManager.get_mcp_service(mcp_id)
             if self.task.ids.user_sub not in mcp_service.activated:
-                logger.warning(
-                    "[MCPAgentExecutor] 用户 %s 未启用MCP %s",
-                    self.task.ids.user_sub,
-                    mcp_id,
-                )
-                continue
+                await MCPServiceManager.active_mcpservice(self.task.ids.user_sub, mcp_id)
 
             self.mcp_list.append(mcp_service)
             await self.mcp_pool._init_mcp(mcp_id, self.task.ids.user_sub)

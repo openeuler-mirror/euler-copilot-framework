@@ -89,7 +89,7 @@ class Scheduler:
                 )
                 return llm
             else:
-                llm = await LLMManager.get_llm_by_id(self.task.ids.user_sub, llm_id)
+                llm = await LLMManager.get_llm_by_user_sub_and_id(self.task.ids.user_sub, llm_id)
                 if not llm:
                     logger.error("[Scheduler] 获取大模型失败")
                     return None
@@ -222,9 +222,7 @@ class Scheduler:
                 max_tokens=Config().get_config().llm.max_tokens,
             )
         else:
-            llm = await LLMManager.get_llm_by_id(
-                self.task.ids.user_sub, app_metadata.llm_id,
-            )
+            llm = await LLMManager.get_llm_by_id(app_metadata.llm_id)
         if not llm:
             logger.error("[Scheduler] 获取大模型失败")
             await self.queue.close()
