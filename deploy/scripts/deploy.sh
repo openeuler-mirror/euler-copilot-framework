@@ -26,7 +26,6 @@ check_kubectl() {
     fi
     
     # 检查是否能连接到 Kubernetes 集群
-    echo -e "${COLOR_BLUE}==> 检查 kubectl 集群连接...${COLOR_NC}"
     if ! kubectl cluster-info &> /dev/null; then
         if [[ "$LANGUAGE" == "zh" ]]; then
             echo -e "${COLOR_RED}错误：无法连接到 Kubernetes 集群！${COLOR_NC}"
@@ -268,7 +267,6 @@ run_script_with_check() {
         fi
         
         # 执行脚本并捕获输出
-        echo -e "${COLOR_BLUE}执行脚本输出：${COLOR_NC}"
         local exit_code=0
         "$localized_script" 2>&1 | while IFS= read -r line; do
             echo "$line"
