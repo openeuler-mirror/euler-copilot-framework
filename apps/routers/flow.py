@@ -135,11 +135,8 @@ async def put_flow(
             ).model_dump(exclude_none=True, by_alias=True),
         )
     put_body.flow = await FlowService.remove_excess_structure_from_flow(put_body.flow)
-    logger.error(f'{put_body.flow}')
     await FlowService.validate_flow_illegal(put_body.flow)
-    logger.error(f'{put_body.flow}')
     put_body.flow.connectivity = await FlowService.validate_flow_connectivity(put_body.flow)
-    logger.error(f'{put_body.flow}')
     result = await FlowManager.put_flow_by_app_and_flow_id(app_id, flow_id, put_body.flow)
     if result is None:
         return JSONResponse(
