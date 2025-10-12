@@ -183,7 +183,7 @@ class MCPServiceManager:
         mcpservice_collection = MongoDB().get_collection("mcp")
         # 分页查询
         skip = (page - 1) * SERVICE_PAGE_SIZE
-        db_mcpservices = await mcpservice_collection.find(search_conditions).skip(skip).limit(
+        db_mcpservices = await mcpservice_collection.find(search_conditions).sort("_id", -1).skip(skip).limit(
             SERVICE_PAGE_SIZE,
         ).to_list()
         # 如果未找到，返回空列表
