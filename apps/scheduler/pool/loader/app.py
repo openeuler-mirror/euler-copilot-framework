@@ -157,6 +157,5 @@ class AppLoader:
                 upsert=True,
             )
             app_pool = await app_collection.find_one({"_id": metadata.id})
-            logger.error(f"[AppLoader] 更新 MongoDB 成功: {app_pool}")
         except Exception:
             logger.exception("[AppLoader] 更新 MongoDB 失败")
