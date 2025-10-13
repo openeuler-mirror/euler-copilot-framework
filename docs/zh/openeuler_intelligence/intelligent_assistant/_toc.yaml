@@ -45,9 +45,9 @@ sections:
       - label: 知识库管理
         sections:
           - label: 部署指南
-            href: ./advance/knowledge_base/deploy_guide/witchaind_deployment.md
+            href: ./advance/knowledge_base/deploy_guide/knowledge_base_deployment.md
           - label: 使用指导
-            href: ./advance/knowledge_base/user_guide/witchaind_guidance.md      
+            href: ./advance/knowledge_base/user_guide/knowledge_base_guidance.md      
       - label: 工作流编排
         sections:
           - label: 部署指南
