@@ -45,9 +45,9 @@ sections:
       - label: Knowledge Base Management
         sections:
           - label: Deployment Guide
-            href: ./advance/knowledge_base/deploy_guide/witchaind_deployment.md
+            href: ./advance/knowledge_base/deploy_guide/knowledge_base_deployment.md
           - label: User Guide
-            href: ./advance/knowledge_base/user_guide/witchaind_guidance.md
+            href: ./advance/knowledge_base/user_guide/knowledge_base_guidance.md
       - label: Workflow Orchestration
         sections:
           - label: Deployment Guide
