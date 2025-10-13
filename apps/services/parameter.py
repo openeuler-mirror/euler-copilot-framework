@@ -15,7 +15,7 @@ from apps.scheduler.call.choice.schema import (
     ListOperate,
     BoolOperate,
     DictOperate,
-    Type
+    Type,
 )
 from apps.schemas.response_data import (
     OperateAndBindType,
@@ -49,6 +49,14 @@ class ParameterManager:
                     operate=item,
                     bind_type=(await ConditionHandler.get_value_type_from_operate(item))))
         return result
+    # class ParamsNode(BaseModel):
+    #     """参数数据结构"""
+    # param_name: str = Field(..., description="参数名称", alias="paramName")
+    # param_path: str = Field(..., description="参数路径", alias="paramPath")
+    # param_type: Type = Field(..., description="参数类型", alias="paramType")
+    # sub_params: list["ParamsNode"] | None = Field(
+    #     default=None, description="子参数列表", alias="subParams"
+    # )
 
     @staticmethod
     async def get_pre_params_by_flow_and_step_id(flow: FlowItem, step_id: str) -> list[StepParams]:
@@ -73,9 +81,30 @@ class ParameterManager:
                 if pre_node_id not in q:
                     q.append(pre_node_id)
         pre_step_params = []
+        default_param_name = [
+            {"paramName": "question", "paramPath": "/question",
+                "paramType": Type.STRING, "subParams": None},
+        ]
         for i in range(1, len(q)):
             step_id = q[i]
-            if step_id == 'start' or step_id == 'end':
+            if step_id == 'end':
+                continue
+            if step_id == 'start':
+                step_params = StepParams(
+                    stepId=step_id,
+                    name=step_id_to_node_name.get(step_id),
+                    paramsNode=ParamsNode(
+                        paramName="",
+                        paramPath="",
+                        paramType=Type.DICT,
+                        subParams=[]
+                    )
+                )
+                for default_param in default_param_name:
+                    step_params.params_node.sub_params.append(
+                        ParamsNode(**default_param)
+                    )
+                pre_step_params.append(step_params)
                 continue
             node_id = step_id_to_node_id.get(step_id)
             _, output_schema = await NodeManager.get_node_params(node_id)

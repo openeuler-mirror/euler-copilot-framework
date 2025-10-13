@@ -26,7 +26,7 @@ from apps.schemas.scheduler import (
 )
 from apps.schemas.task import FlowStepHistory
 from apps.schemas.enum_var import LanguageType
-
+from apps.schemas.parameters import DefaultParamName
 if TYPE_CHECKING:
     from apps.scheduler.executor.step import StepExecutor
 
@@ -51,8 +51,10 @@ class CoreCall(BaseModel):
     """所有Call的父类，包含通用的逻辑"""
 
     name: SkipJsonSchema[str] = Field(description="Step的名称", exclude=True)
-    description: SkipJsonSchema[str] = Field(description="Step的描述", exclude=True)
-    node: SkipJsonSchema[NodePool | None] = Field(description="节点信息", exclude=True)
+    description: SkipJsonSchema[str] = Field(
+        description="Step的描述", exclude=True)
+    node: SkipJsonSchema[NodePool | None] = Field(
+        description="节点信息", exclude=True)
     enable_filling: SkipJsonSchema[bool] = Field(
         description="是否需要进行自动参数填充", default=False, exclude=True
     )
@@ -88,7 +90,8 @@ class CoreCall(BaseModel):
         :return: Call的名称和描述
         :rtype: CallInfo
         """
-        lang_info = cls.i18n_info.get(language, cls.i18n_info[LanguageType.CHINESE])
+        lang_info = cls.i18n_info.get(
+            language, cls.i18n_info[LanguageType.CHINESE])
         return CallInfo(name=lang_info["name"], description=lang_info["description"])
 
     def __init_subclass__(
@@ -129,7 +132,7 @@ class CoreCall(BaseModel):
         )
 
     @staticmethod
-    def _extract_history_variables(path: str, history: dict[str, FlowStepHistory]) -> Any:
+    def _extract_history_variables(path: str, call_vars: CallVars) -> Any:
         """
         提取History中的变量
 
@@ -142,6 +145,14 @@ class CoreCall(BaseModel):
             err = f"[CoreCall] 路径格式错误: {path}"
             logger.error(err)
             return None
+        if split_path[0] == "start":
+            if split_path[1] == DefaultParamName.QUESTION.value:
+                return call_vars.question
+            else:
+                err = f"[CoreCall] start步骤仅支持提取question变量，当前为: {split_path[1]}"
+                logger.error(err)
+                return None
+        history = call_vars.history
         if split_path[0] not in history:
             err = f"[CoreCall] 步骤{split_path[0]}不存在"
             logger.error(err)
