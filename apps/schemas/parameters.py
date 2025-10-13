@@ -67,3 +67,8 @@ class Type(str, Enum):
     LIST = "list"
     DICT = "dict"
     BOOL = "bool"
+
+
+class DefaultParamName(str, Enum):
+    """默认参数名称"""
+    QUESTION = "question"

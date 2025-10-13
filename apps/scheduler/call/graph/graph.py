@@ -51,7 +51,7 @@ class Graph(CoreCall, input_model=RenderInput, output_model=RenderOutput):
         if not self.dataset_key:
             last_step_id = call_vars.history_order[-1]
             self.dataset_key = f"{last_step_id}/dataset"
-        data = self._extract_history_variables(self.dataset_key, call_vars.history)
+        data = self._extract_history_variables(self.dataset_key, call_vars)
 
         return RenderInput(
             question=call_vars.question,
@@ -94,9 +94,11 @@ class Graph(CoreCall, input_model=RenderInput, output_model=RenderOutput):
             self.tokens.output_tokens += style_obj.output_tokens
 
             add_style = llm_output.get("additional_style", "")
-            self._parse_options(column_num, llm_output["chart_type"], add_style, llm_output["scale_type"])
+            self._parse_options(
+                column_num, llm_output["chart_type"], add_style, llm_output["scale_type"])
         except Exception as e:
-            raise CallError(message=f"图表生成失败：{e!s}", data={"data": data}) from e
+            raise CallError(message=f"图表生成失败：{e!s}", data={
+                            "data": data}) from e
 
         yield CallOutputChunk(
             type=CallOutputType.DATA,

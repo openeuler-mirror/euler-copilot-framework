@@ -27,6 +27,7 @@ from apps.schemas.scheduler import (
     CallOutputChunk,
     CallVars,
 )
+from apps.schemas.parameters import DefaultParamName
 
 logger = logging.getLogger(__name__)
 
@@ -73,7 +74,7 @@ class Choice(CoreCall, input_model=ChoiceInput, output_model=ChoiceOutput):
                     # 处理左值
                     if condition.left.step_id is not None:
                         condition.left.value = self._extract_history_variables(
-                            condition.left.value, call_vars.history)
+                            condition.left.value, call_vars)
                         # 检查历史变量是否成功提取
                         if condition.left.value is None:
                             msg = f"步骤 {condition.left.step_id} 的历史变量不存在"
@@ -91,7 +92,7 @@ class Choice(CoreCall, input_model=ChoiceInput, output_model=ChoiceOutput):
                     # 处理右值
                     if condition.right.step_id is not None:
                         condition.right.value = self._extract_history_variables(
-                            condition.right.value, call_vars.history)
+                            condition.right.value, call_vars)
                         # 检查历史变量是否成功提取
                         if condition.right.value is None:
                             msg = f"步骤 {condition.right.step_id} 的历史变量不存在"
