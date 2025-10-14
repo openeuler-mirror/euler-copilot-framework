@@ -271,7 +271,7 @@ When visiting for the first time, you need to click the **Register Now** button 
 
 ## Build Custom Domain-Specific Intelligent Q&A
 
-Click on the knowledge base to log into the local knowledge base management page. For detailed information, please refer to the documentation [Local Asset Repository Construction Guide](../../../advance/knowledge_base/deploy_guide/witchaind_deployment.md)
+Click on the knowledge base to log into the local knowledge base management page. For detailed information, please refer to the documentation [Local Asset Repository Construction Guide](../../../advance/knowledge_base/deploy_guide/knowledge_base_deployment.md)
 **Default account for knowledge base login `admin`, password `123456`**
 
 ---
