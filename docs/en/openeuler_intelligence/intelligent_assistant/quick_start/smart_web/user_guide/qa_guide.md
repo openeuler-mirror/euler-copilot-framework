@@ -72,6 +72,7 @@ After the files are uploaded, you can ask questions about them using the same me
   ![Ask Against File](./pictures/file-upload-ask-against-file.png)
 
 ## Managing Conversations
+
 > **Note**
 >
 > The conversation management area is located on the left side of the page.
