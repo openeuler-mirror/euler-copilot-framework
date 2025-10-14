@@ -271,7 +271,7 @@ helm upgrade euler-copilot -n euler-copilot .
 
 ## 构建专有领域智能问答
 
-点击知识库，可登录本地知识库管理页面，详细信息请参考文档 [本地资产库构建指南](../../../advance/knowledge_base/deploy_guide/knowledge_base_eployment.md)
+点击知识库，可登录本地知识库管理页面，详细信息请参考文档 [本地资产库构建指南](../../../advance/knowledge_base/deploy_guide/knowledge_base_deployment.md)
 **知识库登录默认账号 `admin`, 密码 `123456`**
 
 ---
