@@ -1,6 +1,6 @@
-label: openEuler MCP Service Guide
+label: openEuler MCP 服务指南
 isManual: true
-description: openEuler Intelligent MCP
+description: openEuler智能化MCP
 sections:
-  - label: openEuler MCP Service Guide
+  - label: openEuler MCP服务指南
     href: ./mcp_guide.md

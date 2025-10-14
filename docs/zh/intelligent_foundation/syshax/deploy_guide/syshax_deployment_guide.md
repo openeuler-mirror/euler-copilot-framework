@@ -12,7 +12,7 @@ sysHAX功能定位为K+X异构融合推理加速，主要包含两部分功能�
 
 sysHAX共包含两部分交付件：
 
-![syshax-deploy](pictures/syshax-deploy.png)
+![syshax-deploy](pictures/syshax-deploy.png "syshax-deploy")
 交付件包括：
 
 - sysHAX：负责请求的处理和prefill、decode请求的调度
@@ -30,14 +30,16 @@ vllm是一款**高吞吐、低内存占用**的**大语言模型（LLM）推理�
 
 ## 环境准备
 
+| KEY        |  VALUE                                   |
+| ---------- | ---------------------------------------- |
 | 服务器型号  |  鲲鹏920系列CPU                           |
-| ---------- | ----------------------------------------- |
 | GPU        |  Nvidia A100                              |
-| 操作系统    | openEuler 22.03 LTS及以上                 |
+| 操作系统    | openEuler 24.03 LTS SP1                 |
 | python     | 3.9及以上                                 |
 | docker     | 25.0.3及以上                              |
 
 - docker 25.0.3可通过 `dnf install moby` 进行安装。
+- 请注意，sysHAX目前在AI加速卡侧只对NVIDIA GPU进行了适配，ASCEND NPU适配正在进行中。
 
 ## 部署流程
 
@@ -56,7 +58,7 @@ vllm是一款**高吞吐、低内存占用**的**大语言模型（LLM）推理�
 如下流程为在GPU容器中部署vllm。
 
 ```shell
-docker pull hub.oepkgs.net/neocopilot/syshax/syshax-vllm-gpu:0.2.0
+docker pull hub.oepkgs.net/neocopilot/syshax/syshax-vllm-gpu:0.2.1
 
 docker run --name vllm_gpu \
     --ipc="shareable" \
@@ -65,7 +67,7 @@ docker run --name vllm_gpu \
     -p 8001:8001 \
     -v /home/models:/home/models \
     -w /home/ \
-    -itd hub.oepkgs.net/neocopilot/syshax/syshax-vllm-gpu:0.2.0 bash
+    -itd hub.oepkgs.net/neocopilot/syshax/syshax-vllm-gpu:0.2.1 bash
 ```
 
 在上述脚本中：
@@ -81,24 +83,26 @@ vllm serve /home/models/DeepSeek-R1-Distill-Qwen-32B \
     --served-model-name=ds-32b \
     --host 0.0.0.0 \
     --port 8001 \
-    --dtype=half \
+    --dtype=auto \
     --swap_space=16 \
     --block_size=16 \
     --preemption_mode=swap \
     --max_model_len=8192 \
     --tensor-parallel-size 2 \
-    --gpu_memory_utilization=0.8
+    --gpu_memory_utilization=0.8 \
+    --enable-auto-pd-offload
 ```
 
 在上述脚本中：
 
 - `--tensor-parallel-size 2`：启用张量并行，将模型拆分到2张GPU上运行，需至少2张GPU，开发者可自行修改。
 - `--gpu_memory_utilization=0.8`：限制显存使用率为80%，避免因为显存耗尽而导致服务崩溃，开发者可自行修改。
+- `--enable-auto-pd-offload`：启动在swap out时触发PD分离。
 
 如下流程为在CPU容器中部署vllm。
 
 ```shell
-docker pull hub.oepkgs.net/neocopilot/syshax/syshax-vllm-cpu:0.2.0
+docker pull hub.oepkgs.net/neocopilot/syshax/syshax-vllm-cpu:0.2.1
 
 docker run --name vllm_cpu \
     --ipc container:vllm_gpu \
@@ -107,7 +111,7 @@ docker run --name vllm_cpu \
     -p 8002:8002 \
     -v /home/models:/home/models \
     -w /home/ \
-    -itd hub.oepkgs.net/neocopilot/syshax/syshax-vllm-cpu:0.2.0 bash
+    -itd hub.oepkgs.net/neocopilot/syshax/syshax-vllm-cpu:0.2.1 bash
 ```
 
 在上述脚本中：
@@ -115,7 +119,7 @@ docker run --name vllm_cpu \
 - `--ipc container:vllm_gpu`共享名为vllm_gpu的容器的IPC（进程间通信）命名空间。允许此容器直接通过共享内存交换数据，避免跨容器复制。
 
 ```shell
-INFERENCE_OP_MODE=fused OMP_NUM_THREADS=160 CUSTOM_CPU_AFFINITY=0-159 SYSHAX_QUANTIZE=q8_0 \
+NRC=4 INFERENCE_OP_MODE=fused OMP_NUM_THREADS=160 CUSTOM_CPU_AFFINITY=0-159 SYSHAX_QUANTIZE=q4_0 \
 vllm serve /home/models/DeepSeek-R1-Distill-Qwen-32B \
     --served-model-name=ds-32b \
     --host 0.0.0.0 \
@@ -123,7 +127,8 @@ vllm serve /home/models/DeepSeek-R1-Distill-Qwen-32B \
     --dtype=half \
     --block_size=16 \
     --preemption_mode=swap \
-    --max_model_len=8192
+    --max_model_len=8192 \
+    --enable-auto-pd-offload
 ```
 
 在上述脚本中：
@@ -131,7 +136,8 @@ vllm serve /home/models/DeepSeek-R1-Distill-Qwen-32B \
 - `INFERENCE_OP_MODE=fused`：启动CPU推理加速
 - `OMP_NUM_THREADS=160`：指定CPU推理启动线程数为160，该环境变量需要在指定INFERENCE_OP_MODE=fused后才能生效
 - `CUSTOM_CPU_AFFINITY=0-159`：指定CPU绑核方案，后续会详细介绍。
-- `SYSHAX_QUANTIZE=q8_0`：指定量化方案为q8_0。当前版本支持2种量化方案：`q8_0`、`q4_0`。
+- `SYSHAX_QUANTIZE=q4_0`：指定量化方案为q4_0。当前版本支持2种量化方案：`q8_0`、`q4_0`。
+- `NRC=4`：GEMV算子分块方式，该环境变量在920系列处理器上具有较好的加速效果。
 
 需要注意的是，必须先启动GPU的容器，才能启动CPU的容器。
 
@@ -169,15 +175,22 @@ NUMA:
 
 ### sysHAX安装
 
-sysHAX安装：
+sysHAX安装有两种方式，可以通过dnf安装rpm包。注意，使用该方法需要将openEuler升级至openEuler 24.03 LTS SP2及以上版本：
 
 ```shell
 dnf install sysHAX
 ```
 
+或者直接使用源码启动：
+
+```shell
+git clone -b v0.2.0 https://gitee.com/openeuler/sysHAX.git
+```
+
 在启动sysHAX之前需要进行一些基础配置：
 
 ```shell
+# 使用 dnf install sysHAX 安装sysHAX时
 syshax init
 syshax config services.gpu.port 8001
 syshax config services.cpu.port 8002
@@ -185,12 +198,27 @@ syshax config services.conductor.port 8010
 syshax config models.default ds-32b
 ```
 
-此外，也可以通过 `syshax config --help` 来查看全部配置命令。
+```shell
+# 使用 git clone -b v0.2.0 https://gitee.com/openeuler/sysHAX.git 时
+python3 cli.py init
+python3 cli.py config services.gpu.port 8001
+python3 cli.py config services.cpu.port 8002
+python3 cli.py config services.conductor.port 8010
+python3 cli.py config models.default ds-32b
+```
+
+此外，也可以通过 `syshax config --help` 或者 `python3 cli.py config --help` 来查看全部配置命令。
 
 配置完成后，通过如下命令启动sysHAX服务：
 
 ```shell
+# 使用 dnf install sysHAX 安装sysHAX时
 syshax run
+```
+
+```shell
+# 使用 git clone -b v0.2.0 https://gitee.com/openeuler/sysHAX.git 时
+python3 main.py
 ```
 
 启动sysHAX服务的时候，会进行服务连通性测试。sysHAX符合openAPI标准，待服务启动完成后，即可API来调用大模型服务。可通过如下脚本进行测试：
