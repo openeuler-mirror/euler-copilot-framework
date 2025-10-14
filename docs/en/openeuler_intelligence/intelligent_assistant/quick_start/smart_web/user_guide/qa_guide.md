@@ -1,6 +1,7 @@
 # User Guide for Intelligent Q&A
 
 ## Starting a Conversation
+
 In the input box at the bottom of the conversation area, enter the content you want to ask. Press `Shift + Enter` for a line break, press `Enter` to send the question, or click the "Send" button to submit your query.
 
 > **Note**
@@ -31,12 +32,14 @@ In the input box at the bottom of the conversation area, enter the content you w
 ![LLM Setting](./pictures/llm_setting.png)
 
 ### Multi-Turn Continuous Conversation
+
 openEuler Intelligence supports multi-turn continuous conversations. Simply continue asking follow-up questions in the same conversation. As shown in Figure 4, openEuler Intelligence will supplement and respond to your questions based on the conversation context.
 
 - Figure 4: Multi-Turn Conversation  
   ![Multi-Round of Conversation](./pictures/mulit-roud-of-converstation.png)
 
 ### File Upload
+
 **Step 1** Click the "Upload File" button in the bottom left corner of the conversation area, as shown in Figure 5.
 
 - Figure 5: File Upload Button  
@@ -62,6 +65,7 @@ Once the files are uploaded successfully, the number of uploaded files will be d
   ![History Record Tag](./pictures/file-upload-history-tag.png)
 
 ### Asking Questions About Uploaded Files
+
 After the files are uploaded, you can ask questions about them using the same method as a regular conversation. As shown in Figure 9, you can directly inquire about content related to the uploaded files.
 
 - Figure 9: Asking Questions Related to Uploaded Files  
@@ -73,12 +77,14 @@ After the files are uploaded, you can ask questions about them using the same me
 > The conversation management area is located on the left side of the page.
 
 ### Creating a New Conversation
+
 Click the "New Conversation" button to create a new conversation, as shown in Figure 10.
 
 - Figure 10: "New Conversation" Button in the Top Left Corner of the Page  
   ![New Chat](./pictures/new-chat.png)
 
 ### Searching Conversation History
+
 Enter keywords in the history search input box on the left side of the page, then click  
 
 ![Search Icon](./pictures/icon-search.png)
@@ -89,6 +95,7 @@ to search the conversation history, as shown in Figure 11.
   ![Search History](./pictures/search-history.png)
 
 ### Managing Individual Conversation History Entries
+
 The list of history records is located below the history search bar. On the right side of each conversation history entry, click  
 
 ![Edit Icon](./pictures/icon-edit.png)
@@ -120,6 +127,7 @@ In addition, click the delete icon on the right side of a conversation history e
   ![Delete Session Confirmation](./pictures/delete-session-confirmation.png)
 
 ### Batch Deleting Conversation History Entries
+
 First, click "Batch Delete" (as shown in Figure 16).
 
 - Figure 16: Batch Delete Function in the Top Right Corner of the History Search Box  
@@ -138,4 +146,5 @@ Finally, a secondary confirmation is required for batch deletion. As shown in Fi
 ## Appendix
 
 ### Instructions for Exporting User Information
+
 The openEuler Intelligence backend provides a user information export function. If you need to export your user information, please proactively contact us via the email <contact@openeuler.io>. Our operation and maintenance team will send the exported user information back to you via email.
