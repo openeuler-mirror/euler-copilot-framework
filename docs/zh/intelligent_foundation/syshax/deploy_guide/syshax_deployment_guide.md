@@ -214,11 +214,6 @@ python3 cli.py config models.default ds-32b
 ```shell
 # 使用 dnf install sysHAX 安装sysHAX时
 syshax run
-``` 
-
-```shell
-# 使用 git clone -b v0.2.0 https://gitee.com/openeuler/sysHAX.git 时
-python3 main.py
 ```
 
 ```shell
