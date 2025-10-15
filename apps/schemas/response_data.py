@@ -337,6 +337,7 @@ class RecentAppListItem(BaseModel):
 
     app_id: str = Field(..., alias="appId", description="应用ID")
     name: str = Field(..., description="应用名称")
+    published: bool = Field(default=True, description="是否已发布")
 
 
 class RecentAppList(BaseModel):

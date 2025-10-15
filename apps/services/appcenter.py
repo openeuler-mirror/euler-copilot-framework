@@ -285,10 +285,17 @@ class AppCenterManager:
             apps = []  # 如果 app_ids 为空，直接返回空列表
         else:
             # 查询 MongoDB，获取符合条件的应用
-            apps = await app_collection.find({"_id": {"$in": app_ids}}, {"name": 1}).to_list(length=len(app_ids))
-        app_map = {str(a["_id"]): a.get("name", "") for a in apps}
+            apps = await app_collection.find({"_id": {"$in": app_ids}}, {"name": 1, "published": 1}).to_list(length=len(app_ids))
+        app_map = {str(a["_id"]): {"name": a.get("name", ""), "published": a.get("published", False)} for a in apps}
         return RecentAppList(
-            applications=[RecentAppListItem(appId=app_id, name=app_map.get(app_id, "")) for app_id in app_ids],
+            applications=[
+                RecentAppListItem(
+                    appId=app_id, 
+                    name=app_map.get(app_id, {}).get("name", ""),
+                    published=app_map.get(app_id, {}).get("published", False)
+                ) 
+                for app_id in app_ids
+            ],
         )
 
     @staticmethod

@@ -106,6 +106,7 @@ class Scheduler:
             kb_ids = await KnowledgeBaseManager.get_kb_ids_by_conversation_id(
                 self.task.ids.user_sub, self.task.ids.conversation_id
             )
+            return kb_ids
         except Exception:
             logger.exception("[Scheduler] 获取知识库ID失败")
             await self.queue.close()
@@ -135,6 +136,8 @@ class Scheduler:
         if rag_method:
             llm = await self.get_llm_use_in_chat_with_rag()
             kb_ids = await self.get_kb_ids_use_in_chat_with_rag()
+            logger.error('here')
+            logger.error(kb_ids)
             self.task = await push_init_message(self.task, self.queue, 3, is_flow=False)
             rag_data = RAGQueryReq(
                 kbIds=kb_ids,
