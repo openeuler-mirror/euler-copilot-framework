@@ -10,7 +10,7 @@ from typing import Any
 from jinja2 import BaseLoader
 from jinja2.sandbox import SandboxedEnvironment
 from jsonschema import Draft7Validator
-
+from jsonschema import validate
 from apps.common.config import Config
 from apps.constants import JSON_GEN_MAX_TRIAL, REASONING_END_TOKEN
 from apps.llm.prompt import JSON_GEN_BASIC
@@ -42,8 +42,10 @@ class FunctionLLM:
         self._params = {
             "model": self._config.model,
             "messages": [],
+            "extra_body": {"enable_thinking": False}
         }
-
+        if self._config.backend != "ollama":
+            self._params["timeout"] = 300
         if self._config.backend == "ollama":
             import ollama
 
@@ -61,13 +63,13 @@ class FunctionLLM:
             import openai
 
             if not self._config.api_key:
-                self._client = openai.AsyncOpenAI(base_url=self._config.endpoint)
+                self._client = openai.AsyncOpenAI(
+                    base_url=self._config.endpoint)
             else:
                 self._client = openai.AsyncOpenAI(
                     base_url=self._config.endpoint,
                     api_key=self._config.api_key,
                 )
-
 
     async def _call_openai(
         self,
@@ -123,15 +125,16 @@ class FunctionLLM:
                 },
             ]
 
-        response = await self._client.chat.completions.create(**self._params) # type: ignore[arg-type]
+        # type: ignore[arg-type]
+        response = await self._client.chat.completions.create(**self._params)
         try:
-            logger.info("[FunctionCall] 大模型输出：%s", response.choices[0].message.tool_calls[0].function.arguments)
+            logger.info("[FunctionCall] 大模型输出：%s",
+                        response.choices[0].message.tool_calls[0].function.arguments)
             return response.choices[0].message.tool_calls[0].function.arguments
         except Exception:  # noqa: BLE001
             ans = response.choices[0].message.content
             logger.info("[FunctionCall] 大模型输出：%s", ans)
             return await FunctionLLM.process_response(ans)
-
 
     @staticmethod
     async def process_response(response: str) -> str:
@@ -169,7 +172,6 @@ class FunctionLLM:
 
         return json_str
 
-
     async def _call_ollama(
         self,
         messages: list[dict[str, str]],
@@ -196,9 +198,9 @@ class FunctionLLM:
             "format": schema,
         })
 
-        response = await self._client.chat(**self._params) # type: ignore[arg-type]
+        # type: ignore[arg-type]
+        response = await self._client.chat(**self._params)
         return await self.process_response(response.message.content or "")
-
 
     async def call(
         self,
@@ -237,6 +239,58 @@ class FunctionLLM:
 
 class JsonGenerator:
     """JSON生成器"""
+    @staticmethod
+    async def _parse_result_by_stack(result: str, schema: dict[str, Any]) -> str:
+        """解析推理结果"""
+        left_index = result.find('{')
+        right_index = result.rfind('}')
+        if left_index != -1 and right_index != -1 and left_index < right_index:
+            try:
+                tmp_js = json.loads(result[left_index:right_index + 1])
+                validate(instance=tmp_js, schema=schema)
+                return tmp_js
+            except Exception as e:
+                logger.error("[JsonGenerator] 解析结果失败: %s", e)
+        stack = []
+        json_candidates = []
+        # 定义括号匹配关系
+        bracket_map = {')': '(', ']': '[', '}': '{'}
+
+        for i, char in enumerate(result):
+            # 遇到左括号则入栈
+            if char in bracket_map.values():
+                stack.append((char, i))
+            # 遇到右括号且栈不为空时检查匹配
+            elif char in bracket_map.keys() and stack:
+                if not stack:
+                    continue
+                top_char, top_index = stack[-1]
+                # 检查是否匹配当前右括号
+                if top_char == bracket_map[char]:
+                    stack.pop()
+                    # 当栈为空且当前是右花括号时，认为找到一个完整JSON
+                    if not stack and char == '}':
+                        json_str = result[top_index:i+1]
+                        json_candidates.append(json_str)
+                else:
+                    # 如果不匹配，清空栈
+                    stack.clear()
+        # 移除重复项并保持顺序
+        seen = set()
+        unique_jsons = []
+        for json_str in json_candidates[::]:
+            if json_str not in seen:
+                seen.add(json_str)
+                unique_jsons.append(json_str)
+
+        for json_str in unique_jsons:
+            try:
+                tmp_js = json.loads(json_str)
+                validate(instance=tmp_js, schema=schema)
+                return tmp_js
+            except Exception as e:
+                logger.error("[JsonGenerator] 解析结果失败: %s", e)
+        return None
 
     def __init__(self, query: str, conversation: list[dict[str, str]], schema: dict[str, Any]) -> None:
         """初始化JSON生成器"""
@@ -253,7 +307,6 @@ class JsonGenerator:
             lstrip_blocks=True,
         )
         self._err_info = ""
-
 
     async def _assemble_message(self) -> str:
         """组装消息"""
@@ -275,23 +328,20 @@ class JsonGenerator:
         """单次尝试"""
         prompt = await self._assemble_message()
         messages = [
-            {"role": "system", "content": "You are a helpful assistant."},
-            {"role": "user", "content": prompt},
+            {"role": "system", "content": prompt},
+            {"role": "user", "content": "please generate a JSON response based on the above information and schema./no_think"},
         ]
         function = FunctionLLM()
         return await function.call(messages, self._schema, max_tokens, temperature)
-
 
     async def generate(self) -> dict[str, Any]:
         """生成JSON"""
         Draft7Validator.check_schema(self._schema)
         validator = Draft7Validator(self._schema)
-        logger.info("[JSONGenerator] Schema：%s", self._schema)
 
         while self._count < JSON_GEN_MAX_TRIAL:
             self._count += 1
             result = await self._single_trial()
-            logger.info("[JSONGenerator] 得到：%s", result)
             try:
                 validator.validate(result)
             except Exception as err:  # noqa: BLE001

@@ -1,107 +1,106 @@
-# 全局设置
 globals:
-  # 节点架构：默认是x86
-  # 节点设置：["x86", "arm"]
+  # Node Architecture: default is x86
+  # Node settings: ["x86", "arm"]
   arch:
-  # 部署副本数，默认为1
+  # Deployment replica count, default is 1
   replicaCount:
-  # 镜像拉取策略，默认为IfNotPresent
-  imagePullPolicy: 
-  # 存储类，默认为local-path
-  storageClass: 
+  # Image pull policy, default is IfNotPresent
+  imagePullPolicy:
+  # Storage class, default is local-path
+  storageClass:
 
-# 存储设置
+# Storage Settings
 storage:
-  # MinIO存储大小，默认为10GB
+  # MinIO storage size, default is 10GB
   minio:
-  # MongoDB存储大小，默认为10GB
+  # MongoDB storage size, default is 10GB
   mongo:
-  # 向量数据库存储大小，默认为10GB
+  # Vector database storage size, default is 10GB
   opengauss:
-  # PostgreSQL存储大小，默认为10GB
+  # PostgreSQL storage size, default is 10GB
   pgsql:
 
-# 域名设置
+# Domain Settings
 domain:
-  # 需要修改为MinIO Console绑定的域名。单节点部署时，服务基于Host进行区分，无法使用IP地址
-  minioConsole: 
+  # Should be modified to the domain name bound to MinIO Console.
+  minioConsole:
 
 databases:
   minio:
-    # [必填] 是否部署MinIO实例
+    # [Required] Whether to deploy MinIO instance
     enabled: true
-    # 镜像设置：默认为hub.oepkgs.net/neocopilot/minio:empty-x86
-    # 镜像版本：["empty-x86", "empty-arm"]
+    # Image settings: default is hub.oepkgs.net/neocopilot/minio:empty-x86
+    # Image versions: ["empty-x86", "empty-arm"]
     image:
-    # 性能限制设置
+    # Resource limits settings
     resourceLimits: {}
-    # Service设置
+    # Service settings
     service:
-      # Service类型，例如NodePort
+      # Service type, e.g., NodePort
       type:
-      # 当类型为NodePort时，填写MinIO数据端口对应的主机的端口号
+      # When type is NodePort, specify the host port number corresponding to MinIO data port
       dataNodePort:
-      # 当类型为NodePort时，填写MinIO控制台对应的主机的端口号
+      # When type is NodePort, specify the host port number corresponding to MinIO console
       consoleNodePort:
-    # Ingress设置
+    # Ingress settings
     ingress:
-      # [必填] 是否暴露MinIO的Console
+      # [Required] Whether to expose MinIO Console
       enabled: true
-      # Ingress URL前缀
+      # Ingress URL prefix
       prefix: /
   mongo:
-    # [必填] 是否部署MySQL数据库实例
+    # [Required] Whether to deploy MongoDB database instance
     enabled: true
-    # 镜像设置；默认为hub.oepkgs.net/neocopilot/mongo:7.0.16-x86
-    # 镜像版本： ["7.0.16-x86", "7.0.16-arm"]
+    # Image settings; default is hub.oepkgs.net/neocopilot/mongo:7.0.16-x86
+    # Image versions: ["7.0.16-x86", "7.0.16-arm"]
     image:
-    # 性能限制设置
+    # Resource limits settings
     resourceLimits: {}
-    # Service设置
+    # Service settings
     service:
-      # [必填] Service类型，例如NodePort
+      # [Required] Service type, e.g., NodePort
       type:
-      # 当类型为nodePort时，填写主机的端口号
-      nodePort: 
+      # When type is nodePort, specify the host port number
+      nodePort:
   redis:
-    # [必填] 是否部署Redis实例
+    # [Required] Whether to deploy Redis instance
     enabled: true
-    # 镜像设置，默认为hub.oepkgs.net/neocopilot/redis:7.4-alpine-x86
-    # 镜像版本: ["7.4-alpine-x86", "7.4-alpine-arm"]
+    # Image settings, default is hub.oepkgs.net/neocopilot/redis:7.4-alpine-x86
+    # Image versions: ["7.4-alpine-x86", "7.4-alpine-arm"]
     image:
-    # 性能限制设置
+    # Resource limits settings
     resourceLimits: {}
-    # Service设置
+    # Service settings
     service:
-      # Service类型，如NodePort
+      # Service type, e.g., NodePort
       type:
-      # 当类型为nodePort时，填写主机的端口号
-      nodePort: 
+      # When type is nodePort, specify the host port number
+      nodePort:
   opengauss:
-    # [必填] 是否部署PostgreSQL实例
+    # [Required] Whether to deploy OpenGauss instance
     enabled: true
-    # 镜像设置，默认为hub.oepkgs.net/neocopilot/opengauss:latest-x86
-    # 镜像版本： ["latest-x86", "latest-arm"]
+    # Image settings, default is hub.oepkgs.net/neocopilot/opengauss:latest-x86
+    # Image versions: ["latest-x86", "latest-arm"]
     image:
-    # 性能限制设置
+    # Resource limits settings
     resourceLimits: {}
-    # Service设置
+    # Service settings
     service:
-      # Service类型，如NodePort
+      # Service type, e.g., NodePort
       type:
-      # 当类型为NodePort时，填写主机的端口号
+      # When type is NodePort, specify the host port number
       nodePort:
   pgsql:
-    # [必填] 是否部署PostgreSQL实例
+    # [Required] Whether to deploy PostgreSQL instance
     enabled: false
-    # 镜像设置，默认为hub.oepkgs.net/neocopilot/pgsql-empty:pg16-x86
-    # 镜像版本： ["pg16-x86", "pg16-arm"]
+    # Image settings, default is hub.oepkgs.net/neocopilot/pgsql-empty:pg16-x86
+    # Image versions: ["pg16-x86", "pg16-arm"]
     image:
-    # 性能限制设置
+    # Resource limits settings
     resourceLimits: {}
-    # Service设置
+    # Service settings
     service:
-      # Service类型，如NodePort
+      # Service type, e.g., NodePort
       type:
-      # 当类型为NodePort时，填写主机的端口号
+      # When type is NodePort, specify the host port number
       nodePort:

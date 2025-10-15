@@ -36,7 +36,7 @@ spec:
       automountServiceAccountToken: false
       containers:
         - name: web
-          image: {{ .Values.euler_copilot.web.image | default (printf "%s/neocopilot/euler-copilot-web:0.9.6-%s" (.Values.globals.imageRegistry | default "hub.oepkgs.net") (.Values.globals.arch | default "x86")) }}
+          image: {{ .Values.euler_copilot.web.image | default (printf "%s/neocopilot/euler-copilot-web:0.10.0-%s" (.Values.globals.imageRegistry | default "hub.oepkgs.net") (.Values.globals.arch | default "x86")) }}
           imagePullPolicy: {{ default "IfNotPresent" .Values.globals.imagePullPolicy }}
           ports:
             - containerPort: 8080

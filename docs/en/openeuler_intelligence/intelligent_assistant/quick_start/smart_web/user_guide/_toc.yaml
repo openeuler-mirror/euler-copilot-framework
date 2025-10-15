@@ -1,0 +1,17 @@
+# User Guide for Intelligent Assistant
+label: Intelligent Assistant User Guide
+isManual: true
+description: Guide for using the openEuler Intelligent Assistant
+sections:
+  - label: Quick Start
+    sections: 
+      - label: Web Q&A
+        sections: 
+          - label: User Guide
+            sections: 
+              - label: Introduction
+                href: introduction.md
+              - label: Registration and Login
+                href: registration_and_login.md
+              - label: Q&A Usage
+                href: qa_guide.md

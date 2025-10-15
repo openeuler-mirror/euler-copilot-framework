@@ -1,6 +1,6 @@
-label: AI大模型服务镜像使用指南
+label: AI Large Model Service Image User Guide
 isManual: true
-description: 支持百川、chatglm、星火等AI大模型的容器化封装
+description: Containerized packaging for AI large models such as Baichuan, ChatGLM, and Spark.
 sections:
-  - label: AI大模型服务镜像使用指南
-    href: ./llm-service-image-user-guide.md
+  - label: AI Large Model Service Image User Guide
+    href: ./llm_service_image_user_guide.md

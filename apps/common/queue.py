@@ -56,9 +56,12 @@ class MessageQueue:
             flow = MessageFlow(
                 appId=task.state.app_id,
                 flowId=task.state.flow_id,
+                flowName=task.state.flow_name,
+                flowStatus=task.state.flow_status,
                 stepId=task.state.step_id,
                 stepName=task.state.step_name,
-                stepStatus=task.state.status,
+                stepDescription=task.state.step_description,
+                stepStatus=task.state.step_status
             )
         else:
             flow = None

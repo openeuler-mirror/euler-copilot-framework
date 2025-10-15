@@ -1,10 +1,10 @@
 # EulerCopilot
 
-## 部署顺序
+## Deployment Sequence
 
-1. databases [必须部署]
-2. authhub [必须部署]
-3. witchaind [必须部署]
-4. euler-copilot [必须部署]
+1. databases [Required]
+2. authhub [Required]
+3. witchaind [Required]
+4. euler-copilot [Required]
 5. rca
 6. agents

@@ -4,6 +4,7 @@
 import logging
 from typing import TYPE_CHECKING, Any
 
+from apps.schemas.enum_var import SpecialCallType
 from apps.common.mongo import MongoDB
 from apps.schemas.node import APINode
 from apps.schemas.pool import NodePool
@@ -15,6 +16,7 @@ logger = logging.getLogger(__name__)
 NODE_TYPE_MAP = {
     "API": APINode,
 }
+
 
 class NodeManager:
     """Node管理器"""
@@ -29,7 +31,6 @@ class NodeManager:
             raise ValueError(err)
         return node["call_id"]
 
-
     @staticmethod
     async def get_node(node_id: str) -> NodePool:
         """获取Node的类型"""
@@ -39,7 +40,6 @@ class NodeManager:
             err = f"[NodeManager] Node {node_id} not found."
             raise ValueError(err)
         return NodePool.model_validate(node)
-
 
     @staticmethod
     async def get_node_name(node_id: str) -> str:
@@ -51,7 +51,6 @@ class NodeManager:
             logger.error("[NodeManager] Node %s not found", node_id)
             return ""
         return node_doc["name"]
-
 
     @staticmethod
     def merge_params_schema(params_schema: dict[str, Any], known_params: dict[str, Any]) -> dict[str, Any]:
@@ -75,12 +74,13 @@ class NodeManager:
 
         return params_schema
 
-
     @staticmethod
     async def get_node_params(node_id: str) -> tuple[dict[str, Any], dict[str, Any]]:
         """获取Node数据"""
         from apps.scheduler.pool.pool import Pool
-
+        if node_id == SpecialCallType.EMPTY.value:
+            # 如果是空节点，返回空Schema
+            return {}, {}
         # 查找Node信息
         logger.info("[NodeManager] 获取节点 %s", node_id)
         node_collection = MongoDB().get_collection("node")
@@ -100,7 +100,6 @@ class NodeManager:
             err = f"[NodeManager] Call {call_id} 不存在"
             logger.error(err)
             raise ValueError(err)
-
         # 返回参数Schema
         return (
             NodeManager.merge_params_schema(call_class.model_json_schema(), node_data.known_params or {}),

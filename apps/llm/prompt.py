@@ -19,7 +19,7 @@ JSON_GEN_BASIC = dedent(r"""
     Background information is given in <background></background> XML tags.
 
     <background>
-    Here are the conversations between you and the user:
+    Here are the background information between you and the user:
 
     {% if conversation|length > 0 %}
     {% for message in conversation %}
@@ -48,7 +48,6 @@ JSON_GEN_BASIC = dedent(r"""
     {% endif %}
     </background>
 
-    {% if not function_call %}
     # Tools
 
     You must call one function to assist with the user query.
@@ -67,5 +66,4 @@ JSON_GEN_BASIC = dedent(r"""
 
     # Output
     <tool_call>
-    {% endif %}
 """)

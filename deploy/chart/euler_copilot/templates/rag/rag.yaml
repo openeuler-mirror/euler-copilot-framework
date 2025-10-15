@@ -39,21 +39,10 @@ spec:
         app: rag
     spec:
       automountServiceAccountToken: false
-      securityContext:
-        fsGroup: 1001
       containers:
         - name: rag
-          image: {{ .Values.euler_copilot.rag.image | default (printf "%s/neocopilot/data_chain_back_end:0.9.6-%s" (.Values.globals.imageRegistry | default "hub.oepkgs.net") (.Values.globals.arch | default "x86")) }}
+          image: {{ .Values.euler_copilot.rag.image | default (printf "%s/neocopilot/data_chain_back_end:0.10.0-%s" (.Values.globals.imageRegistry | default "hub.oepkgs.net") (.Values.globals.arch | default "x86")) }}
           imagePullPolicy: {{ default "IfNotPresent" .Values.globals.imagePullPolicy }}
-          securityContext:
-            readOnlyRootFilesystem: {{ default false .Values.euler_copilot.framework.readOnly }}
-            capabilities:
-              drop:
-                - ALL
-            runAsUser: 1001
-            runAsGroup: 1001
-            runAsNonRoot: true
-            allowPrivilegeEscalation: false
           ports:
             - containerPort: 9988
               protocol: TCP
@@ -91,13 +80,6 @@ spec:
             - --config
             - config.yaml
             - --copy
-          securityContext:
-            capabilities:
-              drop:
-                - ALL
-            runAsUser: 1001
-            runAsGroup: 1001
-            runAsNonRoot: true
           volumeMounts:
             - mountPath: /config/.env
               name: rag-config-vl

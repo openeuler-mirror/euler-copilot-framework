@@ -221,6 +221,11 @@ syshax run
 python3 main.py
 ```
 
+```shell
+# 使用 git clone -b v0.2.0 https://gitee.com/openeuler/sysHAX.git 时
+python3 main.py
+```
+
 启动sysHAX服务的时候，会进行服务连通性测试。sysHAX符合openAPI标准，待服务启动完成后，即可API来调用大模型服务。可通过如下脚本进行测试：
 
 ```shell

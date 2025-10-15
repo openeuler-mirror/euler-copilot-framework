@@ -14,8 +14,8 @@ data:
       - from: /config/.env
         to: /config-rw/.env
         mode:
-          uid: 1001
-          gid: 1001
+          uid: 0
+          gid: 0
           mode: "0o650"
         secrets:
           - /db-secrets
@@ -23,8 +23,8 @@ data:
       - from: /config/.env-sql
         to: /config-rw/.env-sql
         mode:
-          uid: 1001
-          gid: 1001
+          uid: 0
+          gid: 0
           mode: "0o650"
         secrets:
           - /db-secrets

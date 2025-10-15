@@ -10,15 +10,17 @@ from pydantic import BaseModel, Field
 from apps.schemas.collection import (
     Document,
 )
-from apps.schemas.enum_var import CommentType, StepStatus
+from apps.schemas.enum_var import CommentType, FlowStatus, StepStatus
 
 
 class RecordDocument(Document):
     """GET /api/record/{conversation_id} Result中的document数据结构"""
 
     id: str = Field(alias="_id", default="")
+    order: int = Field(default=0, description="文档顺序")
     abstract: str = Field(default="", description="文档摘要")
     user_sub: None = None
+    author: str = Field(default="", description="文档作者")
     associated: Literal["question", "answer"]
 
     class Config:
@@ -31,9 +33,11 @@ class RecordFlowStep(BaseModel):
     """Record表子项：flow的单步数据结构"""
 
     step_id: str = Field(alias="stepId")
+    step_name: str = Field(alias="stepName", default="")
     step_status: StepStatus = Field(alias="stepStatus")
     input: dict[str, Any]
     output: dict[str, Any]
+    ex_data: dict[str, Any] | None = Field(default=None, alias="exData")
 
 
 class RecordFlow(BaseModel):
@@ -42,6 +46,8 @@ class RecordFlow(BaseModel):
     id: str
     record_id: str = Field(alias="recordId")
     flow_id: str = Field(alias="flowId")
+    flow_name: str = Field(alias="flowName", default="")
+    flow_status: StepStatus = Field(alias="flowStatus", default=StepStatus.SUCCESS)
     step_num: int = Field(alias="stepNum")
     steps: list[RecordFlowStep]
 
@@ -90,7 +96,7 @@ class RecordData(BaseModel):
     id: str
     group_id: str = Field(alias="groupId")
     conversation_id: str = Field(alias="conversationId")
-    task_id: str = Field(alias="taskId")
+    task_id: str | None = Field(default=None, alias="taskId")
     document: list[RecordDocument] = []
     flow: RecordFlow | None = None
     content: RecordContent
@@ -103,11 +109,22 @@ class RecordGroupDocument(BaseModel):
     """RecordGroup关联的文件"""
 
     id: str = Field(default_factory=lambda: str(uuid.uuid4()), alias="_id")
+    order: int = Field(default=0, description="文档顺序")
+    author: str = Field(default="", description="文档作者")
     name: str = Field(default="", description="文档名称")
     abstract: str = Field(default="", description="文档摘要")
     extension: str = Field(default="", description="文档扩展名")
     size: int = Field(default=0, description="文档大小，单位是KB")
     associated: Literal["question", "answer"]
+    created_at: float = Field(default=0.0, description="文档创建时间")
+
+
+class FlowHistory(BaseModel):
+    """Flow执行历史"""
+    flow_id: str = Field(default_factory=lambda: str(uuid.uuid4()), alias="_id")
+    flow_name: str = Field(default="", description="Flow名称")
+    flow_staus: FlowStatus = Field(default=FlowStatus.SUCCESS, description="Flow执行状态")
+    history_ids: list[str] = Field(default=[], description="Flow执行历史ID列表")
 
 
 class Record(RecordData):
@@ -115,9 +132,11 @@ class Record(RecordData):
 
     user_sub: str
     key: dict[str, Any] = {}
-    content: str
+    task_id: str | None = Field(default=None, description="任务ID")
+    content: str = Field(default="", description="Record内容，已加密")
     comment: RecordComment = Field(default=RecordComment())
-    flow: list[str] = Field(default=[])
+    flow: FlowHistory = Field(
+        default=FlowHistory(), description="Flow执行历史信息")
 
 
 class RecordGroup(BaseModel):
@@ -134,5 +153,4 @@ class RecordGroup(BaseModel):
     records: list[Record] = []
     docs: list[RecordGroupDocument] = []    # 问题不变，所用到的文档不变
     conversation_id: str
-    task_id: str
     created_at: float = Field(default_factory=lambda: round(datetime.now(tz=UTC).timestamp(), 3))

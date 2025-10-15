@@ -1,37 +1,37 @@
 #!/bin/bash
 
-# 颜色定义
+# Color definitions
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 MAGENTA='\033[0;35m'
 CYAN='\033[0;36m'
-NC='\033[0m' # 恢复默认颜色
+NC='\033[0m' # Reset color
 
-# 默认配置
+# Default configuration
 DEFAULT_VERSION="0.9.5"
 IMAGE_BASE_DIR="/home/eulercopilot/images"
 
-# 显示帮助信息
+# Show help information
 show_help() {
-    echo -e "${YELLOW}使用说明:${NC}"
-    echo -e "  $0 [选项] [参数]"
-    echo -e "${YELLOW}选项:${NC}"
-    echo -e "  -v, --version <版本>\t指定镜像版本 (默认: ${DEFAULT_VERSION})"
-    echo -e "  -i, --import <文件>\t导入单个镜像文件"
-    echo -e "  -d, --delete <镜像>\t删除指定镜像 (格式: repo/image:tag)"
-    echo -e "  --delete-all\t\t删除所有neocopilot镜像"
-    echo -e "  -h, --help\t\t显示帮助信息"
-    echo -e "${YELLOW}示例:${NC}"
-    echo -e "  $0 -v 0.9.4\t\t导入0.9.4版本的镜像"
-    echo -e "  $0 -i $IMAGE_BASE_DIR/$DEFAULT_VERSION/myimage.tar\t导入单个镜像文件"
-    echo -e "  $0 -d hub.oepkgs.net/neocopilot/authhub:0.9.3-arm\t删除指定镜像"
-    echo -e "  $0 --delete-all\t删除所有neocopilot镜像"
+    echo -e "${YELLOW}Usage:${NC}"
+    echo -e "  $0 [options] [parameters]"
+    echo -e "${YELLOW}Options:${NC}"
+    echo -e "  -v, --version <version>\tSpecify image version (default: ${DEFAULT_VERSION})"
+    echo -e "  -i, --import <file>\t\tImport single image file"
+    echo -e "  -d, --delete <image>\t\tDelete specified image (format: repo/image:tag)"
+    echo -e "  --delete-all\t\t\tDelete all neocopilot images"
+    echo -e "  -h, --help\t\t\tShow help information"
+    echo -e "${YELLOW}Examples:${NC}"
+    echo -e "  $0 -v 0.9.4\t\t\tImport version 0.9.4 images"
+    echo -e "  $0 -i $IMAGE_BASE_DIR/$DEFAULT_VERSION/myimage.tar\tImport single image file"
+    echo -e "  $0 -d hub.oepkgs.net/neocopilot/authhub:0.9.3-arm\tDelete specified image"
+    echo -e "  $0 --delete-all\t\tDelete all neocopilot images"
     exit 0
 }
 
-# 参数解析
+# Parameter parsing
 parse_args() {
     while [[ $# -gt 0 ]]; do
         case "$1" in
@@ -55,7 +55,7 @@ parse_args() {
                 show_help
                 ;;
             *)
-                echo -e "${RED}未知参数: $1${NC}"
+                echo -e "${RED}Unknown parameter: $1${NC}"
                 show_help
                 exit 1
                 ;;
@@ -63,7 +63,7 @@ parse_args() {
     done
 }
 
-# 系统架构检测
+# System architecture detection
 detect_architecture() {
     ARCH=$(uname -m)
     case $ARCH in
@@ -74,61 +74,61 @@ detect_architecture() {
             ARCH_SUFFIX="arm"
             ;;
         *)
-            echo -e "${RED}不支持的架构: $ARCH${NC}"
+            echo -e "${RED}Unsupported architecture: $ARCH${NC}"
             exit 1
             ;;
     esac
 }
 
-# 删除指定镜像
+# Delete specified image
 delete_image() {
     local image=$1
-    echo -e "${YELLOW}正在删除镜像: $image${NC}"
+    echo -e "${YELLOW}Deleting image: $image${NC}"
     if sudo k3s ctr -n=k8s.io images rm "$image"; then
-        echo -e "${GREEN} 删除成功${NC}"
+        echo -e "${GREEN} Deletion successful${NC}"
     else
-        echo -e "${RED} 删除失败${NC}"
+        echo -e "${RED} Deletion failed${NC}"
     fi
 }
 
-# 删除所有neocopilot镜像
+# Delete all neocopilot images
 delete_all_neocopilot_images() {
-    echo -e "${YELLOW}正在删除所有neocopilot镜像...${NC}"
+    echo -e "${YELLOW}Deleting all neocopilot images...${NC}"
     sudo k3s crictl images | grep neocopilot | awk '{print $1":"$2}' | while read -r image; do
         delete_image "$image"
     done
 }
 
-# 导入单个镜像文件
+# Import single image file
 import_single_image() {
     local file=$1
-    echo -e "${CYAN}正在导入单个镜像: $file${NC}"
-    
+    echo -e "${CYAN}Importing single image: $file${NC}"
+
     if [[ ! -f "$file" ]]; then
-        echo -e "${RED}错误: 文件不存在 $file${NC}"
+        echo -e "${RED}Error: File does not exist $file${NC}"
         exit 1
     fi
 
     if sudo k3s ctr -n=k8s.io images import "$file"; then
-        echo -e "${GREEN} 导入成功${NC}"
+        echo -e "${GREEN} Import successful${NC}"
     else
-        echo -e "${RED} 导入失败${NC}"
+        echo -e "${RED} Import failed${NC}"
         exit 1
     fi
 }
 
-# 批量导入镜像
+# Batch import images
 batch_import_images() {
     local version=$1
     local image_dir="$IMAGE_BASE_DIR/$version"
-    
+
     if [[ ! -d "$image_dir" ]]; then
-        echo -e "${RED}错误：镜像目录不存在 $image_dir${NC}"
+        echo -e "${RED}Error: Image directory does not exist $image_dir${NC}"
         exit 1
     fi
 
-    echo -e "${CYAN}正在扫描目录: $image_dir${NC}"
-    echo -e "${CYAN}找到以下TAR文件：${NC}"
+    echo -e "${CYAN}Scanning directory: $image_dir${NC}"
+    echo -e "${CYAN}Found the following TAR files:${NC}"
     ls -1 "$image_dir"/*.tar
 
     local success_count=0
@@ -137,30 +137,30 @@ batch_import_images() {
     for tar_file in "$image_dir"/*.tar; do
         [[ -f "$tar_file" ]] || continue
 
-        echo -e "\n${BLUE}正在导入 $tar_file...${NC}"
+        echo -e "\n${BLUE}Importing $tar_file...${NC}"
 
         if sudo k3s ctr -n=k8s.io images import "$tar_file"; then
             ((success_count++))
-            echo -e "${GREEN} 导入成功${NC}"
+            echo -e "${GREEN} Import successful${NC}"
         else
             ((fail_count++))
-            echo -e "${RED} 导入失败${NC}"
+            echo -e "${RED} Import failed${NC}"
         fi
     done
 
-    echo -e "\n${CYAN}导入结果：${NC}"
-    echo -e "${GREEN}成功: $success_count 个${NC}"
-    echo -e "${RED}失败: $fail_count 个${NC}"
-    
+    echo -e "\n${CYAN}Import results:${NC}"
+    echo -e "${GREEN}Successful: $success_count${NC}"
+    echo -e "${RED}Failed: $fail_count${NC}"
+
     return $fail_count
 }
 
-# 镜像完整性检查
+# Image integrity check
 check_images() {
     local version=$1
     local missing_count=0
 
-    # 基础镜像列表（使用版本变量）
+    # Base image list (using version variable)
     local base_images=(
         "hub.oepkgs.net/neocopilot/euler-copilot-framework:${version}-arm"
         "hub.oepkgs.net/neocopilot/euler-copilot-web:${version}-arm"
@@ -176,7 +176,7 @@ check_images() {
         "hub.oepkgs.net/neocopilot/secret_inject:dev-arm"
     )
 
-    # 根据架构调整预期镜像标签
+    # Adjust expected image tags based on architecture
     local expected_images=()
     for image in "${base_images[@]}"; do
         if [[ "$ARCH_SUFFIX" == "x86" ]]; then
@@ -187,34 +187,34 @@ check_images() {
         expected_images+=("$expected_image")
     done
 
-    echo -e "\n${MAGENTA}开始镜像完整性检查：${NC}"
+    echo -e "\n${MAGENTA}Starting image integrity check:${NC}"
     for image in "${expected_images[@]}"; do
         if sudo k3s ctr -n=k8s.io images ls | grep -q "$image"; then
-            echo -e "${GREEN}[存在] $image${NC}"
+            echo -e "${GREEN}[Exists] $image${NC}"
         else
-            echo -e "${RED}[缺失] $image${NC}"
+            echo -e "${RED}[Missing] $image${NC}"
             ((missing_count++))
         fi
     done
 
-    echo -e "\n${MAGENTA}使用crictl检查镜像：${NC}"
+    echo -e "\n${MAGENTA}Checking images with crictl:${NC}"
     sudo k3s crictl images | grep neocopilot
 
     if [[ $missing_count -gt 0 ]]; then
-        echo -e "\n${RED}警告：缺少 $missing_count 个必需镜像${NC}"
+        echo -e "\n${RED}Warning: Missing $missing_count required images${NC}"
         return 1
     else
-        echo -e "\n${GREEN}所有必需镜像已就绪${NC}"
+        echo -e "\n${GREEN}All required images are ready${NC}"
         return 0
     fi
 }
 
-# 主函数
+# Main function
 main() {
     parse_args "$@"
     detect_architecture
 
-    # 处理删除操作
+    # Handle delete operations
     if [[ -n "$image_to_delete" ]]; then
         delete_image "$image_to_delete"
         exit 0
@@ -225,19 +225,19 @@ main() {
         exit 0
     fi
 
-    # 处理单个镜像导入
+    # Handle single image import
     if [[ -n "$single_image_file" ]]; then
         import_single_image "$single_image_file"
         exit 0
     fi
 
-    # 默认批量导入模式
+    # Default batch import mode
     local version=${eulercopilot_version:-$DEFAULT_VERSION}
-    
+
     echo -e "${YELLOW}==============================${NC}"
-    echo -e "${CYAN}架构检测\t: ${ARCH_SUFFIX}${NC}"
-    echo -e "${CYAN}目标版本\t: ${version}${NC}"
-    echo -e "${CYAN}镜像目录\t: ${IMAGE_BASE_DIR}/${version}${NC}"
+    echo -e "${CYAN}Architecture\t: ${ARCH_SUFFIX}${NC}"
+    echo -e "${CYAN}Target version\t: ${version}${NC}"
+    echo -e "${CYAN}Image directory\t: ${IMAGE_BASE_DIR}/${version}${NC}"
     echo -e "${YELLOW}==============================${NC}"
 
     batch_import_images "$version"
@@ -246,13 +246,13 @@ main() {
     if [[ $import_result -eq 0 ]]; then
         check_images "$version" || exit 1
     else
-        echo -e "${RED}存在导入失败的镜像，跳过完整性检查${NC}"
+        echo -e "${RED}Some images failed to import, skipping integrity check${NC}"
         exit 1
     fi
 
-    echo -e "${GREEN}系统准备就绪，所有镜像可用${NC}"
+    echo -e "${GREEN}System ready, all images available${NC}"
 }
 
-# 执行主函数
+# Execute main function
 main "$@"
 exit 0

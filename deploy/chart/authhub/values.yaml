@@ -1,72 +1,72 @@
-# 全局设置
+# Global Settings
 globals:
-  # 节点架构：默认是x86
-  # [必填] 节点设置：["x86", "arm"]
+  # Node Architecture: default is x86
+  # [Required] Node settings: ["x86", "arm"]
   arch:
-  # 镜像拉取策略；默认为IfNotPresent
+  # Image pull policy; default is IfNotPresent
   imagePullPolicy:
-  # 副本数，默认为1
+  # Replica count, default is 1
   replicaCount:
-  # 存储类名称；默认为local-path
+  # Storage class name; default is local-path
   storageClassName:
 
 storage:
-  # MySQL持久化存储大小，默认为10Gi
+  # MySQL persistent storage size, default is 10Gi
   mysql:
 
 domain:
-  # [必填] AuthHub web端URL, 默认是http://127.0.0.1:30081
+  # [Required] AuthHub web URL, default is http://127.0.0.1:30081
   authhub:
 
-# 部署AuthHub本地鉴权服务
+# Deploy AuthHub local authentication service
 authhub:
-  # 配置文件工具
+  # Configuration file tool
   secret_inject:
-    # 镜像设置；默认为hub.oepkgs.net/neocopilot/secret_inject:dev-x86
-    # 镜像标签：["dev-x86", "dev-arm"]
+    # Image settings; default is hub.oepkgs.net/neocopilot/secret_inject:dev-x86
+    # Image tags: ["dev-x86", "dev-arm"]
     image:
 
   web:
-    # [必填] 是否部署AuthHub前端服务
+    # [Required] Whether to deploy AuthHub frontend service
     enabled: true
-    # 镜像设置；默认为hub.oepkgs.net/neocopilot/authhub-web:0.9.3-x86
-    # 镜像标签：["0.9.3-x86", "0.9.3-arm"]
+    # Image settings; default is hub.oepkgs.net/neocopilot/authhub-web:0.9.3-x86
+    # Image tags: ["0.9.3-x86", "0.9.3-arm"]
     image:
-    # 性能限制设置
+    # Resource limits settings
     resourceLimits: {}
-    # Service设置
+    # Service settings
     service:
-      # Service类型，例如NodePort
+      # Service type, e.g., NodePort
       type: NodePort
-      # 当类型为NodePort时，填写主机的端口号
+      # When type is NodePort, specify the host port number
       nodePort: 30081
 
   backend:
-    # [必填] 是否部署AuthHub后端服务
+    # [Required] Whether to deploy AuthHub backend service
     enabled: true
-    # 镜像设置；默认为hub.oepkgs.net/neocopilot/authhub:0.9.3-x86
-    # 镜像标签：["0.9.3-x86", "0.9.3-arm"]
+    # Image settings; default is hub.oepkgs.net/neocopilot/authhub:0.9.3-x86
+    # Image tags: ["0.9.3-x86", "0.9.3-arm"]
     image:
-    # 性能限制设置
+    # Resource limits settings
     resourceLimits: {}
-    # Service设置
+    # Service settings
     service:
-      # Service类型，例如NodePort
+      # Service type, e.g., NodePort
       type:
-      # 当类型为NodePort时，填写主机的端口号
+      # When type is NodePort, specify the host port number
       nodePort:
 
   mysql:
-    # [必填] 是否启用MySQL
+    # [Required] Whether to enable MySQL
     enabled: true
-    # 镜像设置；默认为hub.oepkgs.net/neocopilot/mysql:8-x86
-    # 镜像标签：["8-x86", "8-arm"]
+    # Image settings; default is hub.oepkgs.net/neocopilot/mysql:8-x86
+    # Image tags: ["8-x86", "8-arm"]
     image:
-    # 性能限制设置
+    # Resource limits settings
     resourceLimits: {}
-    # Service设置
+    # Service settings
     service:
-      # Service类型，例如NodePort
+      # Service type, e.g., NodePort
       type:
-      # 当类型为NodePort时，填写主机的端口号
+      # When type is NodePort, specify the host port number
       nodePort:

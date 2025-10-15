@@ -73,7 +73,7 @@ class TestUserManager(unittest.TestCase):
         mock_mysql_db_instance.get_session.return_value = mock_session
 
         # 调用被测方法
-        updated_userinfo = UserManager.update_userinfo_by_user_sub(userinfo, refresh_revision=True)
+        updated_userinfo = UserManager.update_refresh_revision_by_user_sub(userinfo, refresh_revision=True)
 
         # 断言返回的用户信息的 revision_number 是否与原始用户信息一致
         self.assertEqual(updated_userinfo.revision_number, userinfo.revision_number)

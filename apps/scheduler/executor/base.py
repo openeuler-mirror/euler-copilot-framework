@@ -44,15 +44,8 @@ class BaseExecutor(BaseModel, ABC):
         :param event_type: 事件类型
         :param data: 消息数据，如果是FLOW_START事件且data为None，则自动构建FlowStartContent
         """
-        if event_type == EventType.FLOW_START.value and isinstance(data, dict):
-            data = FlowStartContent(
-                question=self.question,
-                params=self.task.runtime.filled,
-            ).model_dump(exclude_none=True, by_alias=True)
-        elif event_type == EventType.FLOW_STOP.value:
-            data = {}
-        elif event_type == EventType.TEXT_ADD.value and isinstance(data, str):
-            data=TextAddContent(text=data).model_dump(exclude_none=True, by_alias=True)
+        if event_type == EventType.TEXT_ADD.value and isinstance(data, str):
+            data = TextAddContent(text=data).model_dump(exclude_none=True, by_alias=True)
 
         if data is None:
             data = {}
@@ -62,7 +55,7 @@ class BaseExecutor(BaseModel, ABC):
         await self.msg_queue.push_output(
             self.task,
             event_type=event_type,
-            data=data, # type: ignore[arg-type]
+            data=data,  # type: ignore[arg-type]
         )
 
     @abstractmethod

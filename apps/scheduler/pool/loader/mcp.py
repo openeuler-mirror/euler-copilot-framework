@@ -11,6 +11,7 @@ import shutil
 import asyncer
 from anyio import Path
 from sqids.sqids import Sqids
+from typing import Any
 
 from apps.common.lance import LanceDB
 from apps.common.mongo import MongoDB
@@ -91,48 +92,47 @@ class MCPLoader(metaclass=SingletonMeta):
         :param MCPServerConfig config: MCP配置
         :return: 无
         """
-        if not config.config.auto_install:
-            print(f"[Installer] MCP模板无需安装: {mcp_id}")  # noqa: T201
+        try:
+            if not config.config.auto_install:
+                print(f"[Installer] MCP模板无需安装: {mcp_id}")  # noqa: T201
+            elif isinstance(config.config, MCPServerStdioConfig):
+                print(f"[Installer] Stdio方式的MCP模板，开始自动安装: {mcp_id}")  # noqa: T201
+                if "uv" in config.config.command:
+                    new_config = await install_uvx(mcp_id, config.config)
+                elif "npx" in config.config.command:
+                    new_config = await install_npx(mcp_id, config.config)
 
-        elif isinstance(config.config, MCPServerStdioConfig):
-            print(f"[Installer] Stdio方式的MCP模板，开始自动安装: {mcp_id}")  # noqa: T201
-            if "uv" in config.config.command:
-                new_config = await install_uvx(mcp_id, config.config)
-            elif "npx" in config.config.command:
-                new_config = await install_npx(mcp_id, config.config)
+                if new_config is None:
+                    logger.error("[MCPLoader] MCP模板安装失败: %s", mcp_id)
+                    await MCPLoader.update_template_status(mcp_id, MCPInstallStatus.FAILED)
+                    return
 
-            if new_config is None:
-                logger.error("[MCPLoader] MCP模板安装失败: %s", mcp_id)
-                await MCPLoader.update_template_status(mcp_id, MCPInstallStatus.FAILED)
-                return
+                config.config = new_config
 
-            config.config = new_config
+                # 重新保存config
+                template_config = MCP_PATH / "template" / mcp_id / "config.json"
+                f = await template_config.open("w+", encoding="utf-8")
+                config_data = config.model_dump(by_alias=True, exclude_none=True)
+                await f.write(json.dumps(config_data, indent=4, ensure_ascii=False))
+                await f.aclose()
 
-            # 重新保存config
-            template_config = MCP_PATH / "template" / mcp_id / "config.json"
-            f = await template_config.open("w+", encoding="utf-8")
-            config_data = config.model_dump(by_alias=True, exclude_none=True)
-            await f.write(json.dumps(config_data, indent=4, ensure_ascii=False))
-            await f.aclose()
+            else:
+                logger.info(f"[Installer] SSE/StreamableHTTP方式的MCP模板，无需安装: {mcp_id}")  # noqa: T201
+                config.config.auto_install = False
 
-        else:
-            print(f"[Installer] SSE/StreamableHTTP方式的MCP模板，无需安装: {mcp_id}")  # noqa: T201
-            config.config.auto_install = False
-
-        print(f"[Installer] MCP模板安装成功: {mcp_id}")  # noqa: T201
-        await MCPLoader.update_template_status(mcp_id, MCPInstallStatus.READY)
-        await MCPLoader._insert_template_tool(mcp_id, config)
+            await MCPLoader._insert_template_tool(mcp_id, config)
+            await MCPLoader.update_template_status(mcp_id, MCPInstallStatus.READY)
+            logger.info(f"[Installer] MCP模板安装成功: {mcp_id}")  # noqa: T201
+        except Exception as e:
+            logger.error("[MCPLoader] MCP模板安装失败: %s, 错误: %s", mcp_id, e)
+            await MCPLoader.update_template_status(mcp_id, MCPInstallStatus.FAILED)
+            raise
 
     @staticmethod
-    async def init_one_template(mcp_id: str, config: MCPServerConfig) -> None:
+    async def clear_ready_or_failed_mcp_installation() -> None:
         """
-        初始化单个MCP模板
-
-        :param str mcp_id: MCP模板ID
-        :param MCPServerConfig config: MCP配置
-        :return: 无
+        清除状态为ready或failed的MCP安装任务
         """
-        # 删除完成或者失败的MCP安装任务
         mcp_collection = MongoDB().get_collection("mcp")
         mcp_ids = ProcessHandler.get_all_task_ids()
         # 检索_id在mcp_ids且状态为ready或者failed的MCP的内容
@@ -147,48 +147,52 @@ class MCPLoader(metaclass=SingletonMeta):
                 continue
             ProcessHandler.remove_task(item.id)
             logger.info("[MCPLoader] 删除已完成或失败的MCP安装进程: %s", item.id)
-        # 插入数据库；这里用旧的config就可以
-        await MCPLoader._insert_template_db(mcp_id, config)
+
+    @staticmethod
+    async def init_one_template(mcp_id: str, config: MCPServerConfig) -> None:
+        """
+        初始化单个MCP模板
+
+        :param str mcp_id: MCP模板ID
+        :param MCPServerConfig config: MCP配置
+        :return: 无
+        """
+        await MCPLoader.clear_ready_or_failed_mcp_installation()
 
         # 检查目录
         template_path = MCP_PATH / "template" / mcp_id
         await Path.mkdir(template_path, parents=True, exist_ok=True)
         # 安装MCP模板
+        ProcessHandler.remove_task(mcp_id)
         if not ProcessHandler.add_task(mcp_id, MCPLoader._install_template_task, mcp_id, config):
             err = f"安装任务无法执行，请稍后重试: {mcp_id}"
             logger.error(err)
             raise RuntimeError(err)
+    # 将installing状态的安装任务的状态变为cancelled
 
     @staticmethod
-    async def _init_all_template() -> None:
+    async def cancel_all_installing_task() -> None:
         """
-        初始化所有MCP模板
-
-        遍历 ``template`` 目录下的所有MCP模板，并初始化。在Framework启动时进行此流程，确保所有MCP均可正常使用。
-        这一过程会与数据库内的条目进行对比，若发生修改，则重新创建数据库条目。
+        取消正在安装的MCP模板任务
         """
         template_path = MCP_PATH / "template"
         logger.info("[MCPLoader] 初始化所有MCP模板: %s", template_path)
-
+        mongo = MongoDB()
+        mcp_collection = mongo.get_collection("mcp")
         # 遍历所有模板
+        mcp_ids = []
         async for mcp_dir in template_path.iterdir():
             # 不是目录
             if not await mcp_dir.is_dir():
                 logger.warning("[MCPLoader] 跳过非目录: %s", mcp_dir.as_posix())
                 continue
 
-            # 检查配置文件是否存在
-            config_path = mcp_dir / "config.json"
-            if not await config_path.exists():
-                logger.warning("[MCPLoader] 跳过没有配置文件的MCP模板: %s", mcp_dir.as_posix())
-                continue
-
-            # 读取配置并加载
-            config = await MCPLoader._load_config(config_path)
-
-            # 初始化第一个MCP Server
-            logger.info("[MCPLoader] 初始化MCP模板: %s", mcp_dir.as_posix())
-            await MCPLoader.init_one_template(mcp_dir.name, config)
+            mcp_ids.append(mcp_dir.name)
+        # 更新数据库状态
+        await mcp_collection.update_many(
+            {"_id": {"$in": mcp_ids}, "status": MCPInstallStatus.INSTALLING},
+            {"$set": {"status": MCPInstallStatus.CANCELLED}},
+        )
 
     @staticmethod
     async def _get_template_tool(
@@ -263,6 +267,12 @@ class MCPLoader(metaclass=SingletonMeta):
 
         # 基本信息插入数据库
         mcp_collection = MongoDB().get_collection("mcp")
+        # 清空当前工具列表
+        await mcp_collection.update_one(
+            {"_id": mcp_id},
+            {"$set": {"tools": []}},
+            upsert=True,
+        )
         await mcp_collection.update_one(
             {"_id": mcp_id},
             {
@@ -345,14 +355,15 @@ class MCPLoader(metaclass=SingletonMeta):
         :return: 图标
         :rtype: str
         """
-        icon_path = MCP_PATH / "template" / mcp_id / "icon.png"
+        icon_path = MCP_PATH / "template" / mcp_id / "icon" / f"{mcp_id}.png"
         if not await icon_path.exists():
             logger.warning("[MCPLoader] MCP模板图标不存在: %s", mcp_id)
             return ""
         f = await icon_path.open("rb")
         icon = await f.read()
         await f.aclose()
-        return base64.b64encode(icon).decode("utf-8")
+        header = "data:image/png;base64,"
+        return header + base64.b64encode(icon).decode("utf-8")
 
     @staticmethod
     async def get_config(mcp_id: str) -> MCPServerConfig:
@@ -384,6 +395,7 @@ class MCPLoader(metaclass=SingletonMeta):
         # 更新数据库
         mongo = MongoDB()
         mcp_collection = mongo.get_collection("mcp")
+        logger.info("[MCPLoader] 更新MCP模板状态: %s -> %s", mcp_id, status)
         await mcp_collection.update_one(
             {"_id": mcp_id},
             {"$set": {"status": status}},
@@ -391,7 +403,7 @@ class MCPLoader(metaclass=SingletonMeta):
         )
 
     @staticmethod
-    async def user_active_template(user_sub: str, mcp_id: str) -> None:
+    async def user_active_template(user_sub: str, mcp_id: str, mcp_env: dict[str, Any] | None = None) -> None:
         """
         用户激活MCP模板
 
@@ -409,7 +421,7 @@ class MCPLoader(metaclass=SingletonMeta):
         if await user_path.exists():
             err = f"MCP模板“{mcp_id}”已存在或有同名文件，无法激活"
             raise FileExistsError(err)
-
+        mcp_config = await MCPLoader.get_config(mcp_id)
         # 拷贝文件
         await asyncer.asyncify(shutil.copytree)(
             template_path.as_posix(),
@@ -417,7 +429,35 @@ class MCPLoader(metaclass=SingletonMeta):
             dirs_exist_ok=True,
             symlinks=True,
         )
-
+        if mcp_env is not None:
+            if mcp_config.type == MCPType.STDIO:
+                mcp_config.config.env.update(mcp_env)
+            else:
+                mcp_config.config.headers.update(mcp_env)
+        if mcp_config.type == MCPType.STDIO:
+            index = None
+            for i in range(len(mcp_config.config.args)):
+                if mcp_config.config.args[i] == "--directory":
+                    index = i + 1
+                    break
+            if index is not None:
+                if index < len(mcp_config.config.args):
+                    mcp_config.config.args[index] = str(user_path)+'/project'
+                else:
+                    mcp_config.config.args.append(str(user_path)+'/project')
+            else:
+                mcp_config.config.args = ["--directory", str(user_path)+'/project'] + mcp_config.config.args
+        user_config_path = user_path / "config.json"
+        # 更新用户配置
+        f = await user_config_path.open("w", encoding="utf-8", errors="ignore")
+        await f.write(
+            json.dumps(
+                mcp_config.model_dump(by_alias=True, exclude_none=True),
+                indent=4,
+                ensure_ascii=False,
+            )
+        )
+        await f.aclose()
         # 更新数据库
         mongo = MongoDB()
         mcp_collection = mongo.get_collection("mcp")
@@ -467,6 +507,26 @@ class MCPLoader(metaclass=SingletonMeta):
                 deleted_mcp_list.append(db_item["_id"])
         logger.info("[MCPLoader] 这些MCP在文件系统中被删除: %s", deleted_mcp_list)
         return deleted_mcp_list
+
+    @staticmethod
+    async def cancel_installing_task(cancel_mcp_list: list[str]) -> None:
+        """
+        取消正在安装的MCP模板任务
+
+        :param list[str] cancel_mcp_list: 需要取消的MCP列表
+        :return: 无
+        """
+        mongo = MongoDB()
+        mcp_collection = mongo.get_collection("mcp")
+        # 更新数据库状态
+        cancel_mcp_list = await mcp_collection.distinct("_id", {"_id": {"$in": cancel_mcp_list}, "status": MCPInstallStatus.INSTALLING})
+        await mcp_collection.update_many(
+            {"_id": {"$in": cancel_mcp_list}, "status": MCPInstallStatus.INSTALLING},
+            {"$set": {"status": MCPInstallStatus.CANCELLED}},
+        )
+        for mcp_id in cancel_mcp_list:
+            ProcessHandler.remove_task(mcp_id)
+        logger.info("[MCPLoader] 取消这些正在安装的MCP模板任务: %s", cancel_mcp_list)
 
     @staticmethod
     async def remove_deleted_mcp(deleted_mcp_list: list[str]) -> None:
@@ -573,8 +633,8 @@ class MCPLoader(metaclass=SingletonMeta):
         # 检查目录
         await MCPLoader._check_dir()
 
-        # 初始化所有模板
-        await MCPLoader._init_all_template()
+        # 暂停所有安装任务
+        await MCPLoader.cancel_all_installing_task()
 
         # 加载用户MCP
         await MCPLoader._load_user_mcp()

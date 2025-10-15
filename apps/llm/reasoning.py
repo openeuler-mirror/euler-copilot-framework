@@ -32,9 +32,11 @@ class ReasoningContent:
 
         if (
             hasattr(chunk.choices[0].delta, "reasoning_content")
-            and chunk.choices[0].delta.reasoning_content is not None  # type: ignore[attr-defined]
+            # type: ignore[attr-defined]
+            and chunk.choices[0].delta.reasoning_content is not None
         ):
-            reason = "<think>" + chunk.choices[0].delta.reasoning_content  # type: ignore[attr-defined]
+            # type: ignore[attr-defined]
+            reason = "<think>" + chunk.choices[0].delta.reasoning_content
             self.reasoning_type = "args"
             self.is_reasoning = True
         else:
@@ -61,15 +63,17 @@ class ReasoningContent:
             return reason, text
 
         if self.reasoning_type == "args":
-            if hasattr(chunk.choices[0].delta, "reasoning_content"):
-                reason = chunk.choices[0].delta.reasoning_content or ""  # type: ignore[attr-defined]
+            if hasattr(
+                    chunk.choices[0].delta, "reasoning_content") and chunk.choices[0].delta.reasoning_content is not None:  # type: ignore[attr-defined]
+                # 仍在推理中，继续添加推理内容
+                # type: ignore[attr-defined]
+                reason = chunk.choices[0].delta.reasoning_content or ""
             else:
                 # 推理结束，设置标志并添加结束标签
                 self.is_reasoning = False
                 reason = "</think>"
                 # 如果当前内容不是推理内容标签，将其作为文本返回
-                if content and not content.startswith("</think>"):
-                    text = content
+                text = content.lstrip("</think>")
         elif self.reasoning_type == "tokens":
             for token in REASONING_END_TOKEN:
                 if token == content:
@@ -120,7 +124,8 @@ class ReasoningLLM:
         """验证消息格式是否正确"""
         if messages[0]["role"] != "system":
             # 添加默认系统消息
-            messages.insert(0, {"role": "system", "content": "You are a helpful assistant."})
+            messages.insert(
+                0, {"role": "system", "content": "You are a helpful assistant."})
 
         if messages[-1]["role"] != "user":
             err = f"消息格式错误，最后一个消息必须是用户消息：{messages[-1]}"
@@ -134,17 +139,28 @@ class ReasoningLLM:
         max_tokens: int | None,
         temperature: float | None,
         model: str | None = None,
+        enable_thinking: bool = False
     ) -> AsyncGenerator[ChatCompletionChunk, None]:
         """创建流式响应"""
         if model is None:
             model = self._config.model
+        if not enable_thinking:
+            if len(messages):
+                if messages[-1]["role"] == "user":
+                    if not messages[-1]["content"].endswith("/no_think"):
+                        messages[-1]["content"] += "/no_think"
+                else:
+                    messages.append(
+                        {"role": "user", "content": "/no_think"})
         return await self._client.chat.completions.create(
             model=model,
             messages=messages,  # type: ignore[]
-            max_tokens=max_tokens or self._config.max_tokens,
+            max_completion_tokens=max_tokens or self._config.max_tokens,
             temperature=temperature or self._config.temperature,
             stream=True,
             stream_options={"include_usage": True},
+            timeout=300,
+            extra_body={"enable_thinking": enable_thinking}
         )  # type: ignore[]
 
     async def call(  # noqa: C901, PLR0912, PLR0913
@@ -156,6 +172,7 @@ class ReasoningLLM:
         streaming: bool = True,
         result_only: bool = True,
         model: str | None = None,
+        enable_thinking: bool = False
     ) -> AsyncGenerator[str, None]:
         """调用大模型，分为流式和非流式两种"""
         # 检查max_tokens和temperature
@@ -166,7 +183,7 @@ class ReasoningLLM:
         if model is None:
             model = self._config.model
         msg_list = self._validate_messages(messages)
-        stream = await self._create_stream(msg_list, max_tokens, temperature, model)
+        stream = await self._create_stream(msg_list, max_tokens, temperature, model, enable_thinking)
         reasoning = ReasoningContent()
         reasoning_content = ""
         result = ""
