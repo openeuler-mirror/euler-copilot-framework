@@ -2,63 +2,65 @@
 
 ## Overview
 
-sysHAX is positioned as K+X heterogeneous fusion inference acceleration, mainly containing two functional components:
+sysHAX is positioned as K+X heterogeneous fusion inference acceleration, mainly consisting of two functional components:
 
-- Dynamic inference scheduling
+- Inference dynamic scheduling
 - CPU inference acceleration
 
-**Dynamic inference scheduling**: For inference tasks, the prefill phase belongs to compute-intensive tasks, while the decode phase belongs to memory-intensive tasks. Therefore, from the perspective of computational resources, the prefill phase is suitable for execution on GPU/NPU and other hardware, while the decode phase can be executed on CPU and other hardware.
+**Inference dynamic scheduling**: For inference tasks, the prefill stage is a compute-intensive task, while the decode stage is memory-access intensive. Therefore, from the perspective of computing resources, the prefill stage is suitable for execution on hardware such as GPU/NPU, whereas the decode stage can be executed on hardware like CPU.
 
-**CPU inference acceleration**: Accelerates CPU inference performance through NUMA affinity, parallel optimization, operator optimization, and other methods on the CPU.
+**CPU inference acceleration**: Accelerate CPU inference performance through NUMA affinity, parallel optimization, and operator optimization.
 
-sysHAX consists of two delivery components:
+sysHAX includes two delivery components:
 
-![syshax-deploy](pictures/syshax-deploy.png)
+![syshax-deploy](pictures/syshax-deploy.png "syshax-deploy")
 
 The delivery components include:
 
-- sysHAX: Responsible for request processing and scheduling of prefill and decode requests
-- vllm: vllm is a large model inference service that includes both GPU/NPU and CPU during deployment, used for processing prefill and decode requests respectively. From the perspective of developer usability, vllm will be released using containerization.
+- sysHAX: responsible for request processing and scheduling of prefill and decode requests
+- vllm: vllm is a large model inference service that includes both GPU/NPU and CPU versions during deployment, used for handling prefill and decode requests respectively. From the developer's usability perspective, vllm will be released in containerized form.
 
-vllm is a **high-throughput, low-memory-usage large language model (LLM) inference and service engine** that supports **CPU computation acceleration** and provides efficient operator dispatch mechanisms, including:
+vllm is a **high-throughput, low-memory footprint** **large language model (LLM) inference and service engine** that supports **CPU computation acceleration**, providing an efficient operator dispatch mechanism, including:
 
-- Schedule: Optimizes task distribution to improve parallel computation efficiency
-- Prepare Input: Efficient data preprocessing to accelerate input construction
-- Ray framework: Utilizes distributed computing to improve inference throughput
-- Sample (model post-processing): Optimizes sampling strategies to improve generation quality
-- Framework post-processing: Integrates multiple optimization strategies to improve overall inference performance
+- Schedule: Optimize task distribution to improve parallel computing efficiency
+- Prepare Input: Efficient data preprocessing to accelerate input building
+- Ray Framework: Utilize distributed computing to enhance inference throughput
+- Sample (Model Post-processing): Optimize sampling strategies to improve generation quality
+- Framework Post-processing: Integrate multiple optimization strategies to enhance overall inference performance
 
-This engine combines **efficient computation scheduling and optimization strategies** to provide **faster, more stable, and more scalable** solutions for LLM inference.
+This engine combines **efficient computational scheduling and optimization strategies** to provide **faster, more stable, and scalable** solutions for LLM inference.
 
 ## Environment Preparation
 
-| Server Model | Kunpeng 920 Series CPU |
-| ------------ | ---------------------- |
-| GPU          | Nvidia A100            |
-| OS           | openEuler 22.03 LTS and above |
-| Python       | 3.9 and above          |
-| Docker       | 25.0.3 and above       |
+| KEY        | VALUE                                   |
+| ---------- | ---------------------------------------- |
+| Server Model | Kunpeng 920 series CPU                  |
+| GPU        | Nvidia A100                              |
+| Operating System | openEuler 24.03 LTS SP1                 |
+| Python     | 3.9 and above                            |
+| Docker     | 25.0.3 and above                         |
 
 - Docker 25.0.3 can be installed via `dnf install moby`.
+- Note: sysHAX currently only supports NVIDIA GPU adaptation on AI acceleration cards, ASCEND NPU adaptation is in progress.
 
 ## Deployment Process
 
-First, check whether NVIDIA drivers and CUDA drivers are already installed using `nvidia-smi` and `nvcc -V`. If not, you need to install NVIDIA drivers and CUDA drivers first.
+First, you need to check if the NVIDIA driver and CUDA driver are installed via `nvidia-smi` and `nvcc -V`. If not, you need to install the NVIDIA driver and CUDA driver first.
 
 ### Install NVIDIA Container Toolkit (Container Engine Plugin)
 
-If NVIDIA Container Toolkit is already installed, you can skip this step. Otherwise, follow the installation process below:
+If NVIDIA Container Toolkit is already installed, you can skip this step. Otherwise, install it following the process below:
 
 <https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html>
 
-- Execute the `systemctl restart docker` command to restart docker, making the container engine plugin configuration in the docker config file effective.
+- Execute the `systemctl restart docker` command to restart Docker, so that the content added by the container engine plugin in the Docker configuration file takes effect.
 
-### Container-based vllm Setup
+### Container Scenario vllm Setup
 
 The following process deploys vllm in a GPU container.
 
 ```shell
-docker pull hub.oepkgs.net/neocopilot/syshax/syshax-vllm-gpu:0.2.0
+docker pull hub.oepkgs.net/neocopilot/syshax/syshax-vllm-gpu:0.2.1
 
 docker run --name vllm_gpu \
     --ipc="shareable" \
@@ -67,40 +69,42 @@ docker run --name vllm_gpu \
     -p 8001:8001 \
     -v /home/models:/home/models \
     -w /home/ \
-    -itd hub.oepkgs.net/neocopilot/syshax/syshax-vllm-gpu:0.2.0 bash
+    -itd hub.oepkgs.net/neocopilot/syshax/syshax-vllm-gpu:0.2.1 bash
 ```
 
 In the above script:
 
-- `--ipc="shareable"`: Allows the container to share IPC namespace for inter-process communication.
-- `--shm-size=64g`: Sets the container shared memory to 64G.
-- `--gpus=all`: Allows the container to use all GPU devices on the host
-- `-p 8001:8001`: Port mapping, mapping the host's port 8001 to the container's port 8001. Developers can modify this as needed.
-- `-v /home/models:/home/models`: Directory mounting, mapping the host's `/home/models` to `/home/models` inside the container for model sharing. Developers can modify the mapping directory as needed.
+- `--ipc="shareable"`: Allows containers to share IPC namespaces for inter-process communication.
+- `--shm-size=64g`: Sets container shared memory to 64G.
+- `--gpus=all`: Allows containers to use all GPU devices on the host machine.
+- `-p 8001:8001`: Port mapping, mapping port 8001 of the host machine to port 8001 of the container, which can be modified by developers.
+- `-v /home/models:/home/models`: Directory mounting, mapping the host's `/home/models` to the container's `/home/models`, achieving model sharing. Developers can modify the mapping directory as needed.
 
 ```shell
 vllm serve /home/models/DeepSeek-R1-Distill-Qwen-32B \
     --served-model-name=ds-32b \
     --host 0.0.0.0 \
     --port 8001 \
-    --dtype=half \
+    --dtype=auto \
     --swap_space=16 \
     --block_size=16 \
     --preemption_mode=swap \
     --max_model_len=8192 \
     --tensor-parallel-size 2 \
-    --gpu_memory_utilization=0.8
+    --gpu_memory_utilization=0.8 \
+    --enable-auto-pd-offload
 ```
 
 In the above script:
 
-- `--tensor-parallel-size 2`: Enables tensor parallelism, splitting the model across 2 GPUs. Requires at least 2 GPUs. Developers can modify this as needed.
-- `--gpu_memory_utilization=0.8`: Limits GPU memory usage to 80% to avoid service crashes due to memory exhaustion. Developers can modify this as needed.
+- `--tensor-parallel-size 2`: Enable tensor parallelism, splitting the model to run on 2 GPUs, requiring at least 2 GPUs, which can be modified by developers.
+- `--gpu_memory_utilization=0.8`: Limit GPU memory utilization to 80% to prevent service crashes due to memory exhaustion, which can be modified by developers.
+- `--enable-auto-pd-offload`: Enable PD separation when triggering swap out.
 
 The following process deploys vllm in a CPU container.
 
 ```shell
-docker pull hub.oepkgs.net/neocopilot/syshax/syshax-vllm-cpu:0.2.0
+docker pull hub.oepkgs.net/neocopilot/syshax/syshax-vllm-cpu:0.2.1
 
 docker run --name vllm_cpu \
     --ipc container:vllm_gpu \
@@ -109,15 +113,15 @@ docker run --name vllm_cpu \
     -p 8002:8002 \
     -v /home/models:/home/models \
     -w /home/ \
-    -itd hub.oepkgs.net/neocopilot/syshax/syshax-vllm-cpu:0.2.0 bash
+    -itd hub.oepkgs.net/neocopilot/syshax/syshax-vllm-cpu:0.2.1 bash
 ```
 
 In the above script:
 
-- `--ipc container:vllm_gpu`: Shares the IPC (inter-process communication) namespace with the container named vllm_gpu. Allows this container to exchange data directly through shared memory, avoiding cross-container copying.
+- `--ipc container:vllm_gpu` shares the IPC (inter-process communication) namespace of the container named vllm_gpu. This allows this container to exchange data directly through shared memory, avoiding cross-container copying.
 
 ```shell
-INFERENCE_OP_MODE=fused OMP_NUM_THREADS=160 CUSTOM_CPU_AFFINITY=0-159 SYSHAX_QUANTIZE=q8_0 \
+NRC=4 INFERENCE_OP_MODE=fused OMP_NUM_THREADS=160 CUSTOM_CPU_AFFINITY=0-159 SYSHAX_QUANTIZE=q4_0 \
 vllm serve /home/models/DeepSeek-R1-Distill-Qwen-32B \
     --served-model-name=ds-32b \
     --host 0.0.0.0 \
@@ -125,19 +129,21 @@ vllm serve /home/models/DeepSeek-R1-Distill-Qwen-32B \
     --dtype=half \
     --block_size=16 \
     --preemption_mode=swap \
-    --max_model_len=8192
+    --max_model_len=8192 \
+    --enable-auto-pd-offload
 ```
 
 In the above script:
 
-- `INFERENCE_OP_MODE=fused`: Enables CPU inference acceleration
-- `OMP_NUM_THREADS=160`: Specifies the number of CPU inference threads to start as 160. This environment variable only takes effect after specifying INFERENCE_OP_MODE=fused.
-- `CUSTOM_CPU_AFFINITY=0-159`: Specifies the CPU binding scheme, which will be explained in detail later.
-- `SYSHAX_QUANTIZE=q8_0`: Specifies the quantization scheme as q8_0. The current version supports 2 quantization schemes: `q8_0`, `q4_0`.
+- `INFERENCE_OP_MODE=fused`: Enable CPU inference acceleration
+- `OMP_NUM_THREADS=160`: Specify the number of threads for CPU inference startup as 160. This environment variable only takes effect after setting INFERENCE_OP_MODE=fused.
+- `CUSTOM_CPU_AFFINITY=0-159`: Specify the CPU binding scheme, which will be described in detail later.
+- `SYSHAX_QUANTIZE=q4_0`: Specify the quantization scheme as q4_0. The current version supports 2 quantization schemes: `q8_0` and `q4_0`.
+- `NRC=4`: GEMV operator block mode. This environment variable provides good acceleration effects on 920 series processors.
 
-Note: The GPU container must be started first before starting the CPU container.
+Note that the GPU container must be started before the CPU container can be started.
 
-Use lscpu to check the current machine's hardware configuration, focusing on:
+Use lscpu to check the current machine's hardware situation, focusing on:
 
 ```shell
 Architecture:             aarch64
@@ -160,26 +166,33 @@ NUMA:
   NUMA node3 CPU(s):      120-159
 ```
 
-This machine has 160 physical cores, no SMT enabled, 4 NUMA nodes, with 40 cores on each NUMA.
+This machine has a total of 160 physical cores, with SMT disabled, and has 4 NUMA nodes, each with 40 cores.
 
-Use these two environment variables to set the CPU binding scheme: `OMP_NUM_THREADS=160 CUSTOM_CPU_AFFINITY=0-159`. In these two environment variables, the first one is the number of CPU inference threads to start, and the second one is the IDs of the CPUs to bind. In CPU inference acceleration, to achieve NUMA affinity, CPU binding operations are required, following these rules:
+Set the CPU binding scheme using these two scripts: `OMP_NUM_THREADS=160 CUSTOM_CPU_AFFINITY=0-159`. In these two environment variables, the first specifies the number of threads for CPU inference startup, and the second specifies the IDs of the bound CPUs. To achieve NUMA affinity in CPU inference acceleration, CPU binding operations are required, following the rules below:
 
-- The number of started threads must match the number of bound CPUs;
+- The number of startup threads must match the number of bound CPUs;
 - The number of CPUs used on each NUMA must be the same to maintain load balancing.
 
-For example, in the above script, CPUs 0-159 are bound. Among them, 0-39 belong to NUMA node 0, 40-79 belong to NUMA node 1, 80-119 belong to NUMA node 2, and 120-159 belong to NUMA node 3. Each NUMA uses 40 CPUs, ensuring load balancing across all NUMAs.
+For example, in the above script, CPUs 0-159 are bound. Among them, 0-39 belongs to NUMA node 0, 40-79 belongs to NUMA node 1, 80-119 belongs to NUMA node 2, and 120-159 belongs to NUMA node 3. Each NUMA uses 40 CPUs, ensuring load balancing for each NUMA.
 
 ### sysHAX Installation
 
-sysHAX installation:
+There are two ways to install sysHAX: you can install the rpm package via dnf. Note that this method requires upgrading openEuler to openEuler 24.03 LTS SP2 or higher version:
 
 ```shell
 dnf install sysHAX
 ```
 
-Before starting sysHAX, some basic configuration is needed:
+Or directly start using the source code:
 
 ```shell
+git clone -b v0.2.0 https://gitee.com/openeuler/sysHAX.git
+```
+
+Before starting sysHAX, some basic configurations are required:
+
+```shell
+# When installing sysHAX via dnf install sysHAX
 syshax init
 syshax config services.gpu.port 8001
 syshax config services.cpu.port 8002
@@ -187,15 +200,30 @@ syshax config services.conductor.port 8010
 syshax config models.default ds-32b
 ```
 
-Additionally, you can use `syshax config --help` to view all configuration commands.
+```shell
+# When using git clone -b v0.2.0 https://gitee.com/openeuler/sysHAX.git
+python3 cli.py init
+python3 cli.py config services.gpu.port 8001
+python3 cli.py config services.cpu.port 8002
+python3 cli.py config services.conductor.port 8010
+python3 cli.py config models.default ds-32b
+```
 
-After configuration is complete, start the sysHAX service with the following command:
+Additionally, you can use `syshax config --help` or `python3 cli.py config --help` to view all configuration commands.
+
+After configuration, start the sysHAX service using the following command:
 
 ```shell
+# When installing sysHAX via dnf install sysHAX
 syshax run
 ```
 
-When starting the sysHAX service, service connectivity testing will be performed. sysHAX complies with openAPI standards. Once the service is started, you can use APIs to call the large model service. You can test it with the following script:
+```shell
+# When using git clone -b v0.2.0 https://gitee.com/openeuler/sysHAX.git
+python3 main.py
+```
+
+When starting the sysHAX service, connectivity testing will be performed. sysHAX complies with the openAPI standard. After the service starts, you can call the large model service via API. The following script can be used for testing:
 
 ```shell
 curl http://0.0.0.0:8010/v1/chat/completions -H "Content-Type: application/json" -d '{
@@ -203,10 +231,9 @@ curl http://0.0.0.0:8010/v1/chat/completions -H "Content-Type: application/json"
     "messages": [
         {
             "role": "user",
-            "content": "Introduce openEuler."
+            "content": "介绍一下openEuler。"
         }
     ],
     "stream": true,
     "max_tokens": 1024
 }'
-```
