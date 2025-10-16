@@ -1,4 +1,5 @@
 #!/bin/bash
+
 # 颜色定义
 COLOR_INFO='\033[34m'     # 蓝色信息
 COLOR_SUCCESS='\033[32m'  # 绿色成功
@@ -172,7 +173,7 @@ check_disk_space() {
 
 function check_network {
     echo -e "${COLOR_INFO}[Info] 检查网络连接...${COLOR_RESET}"
-    
+
     # 使用TCP检查代替curl
     if timeout 5 bash -c 'cat < /dev/null > /dev/tcp/www.baidu.com/80' 2>/dev/null; then
         echo -e "${COLOR_SUCCESS}[Success] 网络连接正常${COLOR_RESET}"
@@ -197,6 +198,35 @@ function check_firewall {
     return 0
 }
 
+function check_cpu_fphp {
+    echo -e "${COLOR_INFO}[Info] 检查CPU是否支持MongoDB(v7.0.16)部署${COLOR_RESET}"
+
+    # 检查/proc/cpuinfo是否存在
+    if [[ ! -f "/proc/cpuinfo" ]]; then
+        echo -e "${COLOR_ERROR}[Error] 无法访问/proc/cpuinfo文件${COLOR_RESET}"
+        return 1
+    fi
+
+    # 获取CPU架构
+    local architecture=$(uname -m)
+
+    # 只在ARM架构上检查FPHP
+    if [[ "$architecture" == "aarch64" || "$architecture" == "arm64" ]]; then
+        if grep -q "fphp" /proc/cpuinfo; then
+            echo -e "${COLOR_SUCCESS}[Success] ARM的CPU支持FPHP功能${COLOR_RESET}"
+	    echo -e "${COLOR_SUCCESS}[Success] CPU满足MongoDB部署要求${COLOR_RESET}"
+            return 0
+        else
+            echo -e "${COLOR_ERROR}[Error] CPU不支持FPHP，无法部署MongoDBv7.0.16, 建议降低mongo的版本${COLOR_RESET}"
+            return 1
+        fi
+    else
+        # 非ARM架构，记录信息并继续
+        echo -e "${COLOR_INFO}[Info] $architecture 架构，跳过FPHP检查${COLOR_RESET}"
+        return 0
+    fi
+}
+
 function prepare_offline {
     echo -e "${COLOR_INFO}[Info] 准备离线部署环境..."
     mkdir -p /home/eulercopilot/images
@@ -212,7 +242,7 @@ function main {
     check_user || return 1
     check_os_version || return 1
     check_hostname || return 1
-    
+
     # 网络检查与模式判断
     if check_network; then
         OFFLINE_MODE=false
@@ -234,6 +264,9 @@ function main {
 
     check_selinux || return 1
     check_firewall || return 1
+    
+    # 新增CPU FPHP检查
+    check_cpu_fphp || return 1
 
     # 最终部署提示
     echo -e "\n${COLOR_SUCCESS}#####################################"
