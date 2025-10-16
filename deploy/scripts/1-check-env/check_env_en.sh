@@ -76,7 +76,7 @@ function check_os_version {
 function check_hostname {
     local current_hostname=$(cat /etc/hostname)
     if [[ -z "$current_hostname" ]]; then
-        echo -e "${COLOR_ERROR}[Error] Hostname not set, automatically set to localhost${COLOR_RESET}"
+        echo -e "${COLOR_ERROR}[Error] Hostname not set, automatically setting to localhost${COLOR_RESET}"
         set_hostname "localhost"
         return $?
     else
@@ -89,7 +89,7 @@ function check_hostname {
 function set_hostname {
     if ! command -v hostnamectl &> /dev/null; then
         echo "$1" > /etc/hostname
-        echo -e "${COLOR_SUCCESS}[Success] Manual hostname set successful${COLOR_RESET}"
+        echo -e "${COLOR_SUCCESS}[Success] Manual hostname setting successful${COLOR_RESET}"
         return 0
     fi
 
@@ -97,7 +97,7 @@ function set_hostname {
         echo -e "${COLOR_SUCCESS}[Success] Hostname set successfully${COLOR_RESET}"
         return 0
     else
-        echo -e "${COLOR_ERROR}[Error] Hostname set failed${COLOR_RESET}"
+        echo -e "${COLOR_ERROR}[Error] Hostname setting failed${COLOR_RESET}"
         return 1
     fi
 }
@@ -105,7 +105,7 @@ function set_hostname {
 function check_dns {
     echo -e "${COLOR_INFO}[Info] Checking DNS settings${COLOR_RESET}"
     if grep -q "^nameserver" /etc/resolv.conf; then
-        echo -e "${COLOR_SUCCESS}[Success] DNS configured${COLOR_RESET}"
+        echo -e "${COLOR_SUCCESS}[Success] DNS is configured${COLOR_RESET}"
         return 0
     fi
 
@@ -113,7 +113,7 @@ function check_dns {
         echo -e "${COLOR_WARNING}[Warning] Offline mode: Please manually configure internal DNS server${COLOR_RESET}"
         return 0
     else
-        echo -e "${COLOR_ERROR}[Error] DNS not configured, automatically set to 8.8.8.8${COLOR_RESET}"
+        echo -e "${COLOR_ERROR}[Error] DNS not configured, automatically setting to 8.8.8.8${COLOR_RESET}"
         set_dns "8.8.8.8"
         return $?
     fi
@@ -129,16 +129,16 @@ function set_dns {
 
         if nmcli con mod "$net_ic" ipv4.dns "$1" && nmcli con mod "$net_ic" ipv4.ignore-auto-dns yes; then
             nmcli con down "$net_ic" && nmcli con up "$net_ic"
-            echo -e "${COLOR_SUCCESS}[Success] DNS set successfully${COLOR_RESET}"
+            echo -e "${COLOR_SUCCESS}[Success] DNS setting successful${COLOR_RESET}"
             return 0
         else
-            echo -e "${COLOR_ERROR}[Error] DNS set failed${COLOR_RESET}"
+            echo -e "${COLOR_ERROR}[Error] DNS setting failed${COLOR_RESET}"
             return 1
         fi
     else
         cp /etc/resolv.conf /etc/resolv.conf.bak
         echo "nameserver $1" >> /etc/resolv.conf
-        echo -e "${COLOR_SUCCESS}[Success] Manual DNS set successful${COLOR_RESET}"
+        echo -e "${COLOR_SUCCESS}[Success] Manual DNS setting successful${COLOR_RESET}"
         return 0
     fi
 }
@@ -179,7 +179,7 @@ function check_network {
         echo -e "${COLOR_SUCCESS}[Success] Network connection normal${COLOR_RESET}"
         return 0
     else
-        echo -e "${COLOR_ERROR}[Error] Cannot access external network${COLOR_RESET}"
+        echo -e "${COLOR_ERROR}[Error] Unable to access external network${COLOR_RESET}"
         return 1
     fi
 }
@@ -198,15 +198,44 @@ function check_firewall {
     return 0
 }
 
+function check_cpu_fphp {
+    echo -e "${COLOR_INFO}[Info] Checking if CPU supports MongoDB(v7.0.16) deployment${COLOR_RESET}"
+
+    # Check if /proc/cpuinfo exists
+    if [[ ! -f "/proc/cpuinfo" ]]; then
+        echo -e "${COLOR_ERROR}[Error] Unable to access /proc/cpuinfo file${COLOR_RESET}"
+        return 1
+    fi
+
+    # Get CPU architecture
+    local architecture=$(uname -m)
+
+    # Only check FPHP on ARM architecture
+    if [[ "$architecture" == "aarch64" || "$architecture" == "arm64" ]]; then
+        if grep -q "fphp" /proc/cpuinfo; then
+            echo -e "${COLOR_SUCCESS}[Success] ARM CPU supports FPHP feature${COLOR_RESET}"
+            echo -e "${COLOR_SUCCESS}[Success] CPU meets MongoDB deployment requirements${COLOR_RESET}"
+            return 0
+        else
+            echo -e "${COLOR_ERROR}[Error] CPU does not support FPHP, cannot deploy MongoDB v7.0.16, consider downgrading MongoDB version${COLOR_RESET}"
+            return 1
+        fi
+    else
+        # Non-ARM architecture, log info and continue
+        echo -e "${COLOR_INFO}[Info] $architecture architecture, skipping FPHP check${COLOR_RESET}"
+        return 0
+    fi
+}
+
 function prepare_offline {
     echo -e "${COLOR_INFO}[Info] Preparing offline deployment environment..."
     mkdir -p /home/eulercopilot/images
     mkdir -p /home/eulercopilot/tools
     mkdir -p /home/eulercopilot/models
-    echo -e "1. Please ensure offline installation images are uploaded to /home/eulercopilot/images"
-    echo -e "2. Please confirm local software repository is configured"
-    echo -e "3. All tool packages pre-downloaded to local directory /home/eulercopilot/tools"
-    echo -e "4. All model files pre-downloaded to local directory /home/eulercopilot/models${COLOR_RESET}"
+    echo -e "1. Please ensure the offline installation image has been uploaded to /home/eulercopilot/images"
+    echo -e "2. Please confirm the local software repository is configured"
+    echo -e "3. All toolkits are pre-downloaded to local directory /home/eulercopilot/tools"
+    echo -e "4. All model files are pre-downloaded to local directory /home/eulercopilot/models${COLOR_RESET}"
 }
 
 function main {
@@ -236,12 +265,15 @@ function main {
     check_selinux || return 1
     check_firewall || return 1
 
+    # New CPU FPHP check
+    check_cpu_fphp || return 1
+
     # Final deployment prompt
     echo -e "\n${COLOR_SUCCESS}#####################################"
     if $OFFLINE_MODE; then
-        echo -e "#   Environment check complete, ready for offline deployment     #"
+        echo -e "#   Environment check complete, preparing for offline deployment     #"
     else
-        echo -e "#   Environment check complete, ready for online deployment     #"
+        echo -e "#   Environment check complete, preparing for online deployment     #"
     fi
     echo -e "#####################################${COLOR_RESET}"
     return 0
