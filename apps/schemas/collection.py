@@ -61,6 +61,7 @@ class User(BaseModel):
     fav_apps: list[str] = []
     fav_services: list[str] = []
     is_admin: bool = Field(default=False, description="是否为管理员")
+    auto_execute: bool = Field(default=True, description="是否自动执行任务")
 
 
 class LLM(BaseModel):
@@ -105,7 +106,7 @@ class Conversation(BaseModel):
 
     id: str = Field(default_factory=lambda: str(uuid.uuid4()), alias="_id")
     user_sub: str
-    title: str = NEW_CHAT
+    title: str = Field(default=NEW_CHAT)
     created_at: float = Field(default_factory=lambda: round(datetime.now(tz=UTC).timestamp(), 3))
     app_id: str | None = Field(default="")
     tasks: list[str] = []

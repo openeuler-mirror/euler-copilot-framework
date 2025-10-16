@@ -2,6 +2,7 @@
 """FastAPI Flow拓扑结构展示API"""
 
 from typing import Annotated
+import logging
 
 from fastapi import APIRouter, Body, Depends, Query, status
 from fastapi.responses import JSONResponse
@@ -20,10 +21,13 @@ from apps.schemas.response_data import (
     NodeServiceListRsp,
     ResponseData,
 )
+from apps.schemas.enum_var import LanguageType
 from apps.services.appcenter import AppCenterManager
 from apps.services.application import AppManager
 from apps.services.flow import FlowManager
 from apps.services.flow_validate import FlowService
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(
     prefix="/api/flow",
@@ -43,9 +47,10 @@ router = APIRouter(
 )
 async def get_services(
     user_sub: Annotated[str, Depends(get_user)],
+    language: LanguageType = Query(LanguageType.CHINESE, description="语言参数，默认为中文")
 ) -> NodeServiceListRsp:
     """获取用户可访问的节点元数据所在服务的信息"""
-    services = await FlowManager.get_service_by_user_id(user_sub)
+    services = await FlowManager.get_service_by_user_id(user_sub, language)
     if services is None:
         return NodeServiceListRsp(
             code=status.HTTP_404_NOT_FOUND,

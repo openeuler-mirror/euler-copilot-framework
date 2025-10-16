@@ -1,14 +1,16 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2023-2025. All rights reserved.
 """用户鉴权"""
-
+import os
 import logging
 
 from fastapi import Depends
 from fastapi.security import OAuth2PasswordBearer
+import secrets
 from starlette import status
 from starlette.exceptions import HTTPException
 from starlette.requests import HTTPConnection
 
+from apps.common.config import Config
 from apps.services.api_key import ApiKeyManager
 from apps.services.session import SessionManager
 
@@ -48,6 +50,9 @@ async def get_session(request: HTTPConnection) -> str:
     :param request: HTTP请求
     :return: Session ID
     """
+    if Config().get_config().no_auth.enable:
+        # 如果启用了无认证访问，直接返回调试用户
+        return secrets.token_hex(16)
     session_id = await _get_session_id_from_request(request)
     if not session_id:
         raise HTTPException(
@@ -69,6 +74,9 @@ async def get_user(request: HTTPConnection) -> str:
     :param request: HTTP请求体
     :return: 用户sub
     """
+    if Config().get_config().no_auth.enable:
+        # 如果启用了无认证访问，直接返回当前操作系统用户的名称
+        return "openEuler"
     session_id = await _get_session_id_from_request(request)
     if not session_id:
         raise HTTPException(
@@ -96,7 +104,8 @@ async def verify_api_key(api_key: str = Depends(oauth2_scheme)) -> None:
     :return:
     """
     if not await ApiKeyManager.verify_api_key(api_key):
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid API key!")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid API key!")
 
 
 async def get_user_by_api_key(api_key: str = Depends(oauth2_scheme)) -> str:
@@ -108,5 +117,6 @@ async def get_user_by_api_key(api_key: str = Depends(oauth2_scheme)) -> str:
     """
     user_sub = await ApiKeyManager.get_user_by_api_key(api_key)
     if user_sub is None:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid API key!")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid API key!")
     return user_sub

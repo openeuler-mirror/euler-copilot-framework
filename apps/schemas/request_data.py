@@ -7,17 +7,18 @@ from pydantic import BaseModel, Field
 
 from apps.common.config import Config
 from apps.schemas.appcenter import AppData
-from apps.schemas.enum_var import CommentType
+from apps.schemas.enum_var import CommentType, LanguageType
 from apps.schemas.flow_topology import FlowItem
 from apps.schemas.mcp import MCPType
+from apps.schemas.message import FlowParams
+
 
 
 class RequestDataApp(BaseModel):
     """模型对话中包含的app信息"""
 
     app_id: str = Field(description="应用ID", alias="appId")
-    flow_id: str = Field(description="Flow ID", alias="flowId")
-    params: dict[str, Any] = Field(description="插件参数")
+    flow_id: str | None = Field(default=None, description="Flow ID", alias="flowId")
 
 
 class MockRequestData(BaseModel):
@@ -39,13 +40,15 @@ class RequestDataFeatures(BaseModel):
 class RequestData(BaseModel):
     """POST /api/chat 请求的总的数据结构"""
 
-    question: str = Field(max_length=2000, description="用户输入")
-    conversation_id: str = Field(default="", alias="conversationId", description="聊天ID")
+    question: str | None = Field(default=None, max_length=2000, description="用户输入")
+    conversation_id: str | None = Field(default=None, alias="conversationId", description="聊天ID")
     group_id: str | None = Field(default=None, alias="groupId", description="问答组ID")
-    language: str = Field(default="zh", description="语言")
+    language: LanguageType = Field(default=LanguageType.CHINESE, description="语言")
     files: list[str] = Field(default=[], description="文件列表")
     app: RequestDataApp | None = Field(default=None, description="应用")
     debug: bool = Field(default=False, description="是否调试")
+    task_id: str | None = Field(default=None, alias="taskId", description="任务ID")
+    params: FlowParams | bool | None = Field(default=None, description="流执行过程中的参数补充", alias="params")
 
 
 class QuestionBlacklistRequest(BaseModel):
@@ -98,7 +101,7 @@ class UpdateMCPServiceRequest(BaseModel):
     name: str = Field(..., description="MCP服务名称")
     description: str = Field(..., description="MCP服务描述")
     overview: str = Field(..., description="MCP服务概述")
-    config: str = Field(..., description="MCP服务配置")
+    config: dict[str, Any] = Field(..., description="MCP服务配置")
     mcp_type: MCPType = Field(description="MCP传输协议(Stdio/SSE/Streamable)", default=MCPType.STDIO, alias="mcpType")
 
 
@@ -106,6 +109,7 @@ class ActiveMCPServiceRequest(BaseModel):
     """POST /api/mcp/{serviceId} 请求数据结构"""
 
     active: bool = Field(description="是否激活mcp服务")
+    mcp_env: dict[str, Any] | None = Field(default=None, description="MCP服务环境变量", alias="mcpEnv")
 
 
 class UpdateServiceRequest(BaseModel):
@@ -183,3 +187,9 @@ class UpdateKbReq(BaseModel):
     """更新知识库请求体"""
 
     kb_ids: list[str] = Field(description="知识库ID列表", alias="kbIds", default=[])
+
+
+class UserUpdateRequest(BaseModel):
+    """更新用户信息请求体"""
+
+    auto_execute: bool = Field(default=False, description="是否自动执行", alias="autoExecute")

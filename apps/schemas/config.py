@@ -6,6 +6,12 @@ from typing import Literal
 from pydantic import BaseModel, Field
 
 
+class NoauthConfig(BaseModel):
+    """无认证配置"""
+
+    enable: bool = Field(description="是否启用无认证访问", default=False)
+
+
 class DeployConfig(BaseModel):
     """部署配置"""
 
@@ -122,7 +128,7 @@ class ExtraConfig(BaseModel):
 
 class ConfigModel(BaseModel):
     """配置文件的校验Class"""
-
+    no_auth: NoauthConfig = Field(description="无认证配置", default=NoauthConfig())
     deploy: DeployConfig
     login: LoginConfig
     embedding: EmbeddingConfig

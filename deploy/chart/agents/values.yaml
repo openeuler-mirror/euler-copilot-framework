@@ -1,100 +1,100 @@
-# 全局设置
+# Global Settings
 globals:
-  # 【必填】镜像仓库
+  # [Required] Image Registry
   imageRegistry: "hub.oepkgs.net/neocopilot"
-  # 【必填】镜像拉取策略
+  # [Required] Image Pull Policy
   imagePullPolicy: IfNotPresent
 
-# OpenEuler产品Agents
+# OpenEuler Product Agents
 agents:
   ai_infra:
-    # 【必填】是否启用AI容器镜像Agent
+    # [Required] Enable AI Container Image Agent
     enabled: true
-    # 镜像设置
+    # Image Settings
     image:
-      # 镜像仓库。留空则使用全局设置。
+      # Image registry. Leave empty to use global settings.
       registry: ""
-      # 【必填】镜像名
+      # [Required] Image name
       name: compatibility-ai-infra
-      # 【必填】镜像Tag
+      # [Required] Image Tag
       tag: "0.9.1"
-      # 拉取策略。留空则使用全局设置
+      # Pull policy. Leave empty to use global settings
       imagePullPolicy: ""
-    # 【必填】容器根目录只读
+    # [Required] Container root directory read-only
     readOnly: true
-    # 性能限制设置
+    # Resource limits settings
     resources: {}
-    # Service设置
+    # Service Settings
     service:
-      # 【必填】Service类型，ClusterIP或NodePort
+      # [Required] Service type, ClusterIP or NodePort
       type: ClusterIP
-      nodePort: 
+      nodePort:
   rca:
-    # 【必填】是否启用智能诊断Agent。必须配合智能诊断服务端使用。
+    # [Required] Enable Intelligent Diagnostics Agent. Must be used with intelligent diagnostics server.
     enabled: true
-    # 镜像设置
+    # Image Settings
     image:
-      # 镜像仓库。留空则使用全局设置。
+      # Image registry. Leave empty to use global settings.
       registry: "hub.oepkgs.net/a-ops"
-      # 【必填】镜像名称
+      # [Required] Image name
       name: euler-copilot-rca
-      # 【必填】镜像标签
+      # [Required] Image tag
       tag: "0.9.1"
-      # 拉取策略。留空则使用全局设置。
+      # Pull policy. Leave empty to use global settings.
       imagePullPolicy: ""
-    # 【必填】容器根目录只读
+    # [Required] Container root directory read-only
     readOnly: true
-    # 性能限制设置
+    # Resource limits settings
     resources: {}
-    # Service设置
+    # Service Settings
     service:
-      # 【必填】Service类型，ClusterIP或NodePort
+      # [Required] Service type, ClusterIP or NodePort
       type: ClusterIP
-      nodePort: 
+      nodePort:
   tune:
-    # 【必填】是否启用智能调优Agent。
+    # [Required] Enable Intelligent Tuning Agent.
     enabled: true
-    # 镜像设置
+    # Image Settings
     image:
-      # 镜像仓库。留空则使用全局设置。
+      # Image registry. Leave empty to use global settings.
       registry: ""
-      # 【必填】镜像名称
+      # [Required] Image name
       name: euler-copilot-tune
-      # 【必填】镜像标签
+      # [Required] Image tag
       tag: "0.9.1"
-      # 拉取策略。留空则使用全局设置。
+      # Pull policy. Leave empty to use global settings.
       imagePullPolicy: ""
-    # 【必填】容器根目录只读
+    # [Required] Container root directory read-only
     readOnly: true
-    # 性能限制设置
+    # Resource limits settings
     resources: {}
-    # Service设置
+    # Service Settings
     service:
-      # 【必填】Service类型，ClusterIP或NodePort
+      # [Required] Service type, ClusterIP or NodePort
       type: ClusterIP
-      nodePort: 
-    # 大模型设置
+      nodePort:
+    # Large Language Model Settings
     llm:
-      # 【必填】模型地址（需要包含v1后缀）
-      url: 
-      # 【必填】模型名称
+      # [Required] Model URL (must include v1 suffix)
+      url:
+      # [Required] Model name
       name: ""
-      # 【必填】模型API Key
+      # [Required] Model API Key
       key: ""
-      # 【必填】模型最大Token数
+      # [Required] Model maximum tokens
       max_tokens: 8096
-    # 【必填】Embedding地址
+    # [Required] Embedding URL
     embedding: ""
-    # 待优化机器信息
+    # Target machine information for optimization
     machine:
-      # 【必填】IP地址
+      # [Required] IP address
       ip: ""
-      # 【必填】Root用户密码
-      # 注意：必需启用Root用户以密码形式SSH登录
+      # [Required] Root user password
+      # Note: Must enable Root user SSH login with password
       password: ""
-    # 待优化应用设置
+    # Target application settings for optimization
     mysql:
-      # 【必填】数据库用户名
+      # [Required] Database username
       user: "root"
-      # 【必填】数据库密码
+      # [Required] Database password
       password: ""

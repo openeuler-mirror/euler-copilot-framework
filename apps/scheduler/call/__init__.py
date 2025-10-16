@@ -8,7 +8,7 @@ from apps.scheduler.call.mcp.mcp import MCP
 from apps.scheduler.call.rag.rag import RAG
 from apps.scheduler.call.sql.sql import SQL
 from apps.scheduler.call.suggest.suggest import Suggestion
-
+from apps.scheduler.call.choice.choice import Choice
 # 只包含需要在编排界面展示的工具
 __all__ = [
     "API",
@@ -18,4 +18,5 @@ __all__ = [
     "SQL",
     "Graph",
     "Suggestion",
+    "Choice"
 ]

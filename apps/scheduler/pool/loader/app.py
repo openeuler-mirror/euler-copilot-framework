@@ -102,7 +102,6 @@ class AppLoader:
         await file_checker.diff_one(app_path)
         await self.load(app_id, file_checker.hashes[f"app/{app_id}"])
 
-
     @staticmethod
     async def delete(app_id: str, *, is_reload: bool = False) -> None:
         """
@@ -157,5 +156,6 @@ class AppLoader:
                 },
                 upsert=True,
             )
+            app_pool = await app_collection.find_one({"_id": metadata.id})
         except Exception:
             logger.exception("[AppLoader] 更新 MongoDB 失败")

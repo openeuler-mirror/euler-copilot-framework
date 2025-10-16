@@ -59,7 +59,6 @@ class AppCenterManager:
         }
 
         user_favorite_app_ids = await AppCenterManager._get_favorite_app_ids_by_user(user_sub)
-
         if filter_type == AppFilterType.ALL:
             # 获取所有已发布的应用
             filters["published"] = True
@@ -72,7 +71,6 @@ class AppCenterManager:
                 "_id": {"$in": user_favorite_app_ids},
                 "published": True,
             }
-
         # 添加关键字搜索条件
         if keyword:
             filters["$or"] = [
@@ -84,7 +82,6 @@ class AppCenterManager:
         # 添加应用类型过滤条件
         if app_type is not None:
             filters["app_type"] = app_type.value
-
         # 获取应用列表
         apps, total_apps = await AppCenterManager._search_apps_by_filter(filters, page, SERVICE_PAGE_SIZE)
 
@@ -420,7 +417,7 @@ class AppCenterManager:
         )
 
     @staticmethod
-    def _create_flow_metadata(
+    async def _create_flow_metadata(
         common_params: dict,
         data: AppData | None = None,
         app_data: AppPool | None = None,
@@ -461,7 +458,7 @@ class AppCenterManager:
         return metadata
 
     @staticmethod
-    def _create_agent_metadata(
+    async def _create_agent_metadata(
         common_params: dict,
         user_sub: str,
         data: AppData | None = None,
@@ -474,7 +471,12 @@ class AppCenterManager:
         # mcp_service 逻辑
         if data is not None and hasattr(data, "mcp_service") and data.mcp_service:
             # 创建应用场景，验证传入的 mcp_service 状态，确保只使用已经激活的 (create_app)
-            metadata.mcp_service = [svc for svc in data.mcp_service if MCPServiceManager.is_active(user_sub, svc)]
+            activated_mcp_ids = []
+            for svc in data.mcp_service:
+                is_activated = await MCPServiceManager.is_active(user_sub, svc)
+                if is_activated:
+                    activated_mcp_ids.append(svc)
+            metadata.mcp_service = activated_mcp_ids
         elif data is not None and hasattr(data, "mcp_service"):
             # 更新应用场景，使用 data 中的 mcp_service (update_app)
             metadata.mcp_service = data.mcp_service if data.mcp_service is not None else []
@@ -484,7 +486,16 @@ class AppCenterManager:
         else:
             # 在预期的条件下，如果在 data 或 app_data 中找不到 mcp_service，则默认回退为空列表。
             metadata.mcp_service = []
-
+        # 处理llm_id字段
+        if data is not None and hasattr(data, "llm"):
+            # 创建应用场景，验证传入的 llm_id 状态 (create_app)
+            metadata.llm_id = data.llm if data.llm else "empty"
+        elif app_data is not None and hasattr(app_data, "llm_id"):
+            # 更新应用发布状态场景，使用 app_data 中的 llm_id (update_app_publish_status)
+            metadata.llm_id = app_data.llm_id if app_data.llm_id else "empty"
+        else:
+            # 在预期的条件下，如果在 data 或 app_data 中找不到 llm_id，则默认回退为 "empty"。
+            metadata.llm_id = "empty"
         # Agent 应用的发布状态逻辑
         if published is not None:  # 从 update_app_publish_status 调用，'published' 参数已提供
             metadata.published = published
@@ -548,10 +559,10 @@ class AppCenterManager:
 
         # 根据应用类型创建不同的元数据
         if app_type == AppType.FLOW:
-            return AppCenterManager._create_flow_metadata(common_params, data, app_data, published)
+            return (await AppCenterManager._create_flow_metadata(common_params, data, app_data, published))
 
         if app_type == AppType.AGENT:
-            return AppCenterManager._create_agent_metadata(common_params, user_sub, data, app_data, published)
+            return (await AppCenterManager._create_agent_metadata(common_params, user_sub, data, app_data, published))
 
         msg = "无效的应用类型"
         raise ValueError(msg)

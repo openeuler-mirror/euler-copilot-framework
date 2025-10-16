@@ -1,5 +1,5 @@
-感谢您使用openEuler Intelligence！
-当前为0.9.6版本。
-当前Chart的功能为：openEuler Intelligence核心组件部署。
+Thank you for using openEuler Intelligence!
+Current version is 0.10.0.
+The current Chart functionality is: openEuler Intelligence Core Components Deployment.
 
-更多项目动态和分享会议，请关注openEuler sig-intelligence：https://www.openeuler.org/en/sig/sig-detail/?name=sig-intelligence
+For more project updates and sharing sessions, please follow openEuler sig-intelligence: https://www.openeuler.org/en/sig/sig-detail/?name=sig-intelligence

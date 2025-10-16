@@ -2,8 +2,11 @@
 """问题推荐工具的提示词"""
 
 from textwrap import dedent
+from apps.schemas.enum_var import LanguageType
 
-SUGGEST_PROMPT = dedent(r"""
+SUGGEST_PROMPT: dict[LanguageType, str] = {
+    LanguageType.CHINESE: dedent(
+        r"""
     <instructions>
         <instruction>
             根据提供的对话和附加信息（用户倾向、历史问题列表、工具信息等），生成三个预测问题。
@@ -89,4 +92,98 @@ SUGGEST_PROMPT = dedent(r"""
     </domain>
 
     现在，进行问题生成：
-""")
+"""
+    ),
+    LanguageType.ENGLISH: dedent(
+        r"""
+    <instructions>
+        <instruction>
+            Generate three predicted questions based on the provided conversation and additional information (user preferences, historical question list, tool information, etc.).
+            The historical question list displays questions asked by the user before the historical conversation and is for background reference only.
+            The conversation will be given in the <conversation> tag, the user preferences will be given in the <domain> tag,
+            the historical question list will be given in the <history_list> tag, and the tool information will be given in the <tool_info> tag.
+
+            Requirements for generating predicted questions:
+
+                1. Generate three predicted questions in the user's voice. They must be interrogative or imperative sentences and must be less than 30 words.
+
+                2. Predicted questions must be concise, without repetition, unnecessary information, or text other than the question.
+
+                3. Output must be in the following format:
+
+                ```json
+                {
+                    "predicted_questions": [
+                        "Predicted question 1",
+                        "Predicted question 2",
+                        "Predicted question 3"
+                    ]
+                }
+                ```
+        </instruction>
+        <example>
+            <conversation>
+                <user>What are the famous attractions in Hangzhou? </user>
+                <assistant>Hangzhou West Lake is a famous scenic spot in Hangzhou, Zhejiang Province, China, known for its beautiful natural scenery and rich cultural heritage. There are many famous attractions around West Lake, including the renowned Su Causeway, Bai Causeway, Broken Bridge, and the Three Pools Mirroring the Moon. West Lake is renowned for its clear waters and surrounding mountains, making it one of China's most famous lakes. </assistant>
+            </conversation>
+            <history_list>
+                <question>Briefly introduce Hangzhou</question>
+                <question>What are the famous attractions in Hangzhou? </question>
+            </history_list>
+            <tool_info>
+                <name>Scenic Spot Search</name>
+                <description>Scenic Spot Information Search</description>
+            </tool_info>
+            <domain>["Hangzhou", "Tourism"]</domain>
+
+            Now, generate questions:
+
+            {
+                "predicted_questions": [
+                    "What is the ticket price for the West Lake Scenic Area in Hangzhou?",
+                    "What are the famous attractions in Hangzhou?",
+                    "What's the weather like in Hangzhou?"
+                ]
+            }
+        </example>
+    </instructions>
+
+    Here's the actual data:
+
+    <conversation>
+        {% for message in conversation %}
+            <{{ message.role }}>{{ message.content }}</{{ message.role }}>
+        {% endfor %}
+    </conversation>
+
+    <history_list>
+        {% if history %}
+            {% for question in history %}
+                <question>{{ question }}</question>
+            {% endfor %}
+        {% else %}
+            (No history question)
+        {% endif %}
+    </history_list>
+
+    <tool_info>
+        {% if tool %}
+            <name>{{ tool.name }}</name>
+            <description>{{ tool.description }}</description>
+        {% else %}
+            (No tool information)
+        {% endif %}
+    </tool_info>
+
+    <domain>
+        {% if preference %}
+            {{ preference }}
+        {% else %}
+            (no user preference)
+        {% endif %}
+    </domain>
+
+    Now, generate the question:
+    """
+    ),
+}

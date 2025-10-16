@@ -36,9 +36,10 @@ from apps.routers import (
     record,
     service,
     user,
+    parameter
 )
 from apps.scheduler.pool.pool import Pool
-
+logger = logging.getLogger(__name__)
 # 定义FastAPI app
 app = FastAPI(redoc_url=None)
 # 定义FastAPI全局中间件
@@ -66,6 +67,7 @@ app.include_router(llm.router)
 app.include_router(mcp_service.router)
 app.include_router(flow.router)
 app.include_router(user.router)
+app.include_router(parameter.router)
 
 # logger配置
 LOGGER_FORMAT = "%(funcName)s() - %(message)s"
@@ -81,13 +83,43 @@ logging.basicConfig(
 )
 
 
+async def add_defaut_admin_user()->None:
+    """
+    添加无认证用户
+    """
+    from apps.common.mongo import MongoDB
+    from apps.schemas.collection import User
+    mongo = MongoDB()
+    user_collection = mongo.get_collection("user")
+    username = "openEuler"
+    try:
+        await user_collection.insert_one(User(
+            _id=username,
+            is_admin=True,
+            auto_execute=False
+        ).model_dump(by_alias=True))
+    except Exception as e:
+        logger.error(f"[add_no_auth_user] 默认用户 {username} 已存在")
+
+
+async def clear_user_activity() -> None:
+    """清除所有用户的活跃状态"""
+    from apps.services.activity import Activity
+    from apps.common.mongo import MongoDB
+    mongo = MongoDB()
+    activity_collection = mongo.get_collection("activity")
+    await activity_collection.delete_many({})
+    logging.info("清除所有用户活跃状态完成")
+
+
 async def init_resources() -> None:
     """初始化必要资源"""
     WordsCheck()
     await LanceDB().init()
     await Pool.init()
     TokenCalculator()
-
+    await add_defaut_admin_user()
+    await clear_user_activity()
 # 运行
 if __name__ == "__main__":
     # 初始化必要资源

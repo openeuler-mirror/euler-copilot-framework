@@ -1,7 +1,9 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2023-2025. All rights reserved.
 """自动参数填充工具的提示词"""
+from apps.schemas.enum_var import LanguageType
 
-SLOT_GEN_PROMPT = r"""
+SLOT_GEN_PROMPT:dict[LanguageType, str] = {
+    LanguageType.CHINESE: r"""
     <instructions>
         你是一个可以使用工具的AI助手，正尝试使用工具来完成任务。
             目前，你正在生成一个JSON参数对象，以作为调用工具的输入。
@@ -85,4 +87,91 @@ SLOT_GEN_PROMPT = r"""
             {{schema}}
         </tool_call>
         <output>
-    """
+    """,
+    LanguageType.ENGLISH: r"""
+    <instructions>
+        You are an AI assistant capable of using tools to complete tasks.
+            Currently, you are generating a JSON parameter object as input for calling a tool.
+            Please generate a compliant JSON object based on user input, background information, tool information, and JSON Schema content.
+
+            Background information will be provided in <context>, tool information in <tool_info>, JSON Schema in <tool_call>, \
+            and the user's question in <question>.
+            Output the generated JSON object in <output>.
+
+            Requirements:
+            1. Strictly follow the JSON format described in the JSON Schema. Do not fabricate non-existent fields.
+            2. Prioritize using values from user input for JSON fields. If not available, use content from background information.
+            3. Only output the JSON object. Do not include any explanations or additional content.
+            4. Optional fields in the JSON Schema may be omitted.
+            5. Examples are for illustration only. Do not copy content from examples or use them as output.
+            6. Respond in the same language as the user's question by default, unless explicitly requested otherwise.
+        </instructions>
+
+        <example>
+            <context>
+                User asked about today's weather in Hangzhou. AI replied it's sunny, 20℃. User then asks about tomorrow's weather in Hangzhou.
+            </context>
+            <question>
+                What's the weather like in Hangzhou tomorrow?
+            </question>
+            <tool_info>
+                Tool name: check_weather
+                Tool description: Query weather information for specified cities
+            </tool_info>
+            <tool_call>
+                {
+                    "type": "object",
+                    "properties": {
+                        "city": {
+                            "type": "string",
+                            "description": "City name"
+                        },
+                        "date": {
+                            "type": "string",
+                            "description": "Query date"
+                        },
+                        "required": ["city", "date"]
+                    }
+                }
+            </tool_call>
+            <tool_output>
+                {
+                    "city": "Hangzhou",
+                    "date": "tomorrow"
+                }
+            </tool_output>
+        </example>
+
+        <context>
+            Historical summary of tasks given by user, provided in <summary>:
+            <summary>
+                {{summary}}
+
+                Additional itemized information:
+                {{ facts }}
+            </summary>
+
+            During this task, you have called some tools and obtained their outputs, provided in <tool_data>:
+            <tool_data>
+                {% for tool in history_data %}
+                    <tool>
+                        <name>{{ tool.step_name }}</name>
+                        <description>{{ tool.step_description }}</description>
+                        <output>{{ tool.output_data }}</output>
+                    </tool>
+                {% endfor %}
+            </tool_data>
+        </context>
+        <question>
+            {{question}}
+        </question>
+        <tool_info>
+            Tool name: {{current_tool["name"]}}
+            Tool description: {{current_tool["description"]}}
+        </tool_info>
+        <tool_call>
+            {{schema}}
+        </tool_call>
+        <output>
+    """,
+}

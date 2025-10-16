@@ -5,7 +5,7 @@ import json
 import logging
 from collections.abc import AsyncGenerator
 from functools import partial
-from typing import Any
+from typing import Any, ClassVar
 
 import httpx
 from fastapi import status
@@ -15,7 +15,7 @@ from pydantic.json_schema import SkipJsonSchema
 from apps.common.oidc import oidc_provider
 from apps.scheduler.call.api.schema import APIInput, APIOutput
 from apps.scheduler.call.core import CoreCall
-from apps.schemas.enum_var import CallOutputType, ContentType, HTTPMethod
+from apps.schemas.enum_var import CallOutputType, ContentType, HTTPMethod, LanguageType
 from apps.schemas.scheduler import (
     CallError,
     CallInfo,
@@ -59,10 +59,16 @@ class API(CoreCall, input_model=APIInput, output_model=APIOutput):
     body: dict[str, Any] = Field(description="已知的部分请求体", default={})
     query: dict[str, Any] = Field(description="已知的部分请求参数", default={})
 
-    @classmethod
-    def info(cls) -> CallInfo:
-        """返回Call的名称和描述"""
-        return CallInfo(name="API调用", description="向某一个API接口发送HTTP请求，获取数据。")
+    i18n_info: ClassVar[dict[str, dict]] = {
+        LanguageType.CHINESE: {
+            "name": "API调用",
+            "description": "向某一个API接口发送HTTP请求，获取数据",
+        },
+        LanguageType.ENGLISH: {
+            "name": "API Call",
+            "description": "Send an HTTP request to an API to obtain data",
+        },
+    }
 
     async def _init(self, call_vars: CallVars) -> APIInput:
         """初始化API调用工具"""
@@ -99,8 +105,10 @@ class API(CoreCall, input_model=APIInput, output_model=APIOutput):
             body=self.body,
         )
 
-    async def _exec(self, input_data: dict[str, Any]) -> AsyncGenerator[CallOutputChunk, None]:
-        """调用API，然后返回LLM解析后的数据"""
+    async def _exec(
+        self, input_data: dict[str, Any], language: LanguageType = LanguageType.CHINESE
+    ) -> AsyncGenerator[CallOutputChunk, None]:
+        """调用API，然后返回LLM解析后的数据""" 
         self._client = httpx.AsyncClient(timeout=self.timeout)
         input_obj = APIInput.model_validate(input_data)
         try:
@@ -112,7 +120,9 @@ class API(CoreCall, input_model=APIInput, output_model=APIOutput):
         finally:
             await self._client.aclose()
 
-    async def _make_api_call(self, data: APIInput, files: dict[str, tuple[str, bytes, str]]) -> httpx.Response:
+    async def _make_api_call(
+        self, data: APIInput, files: dict[str, tuple[str, bytes, str]]
+    ) -> httpx.Response:
         """组装API请求"""
         # 获取必要参数
         if self._auth:

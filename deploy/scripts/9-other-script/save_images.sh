@@ -1,34 +1,34 @@
 #!/bin/bash
 
-# 颜色定义
+# Color definitions
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
-NC='\033[0m' # 恢复默认颜色
+NC='\033[0m' # Reset color
 
-# 默认配置
-eulercopilot_version="0.9.6"
+# Default configuration
+eulercopilot_version="0.10.0"
 ARCH_SUFFIX=""
 OUTPUT_DIR="/home/eulercopilot/images/${eulercopilot_version}"
 
-# 显示帮助信息
+# Show help information
 show_help() {
-    echo -e "${YELLOW}使用说明:${NC}"
-    echo -e "  $0 [选项]"
+    echo -e "${YELLOW}Usage:${NC}"
+    echo -e "  $0 [options]"
     echo -e ""
-    echo -e "${YELLOW}选项:${NC}"
-    echo -e "  --help            显示此帮助信息"
-    echo -e "  --version <版本>  指定 EulerCopilot 版本 (默认: ${eulercopilot_version})"
-    echo -e "  --arch <架构>     指定系统架构 (arm/x86, 默认自动检测)"
+    echo -e "${YELLOW}Options:${NC}"
+    echo -e "  --help            Show this help message"
+    echo -e "  --version <version> Specify openEuler Intelligence version (default: ${eulercopilot_version})"
+    echo -e "  --arch <arch>     Specify system architecture (arm/x86, default: auto-detect)"
     echo -e ""
-    echo -e "${YELLOW}示例:${NC}"
+    echo -e "${YELLOW}Examples:${NC}"
     echo -e "  $0 --version ${eulercopilot_version} --arch arm"
     echo -e "  $0 --help"
     exit 0
 }
 
-# 解析命令行参数
+# Parse command line arguments
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --help)
@@ -40,7 +40,7 @@ while [[ $# -gt 0 ]]; do
                 OUTPUT_DIR="/home/eulercopilot/images/${eulercopilot_version}"
                 shift
             else
-                echo -e "${RED}错误: --version 需要指定一个版本号${NC}"
+                echo -e "${RED}Error: --version requires a version number${NC}"
                 exit 1
             fi
             ;;
@@ -51,25 +51,25 @@ while [[ $# -gt 0 ]]; do
                         ARCH_SUFFIX="$2"
                         ;;
                     *)
-                        echo -e "${RED}错误: 不支持的架构 '$2'，必须是 arm 或 x86${NC}"
+                        echo -e "${RED}Error: Unsupported architecture '$2', must be arm or x86${NC}"
                         exit 1
                         ;;
                 esac
                 shift
             else
-                echo -e "${RED}错误: --arch 需要指定一个架构 (arm/x86)${NC}"
+                echo -e "${RED}Error: --arch requires an architecture (arm/x86)${NC}"
                 exit 1
             fi
             ;;
         *)
-            echo -e "${RED}未知参数: $1${NC}"
+            echo -e "${RED}Unknown parameter: $1${NC}"
             show_help
             ;;
     esac
     shift
 done
 
-# 自动检测架构（如果未通过参数指定）
+# Auto-detect architecture (if not specified via parameter)
 if [ -z "$ARCH_SUFFIX" ]; then
     ARCH=$(uname -m)
     case $ARCH in
@@ -80,7 +80,7 @@ if [ -z "$ARCH_SUFFIX" ]; then
             ARCH_SUFFIX="arm"
             ;;
         *)
-            echo -e "${RED}不支持的架构: $ARCH${NC}"
+            echo -e "${RED}Unsupported architecture: $ARCH${NC}"
             exit 1
             ;;
     esac
@@ -88,7 +88,7 @@ fi
 
 mkdir -p "$OUTPUT_DIR"
 
-# 镜像列表（使用版本变量）
+# Image list (using version variable)
 BASE_IMAGES=(
     "hub.oepkgs.net/neocopilot/euler-copilot-framework:${eulercopilot_version}-arm"
     "hub.oepkgs.net/neocopilot/euler-copilot-web:${eulercopilot_version}-arm"
@@ -104,7 +104,7 @@ BASE_IMAGES=(
     "hub.oepkgs.net/neocopilot/secret_inject:dev-arm"
 )
 
-# 预定义文件名列表（与BASE_IMAGES顺序严格对应）
+# Predefined filename list (strictly corresponding to BASE_IMAGES order)
 FILE_NAMES=(
     "euler-copilot-framework.tar"
     "euler-copilot-web.tar"
@@ -120,53 +120,53 @@ FILE_NAMES=(
     "secret_inject.tar"
 )
 
-# 校验列表一致性
+# Validate list consistency
 if [ ${#BASE_IMAGES[@]} -ne ${#FILE_NAMES[@]} ]; then
-    echo -e "${RED}错误：镜像列表与文件名列表数量不匹配${NC}"
+    echo -e "${RED}Error: Image list and filename list count mismatch${NC}"
     exit 1
 fi
 
-# 初始化计数器
+# Initialize counters
 total=${#BASE_IMAGES[@]}
 success=0
 fail=0
 
-# 镜像处理函数
+# Image processing function
 process_image() {
     local raw_image=$1
     local filename=$2
 
-    # 调整架构标签
+    # Adjust architecture tag
     local adjusted_image="${raw_image/-arm/-${ARCH_SUFFIX}}"
     local output_path="${OUTPUT_DIR}/${filename}"
 
-    echo -e "\n${BLUE}正在处理：${adjusted_image}${NC}"
+    echo -e "\n${BLUE}Processing: ${adjusted_image}${NC}"
 
-    # 拉取镜像
+    # Pull image
     if ! docker pull "$adjusted_image"; then
-        echo -e "${RED}拉取失败：${adjusted_image}${NC}"
+        echo -e "${RED}Pull failed: ${adjusted_image}${NC}"
         return 1
     fi
 
-    # 保存镜像
+    # Save image
     if docker save -o "$output_path" "$adjusted_image"; then
-        echo -e "${GREEN}镜像已保存到：${output_path}${NC}"
+        echo -e "${GREEN}Image saved to: ${output_path}${NC}"
         return 0
     else
-        echo -e "${RED}保存失败：${output_path}${NC}"
+        echo -e "${RED}Save failed: ${output_path}${NC}"
         return 1
     fi
 }
 
-# 打印执行信息
+# Print execution information
 echo -e "${BLUE}==============================${NC}"
-echo -e "${YELLOW}架构\t: ${ARCH_SUFFIX}${NC}"
-echo -e "${YELLOW}版本\t: ${eulercopilot_version}${NC}"
-echo -e "${YELLOW}存储目录\t: ${OUTPUT_DIR}${NC}"
-echo -e "${YELLOW}镜像数量\t: ${total}${NC}"
+echo -e "${YELLOW}Architecture\t: ${ARCH_SUFFIX}${NC}"
+echo -e "${YELLOW}Version\t\t: ${eulercopilot_version}${NC}"
+echo -e "${YELLOW}Storage directory\t: ${OUTPUT_DIR}${NC}"
+echo -e "${YELLOW}Image count\t: ${total}${NC}"
 echo -e "${BLUE}==============================${NC}"
 
-# 遍历处理所有镜像
+# Process all images
 for index in "${!BASE_IMAGES[@]}"; do
     if process_image "${BASE_IMAGES[$index]}" "${FILE_NAMES[$index]}"; then
         ((success++))
@@ -175,13 +175,13 @@ for index in "${!BASE_IMAGES[@]}"; do
     fi
 done
 
-# 输出最终结果
+# Output final result
 echo -e "\n${BLUE}==============================${NC}"
-echo -e "${GREEN}操作完成！${NC}"
+echo -e "${GREEN}Operation completed!${NC}"
 echo -e "${BLUE}==============================${NC}"
-echo -e "${GREEN}成功\t: ${success} 个${NC}"
-echo -e "${RED}失败\t: ${fail} 个${NC}"
+echo -e "${GREEN}Success\t: ${success}${NC}"
+echo -e "${RED}Failed\t: ${fail}${NC}"
 echo -e "${BLUE}==============================${NC}"
 
-# 返回状态码
+# Return status code
 exit $((fail > 0 ? 1 : 0))

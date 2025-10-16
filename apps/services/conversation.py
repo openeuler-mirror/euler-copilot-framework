@@ -40,6 +40,7 @@ class ConversationManager:
 
     @staticmethod
     async def add_conversation_by_user_sub(
+            title: str,
             user_sub: str, app_id: str, llm_id: str, kb_ids: list[str],
             *, debug: bool) -> Conversation | None:
         """通过用户ID新建对话"""
@@ -50,7 +51,7 @@ class ConversationManager:
                 icon=llm_provider_dict["ollama"]["icon"],
             )
         else:
-            llm = await LLMManager.get_llm_by_id(user_sub, llm_id)
+            llm = await LLMManager.get_llm_by_user_sub_and_id(user_sub, llm_id)
             if llm is None:
                 logger.error("[ConversationManager] 获取大模型失败")
                 return None
@@ -59,7 +60,11 @@ class ConversationManager:
                 model_name=llm.model_name,
             )
         kb_item_list = []
-        team_kb_list = await KnowledgeBaseManager.get_team_kb_list_from_rag(user_sub, None, None)
+        try:
+            team_kb_list = await KnowledgeBaseManager.get_team_kb_list_from_rag(user_sub, None, None)
+        except:
+            logger.error("[ConversationManager] 获取团队知识库列表失败")
+            team_kb_list = []
         for team_kb in team_kb_list:
             for kb in team_kb["kbList"]:
                 if str(kb["kbId"]) in kb_ids:
@@ -71,6 +76,7 @@ class ConversationManager:
         conversation_id = str(uuid.uuid4())
         conv = Conversation(
             _id=conversation_id,
+            title=title,
             user_sub=user_sub,
             app_id=app_id,
             llm=llm_item,
@@ -109,11 +115,10 @@ class ConversationManager:
         """通过ConversationID更新对话信息"""
         mongo = MongoDB()
         conv_collection = mongo.get_collection("conversation")
-        result = await conv_collection.update_one(
+        await conv_collection.update_one(
             {"_id": conversation_id, "user_sub": user_sub},
             {"$set": data},
         )
-        return result.modified_count > 0
 
     @staticmethod
     async def delete_conversation_by_conversation_id(user_sub: str, conversation_id: str) -> None:
@@ -136,4 +141,4 @@ class ConversationManager:
             await record_group_collection.delete_many({"conversation_id": conversation_id}, session=session)
             await session.commit_transaction()
 
-        await TaskManager.delete_tasks_by_conversation_id(conversation_id)
+        await TaskManager.delete_tasks_and_flow_context_by_conversation_id(conversation_id)

@@ -2,8 +2,10 @@
 """记忆提取工具的提示词"""
 
 from textwrap import dedent
-
-DOMAIN_PROMPT: str = dedent(r"""
+from apps.schemas.enum_var import LanguageType
+DOMAIN_PROMPT: dict[str, str] = {
+    LanguageType.CHINESE: dedent(
+        r"""
     <instructions>
       <instruction>
         根据对话上文，提取推荐系统所需的关键词标签，要求：
@@ -35,8 +37,48 @@ DOMAIN_PROMPT: str = dedent(r"""
     {% endfor %}
     </conversation>
     <output>
-""")
-FACTS_PROMPT: str = dedent(r"""
+"""
+    ),
+    LanguageType.ENGLISH: dedent(
+        r"""
+    <instructions>
+      <instruction>
+        Extract keywords for recommendation system based on the previous conversation, requirements:
+        1. Entity nouns, technical terms, time range, location, product, etc. can be keyword tags
+        2. At least one keyword is related to the topic of the conversation
+        3. Tags should be concise and not repeated, not exceeding 10 characters
+        4. Output in JSON format, do not include XML tags, do not include any explanatory notes
+      </instruction>
+
+      <example>
+        <conversation>
+          <user>What's the weather like in Beijing?</user>
+          <assistant>Beijing is sunny today.</assistant>
+        </conversation>
+
+        <output>
+          {
+            "keywords": ["Beijing", "weather"]
+          }
+        </output>
+      </example>
+    </instructions>
+
+    <conversation>
+    {% for item in conversation %}
+      <{{item['role']}}>
+        {{item['content']}}
+      </{{item['role']}}>
+    {% endfor %}
+    </conversation>
+    <output>
+"""
+    ),
+}
+
+FACTS_PROMPT: dict[str, str] = {
+    LanguageType.CHINESE: dedent(
+        r"""
     <instructions>
         <instruction>
             从对话中提取关键信息，并将它们组织成独一无二的、易于理解的事实，包含用户偏好、关系、实体等有用信息。
@@ -80,4 +122,53 @@ FACTS_PROMPT: str = dedent(r"""
     {% endfor %}
     </conversation>
     <output>
-""")
+"""
+    ),
+    LanguageType.ENGLISH: dedent(
+        r"""
+    <instructions>
+        <instruction>
+            Extract key information from the conversation and organize it into unique, easily understandable facts, including user preferences, relationships, entities, etc.
+            The following are the types of information you need to pay attention to and detailed instructions on how to handle input data.
+
+            **Types of information you need to pay attention to**
+            1. Entities: Entities involved in the conversation. For example: names, locations, organizations, events, etc.
+            2. Preferences: Attitudes towards entities. For example: like, dislike, etc.
+            3. Relationships: Relationships between users and entities, or between two entities. For example: include, parallel, mutually exclusive, etc.
+            4. Actions: Specific actions that affect entities. For example: query, search, browse, click, etc.
+
+            **Requirements**
+            1. Facts must be accurate and can only be extracted from the conversation. Do not include the information in the example in the output.
+            2. Facts must be clear, concise, and easy to understand. Must be less than 30 words.
+            3. Output in the following JSON format:
+
+            {
+                "facts": ["Fact 1", "Fact 2", "Fact 3"]
+            }
+        </instruction>
+
+        <example>
+            <conversation>
+                <user>What are the attractions in Hangzhou West Lake?</user>
+                <assistant>West Lake in Hangzhou, Zhejiang Province, China, is a famous scenic spot known for its beautiful natural scenery and rich cultural heritage. Many notable attractions surround West Lake, including the renowned Su Causeway, Bai Causeway, Broken Bridge, and the Three Pools Mirroring the Moon. Famous for its crystal-clear waters and the surrounding mountains, West Lake is one of China's most famous lakes. </assistant>
+            </conversation>
+
+            <output>
+            {
+                "facts": ["Hangzhou West Lake has famous attractions such as Suzhou Embankment, Bai Budi, Qiantang Bridge, San Tang Yue, etc."]
+            }
+            </output>
+        </example>
+    </instructions>
+
+    <conversation>
+    {% for item in conversation %}
+      <{{item['role']}}>
+        {{item['content']}}
+      </{{item['role']}}>
+    {% endfor %}
+    </conversation>
+    <output>
+"""
+    ),
+}
