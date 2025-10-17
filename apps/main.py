@@ -1,8 +1,9 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2023-2025. All rights reserved.
 """主程序"""
 
-import asyncio
 import logging
+from collections.abc import AsyncGenerator
+from contextlib import asynccontextmanager
 
 import uvicorn
 from fastapi import FastAPI
@@ -33,9 +34,22 @@ from .routers import (
 )
 from .scheduler.pool.pool import pool
 
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
+    """应用生命周期管理"""
+    # 启动时初始化资源
+    await postgres.init()
+    await pool.init()
+    yield
+    # 关闭时释放资源
+    await postgres.close()
+
+
 # 定义FastAPI app
-app = FastAPI(redoc_url=None)
+app = FastAPI(redoc_url=None, lifespan=lifespan)
 Profiler(app)
+
 # 定义FastAPI全局中间件
 app.add_middleware(
     CORSMiddleware,
@@ -81,15 +95,7 @@ logging.basicConfig(
 )
 
 
-async def init_resources() -> None:
-    """初始化必要资源"""
-    await postgres.init()
-    await pool.init()
-
 # 运行
 if __name__ == "__main__":
-    # 初始化必要资源
-    asyncio.run(init_resources())
-
     # 启动FastAPI
     uvicorn.run(app, host="0.0.0.0", port=8002, log_level="info", log_config=None)

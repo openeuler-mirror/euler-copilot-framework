@@ -21,28 +21,6 @@ API Call 模块是 Scheduler 框架中的核心调用工具，用于向外部 AP
 
 ```mermaid
 classDiagram
-    class CoreCall {
-        <<abstract>>
-        +name: str
-        +description: str
-        +node: NodeInfo
-        +enable_filling: bool
-        +to_user: bool
-        +info(language) CallInfo
-        +instance(executor, node) Self
-        +exec(executor, input_data) AsyncGenerator
-        #_init(call_vars) DataBase
-        #_exec(input_data) AsyncGenerator
-        #_after_exec(input_data) None
-        #_llm(messages, streaming) AsyncGenerator
-        #_json(messages, schema) dict
-    }
-
-    class DataBase {
-        <<abstract>>
-        +model_json_schema(override, kwargs) dict
-    }
-
     class API {
         +enable_filling: bool
         +url: str
@@ -75,11 +53,12 @@ classDiagram
         +result: dict
     }
 
-    CoreCall <|-- API
-    DataBase <|-- APIInput
-    DataBase <|-- APIOutput
     API ..> APIInput : uses
     API ..> APIOutput : produces
+
+    note for API "继承自CoreCall基类<br/>详见core.md"
+    note for APIInput "继承自DataBase<br/>详见core.md"
+    note for APIOutput "继承自DataBase<br/>详见core.md"
 ```
 
 ## 执行流程图

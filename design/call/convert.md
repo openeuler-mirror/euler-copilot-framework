@@ -120,14 +120,6 @@ apps/scheduler/call/convert/
 
 ```mermaid
 classDiagram
-    class CoreCall {
-        +input_model
-        +output_model
-        +info()
-        +_init()
-        +_exec()
-    }
-    
     class Convert {
         +text_template: str | None
         +data_template: str | None
@@ -135,44 +127,27 @@ classDiagram
         +_init()
         +_exec()
     }
-    
+
     class ConvertInput {
         +text_template: str | None
         +data_template: str | None
         +extras: dict[str, Any]
     }
-    
+
     class ConvertOutput {
         +text: str
         +data: dict
     }
-    
-    class CallVars {
-        +language: LanguageType
-        +ids: CallIds
-        +question: str
-        +step_data: dict[str, ExecutorHistory]
-        +step_order: list[str]
-        +background: ExecutorBackground
-        +thinking: str
-    }
-    
-    class CallOutputChunk {
-        +type: CallOutputType
-        +content: Any
-    }
-    
+
     class SandboxedEnvironment {
         +from_string()
     }
-    
-    Convert --> CoreCall
+
     Convert --> ConvertInput
     Convert --> ConvertOutput
-    Convert --> CallVars
-    Convert --> CallOutputChunk
     Convert --> SandboxedEnvironment
-    CallOutputChunk --> CallOutputType
+
+    note for Convert "继承自CoreCall基类<br/>详见core.md"
 ```
 
 ### 4.2 详细字段说明
@@ -192,17 +167,17 @@ classDiagram
 | `text` | `str` | 是 | 格式化后的文字信息 | `"当前时间：2023-01-01 12:00:00"` |
 | `data` | `dict` | 是 | 格式化后的结果数据 | `{"question": "你好", "time": "2023-01-01 12:00:00"}` |
 
-#### 4.2.3 CallVars 系统变量结构
+#### 4.2.3 extras 扩展变量结构
 
-| 字段名 | 类型 | 必需 | 说明 | 示例值 |
-|--------|------|------|------|--------|
-| `thinking` | `str` | 是 | 上下文思考信息 | `"用户想了解当前时间，我需要调用时间工具获取信息。"` |
-| `question` | `str` | 是 | 改写后的用户输入问题 | `"现在几点了？"` |
-| `step_data` | `dict[str, ExecutorHistory]` | 是 | 历史工具的结构化数据 | `{"time_tool": ExecutorHistory(...)` |
-| `step_order` | `list[str]` | 是 | 历史工具的执行顺序 | `["time_tool", "llm"]` |
-| `background` | `ExecutorBackground` | 是 | 执行器的背景信息 | `ExecutorBackground(...)` |
-| `ids` | `CallIds` | 是 | 调用相关的ID信息 | `CallIds(...)` |
-| `language` | `LanguageType` | 是 | 当前使用的语言类型 | `LanguageType.CHINESE` |
+`extras` 字段包含模板渲染所需的所有变量，来源于 CallVars 系统变量(详见[core.md](core.md#callvars-系统变量结构))。主要包括：
+
+| 字段名 | 说明 |
+|--------|------|
+| `time` | 当前时间（亚洲/上海时区） |
+| `history` | 历史步骤数据字典 |
+| `question` | 用户问题 |
+| `background` | 背景信息 |
+| `ids` | ID信息集合 |
 
 ## 5. 流程图与时序图
 

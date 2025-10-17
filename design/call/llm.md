@@ -162,63 +162,28 @@ LLM调用模块使用了两种主要的提示词模板，定义在`prompt.py`文
 
 ```mermaid
 classDiagram
-    %% 核心数据结构说明
-    class DataBase {
-        +model_json_schema(override: dict[str, Any] | None = None, **kwargs: Any) -> dict[str, Any]
-        // 所有Call输入输出的基类，提供动态填充Schema的能力
-    }
-    
     class LLMInput {
         +message: list[dict[str, str]]
         // LLM工具调用的输入数据结构
     }
-    
+
     class LLMOutput {
         // LLM工具调用的输出数据结构（当前为空实现）
     }
-    
-    class CallVars {
-        +thinking: str
-        +question: str
-        +step_data: dict[str, ExecutorHistory]
-        +step_order: list[str]
-        +background: ExecutorBackground
-        +ids: CallIds
-        +language: LanguageType
-        // 由Executor填充的系统变量，包含调用上下文信息
-    }
-    
-    class ExecutorBackground {
-        +num: int
-        +conversation: list[dict[str, str]]
-        +facts: list[str]
-        // 执行器的背景信息
-    }
-    
-    class CallIds {
-        +task_id: uuid.UUID
-        +executor_id: str
-        +session_id: str | None
-        +app_id: uuid.UUID | None
-        +user_sub: str
-        +conversation_id: uuid.UUID | None
-        // 调用相关的ID信息
-    }
-    
+
     class CallOutputChunk {
         +type: CallOutputType
         +content: str | dict[str, Any]
         // LLM工具的流式输出数据结构
     }
-    
-    LLMInput --|> DataBase
-    LLMOutput --|> DataBase
-    CallVars --> ExecutorBackground
-    CallVars --> CallIds
+
     LLM --> LLMInput
     LLM --> LLMOutput
-    LLM --> CallVars
     LLM --> CallOutputChunk
+
+    note for LLM "继承自CoreCall基类<br/>详见core.md"
+    note for LLMInput "继承自DataBase<br/>详见core.md"
+    note for LLMOutput "继承自DataBase<br/>详见core.md"
 ```
 
 ### 5.2 详细字段说明
@@ -236,36 +201,9 @@ classDiagram
 
 #### 5.2.2 CallVars 系统变量结构
 
-| 字段名 | 类型 | 必需 | 说明 | 示例值 |
-|--------|------|------|------|--------|
-| `thinking` | `str` | ✅ | 上下文思考信息，包含AI的推理过程 | `"用户想了解天气情况，我需要调用天气工具获取信息。"` |
-| `question` | `str` | ✅ | 改写后的用户输入问题 | `"今天北京的天气怎么样？"` |
-| `step_data` | `dict[str, ExecutorHistory]` | ✅ | 历史工具的结构化数据字典，key为工具名称 | `{"weather": ExecutorHistory(...)}` |
-| `step_order` | `list[str]` | ✅ | 历史工具的执行顺序列表 | `["weather", "llm"]` |
-| `background` | `ExecutorBackground` | ✅ | 执行器的背景信息对象 | `ExecutorBackground(...)` |
-| `ids` | `CallIds` | ✅ | 调用相关的ID信息对象 | `CallIds(...)` |
-| `language` | `LanguageType` | ✅ | 当前使用的语言类型 | `LanguageType.CHINESE` |
+LLM模块使用CallVars获取执行上下文信息，详细结构请参见[core.md - CallVars系统变量结构](core.md#callvars-系统变量结构)。
 
-#### 5.2.3 ExecutorBackground 背景信息结构
-
-| 字段名 | 类型 | 必需 | 说明 | 示例值 |
-|--------|------|------|------|--------|
-| `num` | `int` | ✅ | 对话记录最大数量限制 | `10` |
-| `conversation` | `list[dict[str, str]]` | ✅ | 历史对话记录列表，每个元素包含role和content | `[{"role": "user", "content": "你好"}, {"role": "assistant", "content": "你好！有什么可以帮助您的吗？"}]` |
-| `facts` | `list[str]` | ✅ | 当前执行器的背景事实信息列表 | `["用户位于北京", "当前时间是2024年"]` |
-
-#### 5.2.4 CallIds ID信息结构
-
-| 字段名 | 类型 | 必需 | 说明 | 示例值 |
-|--------|------|------|------|--------|
-| `task_id` | `uuid.UUID` | ✅ | 当前任务的唯一标识符 | `123e4567-e89b-12d3-a456-426614174000` |
-| `executor_id` | `str` | ✅ | Flow执行器的ID，对应Flow ID | `"flow_001"` |
-| `session_id` | `str \| None` | ❌ | 用户会话ID，可能为空 | `"session_123"` 或 `None` |
-| `app_id` | `uuid.UUID \| None` | ❌ | 应用ID，可能为空 | `123e4567-e89b-12d3-a456-426614174001` 或 `None` |
-| `user_sub` | `str` | ✅ | 用户唯一标识符 | `"user_12345"` |
-| `conversation_id` | `uuid.UUID \| None` | ❌ | 对话ID，可能为空 | `123e4567-e89b-12d3-a456-426614174002` 或 `None` |
-
-#### 5.2.5 CallOutputChunk 输出块结构
+#### 5.2.3 CallOutputChunk 输出块结构
 
 | 字段名 | 类型 | 必需 | 说明 | 示例值 |
 |--------|------|------|------|--------|
@@ -280,16 +218,13 @@ classDiagram
 
 ### 5.3 数据类型枚举
 
-#### LanguageType 语言类型
-
-- `CHINESE`: 中文
-- `ENGLISH`: 英文
-
 #### CallOutputType 输出类型
 
 - `TEXT`: 文本输出
 - `DATA`: 数据输出
 - `ERROR`: 错误输出
+
+关于LanguageType等其他枚举类型，请参见[core.md](core.md#数据结构详解)。
 
 ## 6. 调用流程图
 

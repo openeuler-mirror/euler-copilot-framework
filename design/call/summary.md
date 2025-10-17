@@ -29,21 +29,16 @@ Summary工具涉及多个数据模型，它们之间的关系如下：
 
 ```mermaid
 classDiagram
-    class DataBase {
-        <<abstract>>
-        +model_json_schema() dict
-    }
-    
     class SummaryOutput {
         +summary: str
     }
-    
+
     class ExecutorBackground {
         +num: int
         +conversation: list[dict[str, str]]
         +facts: list[str]
     }
-    
+
     class Summary {
         +context: ExecutorBackground
         +info() CallInfo
@@ -52,18 +47,19 @@ classDiagram
         +_exec() AsyncGenerator
         +exec() AsyncGenerator
     }
-    
-    DataBase <|-- SummaryOutput : 继承
+
     Summary --> ExecutorBackground : 使用
     Summary --> SummaryOutput : 输出
-    Summary --> DataBase : 输入
+
+    note for Summary "继承自CoreCall基类<br/>输入使用DataBase<br/>详见core.md"
+    note for SummaryOutput "继承自DataBase<br/>详见core.md"
+    note for ExecutorBackground "详见core.md"
 ```
 
 #### 数据模型说明
 
-- **DataBase**: 所有Call的输入基类，提供通用的数据验证和序列化功能
-- **SummaryOutput**: 继承自DataBase，包含总结内容的输出模型
-- **ExecutorBackground**: 执行器背景信息，包含对话记录和关键事实
+- **SummaryOutput**: 包含总结内容的输出模型(继承自DataBase，详见[core.md](core.md))
+- **ExecutorBackground**: 执行器背景信息，包含对话记录和关键事实(详见[core.md](core.md))
 
 #### 数据流转关系
 

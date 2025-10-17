@@ -16,7 +16,7 @@ Choice 模块是一个条件分支选择器,用于根据程序化条件判断或
 
 模块位于 `apps/scheduler/call/choice/` 目录下,主要包含以下文件:
 
-- [choice.py](../../apps/scheduler/call/choice/choice.py) - Choice 工具核心实现
+- [choice.py](../../apps/scheduler/call/choice/choice.py) - Choice 工具核心实现(继承自CoreCall基类，详见[core.md](core.md))
 - [schema.py](../../apps/scheduler/call/choice/schema.py) - 数据结构定义
 - [condition_handler.py](../../apps/scheduler/call/choice/condition_handler.py) - 条件处理器
 

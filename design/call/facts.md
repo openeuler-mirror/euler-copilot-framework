@@ -55,33 +55,27 @@ graph TB
 
 ```mermaid
 classDiagram
-    class DataBase {
-        <<abstract>>
-    }
-    
     class FactsInput {
         +str user_sub
         +list~dict~ message
     }
-    
+
     class FactsOutput {
         +list~str~ facts
         +list~str~ domain
     }
-    
+
     class FactsGen {
         +list~str~ facts
     }
-    
+
     class DomainGen {
         +list~str~ keywords
     }
-    
-    DataBase <|-- FactsInput
-    DataBase <|-- FactsOutput
+
     FactsGen -- FactsOutput : 生成
     DomainGen -- FactsOutput : 生成
-    
+
     note for FactsInput "用户ID和对话消息列表"
     note for FactsOutput "包含提取的事实和领域标签"
     note for FactsGen "LLM生成的事实条目"
@@ -208,7 +202,7 @@ graph TB
 
 ### 依赖组件
 
-- `CoreCall` - 基础调用框架
+- `CoreCall` - 基础调用框架(详见[core.md](core.md))
 - `UserTagManager` - 用户标签管理服务
 - `LLM` - 大语言模型服务
 - `Jinja2` - 模板渲染引擎
