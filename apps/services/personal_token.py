@@ -1,7 +1,6 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2023-2025. All rights reserved.
 """API Key管理"""
 
-import hashlib
 import logging
 import uuid
 
@@ -46,14 +45,15 @@ class PersonalTokenManager:
         :param user_sub: 用户ID
         :return: 更新后的Personal Token
         """
-        personal_token = hashlib.sha256(str(uuid.uuid4().hex).encode()).hexdigest()[:16]
+        personal_token = uuid.uuid4().hex
+        personal_token_with_prefix = f"sk-{personal_token}"
         try:
             async with postgres.session() as session:
                 await session.execute(
-                    update(User).where(User.id == user_sub).values(personal_token=personal_token),
+                    update(User).where(User.id == user_sub).values(personal_token=personal_token_with_prefix),
                 )
                 await session.commit()
         except Exception:
             logger.exception("[PersonalTokenManager] 更新Personal Token失败")
             return None
-        return personal_token
+        return personal_token_with_prefix
