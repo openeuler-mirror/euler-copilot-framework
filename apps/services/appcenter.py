@@ -146,20 +146,20 @@ class AppCenterManager:
 
             # 根据搜索类型加入搜索条件
             if filter_type == AppFilterType.ALL:
-                filtered_apps = select(app_data).where(App.isPublished == True).cte()  # noqa: E712
+                filtered_apps = select(app_data).where(app_data.c.isPublished == True).cte()  # noqa: E712
             elif filter_type == AppFilterType.USER:
-                filtered_apps = select(app_data).where(App.author == user_sub).cte()
+                filtered_apps = select(app_data).where(app_data.c.author == user_sub).cte()
             elif filter_type == AppFilterType.FAVORITE:
                 filtered_apps = select(app_data).where(
                     and_(
-                        App.id.in_(favapps_sql),
-                        App.isPublished == True,  # noqa: E712
+                        app_data.c.id.in_(favapps_sql),
+                        app_data.c.isPublished == True,  # noqa: E712
                     ),
                 ).cte()
 
             # 根据应用类型加入搜索条件
             if app_type is not None:
-                type_apps = select(filtered_apps).where(App.appType == AppType(app_type)).cte()
+                type_apps = select(filtered_apps).where(filtered_apps.c.appType == AppType(app_type)).cte()
             else:
                 type_apps = filtered_apps
 
@@ -167,9 +167,9 @@ class AppCenterManager:
             if keyword:
                 keyword_apps = select(type_apps).where(
                     or_(
-                        App.name.ilike(f"%{keyword}%"),
-                        App.description.ilike(f"%{keyword}%"),
-                        App.author.ilike(f"%{keyword}%"),
+                        type_apps.c.name.ilike(f"%{keyword}%"),
+                        type_apps.c.description.ilike(f"%{keyword}%"),
+                        type_apps.c.author.ilike(f"%{keyword}%"),
                     ),
                 ).cte()
             else:
@@ -179,24 +179,24 @@ class AppCenterManager:
             total_apps = (await session.scalars(
                 select(func.count()).select_from(keyword_apps),
             )).one()
-            result: list[App] = list((await session.scalars(
-                select(keyword_apps).order_by(App.updatedAt.desc())
+            result = list((await session.execute(
+                select(keyword_apps).order_by(keyword_apps.c.updatedAt.desc())
                 .offset((page - 1) * SERVICE_PAGE_SIZE).limit(SERVICE_PAGE_SIZE),
             )).all())
 
             # 构建返回的应用卡片列表
             app_cards = [
                 AppCenterCardItem(
-                    appId=app.id,
-                    appType=app.appType,
-                    icon=app.icon,
-                    name=app.name,
-                    description=app.description,
-                    author=app.author,
-                    favorited=(app.id in favapps),
-                    published=app.isPublished,
+                    appId=row.id,
+                    appType=row.appType,
+                    icon=row.icon,
+                    name=row.name,
+                    description=row.description,
+                    author=row.author,
+                    favorited=(row.id in favapps),
+                    published=row.isPublished,
                 )
-                for app in result
+                for row in result
             ]
 
         return app_cards, total_apps
