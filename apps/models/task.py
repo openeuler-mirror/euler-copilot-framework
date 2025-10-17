@@ -67,7 +67,7 @@ class Task(Base):
     """任务"""
 
     __tablename__ = "framework_task"
-    userSub: Mapped[str] = mapped_column(String(255), ForeignKey("framework_user.sub"))  # noqa: N815
+    userSub: Mapped[str] = mapped_column(String(255), ForeignKey("framework_user.userSub"))  # noqa: N815
     """用户ID"""
     conversationId: Mapped[uuid.UUID | None] = mapped_column(  # noqa: N815
         UUID(as_uuid=True), ForeignKey("framework_conversation.id"), nullable=True,
