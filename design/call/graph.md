@@ -32,26 +32,6 @@ Graph Call 模块是 Scheduler 框架中的图表渲染工具,用于将 SQL 查�
 
 ```mermaid
 classDiagram
-    class CoreCall {
-        <<abstract>>
-        +name: str
-        +description: str
-        +node: NodeInfo
-        +enable_filling: bool
-        +to_user: bool
-        +info(language) CallInfo
-        +instance(executor, node) Self
-        +exec(executor, input_data) AsyncGenerator
-        #_init(call_vars) DataBase
-        #_exec(input_data) AsyncGenerator
-        #_llm(messages, streaming) AsyncGenerator
-    }
-
-    class DataBase {
-        <<abstract>>
-        +model_json_schema(override, kwargs) dict
-    }
-
     class Graph {
         +dataset_key: str
         +info(language) CallInfo
@@ -92,14 +72,15 @@ classDiagram
         +scale_type: Literal
     }
 
-    CoreCall <|-- Graph
-    DataBase <|-- RenderInput
-    DataBase <|-- RenderOutput
     RenderOutput *-- RenderFormat
     RenderFormat *-- RenderAxis
     Graph ..> RenderInput : uses
     Graph ..> RenderOutput : produces
     Graph ..> RenderStyleResult : uses
+
+    note for Graph "继承自CoreCall基类<br/>详见core.md"
+    note for RenderInput "继承自DataBase<br/>详见core.md"
+    note for RenderOutput "继承自DataBase<br/>详见core.md"
 ```
 
 ## 执行流程图

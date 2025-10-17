@@ -1,6 +1,6 @@
 [project]
 name = "euler-copilot-framework"
-version = "0.9.6"
+version = "0.10.1"
 description = "EulerCopilot 后端服务"
 requires-python = "==3.11.6"
 dependencies = [
@@ -14,10 +14,10 @@ dependencies = [
     "jinja2==3.1.6",
     "jionlp==1.5.20",
     "jsonschema==4.23.0",
-    "mcp==1.13.1",
+    "mcp==1.17.0",
     "minio==7.2.15",
     "ollama==0.5.3",
-    "openai==1.107.1",
+    "openai==2.3.0",
     "pandas==2.2.3",
     "pgvector==0.4.1",
     "pillow==10.3.0",
@@ -26,12 +26,12 @@ dependencies = [
     "python-magic==0.4.27",
     "python-multipart==0.0.20",
     "pyyaml==6.0.2",
-    "rich==14.1.0",
+    "rich==14.2.0",
     "sqlalchemy==2.0.41",
     "tiktoken==0.9.0",
     "toml==0.10.2",
     "uvicorn==0.34.0",
-    "xmltodict>=1.0.0",
+    "xmltodict==1.0.0",
 ]
 
 [[tool.uv.index]]
@@ -47,7 +47,4 @@ dev = [
     "pytest==8.3.5",
     "pytest-mock==3.14.0",
     "ruff==0.12.5",
-    "sphinx==8.2.3",
-    "sphinx-rtd-theme==3.0.2",
-    "sphinxcontrib-plantuml>=0.31",
 ]

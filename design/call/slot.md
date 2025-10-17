@@ -42,20 +42,15 @@ Slot工具涉及多个数据模型，它们之间的关系如下：
 
 ```mermaid
 classDiagram
-    class DataBase {
-        <<abstract>>
-        +model_json_schema() dict
-    }
-    
     class SlotInput {
         +remaining_schema: dict
     }
-    
+
     class SlotOutput {
         +slot_data: dict
         +remaining_schema: dict
     }
-    
+
     class Slot {
         +data: dict
         +current_schema: dict
@@ -69,7 +64,7 @@ classDiagram
         +_llm_slot_fill() tuple
         +_function_slot_fill() dict
     }
-    
+
     class SlotProcessor {
         +_validator_cls: type
         +_validator: Validator
@@ -79,21 +74,22 @@ classDiagram
         +check_json() dict
         +add_null_to_basic_types() dict
     }
-    
-    DataBase <|-- SlotInput : 继承
-    DataBase <|-- SlotOutput : 继承
+
     Slot --> SlotInput : 输入
     Slot --> SlotOutput : 输出
     Slot --> SlotProcessor : 使用
     SlotProcessor --> SlotInput : 生成remaining_schema
     SlotProcessor --> SlotOutput : 验证和转换数据
+
+    note for Slot "继承自CoreCall基类<br/>详见core.md"
+    note for SlotInput "继承自DataBase<br/>详见core.md"
+    note for SlotOutput "继承自DataBase<br/>详见core.md"
 ```
 
 ### 数据模型说明
 
-- **DataBase**: 所有Call的输入基类，提供通用的数据验证和序列化功能
-- **SlotInput**: 继承自DataBase，包含剩余需要填充的Schema信息
-- **SlotOutput**: 继承自DataBase，包含填充后的数据和剩余Schema
+- **SlotInput**: 包含剩余需要填充的Schema信息(继承自DataBase，详见[core.md](core.md))
+- **SlotOutput**: 包含填充后的数据和剩余Schema(继承自DataBase，详见[core.md](core.md))
 - **SlotProcessor**: 参数槽处理器，负责JSON Schema验证和数据转换
 
 ### 数据流转关系
