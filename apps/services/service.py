@@ -44,44 +44,43 @@ class ServiceCenterManager:
         keyword: str | None,
         page: int,
         page_size: int,
-    ) -> Select[tuple[Service, ...]]:
+        base_conditions: list | None = None,
+    ) -> tuple[Select[tuple[Service, ...]], Select[tuple[int]]]:
         """
-        构建服务查询语句
+        构建服务查询语句(包含数据查询和总数查询)
 
         :param search_type: 搜索类型
         :param keyword: 搜索关键字
         :param page: 页码
         :param page_size: 页面大小
-        :return: 查询语句和偏移量
+        :param base_conditions: 额外的基础条件
+        :return: (数据查询语句, 总数查询语句)
         """
-        # 构建基础查询
-        query = select(Service)
-
-        # 根据搜索类型和关键字添加WHERE条件
+        # 构建搜索条件
+        search_conditions = []
         if keyword:
-            if search_type == SearchType.ALL:
-                query = query.where(
-                    or_(
-                        Service.name.like(f"%{keyword}%"),
-                        Service.description.like(f"%{keyword}%"),
-                        Service.author.like(f"%{keyword}%"),
-                    ),
-                )
-            elif search_type == SearchType.NAME:
-                query = query.where(
+            search_condition_map = {
+                SearchType.ALL: or_(
                     Service.name.like(f"%{keyword}%"),
-                )
-            elif search_type == SearchType.DESCRIPTION:
-                query = query.where(
                     Service.description.like(f"%{keyword}%"),
-                )
-            elif search_type == SearchType.AUTHOR:
-                query = query.where(
                     Service.author.like(f"%{keyword}%"),
-                )
+                ),
+                SearchType.NAME: Service.name.like(f"%{keyword}%"),
+                SearchType.DESCRIPTION: Service.description.like(f"%{keyword}%"),
+                SearchType.AUTHOR: Service.author.like(f"%{keyword}%"),
+            }
+            search_conditions = [search_condition_map.get(search_type)]
 
-        # 添加排序和分页
-        return query.order_by(Service.updatedAt.desc()).offset((page - 1) * page_size).limit(page_size)
+        all_conditions = (base_conditions or []) + search_conditions
+
+        base_query = select(Service)
+        if all_conditions:
+            base_query = base_query.where(and_(*all_conditions))
+
+        data_query = base_query.order_by(Service.updatedAt.desc()).offset((page - 1) * page_size).limit(page_size)
+        count_query = select(func.count()).select_from(base_query.subquery())
+
+        return data_query, count_query
 
 
     @staticmethod
@@ -94,12 +93,11 @@ class ServiceCenterManager:
     ) -> tuple[list[ServiceCardItem], int]:
         """获取所有服务列表"""
         async with postgres.session() as session:
-            # 使用通用查询构建方法
-            query = await ServiceCenterManager._build_service_query(search_type, keyword, page, page_size)
-            service_pools = list((await session.scalars(query)).all())
-
-            # 获取总数（由于我们使用了分页查询，这里直接使用结果数量）
-            total_count = len(service_pools)
+            data_query, count_query = await ServiceCenterManager._build_service_query(
+                search_type, keyword, page, page_size,
+            )
+            service_pools = list((await session.scalars(data_query)).all())
+            total_count = (await session.scalar(count_query)) or 0
 
         fav_service_ids = await ServiceCenterManager._get_favorite_service_ids_by_user(user_sub)
         services = [
@@ -114,66 +112,6 @@ class ServiceCenterManager:
             for service_pool in service_pools
         ]
         return services, total_count
-
-
-    @staticmethod
-    async def _build_user_service_query(
-        user_sub: str,
-        search_type: SearchType,
-        keyword: str | None,
-        page: int,
-        page_size: int,
-    ) -> Select[tuple[Service, ...]]:
-        """
-        构建用户服务查询语句
-
-        :param user_sub: 用户唯一标识
-        :param search_type: 搜索类型
-        :param keyword: 搜索关键字
-        :param page: 页码
-        :param page_size: 页面大小
-        :return: 查询语句
-        """
-        # 构建基础查询
-        query = select(Service).where(Service.author == user_sub)
-
-        # 根据搜索类型和关键字添加WHERE条件
-        if keyword:
-            if search_type == SearchType.ALL:
-                query = query.where(
-                    and_(
-                        Service.author == user_sub,
-                        or_(
-                            Service.name.like(f"%{keyword}%"),
-                            Service.description.like(f"%{keyword}%"),
-                            Service.author.like(f"%{keyword}%"),
-                        ),
-                    ),
-                )
-            elif search_type == SearchType.NAME:
-                query = query.where(
-                    and_(
-                        Service.author == user_sub,
-                        Service.name.like(f"%{keyword}%"),
-                    ),
-                )
-            elif search_type == SearchType.DESCRIPTION:
-                query = query.where(
-                    and_(
-                        Service.author == user_sub,
-                        Service.description.like(f"%{keyword}%"),
-                    ),
-                )
-            elif search_type == SearchType.AUTHOR:
-                query = query.where(
-                    and_(
-                        Service.author == user_sub,
-                        Service.author.like(f"%{keyword}%"),
-                    ),
-                )
-
-        # 添加排序和分页
-        return query.order_by(Service.updatedAt.desc()).offset((page - 1) * page_size).limit(page_size)
 
 
     @staticmethod
@@ -191,14 +129,11 @@ class ServiceCenterManager:
             keyword = user_sub
 
         async with postgres.session() as session:
-            # 使用通用查询构建方法
-            query = await ServiceCenterManager._build_user_service_query(
-                user_sub, search_type, keyword, page, page_size,
+            data_query, count_query = await ServiceCenterManager._build_service_query(
+                search_type, keyword, page, page_size, base_conditions=[Service.author == user_sub],
             )
-            service_pools = list((await session.scalars(query)).all())
-
-            # 获取总数
-            total_count = len(service_pools)
+            service_pools = list((await session.scalars(data_query)).all())
+            total_count = (await session.scalar(count_query)) or 0
 
         fav_service_ids = await ServiceCenterManager._get_favorite_service_ids_by_user(user_sub)
         services = [
@@ -216,69 +151,6 @@ class ServiceCenterManager:
 
 
     @staticmethod
-    async def _build_favorite_service_query(
-        user_sub: str,
-        search_type: SearchType,
-        keyword: str | None,
-        page: int,
-        page_size: int,
-    ) -> Select[tuple[Service, ...]]:
-        """
-        构建收藏服务查询语句
-
-        :param user_sub: 用户唯一标识
-        :param search_type: 搜索类型
-        :param keyword: 搜索关键字
-        :param page: 页码
-        :param page_size: 页面大小
-        :return: 查询语句
-        """
-        # 获取用户收藏的服务ID
-        fav_service_ids = await ServiceCenterManager._get_favorite_service_ids_by_user(user_sub)
-
-        # 构建基础查询
-        query = select(Service).where(Service.id.in_(fav_service_ids))
-
-        # 根据搜索类型和关键字添加WHERE条件
-        if keyword:
-            if search_type == SearchType.ALL:
-                query = query.where(
-                    and_(
-                        Service.id.in_(fav_service_ids),
-                        or_(
-                            Service.name.like(f"%{keyword}%"),
-                            Service.description.like(f"%{keyword}%"),
-                            Service.author.like(f"%{keyword}%"),
-                        ),
-                    ),
-                )
-            elif search_type == SearchType.NAME:
-                query = query.where(
-                    and_(
-                        Service.id.in_(fav_service_ids),
-                        Service.name.like(f"%{keyword}%"),
-                    ),
-                )
-            elif search_type == SearchType.DESCRIPTION:
-                query = query.where(
-                    and_(
-                        Service.id.in_(fav_service_ids),
-                        Service.description.like(f"%{keyword}%"),
-                    ),
-                )
-            elif search_type == SearchType.AUTHOR:
-                query = query.where(
-                    and_(
-                        Service.id.in_(fav_service_ids),
-                        Service.author.like(f"%{keyword}%"),
-                    ),
-                )
-
-        # 添加排序和分页
-        return query.order_by(Service.updatedAt.desc()).offset((page - 1) * page_size).limit(page_size)
-
-
-    @staticmethod
     async def fetch_favorite_services(
         user_sub: str,
         search_type: SearchType,
@@ -286,16 +158,28 @@ class ServiceCenterManager:
         page: int,
         page_size: int,
     ) -> tuple[list[ServiceCardItem], int]:
-        """获取用户收藏的服务"""
+        """获取用户收藏的服务(使用CTE优化查询)"""
         async with postgres.session() as session:
-            # 使用通用查询构建方法
-            query = await ServiceCenterManager._build_favorite_service_query(
-                user_sub, search_type, keyword, page, page_size,
+            # 使用CTE获取用户收藏的服务ID
+            favorite_cte = (
+                select(UserFavorite.itemId)
+                .where(
+                    and_(
+                        UserFavorite.userSub == user_sub,
+                        UserFavorite.favouriteType == UserFavoriteType.SERVICE,
+                    ),
+                )
+                .cte("user_favorites")
             )
-            service_pools = list((await session.scalars(query)).all())
 
-            # 获取总数
-            total_count = len(service_pools)
+            # 使用统一的查询构建方法,添加收藏条件
+            data_query, count_query = await ServiceCenterManager._build_service_query(
+                search_type, keyword, page, page_size,
+                base_conditions=[Service.id.in_(select(favorite_cte.c.itemId))],
+            )
+
+            service_pools = list((await session.scalars(data_query)).all())
+            total_count = (await session.scalar(count_query)) or 0
 
             services = [
                 ServiceCardItem(
