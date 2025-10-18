@@ -16,5 +16,6 @@ class Session(BaseModel):
     id: str = Field(alias="_id")
     ip: str
     user_sub: str | None = None
+    user_name: str | None = None
     nonce: str | None = None
     expired_at: datetime

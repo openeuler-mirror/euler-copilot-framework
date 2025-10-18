@@ -78,6 +78,7 @@ def register_or_update_app(authhub_web_url, user_token, client_name, client_url,
         response = requests.put(
             url,
             json={
+                "client_name": client_name,
                 "client_uri": client_url,
                 "redirect_uris": redirect_urls,
                 "register_callback_uris": [],

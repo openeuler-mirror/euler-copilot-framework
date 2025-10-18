@@ -28,7 +28,7 @@ show_sub_menu() {
     echo "4) 部署Deepseek模型"
     echo "5) 部署Embedding模型"
     echo "6) 安装数据库"
-    echo "7) 安装AuthHub"
+    echo "7) 安装鉴权服务"
     echo "8) 安装EulerCopilot"
     echo "9) 返回主菜单"
     echo "=============================="
@@ -95,7 +95,7 @@ run_sub_script() {
             run_script_with_check "./6-install-databases/install_databases.sh" "数据库安装脚本"
             ;;
         7)
-            run_script_with_check "./7-install-authhub/install_authhub.sh" "AuthHub安装脚本"
+            run_script_with_check "./7-install-auth-service/install_auth_service.sh" "鉴权服务安装脚本"
             ;;
         8)
             run_script_with_check "./8-install-EulerCopilot/install_eulercopilot.sh" "EulerCopilot安装脚本"

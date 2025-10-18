@@ -1,0 +1,72 @@
+[deploy]
+mode = 'local'
+cookie = 'domain'
+data_dir = '/app/data'
+
+[login]
+provider = 'authelia'
+[login.settings]
+host = '{{ .Values.domain.authelia | default "http://127.0.0.1:30091" }}'
+client_id = '{{ .Values.login.authelia.client_id | default "euler-copilot" }}'
+client_secret = '{{ .Values.login.authelia.client_secret | default "your-client-secret-here" }}'
+redirect_uri = '{{ .Values.domain.euler_copilot | default "http://127.0.0.1:30080" }}/api/auth/login'
+authorization_endpoint = '{{ .Values.domain.authelia | default "http://127.0.0.1:30091" }}/api/oidc/authorization'
+token_endpoint = '{{ .Values.domain.authelia | default "http://127.0.0.1:30091" }}/api/oidc/token'
+userinfo_endpoint = '{{ .Values.domain.authelia | default "http://127.0.0.1:30091" }}/api/oidc/userinfo'
+scopes = 'openid profile email'
+
+[fastapi]
+domain = '{{ regexFind "^[^:]+" (.Values.domain.euler_copilot | default "http://127.0.0.1:30080" | replace "http://" "" | replace "https://" "") }}'
+
+[security]
+half_key1 = '${halfKey1}'
+half_key2 = '${halfKey2}'
+half_key3 = '${halfKey3}'
+jwt_key = '${jwtKey}'
+
+[embedding]
+type = '{{ default "openai" .Values.models.embedding.type }}'
+endpoint = '{{ .Values.models.embedding.endpoint }}'
+api_key = '{{ .Values.models.embedding.key }}'
+model = '{{ default "bge-m3" .Values.models.embedding.name }}'
+
+[rag]
+rag_service = 'http://rag-service.{{ .Release.Namespace }}.svc.cluster.local:9988'
+
+[mongodb]
+host = 'mongo-db.{{ .Release.Namespace }}.svc.cluster.local'
+port = 27017
+user = 'euler_copilot'
+password = '${mongo-password}'
+database = 'euler_copilot'
+
+[minio]
+endpoint = 'minio-service.{{ .Release.Namespace }}.svc.cluster.local:9000'
+access_key = 'minioadmin'
+secret_key = '${minio-password}'
+secure = false
+
+[llm]
+endpoint = '{{ .Values.models.answer.endpoint }}'
+key = '{{ .Values.models.answer.key }}'
+model = '{{ .Values.models.answer.name }}'
+max_tokens = {{ default 8192 .Values.models.answer.maxTokens }}
+temperature = {{ default 0.7 .Values.models.answer.temperature }}
+
+[function_call]
+backend = '{{ default "ollama" .Values.models.functionCall.backend }}'
+endpoint = '{{ default .Values.models.answer.endpoint .Values.models.functionCall.endpoint }}'
+model = '{{ default .Values.models.answer.name .Values.models.functionCall.name }}'
+api_key = '{{ default .Values.models.answer.key .Values.models.functionCall.key }}'
+max_tokens = {{ default .Values.models.answer.maxTokens .Values.models.functionCall.maxTokens }}
+temperature = {{ default 0.7 .Values.models.functionCall.temperature }}
+
+[check]
+enable = false
+words_list = ""
+
+[sandbox]
+sandbox_service = 'http://euler-copilot-sandbox-service.{{ .Release.Namespace }}.svc.cluster.local:8000'
+
+[extra]
+sql_url = ''

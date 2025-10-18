@@ -1,0 +1,21 @@
+{{- if .Values.authelia.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "authelia.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "authelia.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.authelia.service.type | default "NodePort" }}
+  ports:
+  - port: {{ .Values.authelia.service.port | default 9091 }}
+    targetPort: http
+    protocol: TCP
+    name: http
+    {{- if and (eq (.Values.authelia.service.type | default "NodePort") "NodePort") (.Values.authelia.service.nodePort | default 30091) }}
+    nodePort: {{ .Values.authelia.service.nodePort | default 30091 }}
+    {{- end }}
+  selector:
+    {{- include "authelia.selectorLabels" . | nindent 4 }}
+{{- end }}

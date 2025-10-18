@@ -239,7 +239,7 @@ start_deployment() {
         "../4-deploy-deepseek/deploy_deepseek.sh Deepseek模型部署 false"
         "../5-deploy-embedding/deploy-embedding.sh Embedding服务部署 false"
         "../6-install-databases/install_databases.sh 数据库集群部署 false"
-        "../7-install-authhub/install_authhub.sh Authhub部署 true --authhub_address ${authhub_address}"
+        "../7-install-auth-service/install_auth_service.sh 鉴权服务部署 true --service authhub --address ${authhub_address}"
         "_conditional_eulercopilot_step EulerCopilot部署 true"
     )
 

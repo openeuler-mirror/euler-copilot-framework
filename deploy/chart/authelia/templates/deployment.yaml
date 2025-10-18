@@ -1,0 +1,91 @@
+{{- if .Values.authelia.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "authelia.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "authelia.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.authelia.replicaCount | default (.Values.globals.replicaCount | default 1) }}
+  selector:
+    matchLabels:
+      {{- include "authelia.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "authelia.selectorLabels" . | nindent 8 }}
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
+      containers:
+      - name: authelia
+        image: "{{ .Values.authelia.image.repository | default "authelia/authelia" }}:{{ .Values.authelia.image.tag | default "4.39.13" }}"
+        imagePullPolicy: {{ .Values.authelia.image.pullPolicy | default (.Values.globals.imagePullPolicy | default "IfNotPresent") }}
+        ports:
+        - name: http
+          containerPort: 9091
+          protocol: TCP
+        env:
+        - name: AUTHELIA_LOG_LEVEL
+          value: {{ .Values.authelia.config.log.level | default "info" | quote }}
+        volumeMounts:
+        - name: config
+          mountPath: /etc/authelia/authelia.yml
+          subPath: authelia.yml
+          readOnly: true
+        - name: users
+          mountPath: /etc/authelia/users.yml
+          subPath: users.yml
+          readOnly: true
+        {{- if .Values.authelia.persistence.enabled }}
+        - name: data
+          mountPath: /etc/authelia
+        {{- else }}
+        - name: data
+          mountPath: /etc/authelia
+        {{- end }}
+        livenessProbe:
+          httpGet:
+            path: /api/health
+            port: http
+          initialDelaySeconds: 30
+          periodSeconds: 30
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /api/health
+            port: http
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          timeoutSeconds: 3
+          failureThreshold: 3
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+          readOnlyRootFilesystem: true
+        {{- if .Values.authelia.resources }}
+        resources:
+          {{- toYaml .Values.authelia.resources | nindent 10 }}
+        {{- end }}
+      volumes:
+      - name: config
+        configMap:
+          name: {{ include "authelia.fullname" . }}-config
+      - name: users
+        configMap:
+          name: {{ include "authelia.fullname" . }}-users
+      {{- if .Values.authelia.persistence.enabled }}
+      - name: data
+        persistentVolumeClaim:
+          claimName: {{ include "authelia.fullname" . }}-data
+      {{- else }}
+      - name: data
+        emptyDir: {}
+      {{- end }}
+{{- end }}

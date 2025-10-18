@@ -6,7 +6,11 @@ metadata:
   namespace: {{ .Release.Namespace }}
 data:
   config.toml: |-
+{{- if eq (.Values.login.provider | default "authhub") "authelia" }}
+{{ tpl (.Files.Get "configs/framework/config-authelia.toml") . | indent 4 }}
+{{- else }}
 {{ tpl (.Files.Get "configs/framework/config.toml") . | indent 4 }}
+{{- end }}
   copy-config.yaml: |-
     copy:
       - from: /config/config.toml

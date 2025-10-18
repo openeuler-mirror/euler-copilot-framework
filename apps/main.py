@@ -15,6 +15,7 @@ from contextlib import asynccontextmanager
 import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.exceptions import HTTPException, RequestValidationError
 from rich.console import Console
 from rich.logging import RichHandler
 
@@ -43,6 +44,7 @@ from apps.routers import (
 )
 from apps.scheduler.pool.pool import Pool
 from apps.services.predecessor_cache_service import cleanup_background_tasks
+from apps.middleware.error_handler import ErrorHandlerMiddleware, create_error_handlers
 
 # 全局变量用于跟踪后台任务
 _cleanup_task = None
@@ -95,6 +97,9 @@ app = FastAPI(
     version="1.0.0",
     lifespan=lifespan,
 )
+# 添加全局异常处理中间件
+app.add_middleware(ErrorHandlerMiddleware)
+
 # 定义FastAPI全局中间件
 app.add_middleware(
     CORSMiddleware,
@@ -103,6 +108,11 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# 注册异常处理器
+error_handlers = create_error_handlers()
+for exc_type, handler in error_handlers.items():
+    app.add_exception_handler(exc_type, handler)
 # 关联API路由
 app.include_router(conversation.router)
 app.include_router(auth.router)

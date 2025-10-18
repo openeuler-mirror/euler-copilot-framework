@@ -1,0 +1,37 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "euler_copilot.fullname" . }}-sandbox-config
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "euler_copilot.labels" . | nindent 4 }}
+    app.kubernetes.io/component: sandbox
+data:
+  config.py: |
+    # OpenEuler Intelligence Sandbox Configuration
+    import os
+    
+    # 服务配置
+    HOST = os.getenv('SANDBOX_HOST', '0.0.0.0')
+    PORT = int(os.getenv('SANDBOX_PORT', '8000'))
+    
+    # 日志配置
+    LOG_LEVEL = os.getenv('LOG_LEVEL', 'INFO')
+    QUIET_MODE = os.getenv('QUIET_MODE', 'false').lower() == 'true'
+    
+    # 安全配置
+    ENABLE_SECURITY = os.getenv('ENABLE_SECURITY', 'true').lower() == 'true'
+    MAX_EXECUTION_TIME = int(os.getenv('MAX_EXECUTION_TIME', '30'))
+    MAX_MEMORY_MB = int(os.getenv('MAX_MEMORY_MB', '512'))
+    
+    # 队列配置
+    MAX_QUEUE_SIZE = int(os.getenv('MAX_QUEUE_SIZE', '100'))
+    WORKER_THREADS = int(os.getenv('WORKER_THREADS', '4'))
+    
+    # 支持的语言
+    SUPPORTED_LANGUAGES = ['python', 'javascript', 'bash']
+    
+    # 容器配置（如果使用容器执行）
+    CONTAINER_TIMEOUT = int(os.getenv('CONTAINER_TIMEOUT', '60'))
+    CONTAINER_MEMORY_LIMIT = os.getenv('CONTAINER_MEMORY_LIMIT', '512m')
+    CONTAINER_CPU_LIMIT = os.getenv('CONTAINER_CPU_LIMIT', '0.5')

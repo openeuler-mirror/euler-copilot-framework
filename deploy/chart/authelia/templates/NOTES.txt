@@ -1,0 +1,36 @@
+1. Get the application URL by running these commands:
+{{- if eq (.Values.authelia.service.type | default "NodePort") "NodePort" }}
+  export NODE_PORT=$(kubectl get --namespace {{ .Release.Namespace }} -o jsonpath="{.spec.ports[0].nodePort}" services {{ include "authelia.fullname" . }})
+  export NODE_IP=$(kubectl get nodes --namespace {{ .Release.Namespace }} -o jsonpath="{.items[0].status.addresses[0].address}")
+  echo http://$NODE_IP:$NODE_PORT
+{{- else if eq (.Values.authelia.service.type | default "NodePort") "LoadBalancer" }}
+     NOTE: It may take a few minutes for the LoadBalancer IP to be available.
+           You can watch the status of by running 'kubectl get --namespace {{ .Release.Namespace }} svc -w {{ include "authelia.fullname" . }}'
+  export SERVICE_IP=$(kubectl get svc --namespace {{ .Release.Namespace }} {{ include "authelia.fullname" . }} --template "{{"{{ range (index .status.loadBalancer.ingress 0) }}{{.}}{{ end }}"}}")
+  echo http://$SERVICE_IP:{{ .Values.authelia.service.port | default 9091 }}
+{{- else if eq (.Values.authelia.service.type | default "NodePort") "ClusterIP" }}
+  export POD_NAME=$(kubectl get pods --namespace {{ .Release.Namespace }} -l "{{ include "authelia.selectorLabels" . }}" -o jsonpath="{.items[0].metadata.name}")
+  export CONTAINER_PORT=$(kubectl get pod --namespace {{ .Release.Namespace }} $POD_NAME -o jsonpath="{.spec.containers[0].ports[0].containerPort}")
+  echo "Visit http://127.0.0.1:{{ .Values.authelia.service.port | default 9091 }} to use your application"
+  kubectl --namespace {{ .Release.Namespace }} port-forward $POD_NAME {{ .Values.authelia.service.port | default 9091 }}:$CONTAINER_PORT
+{{- end }}
+
+2. Default login credentials:
+   - Username: admin
+   - Password: admin123
+   
+   - Username: user  
+   - Password: user123
+
+3. OIDC Configuration for Euler Copilot Framework:
+   - Client ID: {{ (index .Values.authelia.config.identity_providers.oidc.clients 0).client_id | default "euler-copilot" }}
+   - Client Secret: your-client-secret-here
+   - Authorization URL: {{ .Values.domain.authelia | default "http://127.0.0.1:30091" }}/api/oidc/authorization
+   - Token URL: {{ .Values.domain.authelia | default "http://127.0.0.1:30091" }}/api/oidc/token
+   - User Info URL: {{ .Values.domain.authelia | default "http://127.0.0.1:30091" }}/api/oidc/userinfo
+
+4. Important Security Notes:
+   - Please change all default secrets and passwords in production!
+   - Update the session domain to match your actual domain
+   - Generate new OIDC signing keys for production use
+   - Configure proper TLS certificates

@@ -1,0 +1,132 @@
+{{- if .Values.euler_copilot.sandbox.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "euler_copilot.fullname" . }}-sandbox-deploy
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "euler_copilot.labels" . | nindent 4 }}
+    app.kubernetes.io/component: sandbox
+spec:
+  replicas: {{ .Values.euler_copilot.sandbox.replicas | default 1 }}
+  selector:
+    matchLabels:
+      {{- include "euler_copilot.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: sandbox
+  template:
+    metadata:
+      labels:
+        {{- include "euler_copilot.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: sandbox
+    spec:
+      {{- if .Values.euler_copilot.sandbox.readOnly }}
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
+      {{- end }}
+      containers:
+      - name: sandbox
+        image: {{ .Values.euler_copilot.sandbox.image | default (printf "hub.oepkgs.net/neocopilot/openeuler-intelligence-sandbox:%s-%s" (.Values.euler_copilot.sandbox.version | default "latest") (.Values.globals.arch | default "x86")) }}
+        imagePullPolicy: {{ .Values.globals.imagePullPolicy | default "IfNotPresent" }}
+        ports:
+        - containerPort: 8000
+          name: http
+          protocol: TCP
+        env:
+        - name: SANDBOX_HOST
+          value: "0.0.0.0"
+        - name: SANDBOX_PORT
+          value: "8000"
+        - name: LOG_LEVEL
+          value: {{ .Values.euler_copilot.sandbox.logLevel | default "INFO" | quote }}
+        - name: QUIET_MODE
+          value: {{ .Values.euler_copilot.sandbox.quietMode | default false | quote }}
+        - name: ENABLE_SECURITY
+          value: {{ .Values.euler_copilot.sandbox.security.enabled | default true | quote }}
+        - name: MAX_EXECUTION_TIME
+          value: {{ .Values.euler_copilot.sandbox.security.maxExecutionTime | default 30 | quote }}
+        - name: MAX_MEMORY_MB
+          value: {{ .Values.euler_copilot.sandbox.security.maxMemoryMB | default 512 | quote }}
+        - name: MAX_QUEUE_SIZE
+          value: {{ .Values.euler_copilot.sandbox.queue.maxSize | default 100 | quote }}
+        - name: WORKER_THREADS
+          value: {{ .Values.euler_copilot.sandbox.queue.workerThreads | default 4 | quote }}
+        - name: CONTAINER_TIMEOUT
+          value: {{ .Values.euler_copilot.sandbox.container.timeout | default 60 | quote }}
+        - name: CONTAINER_MEMORY_LIMIT
+          value: {{ .Values.euler_copilot.sandbox.container.memoryLimit | default "512m" | quote }}
+        - name: CONTAINER_CPU_LIMIT
+          value: {{ .Values.euler_copilot.sandbox.container.cpuLimit | default "0.5" | quote }}
+        {{- if .Values.euler_copilot.sandbox.readOnly }}
+        securityContext:
+          readOnlyRootFilesystem: true
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+        {{- end }}
+        volumeMounts:
+        - name: config
+          mountPath: /app/config.py
+          subPath: config.py
+          readOnly: true
+        {{- if .Values.euler_copilot.sandbox.readOnly }}
+        - name: tmp
+          mountPath: /tmp
+        - name: app-tmp
+          mountPath: /app/tmp
+        {{- end }}
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: http
+          initialDelaySeconds: 30
+          periodSeconds: 30
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: http
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          timeoutSeconds: 3
+          failureThreshold: 3
+        {{- if .Values.euler_copilot.sandbox.resourceLimits }}
+        resources:
+          {{- toYaml .Values.euler_copilot.sandbox.resourceLimits | nindent 10 }}
+        {{- end }}
+      volumes:
+      - name: config
+        configMap:
+          name: {{ include "euler_copilot.fullname" . }}-sandbox-config
+      {{- if .Values.euler_copilot.sandbox.readOnly }}
+      - name: tmp
+        emptyDir: {}
+      - name: app-tmp
+        emptyDir: {}
+      {{- end }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "euler_copilot.fullname" . }}-sandbox-service
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "euler_copilot.labels" . | nindent 4 }}
+    app.kubernetes.io/component: sandbox
+spec:
+  type: {{ .Values.euler_copilot.sandbox.service.type | default "ClusterIP" }}
+  ports:
+  - port: 8000
+    targetPort: http
+    protocol: TCP
+    name: http
+    {{- if and (eq (.Values.euler_copilot.sandbox.service.type | default "ClusterIP") "NodePort") .Values.euler_copilot.sandbox.service.nodePort }}
+    nodePort: {{ .Values.euler_copilot.sandbox.service.nodePort }}
+    {{- end }}
+  selector:
+    {{- include "euler_copilot.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: sandbox
+{{- end }}

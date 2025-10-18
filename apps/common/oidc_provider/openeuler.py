@@ -92,6 +92,7 @@ class OpenEulerOIDCProvider(OIDCProviderBase):
 
         return {
             "user_sub": result["sub"],
+            "user_name": result.get("name", result.get("preferred_username", result.get("nickname", ""))),
         }
 
 
