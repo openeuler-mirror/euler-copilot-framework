@@ -134,7 +134,7 @@ class OpenAPILoader:
         nodes = []
         for api_endpoint in spec.endpoints:
             # 通过算法生成唯一的标识符
-            identifier = shake_128(f"openapi::{yaml_filename}::{api_endpoint.uri}".encode()).hexdigest(16)
+            identifier = shake_128(f"{service_id}/{yaml_filename}/{api_endpoint.name}".encode()).hexdigest(16)
             # 组装新的NodePool item
             node = APINode(
                 _id=identifier,

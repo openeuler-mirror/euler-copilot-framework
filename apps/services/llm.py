@@ -53,7 +53,23 @@ class LLMManager:
         return result.get("llm", {}).get("llm_id", "")
 
     @staticmethod
-    async def get_llm_by_id(user_sub: str, llm_id: str) -> LLM:
+    async def get_llm_by_id(llm_id: str) -> LLM:
+        """
+        通过ID获取大模型
+
+        :param llm_id: 大模型ID
+        :return: 大模型对象
+        """
+        llm_collection = MongoDB().get_collection("llm")
+        result = await llm_collection.find_one({"_id": llm_id})
+        if not result:
+            err = f"[LLMManager] LLM {llm_id} 不存在"
+            logger.error(err)
+            raise ValueError(err)
+        return LLM.model_validate(result)
+
+    @staticmethod
+    async def get_llm_by_user_sub_and_id(user_sub: str, llm_id: str) -> LLM:
         """
         通过ID获取大模型
 

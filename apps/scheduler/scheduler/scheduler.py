@@ -59,7 +59,8 @@ class Scheduler:
                 # 检查用户活动状态
                 is_active = await Activity.is_active(self.task.ids.active_id)
                 if not is_active:
-                    logger.warning("[Scheduler] 用户 %s 不活跃，终止工作流", self.task.ids.user_sub)
+                    logger.warning("[Scheduler] 用户 %s 不活跃，终止工作流",
+                                   self.task.ids.user_sub)
                     kill_event.set()
                     break
 
@@ -71,7 +72,7 @@ class Scheduler:
             logger.error(f"[Scheduler] 活动监控过程中发生错误: {e}")
 
     async def get_llm_use_in_chat_with_rag(self) -> LLM:
-        """获取RAG大模型"""    
+        """获取RAG大模型"""
         try:
             # 获取当前会话使用的大模型
             llm_id = await LLMManager.get_llm_id_by_conversation_id(
@@ -91,7 +92,7 @@ class Scheduler:
                 )
                 return llm
             else:
-                llm = await LLMManager.get_llm_by_id(self.task.ids.user_sub, llm_id)
+                llm = await LLMManager.get_llm_by_user_sub_and_id(self.task.ids.user_sub, llm_id)
                 if not llm:
                     logger.error("[Scheduler] 获取大模型失败")
                     return None
@@ -152,7 +153,8 @@ class Scheduler:
             # 查找对应的App元数据
             app_data = await AppCenterManager.fetch_app_data_by_id(self.post_body.app.app_id)
             if not app_data:
-                logger.error("[Scheduler] App %s 不存在", self.post_body.app.app_id)
+                logger.error("[Scheduler] App %s 不存在",
+                             self.post_body.app.app_id)
                 await self.queue.close()
                 return
 
@@ -173,7 +175,8 @@ class Scheduler:
             )
 
             # 启动监控任务和主任务
-            main_task = asyncio.create_task(self.run_executor(self.queue, self.post_body, executor_background))
+            main_task = asyncio.create_task(self.run_executor(
+                self.queue, self.post_body, executor_background))
         # 等待任一任务完成
         done, pending = await asyncio.wait(
             [main_task, monitor],
@@ -184,7 +187,8 @@ class Scheduler:
         if kill_event.is_set():
             logger.warning("[Scheduler] 用户活动状态检测不活跃，正在终止工作流执行...")
             main_task.cancel()
-            need_change_cancel_flow_state = [FlowStatus.RUNNING, FlowStatus.WAITING]
+            need_change_cancel_flow_state = [
+                FlowStatus.RUNNING, FlowStatus.WAITING]
             if self.task.state.flow_status in need_change_cancel_flow_state:
                 self.task.state.flow_status = FlowStatus.CANCELLED
             try:
@@ -225,9 +229,7 @@ class Scheduler:
                 max_tokens=Config().get_config().llm.max_tokens,
             )
         else:
-            llm = await LLMManager.get_llm_by_id(
-                self.task.ids.user_sub, app_metadata.llm_id,
-            )
+            llm = await LLMManager.get_llm_by_id(app_metadata.llm_id)
         if not llm:
             logger.error("[Scheduler] 获取大模型失败")
             await self.queue.close()
@@ -268,7 +270,8 @@ class Scheduler:
             else:
                 # 如果用户没有选特定的Flow，则根据语义选择一个Flow
                 logger.info("[Scheduler] 选择最合适的流")
-                flow_chooser = FlowChooser(self.task, post_body.question, app_info)
+                flow_chooser = FlowChooser(
+                    self.task, post_body.question, app_info)
                 flow_id = await flow_chooser.get_top_flow()
                 self.task = flow_chooser.task
                 logger.info("[Scheduler] 获取工作流定义")

@@ -172,9 +172,6 @@ async def get_service_detail(
         edit: Annotated[bool, Query(..., description="是否为编辑模式")] = False,
 ) -> JSONResponse:
     """获取MCP服务详情"""
-    # 检查用户权限
-    if edit:
-        await _check_user_admin(user_sub)
 
     # 获取MCP服务详情
     try:
