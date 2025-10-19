@@ -40,7 +40,7 @@ class ConversationManager:
 
     @staticmethod
     async def add_conversation_by_user_sub(
-            title: str, 
+            title: str,
             user_sub: str, app_id: str, llm_id: str, kb_ids: list[str],
             *, debug: bool) -> Conversation | None:
         """通过用户ID新建对话"""
@@ -51,7 +51,7 @@ class ConversationManager:
                 icon=llm_provider_dict["ollama"]["icon"],
             )
         else:
-            llm = await LLMManager.get_llm_by_id(user_sub, llm_id)
+            llm = await LLMManager.get_llm_by_user_sub_and_id(user_sub, llm_id)
             if llm is None:
                 logger.error("[ConversationManager] 获取大模型失败")
                 return None
@@ -131,13 +131,13 @@ class ConversationManager:
 
         # 🔑 修正：获取所有需要清理的文件ID
         files_to_cleanup = []
-        
+
         # 1. 获取未转为历史记录的文件（unused_docs）
         conversation_data = await conv_collection.find_one({"_id": conversation_id, "user_sub": user_sub})
         if conversation_data:
             unused_docs = conversation_data.get("unused_docs", [])
             files_to_cleanup.extend(unused_docs)
-            
+
         # 2. 获取历史记录中绑定的文件
         async for record_group in record_group_collection.find({"conversation_id": conversation_id}):
             docs = record_group.get("docs", [])
@@ -165,7 +165,8 @@ class ConversationManager:
                 # 去重文件ID
                 unique_file_ids = list(set(files_to_cleanup))
                 await DocumentManager.delete_document(user_sub, unique_file_ids)
-                logger.info(f"已清理对话 {conversation_id} 的 {len(unique_file_ids)} 个文件")
+                logger.info(
+                    f"已清理对话 {conversation_id} 的 {len(unique_file_ids)} 个文件")
             except Exception as e:
                 logger.error(f"清理对话文件失败: {e}")
 
@@ -173,12 +174,12 @@ class ConversationManager:
         try:
             from apps.scheduler.variable.pool_manager import get_pool_manager
             pool_manager = await get_pool_manager()
-            
+
             # 获取对话变量池中的文件变量，清理其引用的文件
             conversation_pool = await pool_manager.get_conversation_pool(conversation_id)
             if conversation_pool:
                 await _cleanup_transient_file_variables_in_pool(conversation_pool, user_sub, files_to_cleanup)
-            
+
             # 移除对话变量池
             await pool_manager.remove_conversation_pool(conversation_id)
             logger.info(f"已清理对话变量池: {conversation_id}")
@@ -193,10 +194,10 @@ async def _cleanup_transient_file_variables_in_pool(pool, user_sub: str, already
     try:
         from apps.scheduler.variable.type import VariableType
         from apps.services.document import DocumentManager
-        
+
         variables = await pool.list_variables()
         file_ids_to_cleanup = []
-        
+
         for variable in variables:
             if variable.metadata.var_type in [VariableType.FILE, VariableType.ARRAY_FILE]:
                 if isinstance(variable.value, dict):
@@ -209,12 +210,12 @@ async def _cleanup_transient_file_variables_in_pool(pool, user_sub: str, already
                         for file_id in file_ids:
                             if file_id not in already_cleaned_files:
                                 file_ids_to_cleanup.append(file_id)
-        
+
         # 批量删除文件（排除重复）
         unique_file_ids = list(set(file_ids_to_cleanup))
         if unique_file_ids:
             await DocumentManager.delete_document(user_sub, unique_file_ids)
             logger.info(f"已清理变量池中的 {len(unique_file_ids)} 个暂态文件")
-            
+
     except Exception as e:
         logger.error(f"清理变量池暂态文件失败: {e}")

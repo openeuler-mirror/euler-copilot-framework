@@ -41,10 +41,14 @@ router = APIRouter(
 async def get_applications(  # noqa: PLR0913
     user_sub: Annotated[str, Depends(get_user)],
     *,
-    my_app: Annotated[bool, Query(..., alias="createdByMe", description="筛选我创建的")] = False,
-    my_fav: Annotated[bool, Query(..., alias="favorited", description="筛选我收藏的")] = False,
-    keyword: Annotated[str | None, Query(..., alias="keyword", description="搜索关键字")] = None,
-    app_type: Annotated[AppType | None, Query(..., alias="appType", description="应用类型")] = None,
+    my_app: Annotated[bool, Query(..., alias="createdByMe",
+                                  description="筛选我创建的")] = False,
+    my_fav: Annotated[bool,
+        Query(..., alias="favorited", description="筛选我收藏的")] = False,
+    keyword: Annotated[str | None,
+        Query(..., alias="keyword", description="搜索关键字")] = None,
+    app_type: Annotated[AppType | None,
+        Query(..., alias="appType", description="应用类型")] = None,
     page: Annotated[int, Query(..., alias="page", ge=1, description="页码")] = 1,
 ) -> JSONResponse:
     """获取应用列表"""
@@ -58,7 +62,8 @@ async def get_applications(  # noqa: PLR0913
             ).model_dump(exclude_none=True, by_alias=True),
         )
     try:
-        filter_type = AppFilterType.USER if my_app else (AppFilterType.FAVORITE if my_fav else AppFilterType.ALL)
+        filter_type = AppFilterType.USER if my_app else (
+            AppFilterType.FAVORITE if my_fav else AppFilterType.ALL)
         app_cards, total_apps = await AppCenterManager.fetch_apps(
             user_sub,
             keyword,
@@ -230,7 +235,7 @@ async def get_application(
     if app_data.llm_id == "empty":
         llm_item = LLMIteam()
     else:
-        llm_collection = await LLMManager.get_llm_by_id(user_sub, app_data.llm_id)
+        llm_collection = await LLMManager.get_llm_by_id(app_data.llm_id)
         llm_item = LLMIteam(
             llmId=llm_collection.id,
             modelName=llm_collection.model_name,
