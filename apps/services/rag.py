@@ -5,7 +5,6 @@ from datetime import UTC, datetime
 import json
 import logging
 from collections.abc import AsyncGenerator
-
 import re
 import httpx
 from typing import Any
@@ -30,98 +29,197 @@ class RAG:
     system_prompt: str = "You are a helpful assistant."
     """系统提示词"""
     user_prompt: dict[LanguageType, str] = {
-        LanguageType.CHINESE: r"""
-        <instructions>
-                你是openEuler社区的智能助手。请结合给出的背景信息, 回答用户的提问，并且基于给出的背景信息在相关句子后进行脚注。
-                一个例子将在<example>中给出。
-                上下文背景信息将在<bac_info>中给出。
-                用户的提问将在<user_question>中给出。
-                注意：
-                1.输出不要包含任何XML标签，不要编造任何信息。若你认为用户提问与背景信息无关，请忽略背景信息直接作答。
-                2.脚注的格式为[[1]]，[[2]]，[[3]]等，脚注的内容为提供的文档的id。
-                3.脚注只出现在回答的句子的末尾，例如句号、问号等标点符号后面。
-                4.不要对脚注本身进行解释或说明。
-                5.请不要使用<example></example>中的文档的id作为脚注。
-        </instructions>
-        <example>
-            <bac_info>
-                    <document id = 1 name = example_doc>
-                        <chunk>
-                            openEuler社区是一个开源操作系统社区，致力于推动Linux操作系统的发展。
-                        </chunk>
-                        <chunk>
-                            openEuler社区的目标是为用户提供一个稳定、安全、高效的操作系统平台，并且支持多种硬件架构。
-                        </chunk>
-                    </document>
-                    <document id = 2 name = another_example_doc>
-                        <chunk>
-                            openEuler社区的成员来自世界各地，包括开发者、用户和企业。
-                        </chunk>
-                        <chunk>
-                            openEuler社区的成员共同努力，推动开源操作系统的发展，并且为用户提供支持和帮助。
-                        </chunk>
-                    </document>
-            </bac_info>
-            <user_question>
-                    openEuler社区的目标是什么？
-            </user_question>
-            <answer>
-                    openEuler社区是一个开源操作系统社区，致力于推动Linux操作系统的发展。[[1]]
-                    openEuler社区的目标是为用户提供一个稳定、安全、高效的操作系统平台，并且支持多种硬件架构。[[1]]
-            </answer>
-        </example>
-        
-        <bac_info>
-                {bac_info}
-        </bac_info>
-        <user_question>
-                {user_question}
-        </user_question>
+        LanguageType.CHINESE: r"""     
+<instructions>
+你是智能助手。请结合给出的背景信息，全面、详细地回答用户的提问，并在相关句子后基于背景信息进行脚注。
+
+一个示例将在 <example> 中给出以供参考。
+
+上下文背景信息将在 <bac_info> 中提供。
+
+用户的提问将在 <user_question> 中提供。
+
+---
+
+### 📌 注意事项：
+
+1. **输出内容不得包含任何 XML 标签**（除了题目中明确给出的 <bac_info> 和 <user_question>），也不得编造未提供的信息。  
+- 若用户提问与背景信息无关，请忽略背景信息并直接作答。
+
+2. **脚注格式为 `[[1]]`、`[[2]]`、`[[3]]` 等**，其中数字为文档的 `id`。
+
+3. **脚注应紧跟在相关句子的末尾**，如句号、问号等标点之后。  
+- 脚注本身不应被解释或说明。
+
+4. **不得使用 <example> 中的文档 id 作为脚注编号。**
+
+5. **请尽可能详细地回答问题**，包括背景介绍、核心内容、扩展说明等。
+
+6. **使用 markdown 格式输出答案**，并适当使用以下方式增强可读性：
+- **加粗** 强调重点
+- *斜体* 表达语气或补充说明
+- `代码` 表示命令、函数或术语
+- 表格 展示对比或结构化信息
+- 空行 分隔段落
+- 图标（如 ✅、📌、⚠️ 等）引导阅读
+- 分割线 `---` 区分不同部分
+
+7. 回答应体现出逻辑结构，如：
+- 背景概述
+- 核心回答
+- 扩展说明（如适用）
+- 总结或建议（如适用）
+
+---
+
+### 🔍 示例说明：
+
+<example>
+    <bac_info>
+        <document id = 1 name = example_doc>
+            <chunk>
+                openEuler社区是一个开源操作系统社区，致力于推动Linux操作系统的发展。
+            </chunk>
+            <chunk>
+                openEuler社区的目标是为用户提供一个稳定、安全、高效的操作系统平台，并且支持多种硬件架构。
+            </chunk>
+        </document>
+        <document id = 2 name = another_example_doc>
+            <chunk>
+                openEuler社区的成员来自世界各地，包括开发者、用户和企业。
+            </chunk>
+            <chunk>
+                openEuler社区的成员共同努力，推动开源操作系统的发展，并且为用户提供支持和帮助。
+            </chunk>
+        </document>
+    </bac_info>
+    <user_question>
+        openEuler社区的目标是什么？
+    </user_question>
+    <answer>
+        openEuler社区是一个开源操作系统社区，致力于推动Linux操作系统的发展。[[1]]  
+        该社区的核心目标是为用户提供一个**稳定、安全、高效**的操作系统平台，并支持多种硬件架构。[[1]]  
+        此外，openEuler社区还鼓励全球开发者、用户和企业共同参与，以促进开源生态的繁荣。[[2]]
+    </answer>
+</example>
+
+---
+
+### 🧾 任务说明：
+
+请根据以下 <bac_info> 和 <user_question> 内容，按照上述要求生成详细、结构清晰、格式美观的回答。
+
+---
+
+<bac_info>
+{bac_info}
+</bac_info>
+
+<user_question>
+{user_question}
+</user_question>
+
+</instructions>
+
+--- 
+
+✅ 请根据上述完善后的提示生成回答。
         """,
         LanguageType.ENGLISH: r"""
         <instructions>
-                You are a helpful assistant of openEuler community. Please answer the user's question based on the given background information and add footnotes after the related sentences.
-                An example will be given in <example>.
-                The background information will be given in <bac_info>.
-                The user's question will be given in <user_question>.
-                Note:
-                1. Do not include any XML tags in the output, and do not make up any information. If you think the user's question is unrelated to the background information, please ignore the background information and directly answer.
-                2. Your response should not exceed 250 words.
-        </instructions>
-        <example>
-            <bac_info>
-                    <document id = 1 name = example_doc>
-                        <chunk>
-                            openEuler community is an open source operating system community, committed to promoting the development of the Linux operating system.
-                        </chunk>
-                        <chunk>
-                            openEuler community aims to provide users with a stable, secure, and efficient operating system platform, and support multiple hardware architectures.
-                        </chunk>
-                    </document>
-                    <document id = 2 name = another_example_doc>        
-                        <chunk>
-                            Members of the openEuler community come from all over the world, including developers, users, and enterprises.
-                        </chunk>
-                        <chunk>
-                            Members of the openEuler community work together to promote the development of open source operating systems, and provide support and assistance to users.
-                        </chunk>
-                    </document>
-            </bac_info>
-            <user_question>
-                    What is the goal of openEuler community?
-            </user_question>
-            <answer>
-                    openEuler community is an open source operating system community, committed to promoting the development of the Linux operating system. [[1]]
-                    openEuler community aims to provide users with a stable, secure, and efficient operating system platform, and support multiple hardware architectures. [[1]]
-            </answer>   
-        </example>  
+You are an intelligent assistant. Please answer the user's question comprehensively and in detail by referring to the provided background information, and include footnotes based on the background information after relevant sentences.
 
-        <bac_info>
-                {bac_info}
-        </bac_info>
-        <user_question>
-                {user_question}
-        </user_question>
+An example will be given in <example> for reference.
+
+The contextual background information will be provided in <bac_info>.
+
+The user's question will be given in <user_question>.
+
+---
+
+### 📌 Notes:
+
+1. **The output must not contain any XML tags** (except for the explicitly given <bac_info> and <user_question> in the prompt), and you must not fabricate any information.  
+   - If the user's question is unrelated to the background information, please ignore the background and answer directly.
+
+2. **Footnote format should be `[[1]]`, `[[2]]`, `[[3]]`, etc.**, where the number corresponds to the document `id`.
+
+3. **Footnotes should immediately follow the end of the relevant sentence**, such as after a period or question mark.  
+   - Do not explain or describe the footnotes themselves.
+
+4. **Do not use document IDs from <example> as footnote numbers.**
+
+5. **Please answer the question as thoroughly as possible**, including background introduction, core content, extended explanations, etc.
+
+6. **Output your answer in markdown format**, and appropriately use the following to enhance readability:
+   - **Bold** to emphasize key points
+   - *Italic* to express tone or provide additional notes
+   - `Code` to indicate commands, functions, or technical terms
+   - Tables to show comparisons or structured data
+   - Blank lines to separate paragraphs
+   - Icons (e.g., ✅, 📌, ⚠️) to guide reading
+   - Divider lines `---` to separate sections
+
+7. The response should reflect a logical structure, such as:
+   - Background overview
+   - Core answer
+   - Extended explanation (if applicable)
+   - Summary or recommendation (if applicable)
+
+---
+
+### 🔍 Example Explanation:
+
+<example>
+    <bac_info>
+        <document id = 1 name = example_doc>
+            <chunk>
+                The openEuler community is an open-source operating system community dedicated to promoting the development of Linux operating systems.
+            </chunk>
+            <chunk>
+                The goal of the openEuler community is to provide users with a stable, secure, and efficient operating system platform, supporting multiple hardware architectures.
+            </chunk>
+        </document>
+        <document id = 2 name = another_example_doc>
+            <chunk>
+                Members of the openEuler community come from all over the world, including developers, users, and enterprises.
+            </chunk>
+            <chunk>
+                Community members work together to promote the development of open-source operating systems and provide support and assistance to users.
+            </chunk>
+        </document>
+    </bac_info>
+    <user_question>
+        What are the goals of the openEuler community?
+    </user_question>
+    <answer>
+        The openEuler community is an open-source operating system community dedicated to promoting the development of Linux operating systems. [[1]]  
+        The core goal of the community is to provide users with a **stable, secure, and efficient** operating system platform that supports multiple hardware architectures. [[1]]  
+        In addition, the openEuler community encourages global developers, users, and enterprises to participate together to promote the prosperity of the open-source ecosystem. [[2]]
+    </answer>
+</example>
+
+---
+
+### 🧾 Task Instructions:
+
+Please generate a detailed, well-structured, and clearly formatted answer based on the following <bac_info> and <user_question>, following the above guidelines.
+
+---
+
+<bac_info>
+{bac_info}
+</bac_info>
+
+<user_question>
+{user_question}
+</user_question>
+
+</instructions>
+
+--- 
+
+✅ Please generate a response based on the improved prompt above.
         """,
     }
 
@@ -152,7 +250,8 @@ class RAG:
             )
             try:
                 async with httpx.AsyncClient(timeout=30) as client:
-                    data_json = tmp_data.model_dump(exclude_none=True, by_alias=True)
+                    data_json = tmp_data.model_dump(
+                        exclude_none=True, by_alias=True)
                     response = await client.post(url, headers=headers, json=data_json)
                     if response.status_code == status.HTTP_200_OK:
                         result = response.json()
@@ -162,7 +261,8 @@ class RAG:
         if data.kb_ids:
             try:
                 async with httpx.AsyncClient(timeout=30) as client:
-                    data_json = data.model_dump(exclude_none=True, by_alias=True)
+                    data_json = data.model_dump(
+                        exclude_none=True, by_alias=True)
                     response = await client.post(url, headers=headers, json=data_json)
                     # 检查响应状态码
                     if response.status_code == status.HTTP_200_OK:
@@ -173,13 +273,12 @@ class RAG:
         return doc_chunk_list
 
     @staticmethod
-    async def assemble_doc_info(doc_chunk_list: list[dict[str, Any]], max_tokens: int) -> str:
+    async def assemble_doc_info(doc_chunk_list: list[dict[str, Any]], leave_tokens: int) -> str:
         """组装文档信息"""
         bac_info = ""
         doc_info_list = []
         doc_cnt = 0
         doc_id_map = {}
-        leave_tokens = max_tokens
         token_calculator = TokenCalculator()
         for doc_chunk in doc_chunk_list:
             if doc_chunk["docId"] not in doc_id_map:
@@ -278,8 +377,10 @@ class RAG:
                 logger.exception("[RAG] 问题重写失败")
         doc_chunk_list = await RAG.get_doc_info_from_rag(
             user_sub=user_sub, max_tokens=llm.max_tokens, doc_ids=doc_ids, data=data)
+        leave_tokens = llm.max_tokens - \
+            TokenCalculator().calculate_token_length(messages=history)
         bac_info, doc_info_list = await RAG.assemble_doc_info(
-            doc_chunk_list=doc_chunk_list, max_tokens=llm.max_tokens)
+            doc_chunk_list=doc_chunk_list, leave_tokens=leave_tokens)
         messages = [
             *history,
             {
@@ -325,6 +426,7 @@ class RAG:
             temperature=0.7,
             result_only=False,
             model=llm.model_name,
+            enable_thinking=True
         ):
             chunk = buffer + chunk
             # 防止脚注被截断

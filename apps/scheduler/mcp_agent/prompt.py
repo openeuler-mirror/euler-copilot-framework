@@ -2079,8 +2079,6 @@ GEN_PARAMS: dict[LanguageType, str] = {
     1.生成的参数在格式上必须符合工具入参的schema。
     2.总的目标、阶段性的目标和背景信息必须被充分理解，利用其中的信息来生成工具入参。
     3.生成的参数必须符合阶段性目标。
-    4.必须返回单个JSON对象，不要返回数组格式。如果需要处理多个项目，请选择最重要或最相关的一个。
-    5.输出格式必须严格按照schema定义，返回一个完整的JSON对象。
 
     # 样例
     # 工具信息
@@ -2157,8 +2155,6 @@ GEN_PARAMS: dict[LanguageType, str] = {
         1. The generated parameters must conform to the tool input parameter schema.
         2. The overall goal, phased goals, and background information must be fully understood and used to generate tool input parameters.
         3. The generated parameters must conform to the phased goals.
-        4. Must return a single JSON object, not an array format. If multiple items need to be processed, please select the most important or relevant one.
-        5. The output format must strictly follow the schema definition and return a complete JSON object.
 
     # Example
     # Tool Information
@@ -2404,7 +2400,6 @@ FINAL_ANSWER: dict[LanguageType, str] = {
     # 注意
     1.输出的图片链接需要设置高为400px,且使用html的img标签进行展示，不能直接输出链接。
       1.1 例如：<img src="https://excample/excample.jpg" height="400px" alt="图片描述（可选）">
-    2.不要输出模型相关的信息，例如“作为一个AI模型，我无法...”等。
     # 用户目标
 
     {{goal}}
@@ -2430,7 +2425,6 @@ FINAL_ANSWER: dict[LanguageType, str] = {
     # Note
     1. The output image link needs to be set to a height of 400px and displayed using the HTML img tag, not directly outputting the link.
       1.1 For example: <img src="https://excample/excample.jpg" height="400px" alt="Image description (optional)">
-    2. Do not output model-related information, such as "As an AI model, I cannot..." etc.
     # User Goal
 
     {{goal}}

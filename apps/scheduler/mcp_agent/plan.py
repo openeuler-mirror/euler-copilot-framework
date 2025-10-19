@@ -154,13 +154,15 @@ class MCPPlanner(MCPBase):
         prompt = template.render(
             goal=user_goal,
             error_message=error_message,
-            current_plan=current_plan.model_dump(exclude_none=True, by_alias=True),
+            current_plan=current_plan.model_dump(
+                exclude_none=True, by_alias=True),
             history=history,
         )
         result = await MCPPlanner.get_resoning_result(prompt, reasoning_llm)
         # 解析为结构化数据
         schema = RestartStepIndex.model_json_schema()
-        schema["properties"]["start_index"]["maximum"] = len(current_plan.plans) - 1
+        schema["properties"]["start_index"]["maximum"] = len(
+            current_plan.plans) - 1
         schema["properties"]["start_index"]["minimum"] = 0
         restart_index = await MCPPlanner._parse_result(result, schema)
         # 使用RestartStepIndex模型解析结果
@@ -203,7 +205,8 @@ class MCPPlanner(MCPBase):
         if is_replan:
             template = _env.from_string(RECREATE_PLAN[language])
             prompt = template.render(
-                current_plan=current_plan.model_dump(exclude_none=True, by_alias=True),
+                current_plan=current_plan.model_dump(
+                    exclude_none=True, by_alias=True),
                 error_message=error_message,
                 goal=user_goal,
                 tools=tool_list,
@@ -343,7 +346,8 @@ class MCPPlanner(MCPBase):
         template = _env.from_string(TOOL_EXECUTE_ERROR_TYPE_ANALYSIS[language])
         prompt = template.render(
             goal=user_goal,
-            current_plan=current_plan.model_dump(exclude_none=True, by_alias=True),
+            current_plan=current_plan.model_dump(
+                exclude_none=True, by_alias=True),
             tool_name=tool.name,
             tool_description=tool.description,
             input_param=input_param,
@@ -415,7 +419,8 @@ class MCPPlanner(MCPBase):
         language: LanguageType = LanguageType.CHINESE,
     ) -> str:
         """将错误信息转换为工具描述"""
-        template = _env.from_string(CHANGE_ERROR_MESSAGE_TO_DESCRIPTION[language])
+        template = _env.from_string(
+            CHANGE_ERROR_MESSAGE_TO_DESCRIPTION[language])
         prompt = template.render(
             error_message=error_message,
             tool_name=tool.name,
@@ -467,5 +472,6 @@ class MCPPlanner(MCPBase):
             [{"role": "user", "content": prompt}],
             streaming=True,
             temperature=0.07,
+            enable_thinking=True
         ):
             yield chunk
