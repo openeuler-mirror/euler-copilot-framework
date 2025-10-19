@@ -28,11 +28,14 @@ async def get_user_sub(
     user_list, total = await UserManager.get_all_user_sub(page_cnt=page_cnt, page_size=page_size, filter_user_subs=[user_sub])
     user_info_list = []
     for user in user_list:
-        # user_info = await UserManager.get_userinfo_by_user_sub(user) 暂时不需要查询user_name
         if user == user_sub:
             continue
+        # 获取用户详细信息，包括用户名
+        user_info = await UserManager.get_userinfo_by_user_sub(user)
+        user_name = user_info.user_name if user_info and user_info.user_name else user
+        
         info = UserInfo(
-            userName=user,
+            userName=user_name,
             userSub=user,
         )
         user_info_list.append(info)

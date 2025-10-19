@@ -17,16 +17,18 @@ class UserManager:
     """用户相关操作"""
 
     @staticmethod
-    async def add_userinfo(user_sub: str) -> None:
+    async def add_userinfo(user_sub: str, user_name: str = "") -> None:
         """
         向数据库中添加用户信息
 
         :param user_sub: 用户sub
+        :param user_name: 用户名
         """
         mongo = MongoDB()
         user_collection = mongo.get_collection("user")
         await user_collection.insert_one(User(
             _id=user_sub,
+            user_name=user_name,
         ).model_dump(by_alias=True))
 
     @staticmethod
@@ -78,18 +80,19 @@ class UserManager:
         await user_collection.update_one({"_id": user_sub}, update_dict)
 
     @staticmethod
-    async def update_refresh_revision_by_user_sub(user_sub: str, *, refresh_revision: bool = False) -> bool:
+    async def update_refresh_revision_by_user_sub(user_sub: str, *, refresh_revision: bool = False, user_name: str = "") -> bool:
         """
         根据用户sub更新用户信息
 
         :param user_sub: 用户sub
         :param refresh_revision: 是否刷新revision
+        :param user_name: 用户名（仅在创建新用户时使用）
         :return: 更新后的用户信息
         """
         mongo = MongoDB()
         user_data = await UserManager.get_userinfo_by_user_sub(user_sub)
         if not user_data:
-            await UserManager.add_userinfo(user_sub)
+            await UserManager.add_userinfo(user_sub, user_name)
             return True
 
         update_dict = {
@@ -142,16 +145,16 @@ class UserManager:
         mongo = MongoDB()
         user_collection = mongo.get_collection("user")
         
-        # 构建更新字典，只更新非None的字段
+        # 构建更新字典，只更新非None的字段，使用别名字段名以保持与模型一致
         preferences_update = {}
         if data.reasoning_model_preference is not None:
-            preferences_update["preferences.reasoning_model_preference"] = data.reasoning_model_preference.model_dump()
+            preferences_update["preferences.reasoningModelPreference"] = data.reasoning_model_preference.model_dump(by_alias=True)
         if data.embedding_model_preference is not None:
-            preferences_update["preferences.embedding_model_preference"] = data.embedding_model_preference.model_dump()
+            preferences_update["preferences.embeddingModelPreference"] = data.embedding_model_preference.model_dump(by_alias=True)
         if data.reranker_preference is not None:
-            preferences_update["preferences.reranker_preference"] = data.reranker_preference.model_dump()
+            preferences_update["preferences.rerankerPreference"] = data.reranker_preference.model_dump(by_alias=True)
         if data.chain_of_thought_preference is not None:
-            preferences_update["preferences.chain_of_thought_preference"] = data.chain_of_thought_preference
+            preferences_update["preferences.chainOfThoughtPreference"] = data.chain_of_thought_preference
         
         if preferences_update:
             update_dict = {"$set": preferences_update}
@@ -169,7 +172,31 @@ class UserManager:
         user_collection = mongo.get_collection("user")
         user_data = await user_collection.find_one({"_id": user_sub}, {"preferences": 1})
         if user_data and "preferences" in user_data:
+            preferences_data = user_data["preferences"]
+            
+            # 数据迁移：将旧的下划线格式字段名转换为驼峰格式
+            migration_needed = False
+            if "reasoning_model_preference" in preferences_data:
+                preferences_data["reasoningModelPreference"] = preferences_data.pop("reasoning_model_preference")
+                migration_needed = True
+            if "embedding_model_preference" in preferences_data:
+                preferences_data["embeddingModelPreference"] = preferences_data.pop("embedding_model_preference")
+                migration_needed = True
+            if "reranker_preference" in preferences_data:
+                preferences_data["rerankerPreference"] = preferences_data.pop("reranker_preference")
+                migration_needed = True
+            if "chain_of_thought_preference" in preferences_data:
+                preferences_data["chainOfThoughtPreference"] = preferences_data.pop("chain_of_thought_preference")
+                migration_needed = True
+            
+            # 如果进行了迁移，更新数据库
+            if migration_needed:
+                await user_collection.update_one(
+                    {"_id": user_sub}, 
+                    {"$set": {"preferences": preferences_data}}
+                )
+            
             # 使用model_validate来处理从数据库读取的数据，这样会正确处理别名映射
-            return UserPreferences.model_validate(user_data["preferences"])
+            return UserPreferences.model_validate(preferences_data)
         else:
             return UserPreferences()

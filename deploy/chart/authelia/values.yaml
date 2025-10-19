@@ -1,0 +1,281 @@
+# 全局设置
+globals:
+  # 节点架构：默认是x86
+  # [必填] 节点设置：["x86", "arm"]
+  arch:
+  # 镜像拉取策略，默认为IfNotPresent
+  imagePullPolicy:
+  # 存储类；默认为local-path
+  storageClass:
+
+# 存储设置
+storage:
+  # Authelia数据存储大小，默认为1Gi
+  authelia:
+
+# 域名设置
+domain:
+  # [必填] Authelia的web前端url；默认为http://127.0.0.1:30091
+  authelia:
+
+# Authelia 身份认证服务配置
+authelia:
+  # [必填] 是否启用 Authelia
+  enabled: true
+  
+  # 镜像配置
+  image:
+    # 镜像仓库；默认为authelia/authelia
+    repository: authelia/authelia
+    # 镜像标签；默认为4.39.13
+    tag: "4.39.13"
+    # 镜像拉取策略；默认继承globals.imagePullPolicy
+    pullPolicy:
+  
+  # 副本数量；默认为1
+  replicaCount:
+  
+  # 性能限制设置
+  resourceLimits: {}
+  
+  # Service设置
+  service:
+    # Service类型，例如NodePort；默认为NodePort
+    type: NodePort
+    # 容器内部端口；默认为9091
+    port: 9091
+    # 当类型为NodePort时，填写主机的端口号；默认为30091
+    nodePort: 30091
+  
+  # 存储配置
+  persistence:
+    # [必填] 是否启用持久化存储；默认为true
+    enabled: true
+    # 存储大小；默认继承storage.authelia或1Gi
+    size:
+    # 存储类；默认继承globals.storageClass
+    storageClass:
+    # 访问模式；默认为ReadWriteOnce
+    accessMode: ReadWriteOnce
+  
+  # 配置文件设置
+  config:
+    # 服务器配置
+    server:
+      # 服务监听地址；默认为tcp://0.0.0.0:9091/
+      address: "tcp://0.0.0.0:9091/"
+      # TLS配置
+      tls:
+        # 是否启用TLS；默认为false
+        enabled: false
+        # TLS证书路径（启用TLS时必填）
+        certificate: ""
+        # TLS私钥路径（启用TLS时必填）
+        key: ""
+    
+    # 日志配置
+    log:
+      # 日志级别；默认为info，可选：trace, debug, info, warn, error
+      level: info
+      # 日志格式；默认为text，可选：text, json
+      format: text
+    
+    # 会话配置
+    session:
+      # 会话cookie名称；默认为authelia_session
+      name: authelia_session
+      # [必填] 会话域名，需要与实际域名匹配；默认为127.0.0.1
+      domain: "127.0.0.1"
+      # SameSite策略；默认为lax，可选：strict, lax, none
+      same_site: lax
+      # [必填] 会话密钥，生产环境请修改
+      secret: "insecure_session_secret_change_me_in_production"
+      # 会话过期时间；默认为1h
+      expiration: 1h
+      # 会话非活跃超时时间；默认为5m
+      inactivity: 5m
+      # 记住我功能过期时间；默认为1M
+      remember_me: 1M
+    
+    # 身份验证后端配置
+    authentication_backend:
+      # 密码重置配置
+      password_reset:
+        # 是否禁用密码重置；默认为true
+        disable: true
+      # 刷新间隔；默认为5m
+      refresh_interval: 5m
+      # 基于文件的用户配置
+      file:
+        # 用户文件路径；默认为/etc/authelia/users.yml
+        path: /etc/authelia/users.yml
+        # 密码加密配置
+        password:
+          # 加密算法；默认为argon2id
+          algorithm: argon2id
+          # 迭代次数；默认为1
+          iterations: 1
+          # 盐长度；默认为16
+          salt_length: 16
+          # 并行度；默认为8
+          parallelism: 8
+          # 内存使用量(KB)；默认为1024
+          memory: 1024
+    
+    # 访问控制配置
+    access_control:
+      # 默认策略；默认为one_factor，可选：bypass, one_factor, two_factor, deny
+      default_policy: one_factor
+    
+    # 存储配置
+    storage:
+      # [必填] 存储加密密钥，生产环境请修改
+      encryption_key: "insecure_storage_encryption_key_change_me_in_production"
+      # 本地SQLite存储配置
+      local:
+        # 数据库文件路径；默认为/etc/authelia/db.sqlite3
+        path: /etc/authelia/db.sqlite3
+    
+    # 通知配置
+    notifier:
+      # 是否禁用启动检查；默认为true
+      disable_startup_check: true
+      # 基于文件系统的通知配置
+      filesystem:
+        # 通知文件路径；默认为/etc/authelia/notification.txt
+        filename: /etc/authelia/notification.txt
+    
+    # NTP配置
+    ntp:
+      # 是否禁用启动检查；默认为true
+      disable_startup_check: true
+    
+    # 身份验证配置
+    identity_validation:
+      # 密码重置配置
+      reset_password:
+        # [必填] JWT密钥，生产环境请修改
+        jwt_secret: "a_very_important_secret_for_jwt_tokens_change_me_in_production"
+    
+    # 访问限制配置
+    regulation:
+      # 最大重试次数；默认为3
+      max_retries: 3
+      # 查找时间窗口(秒)；默认为120
+      find_time: 120
+      # 封禁时间(秒)；默认为300
+      ban_time: 300
+    
+    # 禁用的功能配置
+    totp:
+      # 是否禁用TOTP；默认为true
+      disable: true
+    webauthn:
+      # 是否禁用WebAuthn；默认为true
+      disable: true
+    duo_api:
+      # 是否禁用Duo API；默认为true
+      disable: true
+    
+    # OIDC 身份提供者配置
+    identity_providers:
+      oidc:
+        # [必填] HMAC密钥，生产环境请修改
+        hmac_secret: "this_is_a_secret_abc123abc123abc123"
+        # 是否启用客户端调试消息；默认为true
+        enable_client_debug_messages: true
+        # JWT签名密钥配置
+        jwks:
+          - # 密钥ID；默认为main-signing-key
+            key_id: main-signing-key
+            # 签名算法；默认为RS256
+            algorithm: RS256
+            # [必填] RSA私钥，生产环境请使用真实的私钥
+            key: |
+              -----BEGIN PRIVATE KEY-----
+              MIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQCssLU+8eRFwGVA
+              E/8BPxpneEzp0rbfM1m+osuedZ+nad8L1CQompCmx8A/hXHynUGgCxS6QJj+5qNH
+              ZXqSIr+JDfixDqb2CpkUMBhrG7JIYZCyLQevBR5sGPwGXMeHyTGfWI6hoSUCfbqG
+              Hg+40n/2shisbqUyIQiR934RaA32Wn42fqcXyzaUU0xqy55aKyXBhAojsrDT09Mv
+              vNJce9tO9D7e0p1n0YQJdDFVyCZzCnVWL3i+iyf5rkK9OzS7TBAiQLZWfMcCBOZC
+              t0XBsQj91klwp17dDWzKM9seBfB83riMRqxBoSQ2NUFU27h6eJwUpOBc4PMpORlH
+              BBhaaHUPAgMBAAECggEAOWOaQBpcHbAUFejvSGdDq5onmVcs7d0fWIK6f2Ugkx7U
+              gJZWE+ZV5w8f/RwoY5POMNUt5L29+owEPCBlzPXeSDpL6O9xHfgkqjhXjRTNuU8v
+              Kn9be9cMJqlg6+5eYupCYu2nrOAkMAE/gP2xhN7zprTGDVvR62hd9EBW9YrqhPE+
+              gsPzRr4Gg9MRiUesS+pOFkhseb+1gvNozBRhKxRs7zm2KlFpZMK6vAgG9/ZSVCxq
+              SbTp7NwFJsBEuVPgEWWDexflsbBxgkQ44q5VYK5MjEf0pr0IWEhIZNM+1fUnrYV0
+              fhlEfT4G/gdIcEXKvzo5r3wzr1+sdIWO+Fe9JG3ZBQKBgQDmmkxektOmBt5yEdEA
+              aXNJBWxTQFU/vb7tm+B+/yR3jgTn8jMPmH87gl+C8SfufbGEsOatP44k2NUVad4R
+              yf2xtoeWuRlPw4akLWXzZdSlRzF5Q7Y4aRxzKQWcsEdKKAOvsDsuoHOQGdeE79Xw
+              xNqu1c2aui0qqKVBUbXDWE/H6wKBgQC/tZqAS+umFoVYfT/4t3xnW0X8z8rJqfA0
+              BmosDaKdvzkUpGYaWjsUpETqGrlVdh+OfbGlfdlMCslluhaW1GVR/tD4Ji6WWt10
+              EavaBnt9xYHE153FYJqshV5eku9egussRLNzccp4cltAE3InQkYGMPRlmCGNMz2j
+              eh0qHwGCbQKBgBPmzSB8W3fAsAH4N6lpcGGk7ixhKPpPTeMDyOQs8ODAiPvbkzyN
+              VK22GrgaR+/1ORTSj5X0Hjhf3kPy1w+B9zsXHayMXPrdTQluQZY3+5ooAsUMavWD
+              XMkziSB0tjJYMbk/5FupzU9qa4c1i6kz1AuyuAPafXtpApoYiy9It9nxAoGBAKH9
+              QNTh0ffglcJE61YtLNhk3omVx0OJ7eb3+KTKzLrAhunzVDc2QS/a8kRiWnJlQprz
+              iLVO1tsTTkQ/7rB6Pjb/uvHDyZ/Qncli2TR8P8Lxrgp3KuBKFchrVWdSfyL8Ot2I
+              G54T68LE1mgZRl73+BVpLkneN5OJVa8aEySxWGQtAoGAUnguyoO+Hs73Vyz22KLi
+              b5ieWQghi63GaoGHA0qeUMy5njgHKUAcuSBB9TIZGxnnDA9u0hHhOieCmhAJU21h
+              zoKntzIFuaZgt4Tgat72oPBw1hGE+2bN5lHmC+SsL9oxyvsH2gDFjSiLWpg7GTC6
+              2mFOM+pjK2mWWQe1ADC6tbA=
+              -----END PRIVATE KEY-----
+        # OIDC客户端配置
+        clients:
+          - # OIDC客户端ID；默认为euler-copilot
+            client_id: "euler-copilot"
+            # 客户端显示名称；默认为Euler Copilot Framework
+            client_name: "Euler Copilot Framework"
+            # [必填] 客户端密钥，生产环境请修改
+            client_secret: "$argon2id$v=19$m=65536,t=3,p=4$XYeq1N+rtYxALylzWxOxCQ$mWQaPRuYGuNa9d4rnAc7eq25HIJc0dwOYQrlEzJ792k"
+            # 是否为公共客户端；默认为false
+            public: false
+            # 授权策略；默认为one_factor
+            authorization_policy: one_factor
+            # Token端点认证方法；默认为client_secret_post
+            token_endpoint_auth_method: client_secret_post
+            # 是否需要PKCE；默认为false
+            require_pkce: false
+            # 重定向URI列表
+            redirect_uris:
+              - "https://127.0.0.1/api/auth/login"
+              - "https://localhost/api/auth/login"
+            # 授权范围
+            scopes:
+              - openid
+              - profile
+              - email
+            # 响应类型
+            response_types:
+              - code
+            # 授权类型
+            grant_types:
+              - authorization_code
+            # 响应模式
+            response_modes:
+              - query
+            # 用户信息签名算法；默认为none
+            userinfo_signed_response_alg: none
+            # 同意模式；默认为implicit
+            consent_mode: implicit
+            # 预配置同意持续时间；默认为1y
+            pre_configured_consent_duration: 1y
+
+# 用户配置
+users:
+  # 默认用户配置文件
+  config: |
+    users:
+      admin:
+        displayname: "Administrator"
+        password: "$argon2id$v=19$m=65536,t=3,p=4$XYeq1N+rtYxALylzWxOxCQ$mWQaPRuYGuNa9d4rnAc7eq25HIJc0dwOYQrlEzJ792k"  # password: admin123
+        email: admin@example.com
+        groups:
+          - admins
+          - dev
+      user:
+        displayname: "User"
+        password: "$argon2id$v=19$m=65536,t=3,p=4$XYeq1N+rtYxALylzWxOxCQ$mWQaPRuYGuNa9d4rnAc7eq25HIJc0dwOYQrlEzJ792k"  # password: user123
+        email: user@example.com
+        groups:
+          - dev

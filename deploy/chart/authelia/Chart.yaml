@@ -1,0 +1,17 @@
+apiVersion: v2
+name: authelia
+description: Authelia authentication and authorization server for Euler Copilot Framework
+type: application
+version: 0.1.0
+appVersion: "4.39.13"
+keywords:
+  - authentication
+  - authorization
+  - oidc
+  - security
+home: https://www.authelia.com/
+sources:
+  - https://github.com/authelia/authelia
+maintainers:
+  - name: Euler Copilot Team
+    email: euler-copilot@openeuler.org

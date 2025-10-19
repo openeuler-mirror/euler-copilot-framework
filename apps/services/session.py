@@ -20,7 +20,7 @@ class SessionManager:
     """浏览器Session管理"""
 
     @staticmethod
-    async def create_session(ip: str | None = None, user_sub: str | None = None) -> str:
+    async def create_session(ip: str | None = None, user_sub: str | None = None, user_name: str | None = None) -> str:
         """创建浏览器Session"""
         if not ip:
             err = "用户IP错误！"
@@ -41,6 +41,9 @@ class SessionManager:
 
         if user_sub is not None:
             data.user_sub = user_sub
+            
+        if user_name is not None:
+            data.user_name = user_name
 
         collection = MongoDB().get_collection("session")
         await collection.insert_one(data.model_dump(exclude_none=True, by_alias=True))

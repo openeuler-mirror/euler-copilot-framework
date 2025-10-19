@@ -30,6 +30,15 @@ class OIDCConfig(BaseModel):
     app_secret: str = Field(description="OIDC App Secret")
 
 
+class AutheliaConfig(BaseModel):
+    """Authelia认证配置"""
+
+    host: str = Field(description="Authelia服务路径")
+    client_id: str = Field(description="OIDC Client ID")
+    client_secret: str = Field(description="OIDC Client Secret")
+    redirect_uri: str = Field(description="重定向URI")
+
+
 class FixedUserConfig(BaseModel):
     """固定用户配置"""
 
@@ -39,8 +48,8 @@ class FixedUserConfig(BaseModel):
 class LoginConfig(BaseModel):
     """OIDC配置"""
 
-    provider: Literal["authhub", "openeuler", "disable"] = Field(description="OIDC Provider", default="authhub")
-    settings: OIDCConfig | FixedUserConfig = Field(description="OIDC 配置")
+    provider: Literal["authhub", "openeuler", "authelia", "disable"] = Field(description="OIDC Provider", default="authhub")
+    settings: OIDCConfig | AutheliaConfig | FixedUserConfig = Field(description="OIDC 配置")
 
 
 class EmbeddingConfig(BaseModel):

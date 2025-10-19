@@ -1,0 +1,39 @@
+{{- if .Values.euler_copilot.sandbox.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "euler_copilot.fullname" . }}-sandbox-config
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "euler_copilot.labels" . | nindent 4 }}
+    app.kubernetes.io/component: sandbox
+data:
+  config.py: |
+    # OpenEuler Intelligence Sandbox Configuration
+    import os
+    
+    # 服务配置
+    HOST = '0.0.0.0'
+    PORT = 8000
+    
+    # 日志配置
+    LOG_LEVEL = '{{ .Values.euler_copilot.sandbox.logLevel | default "INFO" }}'
+    QUIET_MODE = {{ .Values.euler_copilot.sandbox.quietMode | default false }}
+    
+    # 安全配置
+    ENABLE_SECURITY = {{ .Values.euler_copilot.sandbox.security.enabled | default true }}
+    MAX_EXECUTION_TIME = {{ .Values.euler_copilot.sandbox.security.maxExecutionTime | default 30 }}
+    MAX_MEMORY_MB = {{ .Values.euler_copilot.sandbox.security.maxMemoryMB | default 512 }}
+    
+    # 队列配置
+    MAX_QUEUE_SIZE = {{ .Values.euler_copilot.sandbox.queue.maxSize | default 100 }}
+    WORKER_THREADS = {{ .Values.euler_copilot.sandbox.queue.workerThreads | default 4 }}
+    
+    # 支持的语言
+    SUPPORTED_LANGUAGES = {{ .Values.euler_copilot.sandbox.supportedLanguages | default (list "python" "javascript" "bash") | toJson }}
+    
+    # 容器配置
+    CONTAINER_TIMEOUT = {{ .Values.euler_copilot.sandbox.container.timeout | default 60 }}
+    CONTAINER_MEMORY_LIMIT = '{{ .Values.euler_copilot.sandbox.container.memoryLimit | default "512m" }}'
+    CONTAINER_CPU_LIMIT = '{{ .Values.euler_copilot.sandbox.container.cpuLimit | default "0.5" }}'
+{{- end }}

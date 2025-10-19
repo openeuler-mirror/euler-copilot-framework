@@ -54,6 +54,7 @@ class AuthUserMsg(BaseModel):
     """GET /api/auth/user Result数据结构"""
 
     user_sub: str
+    user_name: str
     revision: bool
     is_admin: bool
     auto_execute: bool

@@ -35,19 +35,60 @@ templates = Jinja2Templates(directory=Path(__file__).parent.parent / "templates"
 
 
 @router.get("/login")
-async def oidc_login(request: Request, code: str) -> HTMLResponse:
+async def oidc_login(request: Request, code: str = None, error: str = None, error_description: str = None) -> HTMLResponse:
     """
-    OIDC login
+    OIDC login callback
 
     :param request: Request object
-    :param code: OIDC code
+    :param code: OIDC authorization code (success case)
+    :param error: OAuth2 error code (failure case)
+    :param error_description: OAuth2 error description (failure case)
     :return: HTMLResponse
     """
+    # Handle OAuth2 error response
+    if error:
+        logger.warning(f"OAuth2 authorization failed: {error} - {error_description}")
+        
+        # Handle different error types
+        if error == "access_denied":
+            reason = "授权被拒绝，请重新登录。"
+        elif error == "invalid_request":
+            reason = "请求参数错误，请重试。"
+        elif error == "unauthorized_client":
+            reason = "客户端未授权，请联系管理员。"
+        elif error == "unsupported_response_type":
+            reason = "不支持的响应类型，请联系管理员。"
+        elif error == "invalid_scope":
+            reason = "权限范围无效，请联系管理员。"
+        elif error == "server_error":
+            reason = "服务器错误，请稍后重试。"
+        elif error == "temporarily_unavailable":
+            reason = "服务暂时不可用，请稍后重试。"
+        else:
+            reason = f"登录失败：{error_description or error}"
+        
+        return templates.TemplateResponse(
+            "login_failed.html.j2",
+            {"request": request, "reason": reason},
+            status_code=status.HTTP_400_BAD_REQUEST,
+        )
+    
+    # Handle missing code parameter
+    if not code:
+        logger.error("Neither code nor error parameter provided in OAuth2 callback")
+        return templates.TemplateResponse(
+            "login_failed.html.j2",
+            {"request": request, "reason": "缺少必要的授权参数，请重新登录。"},
+            status_code=status.HTTP_400_BAD_REQUEST,
+        )
+    
+    # Handle successful authorization (existing logic)
     try:
         token = await oidc_provider.get_oidc_token(code)
         user_info = await oidc_provider.get_oidc_user(token["access_token"])
 
         user_sub: str | None = user_info.get("user_sub", None)
+        user_name: str = user_info.get("user_name", "")
     except Exception as e:
         logger.exception("User login failed")
         status_code = status.HTTP_400_BAD_REQUEST if "auth error" in str(e) else status.HTTP_403_FORBIDDEN
@@ -74,9 +115,9 @@ async def oidc_login(request: Request, code: str) -> HTMLResponse:
             status_code=status.HTTP_403_FORBIDDEN,
         )
 
-    await UserManager.update_refresh_revision_by_user_sub(user_sub)
+    await UserManager.update_refresh_revision_by_user_sub(user_sub, user_name=user_name)
 
-    current_session = await SessionManager.create_session(user_host, user_sub)
+    current_session = await SessionManager.create_session(user_host, user_sub, user_name)
 
     data = Audit(
         user_sub=user_sub,
@@ -110,6 +151,16 @@ async def logout(
                 result={},
             ).model_dump(exclude_none=True, by_alias=True),
         )
+    
+    # 先触发authHub的登出，清理authHub侧的cookie
+    try:
+        await oidc_provider.oidc_logout(dict(request.cookies))
+        logger.info(f"AuthHub logout succeeded for user: {user_sub}")
+    except Exception as e:
+        logger.warning(f"AuthHub logout failed for user {user_sub}: {e}")
+        # 即使authHub登出失败，也继续清理本地session，避免用户无法登出
+    
+    # 清理本地token和session
     await TokenManager.delete_plugin_token(user_sub)
     await SessionManager.delete_session(session_id)
 
@@ -175,6 +226,7 @@ async def userinfo(
             message="success",
             result=AuthUserMsg(
                 user_sub=user_sub,
+                user_name=user.user_name,
                 revision=user.is_active,
                 is_admin=user.is_admin,
                 auto_execute=user.auto_execute,
@@ -222,8 +274,10 @@ async def update_revision_number(request: Request, user_sub: Annotated[str, Depe
             message="success",
             result=AuthUserMsg(
                 user_sub=user_sub,
+                user_name=user.user_name,
                 revision=user.is_active,
                 is_admin=user.is_admin,
+                auto_execute=user.auto_execute,
             ),
         ).model_dump(exclude_none=True, by_alias=True),
     )

@@ -16,18 +16,32 @@
         window.onload = function() {
             try {
                 const sessionId = "{{ current_session }}";
+                console.log('Login success, sessionId:', sessionId);
+                document.getElementById('desc').innerText = "登录成功，正在跳转...";
+                
                 if (window.opener && window.opener !== window) {
-                    // 使用 postMessage 发送 sessionId 到主窗口, 兼容 Electron 没有域名的情况
-                    window.opener.postMessage({type: 'auth_success', sessionId: sessionId}, '*');
+                    // 发送正确格式的 postMessage 给父窗口
+                    console.log('Sending postMessage to parent window');
+                    window.opener.postMessage({
+                        type: 'auth_success', 
+                        sessionId: sessionId
+                    }, '*');
+                    
                     document.getElementById('desc').innerText = "登录成功，窗口即将自动关闭…";
-                    setTimeout(window.close, 1500);
+                    setTimeout(function() {
+                        window.close();
+                    }, 1500);
                 } else {
-                    console.warn('未找到 window.opener 或 opener 等于自身，无法 postMessage。');
-                    document.getElementById('desc').innerText = "登录成功，但未能自动返回主页面，请手动关闭本窗口。";
+                    // 如果没有 opener，直接重定向到主页
+                    console.warn('未找到 window.opener，直接重定向到主页');
+                    document.getElementById('desc').innerText = "登录成功，正在跳转到主页...";
+                    setTimeout(function() {
+                        window.location.href = '/';
+                    }, 1500);
                 }
             } catch (e) {
-                console.error("postMessage 脚本出错:", e);
-                document.getElementById('desc').innerText = "登录流程发生异常，请关闭本窗口并重试。";
+                console.error("登录成功脚本出错:", e);
+                document.getElementById('desc').innerText = "登录成功，请手动关闭本窗口或刷新主页面。";
             }
         };
     </script>

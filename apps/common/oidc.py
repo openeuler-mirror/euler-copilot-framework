@@ -8,6 +8,7 @@ from typing import Any
 from apps.common.config import Config
 from apps.common.mongo import MongoDB
 from apps.common.oidc_provider.authhub import AuthhubOIDCProvider
+from apps.common.oidc_provider.authelia import AutheliaOIDCProvider
 from apps.common.oidc_provider.openeuler import OpenEulerOIDCProvider
 from apps.constants import OIDC_ACCESS_TOKEN_EXPIRE_TIME, OIDC_REFRESH_TOKEN_EXPIRE_TIME
 
@@ -23,6 +24,8 @@ class OIDCProvider:
             self.provider = OpenEulerOIDCProvider()
         elif Config().get_config().login.provider == "authhub":
             self.provider = AuthhubOIDCProvider()
+        elif Config().get_config().login.provider == "authelia":
+            self.provider = AutheliaOIDCProvider()
         else:
             err = f"[OIDC] 未知OIDC提供商: {Config().get_config().login.provider}"
             logger.error(err)

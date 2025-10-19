@@ -51,6 +51,7 @@ class User(BaseModel):
     """
 
     id: str = Field(alias="_id")
+    user_name: str = Field(default="", description="用户名")
     last_login: float = Field(default_factory=lambda: round(datetime.now(tz=UTC).timestamp(), 3))
     is_active: bool = False
     is_whitelisted: bool = False

@@ -52,12 +52,22 @@ models:
 
 # 登录设置
 login:
-  # 客户端ID设置，仅在type为authhub时有效
+  # [必填] 登录提供者类型：["authhub", "authelia"]
+  provider: authhub
+  
+  # AuthHub客户端ID设置，仅在provider为authhub时有效
   client:
     # [必填] 客户端ID
     id:
     # [必填] 客户端密钥
     secret:
+  
+  # Authelia OIDC设置，仅在provider为authelia时有效
+  authelia:
+    # [必填] OIDC客户端ID
+    client_id: euler-copilot
+    # [必填] OIDC客户端密钥
+    client_secret: your-client-secret-here
 
 #域名设置
 domain:
@@ -65,6 +75,8 @@ domain:
   euler_copilot:
   # [必填] authhub的web前端url；默认为http://127.0.0.1:30081
   authhub:
+  # [必填] authelia的web前端url；默认为http://127.0.0.1:30091
+  authelia:
 
 # 存储设置
 storage:
@@ -145,6 +157,58 @@ euler_copilot:
     image:
     # 容器根目录只读
     readOnly:
+    # 性能限制设置
+    resourceLimits: {}
+    # Service设置
+    service:
+      # Service类型，例如NodePort
+      type:
+      # 当类型为NodePort时，填写主机的端口号
+      nodePort:
+
+  sandbox:
+    # [必填] 是否部署代码沙箱服务
+    enabled: true
+    # 镜像设置；默认为hub.oepkgs.net/neocopilot/openeuler-intelligence-sandbox:latest-x86
+    # 镜像标签：["latest-x86", "latest-arm"]
+    image:
+    # 镜像版本
+    version:
+    # 副本数量
+    replicas: 1
+    # 容器根目录只读
+    readOnly:
+    # 日志级别
+    logLevel: INFO
+    # 静默模式
+    quietMode: false
+    # 安全配置
+    security:
+      # 启用安全限制
+      enabled: true
+      # 最大执行时间（秒）
+      maxExecutionTime: 30
+      # 最大内存使用（MB）
+      maxMemoryMB: 512
+    # 队列配置
+    queue:
+      # 最大队列大小
+      maxSize: 100
+      # 工作线程数
+      workerThreads: 4
+    # 容器配置
+    container:
+      # 容器超时时间（秒）
+      timeout: 60
+      # 内存限制
+      memoryLimit: "512m"
+      # CPU限制
+      cpuLimit: "0.5"
+    # 支持的编程语言
+    supportedLanguages:
+      - python
+      - javascript
+      - bash
     # 性能限制设置
     resourceLimits: {}
     # Service设置

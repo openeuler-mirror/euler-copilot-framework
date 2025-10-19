@@ -216,23 +216,44 @@ class MCPLoader(metaclass=SingletonMeta):
         ):
             client = MCPClient()
         else:
-            err = f"MCP {mcp_id}：未知的MCP服务类型“{config.type}”"
+            err = f"MCP {mcp_id}：未知的MCP服务类型'{config.type}'"
             logger.error(err)
             raise ValueError(err)
 
-        await client.init(user_sub, mcp_id, config.config)
+        try:
+            await client.init(user_sub, mcp_id, config.config)
+        except ConnectionError as e:
+            logger.error("[MCPLoader] MCP %s 连接失败: %s", mcp_id, e)
+            raise ValueError(f"MCP {mcp_id} 连接失败: {e}")
+        except Exception as e:
+            logger.error("[MCPLoader] MCP %s 初始化异常: %s", mcp_id, e)
+            raise ValueError(f"MCP {mcp_id} 初始化失败: {e}")
 
         # 获取工具列表
         tool_list = []
-        for item in client.tools:
-            tool_list += [MCPTool(
-                id=sqids.encode([random.randint(0, 1000000) for _ in range(5)])[:6],  # noqa: S311
-                name=item.name,
-                mcp_id=mcp_id,
-                description=item.description or "",
-                input_schema=item.inputSchema,
-            )]
-        await client.stop()
+        try:
+            for item in client.tools:
+                tool_list += [MCPTool(
+                    id=sqids.encode([random.randint(0, 1000000) for _ in range(5)])[:6],  # noqa: S311
+                    name=item.name,
+                    mcp_id=mcp_id,
+                    description=item.description or "",
+                    input_schema=item.inputSchema,
+                )]
+            logger.info("[MCPLoader] MCP %s 成功获取 %d 个工具", mcp_id, len(tool_list))
+        except Exception as e:
+            logger.error("[MCPLoader] MCP %s 获取工具列表失败: %s", mcp_id, e)
+            raise ValueError(f"MCP {mcp_id} 获取工具列表失败: {e}")
+        finally:
+            # 确保客户端被正确停止
+            if hasattr(client, 'stop'):
+                try:
+                    await client.stop()
+                except Exception as e:
+                    logger.warning("[MCPLoader] MCP %s 停止客户端时发生异常: %s", mcp_id, e)
+            else:
+                logger.warning("[MCPLoader] MCP %s 客户端没有stop方法", mcp_id)
+        
         return tool_list
 
     @staticmethod
