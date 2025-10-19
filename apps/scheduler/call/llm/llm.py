@@ -34,9 +34,12 @@ class LLM(CoreCall, input_model=LLMInput, output_model=LLMOutput):
     # 大模型参数
     temperature: float = Field(description="大模型温度（随机化程度）", default=0.7)
     enable_context: bool = Field(description="是否启用上下文", default=True)
-    step_history_size: int = Field(description="上下文信息中包含的步骤历史数量", default=3, ge=1, le=10)
-    system_prompt: str = Field(description="大模型系统提示词", default="You are a helpful assistant.")
-    user_prompt: str = Field(description="大模型用户提示词", default=LLM_DEFAULT_PROMPT)
+    step_history_size: int = Field(
+        description="上下文信息中包含的步骤历史数量", default=3, ge=1, le=10)
+    system_prompt: str = Field(
+        description="大模型系统提示词", default="You are a helpful assistant.")
+    user_prompt: str = Field(description="大模型用户提示词",
+                             default=LLM_DEFAULT_PROMPT)
 
     i18n_info: ClassVar[dict[str, dict]] = {
         LanguageType.CHINESE: {
@@ -76,7 +79,8 @@ class LLM(CoreCall, input_model=LLMInput, output_model=LLMOutput):
             context_prompt = "无背景信息。"
 
         # 参数
-        time = datetime.now(tz=pytz.timezone("Asia/Shanghai")).strftime("%Y-%m-%d %H:%M:%S")
+        time = datetime.now(tz=pytz.timezone("Asia/Shanghai")
+                            ).strftime("%Y-%m-%d %H:%M:%S")
         formatter = {
             "time": time,
             "context": context_prompt,
@@ -99,13 +103,11 @@ class LLM(CoreCall, input_model=LLMInput, output_model=LLMOutput):
             {"role": "user", "content": user_input},
         ]
 
-
     async def _init(self, call_vars: CallVars) -> LLMInput:
         """初始化LLM工具"""
         return LLMInput(
             message=await self._prepare_message(call_vars),
         )
-
 
     async def _exec(
         self, input_data: dict[str, Any], language: LanguageType = LanguageType.CHINESE
@@ -114,7 +116,7 @@ class LLM(CoreCall, input_model=LLMInput, output_model=LLMOutput):
         data = LLMInput(**input_data)
         try:
             llm = ReasoningLLM()
-            async for chunk in llm.call(messages=data.message):
+            async for chunk in llm.call(messages=data.message, enable_thinking=True):
                 if not chunk:
                     continue
                 yield CallOutputChunk(type=CallOutputType.TEXT, content=chunk)

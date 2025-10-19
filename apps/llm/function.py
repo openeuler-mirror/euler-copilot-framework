@@ -48,9 +48,10 @@ class FunctionLLM:
         self._params = {
             "model": self._config.model,
             "messages": [],
-            "timeout": 300
+            "extra_body": {"enable_thinking": False}
         }
-
+        if self._config.backend != "ollama":
+            self._params["timeout"] = 300
         if self._config.backend == "ollama":
             import ollama
 
@@ -68,13 +69,13 @@ class FunctionLLM:
             import openai
 
             if not self._config.api_key:
-                self._client = openai.AsyncOpenAI(base_url=self._config.endpoint)
+                self._client = openai.AsyncOpenAI(
+                    base_url=self._config.endpoint)
             else:
                 self._client = openai.AsyncOpenAI(
                     base_url=self._config.endpoint,
                     api_key=self._config.api_key,
                 )
-
 
     async def _call_openai(
         self,
@@ -131,7 +132,8 @@ class FunctionLLM:
             ]
 
         try:
-            response = await self._client.chat.completions.create(**self._params) # type: ignore[arg-type]
+            # type: ignore[arg-type]
+            response = await self._client.chat.completions.create(**self._params)
         except AuthenticationError as e:
             logger.error("[FunctionCall] API认证失败: %s", e)
             raise ValueError(f"API认证失败，请检查API密钥: {e}")
@@ -162,17 +164,19 @@ class FunctionLLM:
         except Exception as e:
             logger.error("[FunctionCall] 未知错误: %s", e)
             raise ValueError(f"LLM调用发生未知错误: {e}")
-        
+
         try:
             # 尝试获取function call结果
-            if (response.choices and 
-                response.choices[0].message.tool_calls and 
-                response.choices[0].message.tool_calls[0].function.arguments):
-                logger.info("[FunctionCall] 大模型输出：%s", response.choices[0].message.tool_calls[0].function.arguments)
+            if (response.choices and
+                response.choices[0].message.tool_calls and
+                    response.choices[0].message.tool_calls[0].function.arguments):
+                logger.info("[FunctionCall] 大模型输出：%s",
+                            response.choices[0].message.tool_calls[0].function.arguments)
                 return response.choices[0].message.tool_calls[0].function.arguments
         except (AttributeError, IndexError, TypeError) as e:
-            logger.warning("[FunctionCall] 无法获取function call结果，尝试解析content: %s", e)
-        
+            logger.warning(
+                "[FunctionCall] 无法获取function call结果，尝试解析content: %s", e)
+
         # 如果无法获取function call结果，尝试解析content
         try:
             if response.choices and response.choices[0].message.content:
@@ -185,7 +189,6 @@ class FunctionLLM:
         except Exception as e:
             logger.error("[FunctionCall] 处理响应失败: %s", e)
             raise ValueError(f"处理大模型响应失败: {e}")
-
 
     @staticmethod
     async def process_response(response: str) -> str:
@@ -223,7 +226,6 @@ class FunctionLLM:
 
         return json_str
 
-
     async def _call_ollama(
         self,
         messages: list[dict[str, str]],
@@ -251,11 +253,12 @@ class FunctionLLM:
         })
 
         try:
-            response = await self._client.chat(**self._params) # type: ignore[arg-type]
+            # type: ignore[arg-type]
+            response = await self._client.chat(**self._params)
         except Exception as e:
             logger.error("[FunctionCall] Ollama调用失败: %s", e)
             raise ValueError(f"Ollama调用失败: {e}")
-        
+
         try:
             content = response.message.content or ""
             if not content.strip():
@@ -265,7 +268,6 @@ class FunctionLLM:
         except Exception as e:
             logger.error("[FunctionCall] 处理Ollama响应失败: %s", e)
             raise ValueError(f"处理Ollama响应失败: {e}")
-
 
     async def call(
         self,
@@ -305,7 +307,7 @@ class FunctionLLM:
         if not json_str or not json_str.strip():
             logger.error("[FunctionCall] 模型返回空字符串")
             raise ValueError("模型返回空响应")
-        
+
         try:
             result = json.loads(json_str)
             if not isinstance(result, dict):
@@ -313,7 +315,8 @@ class FunctionLLM:
                 return {}
             return result
         except json.JSONDecodeError as e:
-            logger.error("[FunctionCall] JSON解析失败：%s, 原始内容: %s", e, json_str[:200])
+            logger.error("[FunctionCall] JSON解析失败：%s, 原始内容: %s",
+                         e, json_str[:200])
             raise ValueError(f"模型返回的内容不是有效的JSON格式: {e}")
         except Exception as e:
             logger.error("[FunctionCall] 处理JSON响应失败: %s", e)
@@ -335,7 +338,7 @@ class JsonGenerator:
                 return tmp_js
             except Exception as e:
                 logger.error("[JsonGenerator] 对象格式解析失败: %s", e)
-        
+
         # 如果对象格式失败，尝试解析数组格式并取第一个元素
         array_left = result.find('[')
         array_right = result.rfind(']')
@@ -407,7 +410,6 @@ class JsonGenerator:
         )
         self._err_info = ""
 
-
     async def _assemble_message(self) -> str:
         """组装消息"""
         # 检查类型
@@ -429,11 +431,10 @@ class JsonGenerator:
         prompt = await self._assemble_message()
         messages = [
             {"role": "system", "content": prompt},
-            {"role": "user", "content": "please generate a JSON response based on the above information and schema."},
+            {"role": "user", "content": "please generate a JSON response based on the above information and schema./no_think"},
         ]
         function = FunctionLLM()
         return await function.call(messages, self._schema, max_tokens, temperature)
-
 
     async def generate(self) -> dict[str, Any]:
         """生成JSON"""
@@ -442,7 +443,7 @@ class JsonGenerator:
         except Exception as e:
             logger.error("[JSONGenerator] Schema验证失败: %s", e)
             raise ValueError(f"JSON Schema无效: {e}")
-        
+
         validator = Draft7Validator(self._schema)
         logger.info("[JSONGenerator] Schema：%s", self._schema)
 
@@ -455,22 +456,24 @@ class JsonGenerator:
                     logger.warning("[JSONGenerator] 第%d次尝试返回空结果", self._count)
                     last_error = "模型返回空结果"
                     continue
-                
+
                 # 验证结果是否符合schema
                 validator.validate(result)
                 logger.info("[JSONGenerator] 第%d次尝试成功生成有效JSON", self._count)
                 return result
-                
+
             except ValueError as e:
                 # 这是来自FunctionLLM的错误，直接抛出
-                logger.error("[JSONGenerator] 第%d次尝试失败，LLM调用错误: %s", self._count, e)
+                logger.error(
+                    "[JSONGenerator] 第%d次尝试失败，LLM调用错误: %s", self._count, e)
                 raise e
             except Exception as err:
                 err_info = str(err)
                 err_info = err_info.split("\n\n")[0]
                 self._err_info = err_info
                 last_error = err_info
-                logger.warning("[JSONGenerator] 第%d次尝试失败，Schema验证错误: %s", self._count, err_info)
+                logger.warning(
+                    "[JSONGenerator] 第%d次尝试失败，Schema验证错误: %s", self._count, err_info)
                 continue
 
         # 所有尝试都失败了
