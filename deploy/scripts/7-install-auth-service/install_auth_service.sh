@@ -145,6 +145,21 @@ uninstall_auth_services() {
         echo -e "${YELLOW}未找到需要清理的鉴权服务Helm Release${NC}"
     fi
 
+    # 强制删除相关Pod
+    echo -e "${YELLOW}强制删除相关Pod...${NC}"
+    local pods
+    pods=$(kubectl get pods -n euler-copilot | grep -E "(authelia|authhub|mysql)" | awk '{print $1}' || true)
+    
+    if [ -n "$pods" ]; then
+        echo -e "${YELLOW}找到以下Pod，开始强制删除...${NC}"
+        for pod in $pods; do
+            echo -e "${BLUE}强制删除Pod: ${pod}${NC}"
+            kubectl delete pod "$pod" -n euler-copilot --force --grace-period=0 || echo -e "${RED}Pod删除失败，继续执行...${NC}"
+        done
+    else
+        echo -e "${YELLOW}未找到需要删除的Pod${NC}"
+    fi
+
     # 清理PVC
     local pvc_list
     pvc_list=$(kubectl get pvc -n euler-copilot | grep -E "(mysql-pvc|authelia.*data)" 2>/dev/null || true)
@@ -152,6 +167,9 @@ uninstall_auth_services() {
     if [ -n "$pvc_list" ]; then
         echo -e "${YELLOW}找到以下PVC，开始清理...${NC}"
         kubectl get pvc -n euler-copilot | grep -E "(mysql-pvc|authelia.*data)" | awk '{print $1}' | while read pvc; do
+            # 移除finalizers（如果存在）
+            kubectl patch pvc "$pvc" -n euler-copilot -p '{"metadata":{"finalizers":null}}' 2>/dev/null || true
+            # 强制删除PVC
             kubectl delete pvc "$pvc" -n euler-copilot --force --grace-period=0 || echo -e "${RED}PVC删除失败，继续执行...${NC}"
         done
     else

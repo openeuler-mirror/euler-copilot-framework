@@ -114,6 +114,7 @@ class MCPServiceManager:
                 name=item.name,
                 description=item.description,
                 author=item.author,
+                authorName=item.author_name if hasattr(item, 'author_name') and item.author_name else item.author,
                 isActive=await MCPServiceManager.is_active(user_sub, item.id),
                 status=await MCPServiceManager.get_service_status(item.id),
             )
@@ -168,13 +169,14 @@ class MCPServiceManager:
                 result.append(tool_data)
         return result
 
+
     @staticmethod
     async def _search_mcpservice(
             search_conditions: dict[str, Any],
             page: int,
     ) -> list[MCPCollection]:
         """
-        基于输入条件搜索MCP服务
+        基于输入条件搜索MCP服务（原有方法，保持向后兼容）
 
         :param search_conditions: dict[str, Any]: 搜索条件
         :param page: int: 页码
@@ -229,6 +231,10 @@ class MCPServiceManager:
         else:
             config = MCPServerStdioConfig.model_validate(data.config)
 
+        # 获取用户信息
+        user_info = await UserManager.get_userinfo_by_user_sub(user_sub)
+        author_name = user_info.user_name if user_info and user_info.user_name else user_sub
+
         # 构造Server
         mcp_server = MCPServerConfig(
             name=await MCPServiceManager.clean_name(data.name),
@@ -237,6 +243,7 @@ class MCPServiceManager:
             config=config,
             type=data.mcp_type,
             author=user_sub,
+            authorName=author_name,
         )
 
         # 检查是否存在相同服务
@@ -288,6 +295,11 @@ class MCPServiceManager:
             raise ValueError(msg)
 
         db_service = MCPCollection.model_validate(db_service)
+        
+        # 获取用户信息
+        user_info = await UserManager.get_userinfo_by_user_sub(user_sub)
+        author_name = user_info.user_name if user_info and user_info.user_name else user_sub
+        
         mcp_config = MCPServerConfig(
             name=data.name,
             overview=data.overview,
@@ -299,6 +311,7 @@ class MCPServiceManager:
             ),
             type=data.mcp_type,
             author=user_sub,
+            authorName=author_name,
         )
         old_mcp_config = await MCPLoader.get_config(data.service_id)
         await MCPLoader._insert_template_db(mcp_id=data.service_id, config=mcp_config)

@@ -269,6 +269,7 @@ class MCPLoader(metaclass=SingletonMeta):
                     description=config.description,
                     type=config.type,
                     author=config.author,
+                    authorName=getattr(config, 'author_name', config.author),
                 ).model_dump(by_alias=True, exclude_none=True),
             },
             upsert=True,

@@ -87,6 +87,7 @@ class MetadataBase(BaseModel):
     description: str = Field(description="元数据描述")
     version: str = Field(description="元数据版本")
     author: str = Field(description="创建者的用户名")
+    author_name: str = Field(description="创建者用户名", default="", alias="authorName")
     hashes: dict[str, str] | None = Field(description="资源（App、Service等）下所有文件的hash值", default=None)
 
 

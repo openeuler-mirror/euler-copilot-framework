@@ -2,7 +2,7 @@ apiVersion: v2
 name: authelia
 description: Authelia authentication and authorization server for Euler Copilot Framework
 type: application
-version: 0.1.0
+version: 0.10.1
 appVersion: "4.39.13"
 keywords:
   - authentication

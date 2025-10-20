@@ -94,6 +94,7 @@ class AppCenterManager:
                 name=app.name,
                 description=app.description,
                 author=app.author,
+                authorName=getattr(app, 'author_name', app.author),  # 使用author_name，备选author
                 favorited=(app.id in user_favorite_app_ids),
                 published=app.published,
             )
@@ -402,13 +403,19 @@ class AppCenterManager:
         return app_data
 
     @staticmethod
-    def _build_common_metadata_params(app_id: str, user_sub: str, source: AppPool | AppData) -> dict:
+    async def _build_common_metadata_params(app_id: str, user_sub: str, source: AppPool | AppData) -> dict:
         """构建元数据通用参数"""
+        # 获取用户信息
+        from apps.services.user import UserManager
+        user_info = await UserManager.get_userinfo_by_user_sub(user_sub)
+        author_name = user_info.user_name if user_info and user_info.user_name else user_sub
+        
         return {
             "type": MetadataType.APP,
             "id": app_id,
             "version": "1.0.0",
             "author": user_sub,
+            "authorName": author_name,
             "icon": source.icon,
             "name": source.name,
             "description": source.description,
@@ -556,7 +563,7 @@ class AppCenterManager:
             raise ValueError(msg)
 
         # 构建通用参数
-        common_params = AppCenterManager._build_common_metadata_params(app_id, user_sub, source)
+        common_params = await AppCenterManager._build_common_metadata_params(app_id, user_sub, source)
 
         # 设置权限
         if data:

@@ -1,3 +1,8 @@
+[no_auth]
+enable = true
+user_sub = "openEuler"
+user_name = "openEuler"
+
 [deploy]
 mode = 'local'
 cookie = 'domain'
@@ -6,14 +11,33 @@ data_dir = '/app/data'
 [login]
 provider = 'authelia'
 [login.settings]
+# Authelia OIDC 服务器配置
 host = '{{ .Values.domain.authelia | default "http://127.0.0.1:30091" }}'
 client_id = '{{ .Values.login.authelia.client_id | default "euler-copilot" }}'
 client_secret = '{{ .Values.login.authelia.client_secret | default "your-client-secret-here" }}'
+
+# OIDC 端点配置
 redirect_uri = '{{ .Values.domain.euler_copilot | default "http://127.0.0.1:30080" }}/api/auth/login'
 authorization_endpoint = '{{ .Values.domain.authelia | default "http://127.0.0.1:30091" }}/api/oidc/authorization'
 token_endpoint = '{{ .Values.domain.authelia | default "http://127.0.0.1:30091" }}/api/oidc/token'
 userinfo_endpoint = '{{ .Values.domain.authelia | default "http://127.0.0.1:30091" }}/api/oidc/userinfo'
-scopes = 'openid profile email'
+jwks_uri = '{{ .Values.domain.authelia | default "http://127.0.0.1:30091" }}/.well-known/jwks.json'
+issuer = '{{ .Values.domain.authelia | default "http://127.0.0.1:30091" }}'
+
+# OIDC 作用域和声明配置
+scopes = 'openid profile email groups'
+response_type = 'code'
+response_mode = 'form_post'
+
+# OIDC 高级配置
+enable_pkce = false
+pkce_challenge_method = 'S256'
+token_endpoint_auth_method = 'client_secret_basic'
+
+# 会话和令牌配置
+access_token_lifespan = '3600'  # 1小时
+id_token_lifespan = '3600'      # 1小时
+refresh_token_lifespan = '5400' # 90分钟
 
 [fastapi]
 domain = '{{ regexFind "^[^:]+" (.Values.domain.euler_copilot | default "http://127.0.0.1:30080" | replace "http://" "" | replace "https://" "") }}'

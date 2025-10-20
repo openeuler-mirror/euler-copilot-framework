@@ -152,22 +152,32 @@ async def add_no_auth_user() -> None:
     """
     from apps.common.mongo import MongoDB
     from apps.schemas.collection import User
-    import os
+    from apps.common.config import Config
+    
+    config = Config().get_config()
     mongo = MongoDB()
     user_collection = mongo.get_collection("user")
-    username = os.environ.get('USERNAME')  # 适用于 Windows 系统
-    if not username:
-        username = os.environ.get('USER')  # 适用于 Linux 和 macOS 系统
-    if not username:
-        username = "admin"
+    
+    # 使用配置文件中的no_auth设置
+    user_sub = config.no_auth.user_sub
+    user_name = config.no_auth.user_name
+    
+    # 检查是否已存在管理员用户，避免重复添加
+    existing_admin = await user_collection.find_one({"is_admin": True})
+    if existing_admin:
+        logger.info(f"[add_no_auth_user] 管理员用户已存在: {existing_admin.get('_id')}")
+        return
+    
     try:
         await user_collection.insert_one(User(
-            _id=username,
+            _id=user_sub,
+            user_name=user_name,
             is_admin=True,
             auto_execute=False
         ).model_dump(by_alias=True))
+        logger.info(f"[add_no_auth_user] 成功添加默认管理员用户: {user_sub}")
     except Exception as e:
-        logger.error(f"[add_no_auth_user] 默认用户 {username} 已存在")
+        logger.error(f"[add_no_auth_user] 添加默认用户失败: {e}")
 
 async def clear_user_activity() -> None:
     """清除所有用户的活跃状态"""

@@ -1,16 +1,33 @@
+[no_auth]
+enable = true
+user_sub = "openEuler"
+user_name = "openEuler"
+
 [deploy]
 mode = 'local'
 cookie = 'domain'
 data_dir = '/app/data'
 
 [login]
-provider = 'authhub'
+provider = '{{ .Values.login.provider | default "authhub" }}'
+{{- if eq (.Values.login.provider | default "authhub") "authelia" }}
+[login.settings]
+host = '{{ .Values.domain.authelia | default "http://127.0.0.1:30091" }}'
+client_id = '{{ .Values.login.authelia.client_id | default "euler-copilot" }}'
+client_secret = '{{ .Values.login.authelia.client_secret | default "your-client-secret-here" }}'
+redirect_uri = '{{ .Values.domain.euler_copilot | default "http://127.0.0.1:30080" }}/api/auth/login'
+authorization_endpoint = '{{ .Values.domain.authelia | default "http://127.0.0.1:30091" }}/api/oidc/authorization'
+token_endpoint = '{{ .Values.domain.authelia | default "http://127.0.0.1:30091" }}/api/oidc/token'
+userinfo_endpoint = '{{ .Values.domain.authelia | default "http://127.0.0.1:30091" }}/api/oidc/userinfo'
+scopes = 'openid profile email'
+{{- else }}
 [login.settings]
 host = '{{ .Values.domain.authhub | default "http://127.0.0.1:30081" }}'
 host_inner = 'http://authhub-backend-service.{{ .Release.Namespace }}.svc.cluster.local:11120'
 login_api = '{{ .Values.domain.euler_copilot | default "http://127.0.0.1:30080" }}/api/auth/login'
 app_id = '${clientId}'
 app_secret = '${clientSecret}'
+{{- end }}
 
 [fastapi]
 domain = '{{ regexFind "^[^:]+" (.Values.domain.euler_copilot | default "http://127.0.0.1:30080" | replace "http://" "" | replace "https://" "") }}'

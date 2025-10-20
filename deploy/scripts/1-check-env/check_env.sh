@@ -143,7 +143,7 @@ function set_dns {
 }
 
 function check_ram {
-    local RAM_THRESHOLD=16000
+    local RAM_THRESHOLD=14000
     local current_mem=$(free -m | awk '/Mem/{print $2}')
 
     echo -e "${COLOR_INFO}[Info] 当前内存：$current_mem MB${COLOR_RESET}"

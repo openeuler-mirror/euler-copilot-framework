@@ -460,6 +460,7 @@ class MCPServiceCardItem(BaseModel):
     description: str = Field(..., description="mcp服务简介")
     icon: str = Field(..., description="mcp服务图标")
     author: str = Field(..., description="mcp服务作者")
+    author_name: str = Field(..., alias="authorName", description="mcp服务作者用户名")
     is_active: bool = Field(default=False, alias="isActive", description="mcp服务是否激活")
     status: MCPInstallStatus = Field(default=MCPInstallStatus.INSTALLING, description="mcp服务状态")
 

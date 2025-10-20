@@ -1,0 +1,145 @@
+server:
+  address: {{ .Values.authelia.config.server.address | default "tcp://0.0.0.0:9091/" | quote }}
+  {{- if .Values.authelia.config.server.tls.enabled }}
+  tls:
+    certificate: {{ .Values.authelia.config.server.tls.certificate | quote }}
+    key: {{ .Values.authelia.config.server.tls.key | quote }}
+  {{- end }}
+
+log:
+  level: {{ .Values.authelia.config.log.level | default "info" }}
+  format: {{ .Values.authelia.config.log.format | default "text" }}
+
+totp:
+  disable: {{ .Values.authelia.config.totp.disable | default true }}
+
+webauthn:
+  disable: {{ .Values.authelia.config.webauthn.disable | default true }}
+
+duo_api:
+  disable: {{ .Values.authelia.config.duo_api.disable | default true }}
+
+identity_validation:
+  reset_password:
+    jwt_secret: {{ .Values.authelia.config.identity_validation.reset_password.jwt_secret | quote }}
+
+authentication_backend:
+  password_reset:
+    disable: {{ .Values.authelia.config.authentication_backend.password_reset.disable }}
+  refresh_interval: {{ .Values.authelia.config.authentication_backend.refresh_interval }}
+  file:
+    path: {{ .Values.authelia.config.authentication_backend.file.path }}
+    password:
+      algorithm: {{ .Values.authelia.config.authentication_backend.file.password.algorithm }}
+      iterations: {{ .Values.authelia.config.authentication_backend.file.password.iterations }}
+      salt_length: {{ .Values.authelia.config.authentication_backend.file.password.salt_length }}
+      parallelism: {{ .Values.authelia.config.authentication_backend.file.password.parallelism }}
+      memory: {{ .Values.authelia.config.authentication_backend.file.password.memory }}
+
+access_control:
+  default_policy: {{ .Values.authelia.config.access_control.default_policy }}
+
+session:
+  name: {{ .Values.authelia.config.session.name | default "authelia_session" }}
+  domain: {{ .Values.authelia.config.session.domain | default "127.0.0.1" }}
+  same_site: {{ .Values.authelia.config.session.same_site | default "lax" }}
+  secret: {{ .Values.authelia.config.session.secret | default "insecure_session_secret_change_me_in_production" | quote }}
+  expiration: {{ .Values.authelia.config.session.expiration | default "1h" }}
+  inactivity: {{ .Values.authelia.config.session.inactivity | default "5m" }}
+  remember_me: {{ .Values.authelia.config.session.remember_me | default "1M" }}
+
+regulation:
+  max_retries: {{ .Values.authelia.config.regulation.max_retries }}
+  find_time: {{ .Values.authelia.config.regulation.find_time }}
+  ban_time: {{ .Values.authelia.config.regulation.ban_time }}
+
+storage:
+  encryption_key: {{ .Values.authelia.config.storage.encryption_key | quote }}
+  local:
+    path: {{ .Values.authelia.config.storage.local.path }}
+
+notifier:
+  disable_startup_check: {{ .Values.authelia.config.notifier.disable_startup_check }}
+  filesystem:
+    filename: {{ .Values.authelia.config.notifier.filesystem.filename }}
+
+ntp:
+  disable_startup_check: {{ .Values.authelia.config.ntp.disable_startup_check }}
+
+identity_providers:
+  oidc:
+    # OIDC 核心配置
+    hmac_secret: {{ .Values.authelia.config.identity_providers.oidc.hmac_secret | quote }}
+    enable_client_debug_messages: {{ .Values.authelia.config.identity_providers.oidc.enable_client_debug_messages | default false }}
+    
+    # 发行者配置 - 必须与实际访问地址匹配
+    issuer_certificate_chain: {{ .Values.authelia.config.identity_providers.oidc.issuer_certificate_chain | quote }}
+    issuer_private_key: {{ .Values.authelia.config.identity_providers.oidc.issuer_private_key | quote }}
+    
+    # JWKS 密钥配置
+    jwks:
+      {{- range .Values.authelia.config.identity_providers.oidc.jwks }}
+      - key_id: {{ .key_id | quote }}
+        algorithm: {{ .algorithm | quote }}
+        use: {{ .use | default "sig" | quote }}
+        key: |
+          {{- .key | nindent 10 }}
+      {{- end }}
+    
+    # OIDC 客户端配置
+    clients:
+      {{- range .Values.authelia.config.identity_providers.oidc.clients }}
+      - client_id: {{ .client_id | quote }}
+        client_name: {{ .client_name | quote }}
+        client_secret: {{ .client_secret | quote }}
+        public: {{ .public | default false }}
+        authorization_policy: {{ .authorization_policy | default "two_factor" | quote }}
+        
+        # 认证方法配置
+        token_endpoint_auth_method: {{ .token_endpoint_auth_method | default "client_secret_basic" | quote }}
+        require_pkce: {{ .require_pkce | default false }}
+        pkce_challenge_method: {{ .pkce_challenge_method | default "S256" | quote }}
+        
+        # 重定向URI配置
+        redirect_uris:
+          {{- range .redirect_uris }}
+          - {{ . | quote }}
+          {{- end }}
+        
+        # 作用域配置
+        scopes:
+          {{- range .scopes }}
+          - {{ . | quote }}
+          {{- end }}
+        
+        # 响应类型配置
+        response_types:
+          {{- range .response_types }}
+          - {{ . | quote }}
+          {{- end }}
+        
+        # 授权类型配置
+        grant_types:
+          {{- range .grant_types }}
+          - {{ . | quote }}
+          {{- end }}
+        
+        # 响应模式配置
+        response_modes:
+          {{- range .response_modes }}
+          - {{ . | quote }}
+          {{- end }}
+        
+        # 用户信息签名算法
+        userinfo_signed_response_alg: {{ .userinfo_signed_response_alg | default "none" | quote }}
+        
+        # 同意模式配置
+        consent_mode: {{ .consent_mode | default "implicit" | quote }}
+        pre_configured_consent_duration: {{ .pre_configured_consent_duration | default "1y" | quote }}
+        
+        # 会话配置
+        access_token_lifespan: {{ .access_token_lifespan | default "1h" | quote }}
+        authorize_code_lifespan: {{ .authorize_code_lifespan | default "1m" | quote }}
+        id_token_lifespan: {{ .id_token_lifespan | default "1h" | quote }}
+        refresh_token_lifespan: {{ .refresh_token_lifespan | default "90m" | quote }}
+      {{- end }}
