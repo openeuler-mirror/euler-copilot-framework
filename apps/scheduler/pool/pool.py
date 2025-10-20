@@ -154,6 +154,17 @@ class Pool:
 
     async def get_call(self, call_id: str) -> Any:
         """[Exception] 拿到Call的信息"""
+        # 特殊处理：Empty和Plugin类型的Call
+        from apps.schemas.enum_var import SpecialCallType
+        if call_id == SpecialCallType.EMPTY.value:
+            # 对于Empty类型的节点，返回一个空的Call类
+            from apps.scheduler.call.empty import Empty
+            return Empty
+        elif call_id == SpecialCallType.PLUGIN.value:
+            # 对于Plugin类型的节点，返回API插件Call类
+            from apps.scheduler.call.plugin import Plugin
+            return Plugin
+        
         # 从MongoDB里拿到数据
         mongo = MongoDB()
         call_collection = mongo.get_collection("call")

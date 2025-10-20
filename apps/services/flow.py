@@ -324,8 +324,13 @@ class FlowManager:
                         "output_parameters": processed_output_parameters,
                     }
                 
+                # 从Step中读取serviceId和pluginType
+                service_id = getattr(node_config, 'service_id', "")
+                plugin_type = getattr(node_config, 'plugin_type', None)
+                
                 node_item = NodeItem(
                     stepId=node_id,
+                    serviceId=service_id,
                     nodeId=node_config.node,
                     name=node_config.name,
                     description=node_config.description,
@@ -334,6 +339,7 @@ class FlowManager:
                     callId=node_config.type,
                     parameters=parameters,
                     position=PositionItem(x=node_config.pos.x, y=node_config.pos.y),
+                    pluginType=plugin_type,
                 )
                 flow_item.nodes.append(node_item)
 
@@ -479,6 +485,8 @@ class FlowManager:
                     description=node_item.description,
                     pos=node_item.position,
                     params=params,
+                    service_id=node_item.service_id,
+                    plugin_type=node_item.plugin_type,
                 )
             
             # 检查是否有节点被删除，如果有则清理相关变量
@@ -874,6 +882,8 @@ class FlowManager:
                     description=node_item.description,
                     pos=node_item.position,
                     params=params,
+                    service_id=node_item.service_id,
+                    plugin_type=node_item.plugin_type,
                 )
                 
             for edge_item in flow_item.edges:
@@ -979,6 +989,9 @@ class FlowManager:
                         "output_parameters": processed_output_parameters,
                     }
                 
+                # 从Step中读取pluginType
+                plugin_type = getattr(node_config, 'plugin_type', None)
+                
                 node_item = NodeItem(
                     stepId=node_id,
                     serviceId="",  # 子工作流节点默认serviceId为空
@@ -990,6 +1003,7 @@ class FlowManager:
                     callId=node_config.type,
                     parameters=parameters,
                     position=PositionItem(x=node_config.pos.x, y=node_config.pos.y),
+                    pluginType=plugin_type,
                 )
                 flow_item.nodes.append(node_item)
                 

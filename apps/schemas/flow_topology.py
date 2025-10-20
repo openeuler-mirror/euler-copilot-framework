@@ -60,6 +60,7 @@ class NodeItem(BaseModel):
     depedency: DependencyItem | None = None
     position: PositionItem = Field(default=PositionItem())
     editable: bool = Field(default=True)
+    plugin_type: str | None = Field(alias="pluginType", default=None, description="插件类型")
 
 
 class EdgeItem(BaseModel):

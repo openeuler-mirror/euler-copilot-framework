@@ -40,13 +40,32 @@ class FlowService:
         for node in flow_item.nodes:
             from apps.scheduler.pool.pool import Pool
             from pydantic import BaseModel
-            if node.node_id != 'start' and node.node_id != 'end' and node.node_id != SpecialCallType.EMPTY.value:
+            if node.node_id != 'start' and node.node_id != 'end' and node.node_id != SpecialCallType.EMPTY.value and node.node_id != SpecialCallType.PLUGIN.value:
                 try:
                     await Pool().get_call(node.call_id)
                 except Exception as e:
-                    node.node_id = SpecialCallType.EMPTY.value
-                    node.description = '【对应的api工具被删除！节点不可用！请联系相关人员！】\n\n'+node.description
-                    logger.error(f"[FlowService] 获取步骤的call_id失败{node.call_id}由于：{e}")
+                    # 保存原始的serviceId和callId，以便API插件节点能够正确识别
+                    original_service_id = node.service_id
+                    original_call_id = node.call_id
+                    
+                    # 根据是否有serviceId来判断是API插件还是普通的Empty节点
+                    if original_service_id and original_service_id.strip():
+                        # 有serviceId，标记为Plugin类型（API插件节点）
+                        node.node_id = SpecialCallType.PLUGIN.value
+                        node.call_id = SpecialCallType.PLUGIN.value
+                        node.service_id = original_service_id
+                        logger.info(f"[FlowService] 将节点 {original_call_id} 标记为API插件节点，serviceId: {original_service_id}")
+                    else:
+                        # 没有serviceId，标记为Empty类型
+                        node.node_id = SpecialCallType.EMPTY.value
+                        node.call_id = SpecialCallType.EMPTY.value
+                        logger.info(f"[FlowService] 将节点 {original_call_id} 标记为Empty节点")
+                    
+                    # 更新描述信息，保留原有描述
+                    original_description = node.description or ""
+                    node.description = f'【对应的api工具被删除！节点不可用！请联系相关人员！】\n\n{original_description}'
+                    
+                    logger.error(f"[FlowService] 获取步骤的call_id失败 {original_call_id}，错误: {e}")
             node_branch_map[node.step_id] = set()
             if node.call_id == NodeType.CHOICE.value:
                 input_parameters = node.parameters["input_parameters"]
