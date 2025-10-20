@@ -3,15 +3,12 @@
 
 import logging
 from collections.abc import AsyncGenerator
+from typing import cast
 
 from openai import AsyncOpenAI, AsyncStream
 from openai.types.chat import (
-    ChatCompletionAssistantMessageParam,
     ChatCompletionChunk,
     ChatCompletionMessageParam,
-    ChatCompletionSystemMessageParam,
-    ChatCompletionToolMessageParam,
-    ChatCompletionUserMessageParam,
 )
 from typing_extensions import override
 
@@ -187,35 +184,23 @@ class OpenAIProvider(BaseProvider):
 
 
     def _convert_messages(self, messages: list[dict[str, str]]) -> list[ChatCompletionMessageParam]:
-        """将list[dict]形式的消息转换为list[ChatCompletionMessageParam]形式"""
-        converted_messages = []
+        """确保消息格式符合OpenAI API要求，特别是tool消息需要tool_call_id字段"""
+        result: list[dict[str, str]] = []
         for msg in messages:
             role = msg.get("role", "user")
-            content = msg.get("content", "")
 
-            if role == "system":
-                converted_messages.append(
-                    ChatCompletionSystemMessageParam(role="system", content=content),
-                )
-            elif role == "user":
-                converted_messages.append(
-                    ChatCompletionUserMessageParam(role="user", content=content),
-                )
-            elif role == "assistant":
-                converted_messages.append(
-                    ChatCompletionAssistantMessageParam(role="assistant", content=content),
-                )
-            elif role == "tool":
-                tool_call_id = msg.get("tool_call_id", "")
-                converted_messages.append(
-                    ChatCompletionToolMessageParam(
-                        role="tool",
-                        content=content,
-                        tool_call_id=tool_call_id,
-                    ),
-                )
-            else:
+            # 验证角色的有效性
+            if role not in ("system", "user", "assistant", "tool"):
                 err = f"[OpenAIProvider] 未知角色: {role}"
                 _logger.error(err)
                 raise ValueError(err)
-        return converted_messages
+
+            # 对于tool角色，确保有tool_call_id字段
+            if role == "tool" and "tool_call_id" not in msg:
+                result.append({**msg, "tool_call_id": ""})
+            else:
+                result.append(msg)
+
+        # 使用cast告诉类型检查器这是ChatCompletionMessageParam类型
+        # OpenAI库在运行时接受dict格式，无需显式构造TypedDict对象
+        return cast("list[ChatCompletionMessageParam]", result)

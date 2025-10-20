@@ -11,7 +11,7 @@ from jinja2.sandbox import SandboxedEnvironment
 
 from apps.common.queue import MessageQueue
 from apps.common.security import Security
-from apps.llm import Embedding, FunctionLLM, JsonGenerator, ReasoningLLM
+from apps.llm import LLM, Embedding, JsonGenerator
 from apps.models import (
     AppType,
     Conversation,
@@ -275,7 +275,7 @@ class Scheduler:
             err = "[Scheduler] 获取问答用大模型ID失败"
             _logger.error(err)
             raise ValueError(err)
-        reasoning_llm = ReasoningLLM(reasoning_llm)
+        reasoning_llm = LLM(reasoning_llm)
 
         # 获取功能性的大模型信息
         function_llm = None
@@ -289,7 +289,7 @@ class Scheduler:
                     self.user.userSub, self.user.functionLLM,
                 )
             else:
-                function_llm = FunctionLLM(function_llm)
+                function_llm = LLM(function_llm)
 
         embedding_llm = None
         if not self.user.embeddingLLM:

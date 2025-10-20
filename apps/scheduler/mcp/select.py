@@ -7,10 +7,12 @@ from sqlalchemy import select
 
 from apps.common.postgres import postgres
 from apps.llm import JsonGenerator
-from apps.models import MCPTools
+from apps.models import LanguageType, MCPTools
 from apps.schemas.mcp import MCPSelectResult
 from apps.schemas.scheduler import LLMConfig
 from apps.services.mcp_service import MCPServiceManager
+
+from .prompt import MCP_FUNCTION_SELECT
 
 logger = logging.getLogger(__name__)
 
@@ -18,9 +20,10 @@ logger = logging.getLogger(__name__)
 class MCPSelector:
     """MCP选择器"""
 
-    def __init__(self, llm: LLMConfig) -> None:
+    def __init__(self, llm: LLMConfig, language: LanguageType = LanguageType.CHINESE) -> None:
         """初始化MCP选择器"""
         self._llm = llm
+        self._language = language
 
     async def _call_reasoning(self, prompt: str) -> str:
         """调用大模型进行推理"""
@@ -47,16 +50,25 @@ class MCPSelector:
         # schema中加入选项
         schema["properties"]["mcp_id"]["enum"] = mcp_ids
 
+        # 组装OpenAI FunctionCall格式的dict
+        function = {
+            "name": "select_mcp",
+            "description": "Select the most appropriate MCP server based on the reasoning result",
+            "parameters": schema,
+        }
+
+        # 构建优化的提示词
+        user_prompt = MCP_FUNCTION_SELECT[self._language].format(
+            reasoning_result=reasoning_result,
+            mcp_ids=", ".join(mcp_ids),
+        )
+
         # 使用JsonGenerator生成JSON
-        conversation = [
-            {"role": "system", "content": "You are a helpful assistant."},
-            {"role": "user", "content": reasoning_result},
-        ]
         generator = JsonGenerator(
-            llm=self._llm.function,
-            query=reasoning_result,
-            conversation=conversation,
-            schema=schema,
+            llm_config=self._llm,
+            query=user_prompt,
+            conversation=[],
+            function=function,
         )
         result = await generator.generate()
 

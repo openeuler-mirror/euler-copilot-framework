@@ -513,3 +513,36 @@ MEMORY_TEMPLATE: dict[str, str] = {
         """,
     ),
 }
+
+MCP_FUNCTION_SELECT: dict[LanguageType, str] = {
+    LanguageType.CHINESE: dedent(
+        r"""
+            你是一个专业的MCP (Model Context Protocol) 选择器。
+            你的任务是分析推理结果并选择最合适的MCP服务器ID。
+
+            --- 推理结果 ---
+            {reasoning_result}
+            --- 推理结果结束 ---
+
+            可用的MCP服务器ID: {mcp_ids}
+
+            请仔细分析推理结果,选择最符合需求的MCP服务器。
+            重点关注推理中描述的能力和需求,将其与正确的MCP服务器进行匹配。
+        """,
+    ),
+    LanguageType.ENGLISH: dedent(
+        r"""
+            You are an expert MCP (Model Context Protocol) selector.
+            Your task is to analyze the reasoning result and select the most appropriate MCP server ID.
+
+            --- Reasoning Result ---
+            {reasoning_result}
+            --- End of Reasoning ---
+
+            Available MCP Server IDs: {mcp_ids}
+
+            Please analyze the reasoning carefully and select the MCP server that best matches the requirements.
+            Focus on matching the capabilities and requirements described in the reasoning with the correct MCP server.
+        """,
+    ),
+}

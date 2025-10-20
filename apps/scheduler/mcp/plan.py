@@ -71,19 +71,27 @@ class MCPPlanner:
             _logger.error(err)
             raise RuntimeError(err)
 
-        # 格式化Prompt
+        # 构造标准 OpenAI Function 格式
         schema = MCPPlan.model_json_schema()
         schema["properties"]["plans"]["maxItems"] = max_steps
 
+        function_def = {
+            "name": "parse_mcp_plan",
+            "description": (
+                "Parse the reasoning result into a structured MCP plan with multiple steps. "
+                "Each step should include a step ID, content description, tool name, and instruction."
+            ),
+            "parameters": schema,
+        }
+
         # 使用Function模型解析结果
         json_generator = JsonGenerator(
-            self._llm.function,
+            self._llm,
             result,
             [
-                {"role": "system", "content": "You are a helpful assistant."},
                 {"role": "user", "content": result},
             ],
-            schema,
+            function_def,
         )
         plan = await json_generator.generate()
         return MCPPlan.model_validate(plan)

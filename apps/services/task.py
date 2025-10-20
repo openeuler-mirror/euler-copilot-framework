@@ -154,14 +154,86 @@ class TaskManager:
             await session.commit()
 
 
-    @classmethod
-    async def save_task(cls, task_id: uuid.UUID, task: Task) -> None:
-        """保存任务块"""
-        task_collection = MongoDB().get_collection("task")
+    @staticmethod
+    async def save_task(task_id: uuid.UUID, task: Task) -> None:
+        """保存Task数据到PostgreSQL"""
+        async with postgres.session() as session:
+            # 查询是否存在该Task
+            existing_task = (await session.scalars(
+                select(Task).where(Task.id == task_id),
+            )).one_or_none()
 
-        # 更新已有的Task记录
-        await task_collection.update_one(
-            {"_id": task_id},
-            {"$set": task.model_dump(by_alias=True, exclude_none=True)},
-            upsert=True,
-        )
+            if existing_task:
+                # 更新现有Task
+                for key, value in task.__dict__.items():
+                    if not key.startswith("_"):
+                        setattr(existing_task, key, value)
+            else:
+                # 插入新Task
+                session.add(task)
+
+            await session.commit()
+
+
+    @staticmethod
+    async def save_task_runtime(task_runtime: TaskRuntime) -> None:
+        """保存TaskRuntime数据到PostgreSQL"""
+        async with postgres.session() as session:
+            # 查询是否存在该TaskRuntime
+            existing_runtime = (await session.scalars(
+                select(TaskRuntime).where(TaskRuntime.taskId == task_runtime.taskId),
+            )).one_or_none()
+
+            if existing_runtime:
+                # 更新现有TaskRuntime
+                for key, value in task_runtime.__dict__.items():
+                    if not key.startswith("_"):
+                        setattr(existing_runtime, key, value)
+            else:
+                # 插入新TaskRuntime
+                session.add(task_runtime)
+
+            await session.commit()
+
+
+    @staticmethod
+    async def save_executor_checkpoint(checkpoint: ExecutorCheckpoint) -> None:
+        """保存ExecutorCheckpoint数据到PostgreSQL"""
+        async with postgres.session() as session:
+            # 查询是否存在该Checkpoint
+            existing_checkpoint = (await session.scalars(
+                select(ExecutorCheckpoint).where(ExecutorCheckpoint.taskId == checkpoint.taskId),
+            )).one_or_none()
+
+            if existing_checkpoint:
+                # 更新现有Checkpoint
+                for key, value in checkpoint.__dict__.items():
+                    if not key.startswith("_"):
+                        setattr(existing_checkpoint, key, value)
+            else:
+                # 插入新Checkpoint
+                session.add(checkpoint)
+
+            await session.commit()
+
+
+    @staticmethod
+    async def save_flow_context(context: list[ExecutorHistory]) -> None:
+        """保存Flow上下文信息到PostgreSQL"""
+        async with postgres.session() as session:
+            for ctx in context:
+                # 查询是否存在该ExecutorHistory
+                existing_history = (await session.scalars(
+                    select(ExecutorHistory).where(ExecutorHistory.id == ctx.id),
+                )).one_or_none()
+
+                if existing_history:
+                    # 更新现有History
+                    for key, value in ctx.__dict__.items():
+                        if not key.startswith("_"):
+                            setattr(existing_history, key, value)
+                else:
+                    # 插入新History
+                    session.add(ctx)
+
+            await session.commit()
