@@ -35,16 +35,28 @@ templates = Jinja2Templates(directory=Path(__file__).parent.parent / "templates"
 
 
 @router.get("/login")
-async def oidc_login(request: Request, code: str = None, error: str = None, error_description: str = None) -> HTMLResponse:
+async def oidc_login(request: Request, code: str = None, error: str = None, error_description: str = None):
     """
-    OIDC login callback
-
+    统一的OIDC登录处理端点
+    
     :param request: Request object
     :param code: OIDC authorization code (success case)
-    :param error: OAuth2 error code (failure case)
+    :param error: OAuth2 error code (failure case)  
     :param error_description: OAuth2 error description (failure case)
-    :return: HTMLResponse
+    :return: JSONResponse for API calls, HTMLResponse for browser redirects
     """
+    # 检查请求是否来自前端API调用（通过Accept头和User-Agent判断）
+    accept_header = request.headers.get("accept", "")
+    user_agent = request.headers.get("user-agent", "")
+    
+    # 如果明确请求JSON或者是axios等API客户端，则视为API请求
+    is_api_request = (
+        "application/json" in accept_header or
+        "axios" in user_agent.lower() or
+        "fetch" in user_agent.lower() or
+        request.query_params.get("format") == "json"
+    )
+    
     # Handle OAuth2 error response
     if error:
         logger.warning(f"OAuth2 authorization failed: {error} - {error_description}")
@@ -67,22 +79,44 @@ async def oidc_login(request: Request, code: str = None, error: str = None, erro
         else:
             reason = f"登录失败：{error_description or error}"
         
-        return templates.TemplateResponse(
-            "login_failed.html.j2",
-            {"request": request, "reason": reason},
-            status_code=status.HTTP_400_BAD_REQUEST,
-        )
+        if is_api_request:
+            return JSONResponse(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                content=ResponseData(
+                    code=status.HTTP_400_BAD_REQUEST,
+                    message=reason,
+                    result={},
+                ).model_dump(exclude_none=True, by_alias=True),
+            )
+        else:
+            return templates.TemplateResponse(
+                "login_failed.html.j2",
+                {"request": request, "reason": reason},
+                status_code=status.HTTP_400_BAD_REQUEST,
+            )
     
     # Handle missing code parameter
     if not code:
         logger.error("Neither code nor error parameter provided in OAuth2 callback")
-        return templates.TemplateResponse(
-            "login_failed.html.j2",
-            {"request": request, "reason": "缺少必要的授权参数，请重新登录。"},
-            status_code=status.HTTP_400_BAD_REQUEST,
-        )
+        reason = "缺少必要的授权参数，请重新登录。"
+        
+        if is_api_request:
+            return JSONResponse(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                content=ResponseData(
+                    code=status.HTTP_400_BAD_REQUEST,
+                    message=reason,
+                    result={},
+                ).model_dump(exclude_none=True, by_alias=True),
+            )
+        else:
+            return templates.TemplateResponse(
+                "login_failed.html.j2",
+                {"request": request, "reason": reason},
+                status_code=status.HTTP_400_BAD_REQUEST,
+            )
     
-    # Handle successful authorization (existing logic)
+    # Handle successful authorization
     try:
         token = await oidc_provider.get_oidc_token(code)
         user_info = await oidc_provider.get_oidc_user(token["access_token"])
@@ -91,12 +125,24 @@ async def oidc_login(request: Request, code: str = None, error: str = None, erro
         user_name: str = user_info.get("user_name", "")
     except Exception as e:
         logger.exception("User login failed")
-        status_code = status.HTTP_400_BAD_REQUEST if "auth error" in str(e) else status.HTTP_403_FORBIDDEN
-        return templates.TemplateResponse(
-            "login_failed.html.j2",
-            {"request": request, "reason": "无法验证登录信息，请关闭本窗口并重试。"},
-            status_code=status_code,
-        )
+        reason = "无法验证登录信息，请重试。"
+        error_status = status.HTTP_400_BAD_REQUEST if "auth error" in str(e) else status.HTTP_403_FORBIDDEN
+        
+        if is_api_request:
+            return JSONResponse(
+                status_code=error_status,
+                content=ResponseData(
+                    code=error_status,
+                    message=reason,
+                    result={},
+                ).model_dump(exclude_none=True, by_alias=True),
+            )
+        else:
+            return templates.TemplateResponse(
+                "login_failed.html.j2",
+                {"request": request, "reason": reason},
+                status_code=error_status,
+            )
 
     user_host = request.client.host if request.client else None
 
@@ -109,11 +155,23 @@ async def oidc_login(request: Request, code: str = None, error: str = None, erro
             message="/api/auth/login: OIDC no user_sub associated.",
         )
         await AuditLogManager.add_audit_log(data)
-        return templates.TemplateResponse(
-            "login_failed.html.j2",
-            {"request": request, "reason": "未能获取用户信息，请关闭本窗口并重试。"},
-            status_code=status.HTTP_403_FORBIDDEN,
-        )
+        reason = "未能获取用户信息，请重试。"
+        
+        if is_api_request:
+            return JSONResponse(
+                status_code=status.HTTP_403_FORBIDDEN,
+                content=ResponseData(
+                    code=status.HTTP_403_FORBIDDEN,
+                    message=reason,
+                    result={},
+                ).model_dump(exclude_none=True, by_alias=True),
+            )
+        else:
+            return templates.TemplateResponse(
+                "login_failed.html.j2",
+                {"request": request, "reason": reason},
+                status_code=status.HTTP_403_FORBIDDEN,
+            )
 
     await UserManager.update_refresh_revision_by_user_sub(user_sub, user_name=user_name)
 
@@ -128,10 +186,23 @@ async def oidc_login(request: Request, code: str = None, error: str = None, erro
     )
     await AuditLogManager.add_audit_log(data)
 
-    return templates.TemplateResponse(
-        "login_success.html.j2",
-        {"request": request, "current_session": current_session},
-    )
+    # 统一返回session ID作为认证凭据
+    if is_api_request:
+        # API请求返回JSON，session ID作为token
+        return JSONResponse(
+            status_code=status.HTTP_200_OK,
+            content=ResponseData(
+                code=status.HTTP_200_OK,
+                message="success",
+                result={"session_id": current_session},
+            ).model_dump(exclude_none=True, by_alias=True),
+        )
+    else:
+        # 浏览器重定向返回HTML页面，用于弹窗场景
+        return templates.TemplateResponse(
+            "login_success.html.j2",
+            {"request": request, "current_session": current_session},
+        )
 
 
 # 用户主动logout
@@ -219,6 +290,13 @@ async def userinfo(
                 result={},
             ).model_dump(exclude_none=True, by_alias=True),
         )
+    
+    # 当使用AuthHub且user_name为空时，使用user_sub作为显示名称
+    display_name = user.user_name
+    if (not display_name or display_name.strip() == "") and Config().get_config().login.provider == "authhub":
+        display_name = user_sub
+        logger.info(f"AuthHub用户 {user_sub} 的user_name为空，使用user_sub '{user_sub}' 作为显示名称")
+    
     return JSONResponse(
         status_code=status.HTTP_200_OK,
         content=AuthUserRsp(
@@ -226,7 +304,7 @@ async def userinfo(
             message="success",
             result=AuthUserMsg(
                 user_sub=user_sub,
-                user_name=user.user_name,
+                user_name=display_name,
                 revision=user.is_active,
                 is_admin=user.is_admin,
                 auto_execute=user.auto_execute,
