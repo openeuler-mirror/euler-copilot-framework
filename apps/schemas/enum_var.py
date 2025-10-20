@@ -167,6 +167,7 @@ class SpecialCallType(str, Enum):
     """特殊Call类型"""
 
     EMPTY = "Empty"
+    PLUGIN = "Plugin"
     SUMMARY = "Summary"
     FACTS = "Facts"
     SLOT = "Slot"

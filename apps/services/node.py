@@ -24,6 +24,13 @@ class NodeManager:
     @staticmethod
     async def get_node_call_id(node_id: str) -> str:
         """获取Node的call_id"""
+        # 特殊处理：对于特殊节点类型，直接返回对应的call_id
+        if node_id == SpecialCallType.EMPTY.value:
+            return SpecialCallType.EMPTY.value
+        elif node_id == SpecialCallType.PLUGIN.value:
+            return SpecialCallType.PLUGIN.value
+        
+        # 其他节点类型：从数据库查询
         node_collection = MongoDB().get_collection("node")
         node = await node_collection.find_one({"_id": node_id}, {"call_id": 1})
         if not node:
@@ -82,6 +89,40 @@ class NodeManager:
         if node_id == SpecialCallType.EMPTY.value:
             # 如果是空节点，返回空Schema
             return {}, {}
+        
+        if node_id == SpecialCallType.PLUGIN.value:
+            # 如果是Plugin节点，返回API插件的默认Schema
+            return {
+                "type": "object",
+                "properties": {
+                    "api_url": {
+                        "type": "string",
+                        "description": "API接口地址"
+                    },
+                    "method": {
+                        "type": "string",
+                        "description": "HTTP请求方法",
+                        "default": "GET"
+                    },
+                    "headers": {
+                        "type": "object",
+                        "description": "请求头"
+                    },
+                    "parameters": {
+                        "type": "object",
+                        "description": "请求参数"
+                    }
+                }
+            }, {
+                "response": {
+                    "type": "object",
+                    "description": "API响应结果"
+                },
+                "status_code": {
+                    "type": "integer",
+                    "description": "HTTP状态码"
+                }
+            }
         
         # 查找Node信息
         logger.info("[NodeManager] 获取节点 %s", node_id)

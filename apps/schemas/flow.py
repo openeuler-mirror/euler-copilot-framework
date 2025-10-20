@@ -43,6 +43,8 @@ class Step(BaseModel):
     description: str = Field(description="Step的描述")
     pos: PositionItem = Field(description="Step在画布上的位置", default=PositionItem(x=0, y=0))
     params: dict[str, Any] = Field(description="用户手动指定的Node参数", default={})
+    service_id: str = Field(description="Step的服务ID", default="")
+    plugin_type: str | None = Field(description="插件类型", default=None)
 
 
 class FlowError(BaseModel):
