@@ -20,7 +20,7 @@
                 document.getElementById('desc').innerText = "登录成功，正在跳转...";
                 
                 if (window.opener && window.opener !== window) {
-                    // 发送正确格式的 postMessage 给父窗口
+                    // 发送session ID给父窗口
                     console.log('Sending postMessage to parent window');
                     window.opener.postMessage({
                         type: 'auth_success', 
