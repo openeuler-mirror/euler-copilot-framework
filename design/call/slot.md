@@ -2,7 +2,7 @@
 
 ## 概述
 
-Slot工具是一个智能参数自动填充工具，它通过分析历史步骤数据、背景信息和用户问题，自动生成符合JSON Schema要求的参数对象。该工具使用FunctionCall进行精确的剩余参数填充。
+Slot工具是一个智能参数自动填充工具，它通过分析历史步骤数据、背景信息和用户问题，自动生成符合JSON Schema要求的参数对象。该工具使用JsonGenerator进行精确的剩余参数填充。
 
 ## 功能特性
 
@@ -34,7 +34,7 @@ Slot工具的核心实现类，继承自`CoreCall`基类，负责参数自动填
 - `_init()`: 初始化工具输入，处理历史数据和Schema
 - `_exec()`: 执行参数填充逻辑
 - `_llm_slot_fill()`: 使用大语言模型填充参数
-- `_function_slot_fill()`: 使用FunctionCall填充剩余参数
+- `_function_slot_fill()`: 使用JsonGenerator填充剩余参数
 
 ## 数据结构
 
@@ -100,7 +100,7 @@ graph LR
     B --> C[SlotProcessor]
     C --> D[SlotInput]
     D --> E[LLM填充]
-    E --> F[FunctionCall填充]
+    E --> F[JsonGenerator填充]
     F --> G[SlotOutput]
     
     subgraph "输入数据"
@@ -115,7 +115,7 @@ graph LR
         B1[历史数据处理]
         B2[Schema验证]
         B3[LLM推理填充]
-        B4[FunctionCall精确填充]
+        B4[JsonGenerator精确填充]
         B5[数据转换和验证]
     end
     
@@ -207,7 +207,7 @@ graph TD
     I --> J[检查剩余Schema]
     J --> K{仍有剩余Schema?}
     K -->|否| L[输出最终结果]
-    K -->|是| M[第二阶段：FunctionCall填充]
+    K -->|是| M[第二阶段：JsonGenerator填充]
     M --> N[数据转换]
     N --> O[最终Schema检查]
     O --> L
@@ -220,9 +220,9 @@ graph TD
         G4[解析JSON响应]
     end
     
-    subgraph "FunctionCall填充阶段"
+    subgraph "JsonGenerator填充阶段"
         M1[构建对话上下文]
-        M2[调用JSON函数]
+        M2[调用JSON生成器]
         M3[获取结构化数据]
     end
     
@@ -247,7 +247,7 @@ sequenceDiagram
     participant SP as SlotProcessor
     participant T as Jinja2Template
     participant L as LLM
-    participant F as FunctionLLM
+    participant J as JsonGenerator
     participant V as JSONValidator
     
     E->>S: instance(executor, node)
@@ -268,8 +268,8 @@ sequenceDiagram
         
         S->>L: 调用LLM生成参数
         L-->>S: 流式返回JSON响应
-        S->>F: process_response(answer)
-        F-->>S: 处理后的JSON字符串
+        S->>J: process_response(answer)
+        J-->>S: 处理后的JSON字符串
         S->>V: json.loads(answer)
         V-->>S: 解析的JSON数据
         
@@ -279,8 +279,8 @@ sequenceDiagram
         SP-->>S: 剩余Schema
         
         alt 仍有剩余Schema
-            S->>F: _json(messages, schema)
-            F-->>S: 结构化JSON数据
+            S->>J: _json(messages, schema)
+            J-->>S: 结构化JSON数据
             S->>SP: convert_json(slot_data)
             SP-->>S: 转换后的数据
             S->>SP: check_json(slot_data)
@@ -298,15 +298,15 @@ sequenceDiagram
 ```mermaid
 graph LR
     A[原始Schema] --> B[LLM填充阶段]
-    B --> C[FunctionCall填充阶段]
+    B --> C[JsonGenerator填充阶段]
     C --> D[最终结果]
-    
+
     B --> B1[生成自然语言提示词]
     B --> B2[LLM推理生成JSON]
     B --> B3[解析和验证JSON]
-    
+
     C --> C1[构建结构化对话]
-    C --> C2[调用JSON生成函数]
+    C --> C2[调用JSON生成器]
     C --> C3[获取精确JSON数据]
     
     D --> D1[slot_data: 填充数据]
