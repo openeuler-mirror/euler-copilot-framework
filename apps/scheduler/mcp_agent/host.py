@@ -59,10 +59,9 @@ class MCPHost(MCPBase):
             background_info=await self.assemble_memory(runtime, context),
         )
         _logger.info("[MCPHost] 填充工具参数: %s", prompt)
-        result = await self.get_reasoning_result(prompt)
         # 使用JsonGenerator解析结果
-        return await self._parse_result(
-            result,
+        return await self.get_json_result(
+            prompt,
             mcp_tool.inputSchema,
         )
 
@@ -94,13 +93,19 @@ class MCPHost(MCPBase):
             params_description=params_description,
         )
 
+        # 组装OpenAI Function标准的Function结构
+        function = {
+            "name": mcp_tool.toolName,
+            "description": mcp_tool.description,
+            "parameters": mcp_tool.inputSchema,
+        }
+
         json_generator = JsonGenerator(
-            self._llm.function,
+            self._llm,
             llm_query,
             [
-                {"role": "system", "content": "You are a helpful assistant."},
                 {"role": "user", "content": prompt},
             ],
-            mcp_tool.inputSchema,
+            function,
         )
         return await json_generator.generate()

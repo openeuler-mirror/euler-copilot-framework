@@ -5,7 +5,7 @@ import logging
 from collections.abc import AsyncGenerator
 
 from apps.models import LLMData, LLMProvider
-from apps.schemas.llm import LLMChunk
+from apps.schemas.llm import LLMChunk, LLMFunctions
 
 from .providers import (
     BaseProvider,
@@ -20,7 +20,7 @@ _CLASS_DICT: dict[LLMProvider, type[BaseProvider]] = {
 }
 
 
-class ReasoningLLM:
+class LLM:
     """调用用于问答的大模型"""
 
     def __init__(self, llm_config: LLMData | None) -> None:
@@ -43,14 +43,23 @@ class ReasoningLLM:
         *,
         include_thinking: bool = True,
         streaming: bool = True,
+        tools: list[LLMFunctions] | None = None,
     ) -> AsyncGenerator[LLMChunk, None]:
         """调用大模型，分为流式和非流式两种"""
         if streaming:
-            async for chunk in await self._provider.chat(messages, include_thinking=include_thinking):
+            async for chunk in await self._provider.chat(
+                messages,
+                include_thinking=include_thinking,
+                tools=tools,
+            ):
                 yield chunk
         else:
             # 非流式模式下，需要收集所有内容
-            async for _ in await self._provider.chat(messages, include_thinking=include_thinking):
+            async for _ in await self._provider.chat(
+                messages,
+                include_thinking=include_thinking,
+                tools=tools,
+            ):
                 continue
             # 直接yield最终结果
             yield LLMChunk(

@@ -9,7 +9,7 @@ from jinja2 import BaseLoader
 from jinja2.sandbox import SandboxedEnvironment
 from pydantic import Field
 
-from apps.llm import FunctionLLM
+from apps.llm import JsonGenerator
 from apps.models import LanguageType, NodeInfo
 from apps.scheduler.call.core import CoreCall
 from apps.scheduler.slot.slot import Slot as SlotProcessor
@@ -75,7 +75,7 @@ class Slot(CoreCall, input_model=SlotInput, output_model=SlotOutput):
         answer = ""
         async for chunk in self._llm(messages=conversation, streaming=True):
             answer += chunk
-        answer = await FunctionLLM.process_response(answer)
+        answer = await JsonGenerator.process_response(answer)
         try:
             data = json.loads(answer)
         except Exception:  # noqa: BLE001

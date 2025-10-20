@@ -2,14 +2,13 @@
 """模型调用模块"""
 
 from .embedding import Embedding
-from .function import FunctionLLM, JsonGenerator
-from .reasoning import ReasoningLLM
+from .generator import JsonGenerator
+from .llm import LLM
 from .token import token_calculator
 
 __all__ = [
+    "LLM",
     "Embedding",
-    "FunctionLLM",
     "JsonGenerator",
-    "ReasoningLLM",
     "token_calculator",
 ]

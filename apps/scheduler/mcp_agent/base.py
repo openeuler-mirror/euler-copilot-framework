@@ -39,27 +39,18 @@ class MCPBase:
             message,
             streaming=False,
         ):
-            result += chunk
+            result += chunk.content or ""
 
         return result
 
-    async def _parse_result(self, result: str, schema: dict[str, Any]) -> dict[str, Any]:
-        """解析推理结果"""
-        if not self._llm.function:
-            err = "[MCPBase] 未找到函数调用模型"
-            _logger.error(err)
-            raise RuntimeError(err)
-
-        json_result = await JsonGenerator.parse_result_by_stack(result, schema)
-        if json_result is not None:
-            return json_result
+    async def get_json_result(self, result: str, function: dict[str, Any]) -> dict[str, Any]:
+        """解析推理结果；function使用OpenAI标准Function格式"""
         json_generator = JsonGenerator(
-            self._llm.function,
+            self._llm,
             "Please provide a JSON response based on the above information and schema.\n\n",
             [
-                {"role": "system", "content": "You are a helpful assistant."},
                 {"role": "user", "content": result},
             ],
-            schema,
+            function,
         )
         return await json_generator.generate()

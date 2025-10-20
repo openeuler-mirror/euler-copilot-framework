@@ -56,7 +56,6 @@ async def verify_session(request: HTTPConnection) -> None:
             detail="Session ID 鉴权失败",
         )
     request.state.user_sub = user
-    logger.info("Session鉴权成功，user_sub=%s", user)
 
 
 async def verify_personal_token(request: HTTPConnection) -> None:
@@ -91,7 +90,6 @@ async def verify_personal_token(request: HTTPConnection) -> None:
         user_sub = await PersonalTokenManager.get_user_by_personal_token(token)
         if user_sub is not None:
             request.state.user_sub = user_sub
-            logger.info("Personal Token鉴权成功，user_sub=%s", user_sub)
         else:
             # Personal Token无效，抛出401
             logger.warning("Personal Token鉴权失败：无效的token")

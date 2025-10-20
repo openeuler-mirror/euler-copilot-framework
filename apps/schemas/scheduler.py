@@ -6,7 +6,7 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
-from apps.llm import Embedding, FunctionLLM, ReasoningLLM
+from apps.llm import LLM, Embedding
 from apps.models import ExecutorHistory, LanguageType
 
 from .enum_var import CallOutputType
@@ -15,8 +15,8 @@ from .enum_var import CallOutputType
 class LLMConfig(BaseModel):
     """LLM配置"""
 
-    reasoning: ReasoningLLM = Field(description="推理LLM")
-    function: FunctionLLM | None = Field(description="函数LLM")
+    reasoning: LLM = Field(description="推理LLM")
+    function: LLM | None = Field(description="函数LLM")
     embedding: Embedding | None = Field(description="Embedding")
 
     class Config:

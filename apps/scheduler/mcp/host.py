@@ -114,16 +114,20 @@ class MCPHost:
 
             {query}
         """
+        function_definition = {
+            "name": tool.toolName,
+            "description": tool.description,
+            "parameters": tool.inputSchema,
+        }
 
         # 进行生成
         json_generator = JsonGenerator(
-            self._llm.function,
+            self._llm,
             llm_query,
             [
-                {"role": "system", "content": "You are a helpful assistant."},
                 {"role": "user", "content": await self.assemble_memory()},
             ],
-            tool.inputSchema,
+            function_definition,
         )
         return await json_generator.generate()
 
