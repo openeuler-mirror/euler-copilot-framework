@@ -17,7 +17,8 @@ class BaseData(BaseModel):
     id: str = Field(alias="_id")
     name: str
     description: str
-    created_at: float = Field(default_factory=lambda: round(datetime.now(tz=UTC).timestamp(), 3))
+    created_at: float = Field(default_factory=lambda: round(
+        datetime.now(tz=UTC).timestamp(), 3))
 
 
 class ServiceApiInfo(BaseModel):
@@ -36,7 +37,8 @@ class ServicePool(BaseData):
     """
 
     author: str = Field(description="作者的用户ID")
-    permission: Permission = Field(description="服务可见性配置", default=Permission(type=PermissionType.PUBLIC))
+    permission: Permission = Field(
+        description="服务可见性配置", default=Permission(type=PermissionType.PUBLIC))
     hashes: dict[str, str] = Field(description="服务关联的 OpenAPI YAML 和元数据文件哈希")
 
 
@@ -54,10 +56,13 @@ class CallPool(BaseData):
 class Node(BaseData):
     """Node合并后的信息（不存库）"""
 
-    service_id: str | None = Field(description="Node所属的Service ID", default=None)
+    service_id: str | None = Field(
+        description="Node所属的Service ID", default=None)
     call_id: str = Field(description="所使用的Call的ID")
-    params_schema: dict[str, Any] = Field(description="Node的参数schema", default={})
-    output_schema: dict[str, Any] = Field(description="Node输出的完整Schema", default={})
+    params_schema: dict[str, Any] = Field(
+        description="Node的参数schema", default={})
+    output_schema: dict[str, Any] = Field(
+        description="Node输出的完整Schema", default={})
 
 
 class NodePool(BaseData):
@@ -72,9 +77,10 @@ class NodePool(BaseData):
     2. 从openapi中获取：`openapi::<file_name>`
     """
 
-    service_id: str | None = Field(description="Node所属的Service ID", default=None)
+    service_id: str | None = Field(
+        description="Node所属的Service ID", default=None)
     call_id: str = Field(description="所使用的Call的ID")
-    type: CallType = Field(description="所使用的Call的类型")
+    type: CallType = Field(default=CallType.DEFAULT, description="所使用的Call的类型")
     known_params: dict[str, Any] | None = Field(
         description="已知的用于Call部分的参数，独立于输入和输出之外",
         default=None,
