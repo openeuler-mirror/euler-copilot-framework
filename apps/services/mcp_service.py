@@ -81,7 +81,7 @@ class MCPServiceManager:
             page: int,
             is_install: bool | None = None,
             is_active: bool | None = None,
-    ) -> list[MCPServiceCardItem]:
+    ) -> tuple[list[MCPServiceCardItem], int]:
         """
         获取所有MCP服务列表
 
@@ -89,7 +89,7 @@ class MCPServiceManager:
         :param user_sub: str: 用户ID
         :param keyword: str: MCP搜索关键字
         :param page: int: 页码
-        :return: MCP服务列表
+        :return: (MCP服务列表, 总数量)
         """
         filters = MCPServiceManager._build_filters(search_type, keyword)
         if is_active is not None:
@@ -106,8 +106,8 @@ class MCPServiceManager:
                     filters["status"] = MCPInstallStatus.READY.value
                 else:
                     filters["status"] = {"$ne": MCPInstallStatus.READY.value}
-        mcpservice_pools = await MCPServiceManager._search_mcpservice(filters, page)
-        return [
+        mcpservice_pools, total_count = await MCPServiceManager._search_mcpservice_with_count(filters, page)
+        services = [
             MCPServiceCardItem(
                 mcpserviceId=item.id,
                 icon=await MCPLoader.get_icon(item.id),
@@ -120,6 +120,7 @@ class MCPServiceManager:
             )
             for item in mcpservice_pools
         ]
+        return services, total_count
 
     @staticmethod
     async def get_mcp_service(mcpservice_id: str) -> MCPCollection:
@@ -194,6 +195,38 @@ class MCPServiceManager:
             return []
         # 将数据库中的MCP服务转换为对象
         return [MCPCollection.model_validate(db_mcpservice) for db_mcpservice in db_mcpservices]
+
+    @staticmethod
+    async def _search_mcpservice_with_count(
+            search_conditions: dict[str, Any],
+            page: int,
+    ) -> tuple[list[MCPCollection], int]:
+        """
+        基于输入条件搜索MCP服务，同时返回总数量
+
+        :param search_conditions: dict[str, Any]: 搜索条件
+        :param page: int: 页码
+        :return: (MCP列表, 总数量)
+        """
+        mcpservice_collection = MongoDB().get_collection("mcp")
+        
+        # 获取总数量
+        total_count = await mcpservice_collection.count_documents(search_conditions)
+        
+        # 分页查询
+        skip = (page - 1) * SERVICE_PAGE_SIZE
+        db_mcpservices = await mcpservice_collection.find(search_conditions).skip(skip).limit(
+            SERVICE_PAGE_SIZE,
+        ).to_list()
+        
+        # 如果未找到，返回空列表和总数量
+        if not db_mcpservices:
+            logger.warning("[MCPServiceManager] 没有找到符合条件的MCP服务: %s", search_conditions)
+            return [], total_count
+        
+        # 将数据库中的MCP服务转换为对象
+        services = [MCPCollection.model_validate(db_mcpservice) for db_mcpservice in db_mcpservices]
+        return services, total_count
 
     @staticmethod
     def _build_filters(

@@ -58,7 +58,7 @@ async def get_mcpservice_list(
 ) -> JSONResponse:
     """获取服务列表"""
     try:
-        service_cards = await MCPServiceManager.fetch_mcp_services(
+        service_cards, total_count = await MCPServiceManager.fetch_mcp_services(
             search_type,
             user_sub,
             keyword,
@@ -85,6 +85,7 @@ async def get_mcpservice_list(
             message="OK",
             result=GetMCPServiceListMsg(
                 currentPage=page,
+                totalCount=total_count,
                 services=service_cards,
             ),
         ).model_dump(exclude_none=True, by_alias=True),

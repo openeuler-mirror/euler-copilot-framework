@@ -475,6 +475,7 @@ class GetMCPServiceListMsg(BaseModel):
     """GET /api/service Result数据结构"""
 
     current_page: int = Field(..., alias="currentPage", description="当前页码")
+    total_count: int = Field(..., alias="totalCount", description="总数量")
     services: list[MCPServiceCardItem] = Field(..., description="解析后的服务列表")
 
 
