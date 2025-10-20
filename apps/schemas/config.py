@@ -10,6 +10,8 @@ class NoauthConfig(BaseModel):
     """无认证配置"""
 
     enable: bool = Field(description="是否启用无认证访问", default=False)
+    user_sub: str = Field(description="无认证模式下的用户标识", default="openEuler")
+    user_name: str = Field(description="无认证模式下的用户名", default="openEuler")
 
 
 class DeployConfig(BaseModel):

@@ -15,6 +15,7 @@ class AppCenterCardItem(BaseModel):
     name: str = Field(..., description="应用名称")
     description: str = Field(..., description="应用简介")
     author: str = Field(..., description="应用作者")
+    author_name: str = Field(..., alias="authorName", description="应用作者用户名")
     favorited: bool = Field(..., description="是否已收藏")
     published: bool = Field(default=True, description="是否已发布")
 

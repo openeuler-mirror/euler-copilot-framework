@@ -15,12 +15,14 @@
   kubectl --namespace {{ .Release.Namespace }} port-forward $POD_NAME {{ .Values.authelia.service.port | default 9091 }}:$CONTAINER_PORT
 {{- end }}
 
-2. Default login credentials:
-   - Username: admin
-   - Password: admin123
-   
-   - Username: user  
-   - Password: user123
+2. Configured login credentials:
+{{- $users := .Values.users.config | fromYaml }}
+{{- range $username, $userdata := $users.users }}
+   - Username: {{ $username }}
+   - Password: {{ if eq $userdata.password "$argon2id$v=19$m=65536,t=3,p=4$eHA4/xN5ZQB0Pl+Larrf8A$M7+SLwWQymLJQjUfEf/zin+xAEQ1EW8IcHet6tFcBvo" }}openEuler12#${{ else }}[自定义密码]{{ end }}
+   - Email: {{ $userdata.email }}
+   - Groups: {{ join ", " $userdata.groups }}
+{{- end }}
 
 3. OIDC Configuration for Euler Copilot Framework:
    - Client ID: {{ (index .Values.authelia.config.identity_providers.oidc.clients 0).client_id | default "euler-copilot" }}

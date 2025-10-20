@@ -66,6 +66,7 @@ class MCPServerConfig(BaseModel):
     description: str = Field(description="MCP 服务器自然语言描述", default="")
     type: MCPType = Field(description="MCP 服务器类型", default=MCPType.STDIO)
     author: str = Field(description="MCP 服务器上传者", default="")
+    author_name: str = Field(description="MCP 服务器上传者用户名", default="", alias="authorName")
     config: MCPServerStdioConfig | MCPServerSSEConfig = Field(description="MCP 服务器配置")
 
 
@@ -90,6 +91,7 @@ class MCPCollection(BaseModel):
     tools: list[MCPTool] = Field(description="MCP工具列表", default=[])
     status: MCPInstallStatus = Field(description="MCP服务状态", default=MCPInstallStatus.INIT)
     author: str = Field(description="MCP作者", default="")
+    author_name: str = Field(description="MCP作者用户名", default="", alias="authorName")
 
 
 class MCPVector(LanceModel):

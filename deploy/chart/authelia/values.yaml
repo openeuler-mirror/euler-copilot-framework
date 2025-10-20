@@ -266,16 +266,10 @@ users:
   # 默认用户配置文件
   config: |
     users:
-      admin:
-        displayname: "Administrator"
-        password: "$argon2id$v=19$m=65536,t=3,p=4$XYeq1N+rtYxALylzWxOxCQ$mWQaPRuYGuNa9d4rnAc7eq25HIJc0dwOYQrlEzJ792k"  # password: admin123
-        email: admin@example.com
+      openEuler:
+        displayname: "openEuler"
+        password: "$argon2id$v=19$m=65536,t=3,p=4$eHA4/xN5ZQB0Pl+Larrf8A$M7+SLwWQymLJQjUfEf/zin+xAEQ1EW8IcHet6tFcBvo"  # password: openEuler12#$
+        email: openEuler@example.com
         groups:
           - admins
-          - dev
-      user:
-        displayname: "User"
-        password: "$argon2id$v=19$m=65536,t=3,p=4$XYeq1N+rtYxALylzWxOxCQ$mWQaPRuYGuNa9d4rnAc7eq25HIJc0dwOYQrlEzJ792k"  # password: user123
-        email: user@example.com
-        groups:
           - dev

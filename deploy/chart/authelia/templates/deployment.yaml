@@ -16,6 +16,7 @@ spec:
       labels:
         {{- include "authelia.selectorLabels" . | nindent 8 }}
     spec:
+      enableServiceLinks: false
       securityContext:
         runAsNonRoot: true
         runAsUser: 1000
@@ -33,7 +34,7 @@ spec:
           value: {{ .Values.authelia.config.log.level | default "info" | quote }}
         volumeMounts:
         - name: config
-          mountPath: /etc/authelia/authelia.yml
+          mountPath: /app/configuration.yml
           subPath: authelia.yml
           readOnly: true
         - name: users
@@ -47,10 +48,18 @@ spec:
         - name: data
           mountPath: /etc/authelia
         {{- end }}
+        {{- if .Values.authelia.config.server.tls.enabled }}
+        - name: tls-certs
+          mountPath: /etc/authelia/certs
+          readOnly: true
+        {{- end }}
         livenessProbe:
           httpGet:
             path: /api/health
             port: http
+            {{- if .Values.authelia.config.server.tls.enabled }}
+            scheme: HTTPS
+            {{- end }}
           initialDelaySeconds: 30
           periodSeconds: 30
           timeoutSeconds: 5
@@ -59,6 +68,9 @@ spec:
           httpGet:
             path: /api/health
             port: http
+            {{- if .Values.authelia.config.server.tls.enabled }}
+            scheme: HTTPS
+            {{- end }}
           initialDelaySeconds: 5
           periodSeconds: 10
           timeoutSeconds: 3
@@ -87,5 +99,11 @@ spec:
       {{- else }}
       - name: data
         emptyDir: {}
+      {{- end }}
+      {{- if .Values.authelia.config.server.tls.enabled }}
+      - name: tls-certs
+        secret:
+          secretName: authelia-tls-secret
+          defaultMode: 0400
       {{- end }}
 {{- end }}

@@ -38,15 +38,15 @@ class MCPAgentExecutor(BaseExecutor):
     servers_id: list[str] = Field(description="MCP server id")
     agent_id: str = Field(default="", description="Agent ID")
     agent_description: str = Field(default="", description="Agent描述")
-    mcp_list: list[MCPCollection] = Field(description="MCP服务器列表", default=[])
-    mcp_pool: MCPPool = Field(description="MCP池", default=MCPPool())
+    mcp_list: list[MCPCollection] = Field(description="MCP服务器列表", default_factory=list)
+    mcp_pool: MCPPool = Field(description="MCP池", default_factory=MCPPool, exclude=True)
     tools: dict[str, MCPTool] = Field(
         description="MCP工具列表，key为tool_id",
-        default={},
+        default_factory=dict,
     )
     tool_list: list[MCPTool] = Field(
         description="MCP工具列表，包含所有MCP工具",
-        default=[],
+        default_factory=list,
     )
     params: FlowParams | bool | None = Field(
         default=None,
@@ -54,8 +54,9 @@ class MCPAgentExecutor(BaseExecutor):
         alias="params",
     )
     resoning_llm: ReasoningLLM = Field(
-        default=ReasoningLLM(),
+        default_factory=ReasoningLLM,
         description="推理大模型",
+        exclude=True,
     )
     app_owner: str = Field(default="", description="应用所有者")
 
