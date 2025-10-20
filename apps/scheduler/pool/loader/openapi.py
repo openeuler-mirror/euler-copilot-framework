@@ -15,7 +15,7 @@ from apps.scheduler.openapi import (
 )
 from apps.scheduler.slot.slot import Slot
 from apps.scheduler.util import yaml_str_presenter
-from apps.schemas.enum_var import ContentType, HTTPMethod
+from apps.schemas.enum_var import ContentType, HTTPMethod, CallType
 from apps.schemas.node import APINode, APINodeInput, APINodeOutput
 from apps.schemas.pool import NodePool
 
@@ -48,7 +48,8 @@ class OpenAPILoader:
             if item["required"]:
                 schema["required"].append(item["name"])
             schema["properties"][item["name"]] = {}
-            schema["properties"][item["name"]]["description"] = item["description"]
+            schema["properties"][item["name"]
+                                 ]["description"] = item["description"]
             for key, val in item["schema"].items():
                 schema["properties"][item["name"]][key] = val
         return schema
@@ -134,12 +135,13 @@ class OpenAPILoader:
         nodes = []
         for api_endpoint in spec.endpoints:
             # 通过算法生成唯一的标识符
-            identifier = shake_128(f"{service_id}/{yaml_filename}/{api_endpoint.name}".encode()).hexdigest(16)
+            identifier = shake_128(
+                f"{service_id}/{yaml_filename}/{api_endpoint.name}".encode()).hexdigest(16)
             # 组装新的NodePool item
             node = APINode(
                 _id=identifier,
                 name=api_endpoint.name,
-                # 此处固定Call的ID是"API"
+                type=CallType.TOOL,
                 call_id="API",
                 description=api_endpoint.description,
                 service_id=service_id,
@@ -152,7 +154,6 @@ class OpenAPILoader:
             )
             nodes.append(node)
         return nodes
-
 
     async def load_dict(
         self,
@@ -168,7 +169,6 @@ class OpenAPILoader:
             raise
 
         return spec
-
 
     async def load_one(self, service_id: str, yaml_path: Path, server: str) -> list[NodePool]:
         """加载单个OpenAPI文档，可以直接指定路径"""
@@ -206,7 +206,6 @@ class OpenAPILoader:
             )
             for node in api_nodes
         ]
-
 
     async def save_one(self, yaml_path: Path, yaml_dict: dict[str, Any]) -> None:
         """保存单个OpenAPI文档"""
