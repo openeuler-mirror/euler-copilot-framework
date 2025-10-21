@@ -44,6 +44,13 @@ endpoint = '{{ .Values.models.embedding.endpoint }}'
 api_key = '{{ .Values.models.embedding.key }}'
 model = '{{ default "bge-m3" .Values.models.embedding.name }}'
 
+[reranker]
+type = '{{ default "openai" .Values.models.reranker.type }}'
+endpoint = '{{ .Values.models.reranker.endpoint }}'
+api_key = '{{ .Values.models.reranker.key }}'
+model = '{{ default "BAAI/bge-reranker-v2-m3" .Values.models.reranker.name }}'
+icon = '{{ .Values.models.reranker.icon }}'
+
 [rag]
 rag_service = 'http://rag-service.{{ .Release.Namespace }}.svc.cluster.local:9988'
 
@@ -53,6 +60,17 @@ port = 27017
 user = 'euler_copilot'
 password = '${mongo-password}'
 database = 'euler_copilot'
+
+[redis]
+host = 'redis-db.{{ .Release.Namespace }}.svc.cluster.local'
+port = 6379
+password = '${redis-password}'
+database = 0
+decode_responses = true
+socket_timeout = 5.0
+socket_connect_timeout = 5.0
+max_connections = 10
+health_check_interval = 30
 
 [minio]
 endpoint = 'minio-service.{{ .Release.Namespace }}.svc.cluster.local:9000'
