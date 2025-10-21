@@ -201,7 +201,7 @@ deploy() {
     echo -e "Authhub 部署完成！"
     echo -e "查看pod状态：kubectl get pod -n euler-copilot"
     echo -e "Authhub登录地址为: $authhub_address"
-    echo -e "默认账号密码: openeuler/changeme"
+    echo -e "默认账号密码: openEuler/changeme"
     echo -e "=========================${NC}"
 }
 
