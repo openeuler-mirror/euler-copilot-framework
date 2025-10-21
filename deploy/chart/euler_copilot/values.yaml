@@ -51,10 +51,9 @@ models:
     name:
     # [必填] Embedding 模型icon URL
     icon:
-  # 用于对rag检索结果重排的模型，支持openai 轨迹流动 vllm asscend等提供的api
+  # 用于对rag检索结果重排的模型，支持硅基流动 百炼 vllm asscend等模型供应方提供的api
   reranker:
-    # [必填] reranker接口类型：["guijiliudong", "algorithm",
-    # "bailian", "v1lm", "assecend"]
+    # [必填] reranker接口类型：["guijiliudong", "bailian", "v1lm", "assecend"]
     type:
     # [必填] reranker URL（需要带上“/v1/rerank”后缀）  
     endpoint: 
@@ -88,9 +87,11 @@ login:
 domain:
   # [必填] EulerCopilot的web前端url；默认为http://127.0.0.1:30080
   euler_copilot:
-  # [必填] authhub的web前端url；默认为http://127.0.0.1:30081
+  # [必填] 鉴权服务["authhub", "authelia"]
+  auth_service:
+  # [选填] authhub的web前端url；默认为http://127.0.0.1:30081
   authhub:
-  # [必填] authelia的web前端url；默认为http://127.0.0.1:30091
+  # [选填] authelia的web前端url；默认为http://127.0.0.1:30091
   authelia:
 
 # 存储设置

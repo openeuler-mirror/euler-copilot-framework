@@ -16,7 +16,8 @@ PLUGINS_DIR="/var/lib/eulercopilot"
 client_id=""
 client_secret=""
 eulercopilot_address=""
-authhub_address=""
+auth_service_type=""
+auth_service_address=""
 
 SCRIPT_PATH="$(
   cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1
@@ -34,10 +35,11 @@ show_help() {
     echo -e "选项:"
     echo -e "  --help                   显示此帮助信息"
     echo -e "  --eulercopilot_address   指定EulerCopilot前端访问URL"
-    echo -e "  --authhub_address        指定Authhub前端访问URL"
     echo -e ""
     echo -e "示例:"
-    echo -e "  $0 --eulercopilot_address http://myhost:30080 --authhub_address http://myhost:30081${NC}"
+    echo -e "  $0 --eulercopilot_address http://myhost:30080${NC}"
+    echo -e ""
+    echo -e "${YELLOW}注意: 鉴权服务将自动检测并提供选择${NC}"
     exit 0
 }
 
@@ -54,15 +56,6 @@ parse_arguments() {
                     shift
                 else
                     echo -e "${RED}错误: --eulercopilot_address 需要提供一个值${NC}" >&2
-                    exit 1
-                fi
-                ;;
-            --authhub_address)
-                if [ -n "$2" ]; then
-                    authhub_address="$2"
-                    shift
-                else
-                    echo -e "${RED}错误: --authhub_address 需要提供一个值${NC}" >&2
                     exit 1
                 fi
                 ;;
@@ -88,7 +81,9 @@ show_success_message() {
 
     echo -e "${YELLOW}访问信息：${NC}"
     echo -e "EulerCopilot UI:    ${eulercopilot_address}"
-    echo -e "AuthHub 管理界面:   ${authhub_address}"
+    if [ -n "$auth_service_address" ]; then
+        echo -e "鉴权服务 (${auth_service_type}): ${auth_service_address}"
+    fi
 
     echo -e "\n${YELLOW}系统信息：${NC}"
     echo -e "内网IP:     ${host}"
@@ -156,67 +151,87 @@ get_network_ip() {
 
 get_address_input() {
     # 如果命令行参数已经提供了地址，则直接使用，不进行交互式输入
-    if [ -n "$eulercopilot_address" ] && [ -n "$authhub_address" ]; then
+    if [ -n "$eulercopilot_address" ]; then
         echo -e "${GREEN}使用命令行参数配置："
         echo "EulerCopilot地址: $eulercopilot_address"
-        echo "Authhub地址:     $authhub_address"
         return
     fi
 
     # 从环境变量读取或使用默认值
     eulercopilot_address=${EULERCOPILOT_ADDRESS:-"http://127.0.0.1:30080"}
-    authhub_address=${AUTHHUB_ADDRESS:-"http://127.0.0.1:30081"}
 
     # 非交互模式直接使用默认值
     if [ -t 0 ]; then  # 仅在交互式终端显示提示
         echo -e "${BLUE}请输入 EulerCopilot 前端访问URL（默认：$eulercopilot_address）：${NC}"
         read -p "> " input_euler
         [ -n "$input_euler" ] && eulercopilot_address=$input_euler
-
-        echo -e "${BLUE}请输入 Authhub 前端访问URL（默认：$authhub_address）：${NC}"
-        read -p "> " input_auth
-        [ -n "$input_auth" ] && authhub_address=$input_auth
     fi
 
     echo -e "${GREEN}使用配置："
     echo "EulerCopilot地址: $eulercopilot_address"
-    echo "Authhub地址:     $authhub_address"
+    echo -e "${YELLOW}注意: 鉴权服务将自动检测并提供选择${NC}"
 }
 
 get_client_info_auto() {
     # 获取用户输入地址
     get_address_input
+    
+    echo -e "${BLUE}正在自动获取认证信息...${NC}"
+    
     # 创建临时文件
     local temp_file
     temp_file=$(mktemp)
     
-    # 直接调用Python脚本并传递域名参数
-    python3 "${DEPLOY_DIR}/scripts/9-other-script/get_client_id_and_secret.py" "${eulercopilot_address}" > "$temp_file" 2>&1
+    # 使用新的多服务支持脚本
+    local script_path="${DEPLOY_DIR}/scripts/9-other-script/get_client_credentials.py"
+    
+    # 检查新脚本是否存在，如果不存在则使用旧脚本
+    if [ ! -f "$script_path" ]; then
+        echo -e "${YELLOW}警告: 未找到新版脚本，使用旧版脚本${NC}"
+        script_path="${DEPLOY_DIR}/scripts/9-other-script/get_client_id_and_secret.py"
+    fi
+    
+    # 非交互式运行：使用echo "1"来自动选择第一个检测到的服务
+    echo "1" | python3 "$script_path" "${eulercopilot_address}" > "$temp_file" 2>&1
+    local exit_code=$?
 
     # 检查Python脚本执行结果
-    if [ $? -ne 0 ]; then
-        echo -e "${RED}错误：Python脚本执行失败${NC}"
+    if [ $exit_code -ne 0 ]; then
+        echo -e "${RED}错误：认证信息获取失败${NC}"
         cat "$temp_file"
         rm -f "$temp_file"
         return 1
     fi
 
-    # 提取凭证信息
-    client_id=$(grep "client_id: " "$temp_file" | awk '{print $2}')
-    client_secret=$(grep "client_secret: " "$temp_file" | awk '{print $2}')
+    # 提取凭证信息和服务信息
+    local output
+    output=$(cat "$temp_file")
+    
+    # 提取认证信息
+    client_id=$(echo "$output" | grep -oP 'client_id:\s*\K\S+' | tail -1)
+    client_secret=$(echo "$output" | grep -oP 'client_secret:\s*\K\S+' | tail -1)
+    
+    # 提取服务信息（用于显示）
+    auth_service_type=$(echo "$output" | grep -oP '鉴权服务类型:\s*\K\S+' | tail -1)
+    auth_service_address=$(echo "$output" | grep -oP '鉴权服务地址:\s*\K\S+' | tail -1)
+    
+    # 清理临时文件
     rm -f "$temp_file"
-
-    # 验证结果
+    
+    # 验证提取结果
     if [ -z "$client_id" ] || [ -z "$client_secret" ]; then
-        echo -e "${RED}错误：无法获取有效的客户端凭证${NC}" >&2
+        echo -e "${RED}错误：无法从脚本输出中提取有效的认证信息${NC}"
+        echo -e "${YELLOW}脚本输出：${NC}"
+        echo "$output"
         return 1
     fi
-
-    # 输出结果
-    echo -e "${GREEN}==============================${NC}"
-    echo -e "${GREEN}Client ID:     ${client_id}${NC}"
-    echo -e "${GREEN}Client Secret: ${client_secret}${NC}"
-    echo -e "${GREEN}==============================${NC}"
+    
+    echo -e "${GREEN}✓ 成功获取认证信息：${NC}"
+    echo -e "  鉴权服务类型: ${auth_service_type:-未知}"
+    echo -e "  Client ID: ${client_id}"
+    echo -e "  Client Secret: ${client_secret}"
+    
+    return 0
 }
 
 get_client_info_manual() {
@@ -327,8 +342,12 @@ modify_yaml() {
         "--set" "login.client.id=${client_id}"
         "--set" "login.client.secret=${client_secret}"
         "--set" "domain.euler_copilot=${eulercopilot_address}"
-        "--set" "domain.authhub=${authhub_address}"
     )
+    
+    # 如果检测到了鉴权服务地址，则添加到配置中
+    if [ -n "$auth_service_address" ]; then
+        set_args+=("--set" "domain.auth_service=${auth_service_address}")
+    fi
 
     # 如果不需要保留模型配置，则添加模型相关的参数
     if [[ "$preserve_models" != [Yy]* ]]; then
