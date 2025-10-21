@@ -68,14 +68,12 @@ models:
 login:
   # [必填] 登录提供者类型：["authhub", "authelia"]
   provider: authhub
-  
   # AuthHub客户端ID设置，仅在provider为authhub时有效
   client:
     # [必填] 客户端ID
     id:
     # [必填] 客户端密钥
     secret:
-  
   # Authelia OIDC设置，仅在provider为authelia时有效
   authelia:
     # [必填] OIDC客户端ID
@@ -87,12 +85,19 @@ login:
 domain:
   # [必填] EulerCopilot的web前端url；默认为http://127.0.0.1:30080
   euler_copilot:
-  # [必填] 鉴权服务["authhub", "authelia"]
-  auth_service:
-  # [选填] authhub的web前端url；默认为http://127.0.0.1:30081
+  # [必填] authhub的web前端url；默认为http://127.0.0.1:30081
+  # 如果不设置，将自动使用 euler_copilot + authhub_port 构建
   authhub:
-  # [选填] authelia的web前端url；默认为http://127.0.0.1:30091
+  # [必填] authelia的web前端url；默认为http://127.0.0.1:30091
+  # 如果不设置，将自动使用 euler_copilot + authelia_port 构建
   authelia:
+
+# 服务端口设置（用于自动构建域名）
+ports:
+  # AuthHub web服务端口；默认为30081
+  authhub: 30081
+  # Authelia服务端口；默认为30091
+  authelia: 30091
 
 # 存储设置
 storage:
