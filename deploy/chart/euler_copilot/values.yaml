@@ -49,6 +49,8 @@ models:
     key:
     # [必填] Embedding 模型名称
     name:
+    # [必填] Embedding 模型icon URL
+    icon:
   # reranker的模型
   reranker:
     # [必填] reranker接口类型：["openai", "guijiliudong", "algorithm",
