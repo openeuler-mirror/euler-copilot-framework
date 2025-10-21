@@ -1,7 +1,5 @@
 [no_auth]
-enable = true
-user_sub = "openEuler"
-user_name = "openEuler"
+enable = false
 
 [deploy]
 mode = 'local'

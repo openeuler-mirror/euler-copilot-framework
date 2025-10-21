@@ -11,5 +11,5 @@ spec:
   resources:
     requests:
       storage: {{ default "10Gi" .Values.storage.webAsset.size }}
-  volumeName: web-static
+    volumeName: web-static
 {{- end -}}
