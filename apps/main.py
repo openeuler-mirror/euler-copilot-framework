@@ -179,6 +179,47 @@ async def add_no_auth_user() -> None:
     except Exception as e:
         logger.error(f"[add_no_auth_user] 添加默认用户失败: {e}")
 
+async def set_administrator() -> None:
+    """
+    设置管理员用户
+    当MongoDB User表不存在该用户时就新增，如果存在就修改该User的is_admin字段为true
+    """
+    from apps.common.mongo import MongoDB
+    from apps.schemas.collection import User
+    from apps.common.config import Config
+    
+    config = Config().get_config()
+    mongo = MongoDB()
+    user_collection = mongo.get_collection("user")
+    
+    # 获取管理员配置
+    admin_user_sub = config.admin.user_sub
+    admin_user_name = config.admin.user_name
+    
+    try:
+        # 检查用户是否已存在
+        existing_user = await user_collection.find_one({"_id": admin_user_sub})
+        
+        if existing_user:
+            # 用户存在，更新 is_admin 字段为 true
+            await user_collection.update_one(
+                {"_id": admin_user_sub},
+                {"$set": {"is_admin": True}}
+            )
+            logger.info(f"[set_administrator] 成功更新用户 {admin_user_sub} 的管理员权限")
+        else:
+            # 用户不存在，新增管理员用户
+            await user_collection.insert_one(User(
+                _id=admin_user_sub,
+                user_name=admin_user_name,
+                is_admin=True,
+                auto_execute=False
+            ).model_dump(by_alias=True))
+            logger.info(f"[set_administrator] 成功添加新管理员用户: {admin_user_sub}")
+            
+    except Exception as e:
+        logger.error(f"[set_administrator] 设置管理员用户失败: {e}")
+
 async def clear_user_activity() -> None:
     """清除所有用户的活跃状态"""
     from apps.services.activity import Activity
@@ -198,6 +239,8 @@ async def init_resources() -> None:
     
     if Config().get_config().no_auth.enable:
         await add_no_auth_user()
+    if Config().get_config().admin.enable:
+        await set_administrator()
     await clear_user_activity()
 
     # 初始化变量池管理器

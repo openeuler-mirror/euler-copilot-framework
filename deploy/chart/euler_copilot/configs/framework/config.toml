@@ -1,6 +1,11 @@
 [no_auth]
 enable = false
 
+[admin]
+enable = true
+user_sub = openEuler
+user_name = openEuler
+
 [deploy]
 mode = 'local'
 cookie = 'domain'
@@ -20,7 +25,7 @@ userinfo_endpoint = '{{ .Values.domain.authelia | default "http://127.0.0.1:3009
 scopes = 'openid profile email'
 {{- else }}
 [login.settings]
-host = '{{ .Values.domain.authhub | default (printf "%s:%d" (.Values.domain.euler_copilot | default "http://127.0.0.1") (.Values.ports.authhub | default 30081)) }}'
+host = '{{ if .Values.domain.authhub }}{{ .Values.domain.authhub }}{{ else }}http://{{ regexReplaceAll "^https?://|:[0-9]+$" (.Values.domain.euler_copilot | default "http://127.0.0.1") "" }}:{{ .Values.ports.authhub | default 30081 }}{{ end }}'
 host_inner = 'http://authhub-backend-service.{{ .Release.Namespace }}.svc.cluster.local:11120'
 login_api = '{{ .Values.domain.euler_copilot | default "http://127.0.0.1:30080" }}/api/auth/login'
 app_id = '${clientId}'
