@@ -67,7 +67,7 @@ class EmbeddingConfig(BaseModel):
 class RerankerConfig(BaseModel):
     """Reranker配置"""
 
-    type: str = Field(description="Reranker接口类型", default="openai")
+    type: str = Field(description="Reranker接口类型", default="")
     endpoint: str = Field(description="Reranker模型地址")
     api_key: str = Field(description="Reranker模型API Key")
     model: str = Field(description="Reranker模型名称")
