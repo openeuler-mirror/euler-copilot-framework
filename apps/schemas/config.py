@@ -14,6 +14,13 @@ class NoauthConfig(BaseModel):
     user_name: str = Field(description="无认证模式下的用户名", default="openEuler")
 
 
+class AdminConfig(BaseModel):
+    """管理员配置"""
+    enable: bool = Field(description="是否启用管理员", default=False)
+    user_sub: str = Field(description="管理员用户标识", default="openEuler")
+    user_name: str = Field(description="管理员用户名", default="openEuler")
+    
+
 class DeployConfig(BaseModel):
     """部署配置"""
 
@@ -171,6 +178,7 @@ class ExtraConfig(BaseModel):
 class ConfigModel(BaseModel):
     """配置文件的校验Class"""
     no_auth: NoauthConfig = Field(description="无认证配置", default=NoauthConfig())
+    admin: AdminConfig = Field(description="管理员配置", default=AdminConfig())
     deploy: DeployConfig
     login: LoginConfig
     embedding: EmbeddingConfig
