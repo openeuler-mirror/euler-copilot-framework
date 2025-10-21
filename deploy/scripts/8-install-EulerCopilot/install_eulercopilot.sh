@@ -344,10 +344,8 @@ modify_yaml() {
         "--set" "domain.euler_copilot=${eulercopilot_address}"
     )
     
-    # 如果检测到了鉴权服务地址，则添加到配置中
-    if [ -n "$auth_service_address" ]; then
-        set_args+=("--set" "domain.auth_service=${auth_service_address}")
-    fi
+    # 注意：authhub和authelia的域名将通过Helm模板自动构建
+    # 不再需要在这里手动设置domain.authhub和domain.authelia
 
     # 如果不需要保留模型配置，则添加模型相关的参数
     if [[ "$preserve_models" != [Yy]* ]]; then

@@ -12,17 +12,17 @@ data_dir = '/app/data'
 provider = 'authelia'
 [login.settings]
 # Authelia OIDC 服务器配置
-host = '{{ .Values.domain.authelia | default "http://127.0.0.1:30091" }}'
+host = '{{ .Values.domain.authelia | default (printf "%s:%d" (.Values.domain.euler_copilot | default "http://127.0.0.1") (.Values.ports.authelia | default 30091)) }}'
 client_id = '{{ .Values.login.authelia.client_id | default "euler-copilot" }}'
 client_secret = '{{ .Values.login.authelia.client_secret | default "your-client-secret-here" }}'
 
 # OIDC 端点配置
 redirect_uri = '{{ .Values.domain.euler_copilot | default "http://127.0.0.1:30080" }}/api/auth/login'
-authorization_endpoint = '{{ .Values.domain.authelia | default "http://127.0.0.1:30091" }}/api/oidc/authorization'
-token_endpoint = '{{ .Values.domain.authelia | default "http://127.0.0.1:30091" }}/api/oidc/token'
-userinfo_endpoint = '{{ .Values.domain.authelia | default "http://127.0.0.1:30091" }}/api/oidc/userinfo'
-jwks_uri = '{{ .Values.domain.authelia | default "http://127.0.0.1:30091" }}/.well-known/jwks.json'
-issuer = '{{ .Values.domain.authelia | default "http://127.0.0.1:30091" }}'
+authorization_endpoint = '{{ .Values.domain.authelia | default (printf "%s:%d" (.Values.domain.euler_copilot | default "http://127.0.0.1") (.Values.ports.authelia | default 30091)) }}/api/oidc/authorization'
+token_endpoint = '{{ .Values.domain.authelia | default (printf "%s:%d" (.Values.domain.euler_copilot | default "http://127.0.0.1") (.Values.ports.authelia | default 30091)) }}/api/oidc/token'
+userinfo_endpoint = '{{ .Values.domain.authelia | default (printf "%s:%d" (.Values.domain.euler_copilot | default "http://127.0.0.1") (.Values.ports.authelia | default 30091)) }}/api/oidc/userinfo'
+jwks_uri = '{{ .Values.domain.authelia | default (printf "%s:%d" (.Values.domain.euler_copilot | default "http://127.0.0.1") (.Values.ports.authelia | default 30091)) }}/.well-known/jwks.json'
+issuer = '{{ .Values.domain.authelia | default (printf "%s:%d" (.Values.domain.euler_copilot | default "http://127.0.0.1") (.Values.ports.authelia | default 30091)) }}'
 
 # OIDC 作用域和声明配置
 scopes = 'openid profile email groups'
