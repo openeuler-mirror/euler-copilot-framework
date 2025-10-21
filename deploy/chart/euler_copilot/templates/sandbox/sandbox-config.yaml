@@ -2,11 +2,8 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ include "euler_copilot.fullname" . }}-sandbox-config
+  name: sandbox-config
   namespace: {{ .Release.Namespace }}
-  labels:
-    {{- include "euler_copilot.labels" . | nindent 4 }}
-    app.kubernetes.io/component: sandbox
 data:
   config.py: |
     # OpenEuler Intelligence Sandbox Configuration

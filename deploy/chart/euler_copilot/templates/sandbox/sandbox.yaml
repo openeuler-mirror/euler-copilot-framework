@@ -2,22 +2,17 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "euler_copilot.fullname" . }}-sandbox-deploy
+  name: sandbox-deploy
   namespace: {{ .Release.Namespace }}
-  labels:
-    {{- include "euler_copilot.labels" . | nindent 4 }}
-    app.kubernetes.io/component: sandbox
 spec:
   replicas: {{ .Values.euler_copilot.sandbox.replicas | default 1 }}
   selector:
     matchLabels:
-      {{- include "euler_copilot.selectorLabels" . | nindent 6 }}
-      app.kubernetes.io/component: sandbox
+      app: sandbox
   template:
     metadata:
       labels:
-        {{- include "euler_copilot.selectorLabels" . | nindent 8 }}
-        app.kubernetes.io/component: sandbox
+        app: sandbox
     spec:
       {{- if .Values.euler_copilot.sandbox.readOnly }}
       securityContext:
@@ -27,7 +22,7 @@ spec:
       {{- end }}
       containers:
       - name: sandbox
-        image: {{ .Values.euler_copilot.sandbox.image | default (printf "hub.oepkgs.net/neocopilot/openeuler-intelligence-sandbox:%s-%s" (.Values.euler_copilot.sandbox.version | default "latest") (.Values.globals.arch | default "x86")) }}
+        image: {{ .Values.euler_copilot.sandbox.image | default (printf "hub.oepkgs.net/neocopilot/openeuler-intelligence-sandbox:%s-%s" (.Values.euler_copilot.sandbox.version | default "0.10.1") (.Values.globals.arch | default "x86")) }}
         imagePullPolicy: {{ .Values.globals.imagePullPolicy | default "IfNotPresent" }}
         ports:
         - containerPort: 8000
@@ -100,7 +95,7 @@ spec:
       volumes:
       - name: config
         configMap:
-          name: {{ include "euler_copilot.fullname" . }}-sandbox-config
+          name: sandbox-config
       {{- if .Values.euler_copilot.sandbox.readOnly }}
       - name: tmp
         emptyDir: {}
@@ -111,11 +106,10 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ include "euler_copilot.fullname" . }}-sandbox-service
+  name: sandbox-service
   namespace: {{ .Release.Namespace }}
-  labels:
-    {{- include "euler_copilot.labels" . | nindent 4 }}
-    app.kubernetes.io/component: sandbox
+  labels: 
+    app: sandbox
 spec:
   type: {{ .Values.euler_copilot.sandbox.service.type | default "ClusterIP" }}
   ports:
@@ -127,6 +121,5 @@ spec:
     nodePort: {{ .Values.euler_copilot.sandbox.service.nodePort }}
     {{- end }}
   selector:
-    {{- include "euler_copilot.selectorLabels" . | nindent 4 }}
-    app.kubernetes.io/component: sandbox
+    app: sandbox
 {{- end }}
