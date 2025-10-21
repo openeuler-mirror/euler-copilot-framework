@@ -43,6 +43,7 @@ type = '{{ default "openai" .Values.models.embedding.type }}'
 endpoint = '{{ .Values.models.embedding.endpoint }}'
 api_key = '{{ .Values.models.embedding.key }}'
 model = '{{ default "bge-m3" .Values.models.embedding.name }}'
+icon = '{{ .Values.models.embedding.icon }}'
 
 [reranker]
 type = '{{ default "openai" .Values.models.reranker.type }}'
