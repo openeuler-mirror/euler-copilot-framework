@@ -49,6 +49,18 @@ models:
     key:
     # [必填] Embedding 模型名称
     name:
+  # reranker的模型
+  reranker:
+    # [必填] reranker接口类型：["openai", "guijiliudong"]
+    type:
+    # [必填] reranker URL（需要带上“/v1/rerank”后缀）  
+    endpoint: 
+    # [必填] reranker 模型API Key
+    key:
+    # [必填] reranker 模型名称
+    name:
+    # [必填] reranker 模型icon URL
+    icon:
 
 # 登录设置
 login:
