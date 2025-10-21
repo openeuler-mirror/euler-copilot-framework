@@ -39,7 +39,18 @@ def get_user_token(authhub_web_url, username="openEuler", password="changeme"):
         timeout=10
     )
     response.raise_for_status()
-    return response.json()["data"]["user_token"]
+    
+    # 添加响应调试信息
+    response_data = response.json()
+    print(f"登录API响应: {json.dumps(response_data, indent=2, ensure_ascii=False)}")
+    
+    if "data" not in response_data:
+        raise ValueError(f"登录响应中缺少 'data' 字段。完整响应: {response_data}")
+    
+    if "user_token" not in response_data["data"]:
+        raise ValueError(f"登录响应的data字段中缺少 'user_token'。data内容: {response_data['data']}")
+    
+    return response_data["data"]["user_token"]
 
 def find_existing_app(authhub_web_url, user_token, client_name):
     response = requests.get(
@@ -49,6 +60,15 @@ def find_existing_app(authhub_web_url, user_token, client_name):
     )
     response.raise_for_status()
     apps_data = response.json()
+    
+    # 添加响应调试信息
+    print(f"应用列表API响应: {json.dumps(apps_data, indent=2, ensure_ascii=False)}")
+    
+    if "data" not in apps_data:
+        raise ValueError(f"应用列表响应中缺少 'data' 字段。完整响应: {apps_data}")
+    
+    if "applications" not in apps_data["data"]:
+        raise ValueError(f"应用列表响应的data字段中缺少 'applications'。data内容: {apps_data['data']}")
 
     for app in apps_data["data"]["applications"]:
         client_metadata = app.get("client_metadata") or {}
@@ -78,7 +98,6 @@ def register_or_update_app(authhub_web_url, user_token, client_name, client_url,
         response = requests.put(
             url,
             json={
-                "client_name": client_name,
                 "client_uri": client_url,
                 "redirect_uris": redirect_urls,
                 "register_callback_uris": [],
@@ -93,7 +112,15 @@ def register_or_update_app(authhub_web_url, user_token, client_name, client_url,
             verify=False
         )
         response.raise_for_status()
-        return response.json()["data"]
+        
+        # 添加响应调试信息
+        response_data = response.json()
+        print(f"更新应用API响应: {json.dumps(response_data, indent=2, ensure_ascii=False)}")
+        
+        if "data" not in response_data:
+            raise ValueError(f"更新应用响应中缺少 'data' 字段。完整响应: {response_data}")
+        
+        return response_data["data"]
     else:
         # 注册新应用
         print(f"未找到已存在应用 [名称: {client_name}], 正在注册新应用...")
@@ -115,7 +142,15 @@ def register_or_update_app(authhub_web_url, user_token, client_name, client_url,
             verify=False
         )
         response.raise_for_status()
-        return response.json()["data"]
+        
+        # 添加响应调试信息
+        response_data = response.json()
+        print(f"注册应用API响应: {json.dumps(response_data, indent=2, ensure_ascii=False)}")
+        
+        if "data" not in response_data:
+            raise ValueError(f"注册应用响应中缺少 'data' 字段。完整响应: {response_data}")
+        
+        return response_data["data"]
 
 def get_client_secret(authhub_web_url, user_token, client_id):
     response = requests.get(
@@ -125,9 +160,23 @@ def get_client_secret(authhub_web_url, user_token, client_id):
     )
     response.raise_for_status()
     app_data = response.json()
+    
+    # 添加响应调试信息
+    print(f"获取客户端凭证API响应: {json.dumps(app_data, indent=2, ensure_ascii=False)}")
+    
+    if "data" not in app_data:
+        raise ValueError(f"获取客户端凭证响应中缺少 'data' 字段。完整响应: {app_data}")
+    
+    if "client_info" not in app_data["data"]:
+        raise ValueError(f"获取客户端凭证响应的data字段中缺少 'client_info'。data内容: {app_data['data']}")
+    
+    client_info = app_data["data"]["client_info"]
+    if "client_id" not in client_info or "client_secret" not in client_info:
+        raise ValueError(f"client_info中缺少必要字段。client_info内容: {client_info}")
+    
     return {
-        "client_id": app_data["data"]["client_info"]["client_id"],
-        "client_secret": app_data["data"]["client_info"]["client_secret"]
+        "client_id": client_info["client_id"],
+        "client_secret": client_info["client_secret"]
     }
 
 if __name__ == "__main__":
