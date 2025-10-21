@@ -51,9 +51,9 @@ models:
     name:
     # [必填] Embedding 模型icon URL
     icon:
-  # reranker的模型
+  # 用于对rag检索结果重排的模型，支持openai 轨迹流动 vllm asscend等提供的api
   reranker:
-    # [必填] reranker接口类型：["openai", "guijiliudong", "algorithm",
+    # [必填] reranker接口类型：["guijiliudong", "algorithm",
     # "bailian", "v1lm", "assecend"]
     type:
     # [必填] reranker URL（需要带上“/v1/rerank”后缀）  

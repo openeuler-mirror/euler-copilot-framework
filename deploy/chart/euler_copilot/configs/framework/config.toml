@@ -46,7 +46,7 @@ model = '{{ default "bge-m3" .Values.models.embedding.name }}'
 icon = '{{ .Values.models.embedding.icon }}'
 
 [reranker]
-type = '{{ default "openai" .Values.models.reranker.type }}'
+type = '{{ .Values.models.reranker.type }}'
 endpoint = '{{ .Values.models.reranker.endpoint }}'
 api_key = '{{ .Values.models.reranker.key }}'
 model = '{{ default "BAAI/bge-reranker-v2-m3" .Values.models.reranker.name }}'
