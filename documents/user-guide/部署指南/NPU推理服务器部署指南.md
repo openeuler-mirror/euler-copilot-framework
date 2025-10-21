@@ -158,39 +158,49 @@ curl http://localhost:8090/embed \
 ```bash
 vim euler-copilot-framework_3/deploy/chart/euler_copilot/values.yaml
 ```
-```yaml
-models:
-  answer:
-    url: http://<server_ip>:8000/openai
-    key: sk-123456
-    name: DeepSeek-R1-Distill-Llama-70B
-    ctx_length: 8192
-    max_tokens: 2048
-    parameters:  # 新增性能参数
-      batch_size: 8
-      tensor_parallel: 8
-  functioncall:
-    # 推理框架类型，默认为ollama
-    # 可用的框架类型：["vllm", "sglang", "ollama", "openai"]
-    backend: vllm
-    # 模型地址；不填则与问答模型一致
-    url:
-    # API Key；不填则与问答模型一致
-    key:
-    # 模型名称；不填则与问答模型一致
-    name:
-    # 模型最大上下文数；不填则与问答模型一致
-    ctx_length:
-    # 模型最大输出长度；不填则与问答模型一致
-    max_tokens:
-  # 用于数据向量化（Embedding）的模型
-  embedding:
-    type: mindie
-    url: http://<server_ip>:8090/v1  # 注意v1路径
-    key: sk-123456
-    name: bge-m3
-    max_length: 8192  # 添加长度限制
 ```
+models:
+  # 用于问答的大语言模型；需要OpenAI兼容的API
+  answer:
+    # [必需] API端点URL（请根据API提供商文档确认是否包含"v1"后缀）
+    endpoint: https://$ip:$port/v1
+    # [必需] API密钥；默认为空
+    key: sk-123456
+    # [必需] 模型名称
+    name: qwen3-32b
+    # [必需] 模型最大上下文长度；推荐>=8192
+    ctxLength: 8192
+    # 模型最大输出长度，推荐>=2048
+    maxTokens: 8192
+  # 用于函数调用的模型；推荐使用特定的推理框架
+  functionCall:
+    # 推理框架类型，默认为ollama
+    # 可用框架类型：["vllm", "sglang", "ollama", "openai"]
+    backend: openai
+    # [必需] 模型端点；请根据API提供商文档确认是否包含"v1"后缀
+    # 留空则使用与问答模型相同的配置
+    endpoint: https://$ip:$port/v1
+    # API密钥；留空则使用与问答模型相同的配置
+    key: sk-123456
+    # 模型名称；留空则使用与问答模型相同的配置
+    name: qwen3-32b
+    # 模型最大上下文长度；留空则使用与问答模型相同的配置
+    ctxLength: 8192
+    # 模型最大输出长度；留空则使用与问答模型相同的配置
+    maxTokens: 8192
+  # 用于数据嵌入的模型
+  embedding:
+    # 推理框架类型，默认为openai
+    # [必需] Embedding API类型：["openai", "mindie"]
+    type: openai
+    # [必需] Embedding URL（需要包含"v1"后缀）
+    endpoint: https://$ip:$port/v1
+    # [必需] Embedding模型API密钥
+    key: sk-123456
+    # [必需] Embedding模型名称
+    name: BAAI/bge-m3
+```
+
 ## 更新服务
 ```bash
 helm upgrade -n euler-copilot euler-copilot .
