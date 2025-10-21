@@ -27,5 +27,5 @@ spec:
   resources:
     requests:
       storage: {{ default "5Gi" .Values.storage.frameworkSemantics.size }}
-  volumeName: framework-semantics
+    volumeName: framework-semantics
 {{- end -}}
