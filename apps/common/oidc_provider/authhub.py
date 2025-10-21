@@ -133,6 +133,10 @@ class AuthhubOIDCProvider(OIDCProviderBase):
             user_sub = result.get("sub", result.get("user_id", ""))
             user_name = result.get("name", result.get("preferred_username", result.get("nickname", result.get("username", ""))))
 
+        # 如果user_name为空，使用user_sub作为user_name
+        if not user_name:
+            user_name = user_sub
+            
         logger.info("[Authhub] 提取的用户信息 - user_sub: %s, user_name: %s", user_sub, user_name)
         
         return {

@@ -359,7 +359,11 @@ class ServiceCenterManager:
     async def _get_favorite_service_ids_by_user(user_sub: str) -> list[str]:
         """获取用户收藏的服务ID"""
         user_collection = MongoDB().get_collection("user")
-        user_data = User.model_validate(await user_collection.find_one({"_id": user_sub}))
+        user_doc = await user_collection.find_one({"_id": user_sub})
+        if user_doc is None:
+            # 用户不存在，返回空的收藏列表
+            return []
+        user_data = User.model_validate(user_doc)
         return user_data.fav_services
 
     @staticmethod
