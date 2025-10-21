@@ -29,7 +29,7 @@ def get_service_cluster_ip(namespace, service_name):
     service_info = json.loads(result.stdout.decode())
     return service_info['spec'].get('clusterIP', 'No Cluster IP found')
 
-def get_user_token(authhub_web_url, username="administrator", password="changeme"):
+def get_user_token(authhub_web_url, username="openEuler", password="changeme"):
     url = authhub_web_url + "/oauth2/manager-login"
     response = requests.post(
         url,
