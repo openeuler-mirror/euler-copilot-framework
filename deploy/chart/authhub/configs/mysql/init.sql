@@ -99,7 +99,7 @@ CREATE TABLE IF NOT EXISTS `oauth2_token` (
 SET FOREIGN_KEY_CHECKS = 1;
 
 SET @username := "openEuler";
-SET @password := "pbkdf2:sha256:1000000$6btYJpw5GYEBa8vw$aed8166ee8710bd1e96dceaaf2787f6737d691f3eaba029cba3ac30ed5a15745";
+SET @password := "pbkdf2:sha256:260000$LEwtriXN8UQ1UIA7$4de6cc1d67263c6579907eab7c1cba7c7e857b32e957f9ff5429592529d7d1b0";
 SET @manage_username := "openEuler";
 
 INSERT INTO user (username, password)

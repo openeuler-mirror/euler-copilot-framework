@@ -202,7 +202,7 @@ install_authhub() {
     
     echo -e "${GREEN}AuthHub 安装完成！${NC}"
     echo -e "${GREEN}登录地址: ${AUTH_ADDRESS}${NC}"
-    echo -e "${GREEN}默认账号密码: administrator/changeme${NC}"
+    echo -e "${GREEN}默认账号密码: openEuler/changeme${NC}"
 }
 
 # 安装Authelia
