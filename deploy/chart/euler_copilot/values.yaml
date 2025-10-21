@@ -51,7 +51,8 @@ models:
     name:
   # reranker的模型
   reranker:
-    # [必填] reranker接口类型：["openai", "guijiliudong"]
+    # [必填] reranker接口类型：["openai", "guijiliudong", "algorithm",
+    # "bailian", "v1lm", "assecend"]
     type:
     # [必填] reranker URL（需要带上“/v1/rerank”后缀）  
     endpoint: 
