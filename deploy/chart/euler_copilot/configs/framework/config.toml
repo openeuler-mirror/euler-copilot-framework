@@ -20,7 +20,7 @@ userinfo_endpoint = '{{ .Values.domain.authelia | default "http://127.0.0.1:3009
 scopes = 'openid profile email'
 {{- else }}
 [login.settings]
-host = '{{ .Values.domain.authhub | default "http://127.0.0.1:30081" }}'
+host = '{{ .Values.domain.authhub | default (printf "%s:%d" (.Values.domain.euler_copilot | default "http://127.0.0.1") (.Values.ports.authhub | default 30081)) }}'
 host_inner = 'http://authhub-backend-service.{{ .Release.Namespace }}.svc.cluster.local:11120'
 login_api = '{{ .Values.domain.euler_copilot | default "http://127.0.0.1:30080" }}/api/auth/login'
 app_id = '${clientId}'
