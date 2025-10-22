@@ -14,8 +14,9 @@ from apps.schemas.request_data import (
     UpdateUserSelectedLLMReq,
 )
 from apps.schemas.response_data import (
+    LLMAdminInfo,
     LLMProviderInfo,
-    UserSelectedLLMData,
+    SelectedSpecialLLMID,
 )
 
 logger = logging.getLogger(__name__)
@@ -23,28 +24,6 @@ logger = logging.getLogger(__name__)
 
 class LLMManager:
     """大模型管理"""
-
-    @staticmethod
-    async def get_user_selected_llm(user_sub: str) -> UserSelectedLLMData | None:
-        """
-        通过用户ID获取大模型ID
-
-        :param user_sub: 用户ID
-        :return: 大模型ID
-        """
-        async with postgres.session() as session:
-            user = (await session.scalars(
-                select(User).where(User.userSub == user_sub),
-            )).one_or_none()
-            if not user:
-                logger.error("[LLMManager] 用户 %s 不存在", user_sub)
-                return None
-
-            return UserSelectedLLMData(
-                functionLLM=user.functionLLM,
-                embeddingLLM=user.embeddingLLM,
-            )
-
 
     @staticmethod
     async def get_llm(llm_id: str) -> LLMData | None:
@@ -68,7 +47,7 @@ class LLMManager:
 
 
     @staticmethod
-    async def list_llm(llm_id: str | None) -> list[LLMProviderInfo]:
+    async def list_provider(llm_id: str | None) -> list[LLMProviderInfo]:
         """
         获取大模型列表
 
@@ -95,13 +74,56 @@ class LLMManager:
         for llm in llm_list:
             llm_item = LLMProviderInfo(
                 llmId=llm.id,
-                openaiBaseUrl=llm.baseUrl,
-                openaiApiKey=llm.apiKey,
+                llmDescription=llm.llmDescription,
+                llmType=llm.llmType,
                 modelName=llm.modelName,
                 maxTokens=llm.maxToken,
             )
             provider_list.append(llm_item)
         return provider_list
+
+
+    @staticmethod
+    async def list_llm(llm_id: str | None) -> list[LLMAdminInfo]:
+        """
+        获取大模型数据列表（管理员视图）
+
+        :param llm_id: 大模型ID
+        :return: 大模型管理信息列表
+        """
+        async with postgres.session() as session:
+            if llm_id:
+                llm_list = (await session.scalars(
+                    select(LLMData).where(
+                        LLMData.id == llm_id,
+                    ),
+                )).all()
+            else:
+                llm_list = (await session.scalars(
+                    select(LLMData),
+                )).all()
+            if not llm_list:
+                logger.error("[LLMManager] 无法找到大模型 %s", llm_id)
+                return []
+
+        # 构建管理员视图列表
+        admin_list = []
+        for llm in llm_list:
+            llm_item = LLMAdminInfo(
+                llmId=llm.id,
+                llmDescription=llm.llmDescription,
+                llmType=llm.llmType,
+                baseUrl=llm.baseUrl,
+                apiKey=llm.apiKey,
+                modelName=llm.modelName,
+                maxTokens=llm.maxToken,
+                ctxLength=llm.ctxLength,
+                temperature=llm.temperature,
+                provider=llm.provider.value if llm.provider else None,
+                extraConfig=llm.extraConfig,
+            )
+            admin_list.append(llm_item)
+        return admin_list
 
 
     @staticmethod
@@ -128,6 +150,7 @@ class LLMManager:
                 llm.maxToken = req.max_tokens
                 llm.provider = req.provider
                 llm.ctxLength = req.ctx_length
+                llm.llmDescription = req.llm_description
                 llm.extraConfig = req.extra_data or {}
                 await session.commit()
             else:
@@ -139,6 +162,7 @@ class LLMManager:
                     maxToken=req.max_tokens,
                     provider=req.provider,
                     ctxLength=req.ctx_length,
+                    llmDescription=req.llm_description,
                     extraConfig=req.extra_data or {},
                 )
                 session.add(llm)
@@ -182,7 +206,7 @@ class LLMManager:
 
 
     @staticmethod
-    async def update_user_selected_llm(
+    async def update_special_llm(
         user_sub: str,
         req: UpdateUserSelectedLLMReq,
     ) -> None:
