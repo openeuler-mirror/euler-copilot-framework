@@ -3,8 +3,8 @@ enable = false
 
 [admin]
 enable = true
-user_sub = openEuler
-user_name = openEuler
+user_sub = 'openEuler'
+user_name = 'openEuler'
 
 [deploy]
 mode = 'local'
