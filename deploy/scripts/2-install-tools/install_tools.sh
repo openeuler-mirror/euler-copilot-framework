@@ -120,8 +120,8 @@ install_basic_tools() {
         --timeout 60 \
         --trusted-host mirrors.huaweicloud.com \
         -i https://mirrors.huaweicloud.com/repository/pypi/simple \
-        ruamel.yaml requests; then
-        echo -e "[ERROR] Failed to install ruamel.yaml and requests via pip" >&2
+        PyYAML ruamel.yaml requests; then
+        echo -e "[ERROR] Failed to install PyYAML ruamel.yaml and requests via pip" >&2
     fi
     echo "All basic tools have been installed."
     return 0
