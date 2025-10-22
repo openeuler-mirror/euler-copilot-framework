@@ -12,10 +12,10 @@ from jsonschema import Draft7Validator
 
 from apps.models import LLMType
 from apps.schemas.llm import LLMFunctions
-from apps.schemas.scheduler import LLMConfig
 
 from .llm import LLM
 from .prompt import JSON_GEN_BASIC, JSON_NO_FUNCTION_CALL
+from .schema import LLMConfig
 
 _logger = logging.getLogger(__name__)
 
@@ -72,7 +72,7 @@ class JsonGenerator:
             # 如果支持FunctionCall，使用provider的function调用逻辑
             result = await self._call_with_function()
         else:
-            # 如果不支持FunctionCall，使用JSON_GEN_BASIC和provider的call进行调用
+            # 如果不支持FunctionCall，使用JSON_GEN_BASIC
             result = await self._call_without_function(max_tokens, temperature)
 
         # 校验结果
@@ -157,9 +157,16 @@ class JsonGenerator:
         while self._count < JSON_GEN_MAX_TRIAL:
             self._count += 1
             try:
+                # 如果_single_trial没有抛出异常，直接返回结果，不进行重试
                 return await self._single_trial()
-            except Exception:  # noqa: BLE001
-                # 校验失败，_single_trial已经将错误信息记录到self._err_info中并记录日志
-                continue
-
+            except Exception:
+                # 每次捕获异常时都记录错误
+                _logger.exception(
+                    "[JSONGenerator] 第 %d/%d 次尝试失败",
+                    self._count,
+                    JSON_GEN_MAX_TRIAL,
+                )
+                # 如果还有重试机会，继续下一次尝试
+                if self._count < JSON_GEN_MAX_TRIAL:
+                    continue
         return {}

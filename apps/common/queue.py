@@ -8,6 +8,7 @@ from collections.abc import AsyncGenerator
 from datetime import UTC, datetime
 from typing import Any
 
+from apps.llm import LLMConfig
 from apps.schemas.enum_var import EventType
 from apps.schemas.message import (
     HeartbeatData,
@@ -15,7 +16,6 @@ from apps.schemas.message import (
     MessageFlow,
     MessageMetadata,
 )
-from apps.schemas.scheduler import LLMConfig
 from apps.schemas.task import TaskData
 
 logger = logging.getLogger(__name__)

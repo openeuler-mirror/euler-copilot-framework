@@ -6,10 +6,9 @@ import logging
 from sqlalchemy import select
 
 from apps.common.postgres import postgres
-from apps.llm import JsonGenerator
+from apps.llm import JsonGenerator, LLMConfig
 from apps.models import LanguageType, MCPTools
 from apps.schemas.mcp import MCPSelectResult
-from apps.schemas.scheduler import LLMConfig
 from apps.services.mcp_service import MCPServiceManager
 
 from .prompt import MCP_FUNCTION_SELECT

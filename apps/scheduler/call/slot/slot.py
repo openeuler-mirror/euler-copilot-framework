@@ -16,7 +16,7 @@ from apps.scheduler.slot.slot import Slot as SlotProcessor
 from apps.schemas.enum_var import CallOutputType
 from apps.schemas.scheduler import CallInfo, CallOutputChunk, CallVars
 
-from .prompt import SLOT_GEN_PROMPT
+from .prompt import SLOT_GEN_PROMPT, SLOT_HISTORY_TEMPLATE, SLOT_SUMMARY_TEMPLATE
 from .schema import SlotInput, SlotOutput
 
 if TYPE_CHECKING:
@@ -47,39 +47,80 @@ class Slot(CoreCall, input_model=SlotInput, output_model=SlotOutput):
 
 
     async def _llm_slot_fill(self, remaining_schema: dict[str, Any]) -> tuple[str, dict[str, Any]]:
-        """使用大模型填充参数；若大模型解析度足够，则直接返回结果"""
+        """使用JsonGenerator填充参数；若大模型解析度足够，则直接返回结果"""
         env = SandboxedEnvironment(
             loader=BaseLoader(),
             autoescape=False,
             trim_blocks=True,
             lstrip_blocks=True,
         )
-        template = env.from_string(SLOT_GEN_PROMPT[self._sys_vars.language])
 
-        conversation = [
-            {"role": "system", "content": "You are a helpful assistant."},
-            {"role": "user", "content": template.render(
-                current_tool={
-                    "name": self.name,
-                    "description": self.description,
-                },
-                schema=remaining_schema,
-                history_data=self._flow_history,
+        # 获取当前语言
+        language = self._sys_vars.language
+
+        # 渲染查询模板（不包含历史信息）
+        query_template = env.from_string(SLOT_GEN_PROMPT[language])
+        query = query_template.render(
+            current_tool={
+                "name": self.name,
+                "description": self.description,
+            },
+            schema=remaining_schema,
+        )
+
+        # 组装conversation：将summary和历史工具调用组装为对话格式
+        conversation = []
+
+        # 使用Jinja2模板渲染任务总结
+        if self.summary or self.facts:
+            summary_template = env.from_string(SLOT_SUMMARY_TEMPLATE[language])
+            summary_content = summary_template.render(
                 summary=self.summary,
-                question=self._question,
                 facts=self.facts,
-            )},
-        ]
+            )
+            conversation.append({
+                "role": "user",
+                "content": summary_content,
+            })
+            assistant_response = (
+                "我理解了任务背景，请继续。"
+                if language == LanguageType.CHINESE
+                else "I understand the task context. Please continue."
+            )
+            conversation.append({
+                "role": "assistant",
+                "content": assistant_response,
+            })
 
-        # 使用大模型进行尝试
-        answer = ""
-        async for chunk in self._llm(messages=conversation, streaming=True):
-            answer += chunk
-        answer = await JsonGenerator.process_response(answer)
-        try:
-            data = json.loads(answer)
-        except Exception:  # noqa: BLE001
-            data = {}
+        # 使用Jinja2模板渲染历史工具调用
+        if self._flow_history:
+            history_template = env.from_string(SLOT_HISTORY_TEMPLATE[language])
+            history_content = history_template.render(
+                history_data=self._flow_history,
+            )
+            if history_content.strip():
+                conversation.append({
+                    "role": "assistant",
+                    "content": history_content,
+                })
+
+        # 构建OpenAI标准FunctionCall格式
+        function = {
+            "name": "fill_parameters",
+            "description": f"Fill the missing parameters for {self.name}. {self.description}",
+            "parameters": remaining_schema,
+        }
+
+        # 使用JsonGenerator进行参数填充
+        generator = JsonGenerator(
+            llm_config=self._llm_obj,
+            query=query,
+            conversation=conversation,
+            function=function,
+        )
+
+        data = await generator.generate()
+        answer = json.dumps(data, ensure_ascii=False)
         return answer, data
 
     async def _function_slot_fill(self, answer: str, remaining_schema: dict[str, Any]) -> dict[str, Any]:

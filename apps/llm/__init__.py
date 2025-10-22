@@ -4,11 +4,13 @@
 from .embedding import Embedding
 from .generator import JsonGenerator
 from .llm import LLM
+from .schema import LLMConfig
 from .token import token_calculator
 
 __all__ = [
     "LLM",
     "Embedding",
     "JsonGenerator",
+    "LLMConfig",
     "token_calculator",
 ]
