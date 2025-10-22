@@ -15,7 +15,7 @@ from apps.services.record import RecordManager
 
 if TYPE_CHECKING:
     from apps.common.queue import MessageQueue
-    from apps.schemas.scheduler import LLMConfig
+    from apps.llm import LLMConfig
     from apps.schemas.task import TaskData
 
 
