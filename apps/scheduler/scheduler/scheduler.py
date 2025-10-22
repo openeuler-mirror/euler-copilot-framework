@@ -11,7 +11,7 @@ from jinja2.sandbox import SandboxedEnvironment
 
 from apps.common.queue import MessageQueue
 from apps.common.security import Security
-from apps.llm import LLM, Embedding, JsonGenerator
+from apps.llm import LLM, Embedding, JsonGenerator, LLMConfig
 from apps.models import (
     AppType,
     Conversation,
@@ -34,7 +34,7 @@ from apps.schemas.message import (
 )
 from apps.schemas.record import FlowHistory, RecordContent
 from apps.schemas.request_data import RequestData
-from apps.schemas.scheduler import LLMConfig, TopFlow
+from apps.schemas.scheduler import TopFlow
 from apps.schemas.task import TaskData
 from apps.services.activity import Activity
 from apps.services.appcenter import AppCenterManager

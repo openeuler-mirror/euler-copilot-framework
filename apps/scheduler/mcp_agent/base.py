@@ -4,9 +4,8 @@
 import logging
 from typing import Any
 
-from apps.llm import JsonGenerator
+from apps.llm import JsonGenerator, LLMConfig
 from apps.models import LanguageType
-from apps.schemas.scheduler import LLMConfig
 from apps.schemas.task import TaskData
 
 _logger = logging.getLogger(__name__)
