@@ -19,7 +19,7 @@ class AdminConfig(BaseModel):
     enable: bool = Field(description="是否启用管理员", default=False)
     user_sub: str = Field(description="管理员用户标识", default="openEuler")
     user_name: str = Field(description="管理员用户名", default="openEuler")
-    
+
 
 class DeployConfig(BaseModel):
     """部署配置"""
@@ -57,8 +57,10 @@ class FixedUserConfig(BaseModel):
 class LoginConfig(BaseModel):
     """OIDC配置"""
 
-    provider: Literal["authhub", "openeuler", "authelia", "disable"] = Field(description="OIDC Provider", default="authhub")
-    settings: OIDCConfig | AutheliaConfig | FixedUserConfig = Field(description="OIDC 配置")
+    provider: Literal["authhub", "openeuler", "authelia", "disable"] = Field(
+        description="OIDC Provider", default="authhub")
+    settings: OIDCConfig | AutheliaConfig | FixedUserConfig = Field(
+        description="OIDC 配置")
 
 
 class EmbeddingConfig(BaseModel):
@@ -132,7 +134,8 @@ class LLMConfig(BaseModel):
     key: str = Field(description="LLM API密钥")
     endpoint: str = Field(description="LLM API URL地址")
     model: str = Field(description="LLM API 模型名")
-    max_tokens: int | None = Field(description="LLM API 最大Token数", default=None)
+    max_tokens: int | None = Field(
+        description="LLM API 最大Token数", default=None)
     temperature: float | None = Field(description="LLM API 温度", default=None)
 
 
@@ -143,8 +146,10 @@ class FunctionCallConfig(BaseModel):
     model: str = Field(description="Function Call 模型名")
     endpoint: str = Field(description="Function Call API URL地址")
     api_key: str = Field(description="Function Call API密钥")
-    max_tokens: int | None = Field(description="Function Call 最大Token数", default=None)
-    temperature: float | None = Field(description="Function Call 温度", default=None)
+    max_tokens: int | None = Field(
+        description="Function Call 最大Token数", default=None)
+    temperature: float | None = Field(
+        description="Function Call 温度", default=None)
 
 
 class SecurityConfig(BaseModel):
@@ -172,7 +177,7 @@ class SandboxConfig(BaseModel):
 class ExtraConfig(BaseModel):
     """额外配置"""
 
-    sql_url: str = Field(description="SQL API URL")
+    sql_url: str = Field(default="", description="SQL API URL")
 
 
 class ConfigModel(BaseModel):
