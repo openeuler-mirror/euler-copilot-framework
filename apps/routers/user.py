@@ -5,11 +5,10 @@ from fastapi import APIRouter, Depends, Request, status
 from fastapi.responses import JSONResponse
 
 from apps.dependency import verify_personal_token, verify_session
-from apps.schemas.request_data import UpdateUserSelectedLLMReq, UserUpdateRequest
-from apps.schemas.response_data import ResponseData, UserGetMsp, UserGetRsp, UserSelectedLLMData
+from apps.schemas.request_data import UserUpdateRequest
+from apps.schemas.response_data import ResponseData, UserGetMsp, UserGetRsp
 from apps.schemas.tag import UserTagListResponse
 from apps.schemas.user import UserInfo
-from apps.services.llm import LLMManager
 from apps.services.user import UserManager
 from apps.services.user_tag import UserTagManager
 
@@ -56,42 +55,6 @@ async def list_user(
             result=UserGetMsp(userInfoList=user_info_list, total=total),
         ).model_dump(exclude_none=True, by_alias=True),
     )
-
-
-@router.put("/llm",
-    responses={status.HTTP_404_NOT_FOUND: {"model": ResponseData}},
-)
-async def update_user_llm(
-    request: Request,
-    llm_request: UpdateUserSelectedLLMReq,
-) -> JSONResponse:
-    """更新用户所选的EmbeddingLLM和FunctionLLM"""
-    try:
-        await LLMManager.update_user_selected_llm(request.state.user_sub, llm_request)
-
-        # 返回更新后的LLM配置
-        result_data = UserSelectedLLMData.model_validate({
-            "functionLLM": llm_request.functionLLM,
-            "embeddingLLM": llm_request.embeddingLLM,
-        })
-
-        return JSONResponse(
-            status_code=status.HTTP_200_OK,
-            content=ResponseData(
-                code=status.HTTP_200_OK,
-                message="用户LLM配置更新成功",
-                result=result_data,
-            ).model_dump(exclude_none=True, by_alias=True),
-        )
-    except ValueError as e:
-        return JSONResponse(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            content=ResponseData(
-                code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                message=str(e),
-                result=None,
-            ).model_dump(exclude_none=True, by_alias=True),
-        )
 
 
 @router.get("/tag",

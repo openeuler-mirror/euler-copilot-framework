@@ -63,6 +63,8 @@ class LLMData(Base):
     )
     extraConfig: Mapped[dict[str, Any]] = mapped_column(JSONB, default_factory=dict, nullable=False)  # noqa: N815
     """大模型API类型"""
+    llmDescription: Mapped[str] = mapped_column(String(2000), default="", nullable=False)  # noqa: N815
+    """大模型描述"""
     createdAt: Mapped[DateTime] = mapped_column(  # noqa: N815
         DateTime,
         default_factory=lambda: datetime.now(tz=UTC),

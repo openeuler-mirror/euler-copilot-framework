@@ -58,6 +58,7 @@ class UpdateLLMReq(BaseModel):
     max_tokens: int = Field(default=8192, description="最大token数", alias="maxTokens")
     provider: LLMProvider = Field(description="大模型提供商", alias="provider")
     ctx_length: int = Field(description="上下文长度", alias="ctxLength")
+    llm_description: str = Field(default="", description="大模型描述", alias="llmDescription")
     extra_data: dict[str, Any] | None = Field(default=None, description="额外数据", alias="extraData")
 
 

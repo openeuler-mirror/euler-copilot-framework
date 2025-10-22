@@ -6,6 +6,8 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
+from apps.models import LLMType
+
 from .parameters import (
     BoolOperate,
     DictOperate,
@@ -102,25 +104,38 @@ class LLMProviderInfo(BaseModel):
     """LLM数据结构"""
 
     llm_id: str = Field(alias="llmId", description="LLM ID")
-    openai_base_url: str = Field(
-        default="https://api.openai.com/v1",
-        description="OpenAI API Base URL",
-        alias="openaiBaseUrl",
-    )
-    openai_api_key: str = Field(
-        description="OpenAI API Key",
-        alias="openaiApiKey",
-        default="",
-    )
+    llm_description: str = Field(default="", alias="llmDescription", description="LLM描述")
+    llm_type: list[LLMType] = Field(default=[], alias="llmType", description="LLM类型")
     model_name: str = Field(description="模型名称", alias="modelName")
     max_tokens: int | None = Field(default=None, description="最大token数", alias="maxTokens")
-    is_editable: bool = Field(default=True, description="是否可编辑", alias="isEditable")
 
 
 class ListLLMRsp(ResponseData):
     """GET /api/llm 返回数据结构"""
 
     result: list[LLMProviderInfo] = Field(default=[], title="Result")
+
+
+class LLMAdminInfo(BaseModel):
+    """LLM管理员视图数据结构"""
+
+    llm_id: str = Field(alias="llmId", description="LLM ID")
+    llm_description: str = Field(default="", alias="llmDescription", description="LLM描述")
+    llm_type: list[LLMType] = Field(default=[], alias="llmType", description="LLM类型")
+    base_url: str = Field(alias="baseUrl", description="API Base URL")
+    api_key: str = Field(alias="apiKey", description="API Key")
+    model_name: str = Field(alias="modelName", description="模型名称")
+    max_tokens: int = Field(alias="maxTokens", description="最大token数")
+    ctx_length: int = Field(alias="ctxLength", description="上下文长度")
+    temperature: float = Field(default=0.7, description="温度")
+    provider: str | None = Field(default=None, description="提供商")
+    extra_config: dict[str, Any] = Field(default_factory=dict, alias="extraConfig", description="额外配置")
+
+
+class ListLLMAdminRsp(ResponseData):
+    """GET /api/llm/config 返回数据结构"""
+
+    result: list[LLMAdminInfo] = Field(default=[], title="Result")
 
 
 class ParamsNode(BaseModel):
@@ -164,14 +179,8 @@ class GetOperaRsp(ResponseData):
     result: list[OperateAndBindType] = Field(..., title="Result")
 
 
-class UserSelectedLLMData(BaseModel):
+class SelectedSpecialLLMID(BaseModel):
     """用户选择的LLM数据结构"""
 
     functionLLM: str | None = Field(default=None, description="函数模型ID")  # noqa: N815
     embeddingLLM: str | None = Field(default=None, description="向量模型ID")  # noqa: N815
-
-
-class UserSelectedLLMRsp(ResponseData):
-    """GET /api/user/llm 返回数据结构"""
-
-    result: UserSelectedLLMData = Field(..., title="Result")

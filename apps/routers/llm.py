@@ -9,6 +9,7 @@ from apps.schemas.request_data import (
     UpdateLLMReq,
 )
 from apps.schemas.response_data import (
+    ListLLMAdminRsp,
     ListLLMRsp,
     ResponseData,
 )
@@ -33,15 +34,31 @@ admin_router = APIRouter(
 )
 
 
-@router.get("", response_model=ListLLMRsp,
+@router.get("/provider", response_model=ListLLMRsp,
     responses={status.HTTP_404_NOT_FOUND: {"model": ResponseData}},
 )
 async def list_llm(llmId: str | None = None) -> JSONResponse:  # noqa: N803
     """GET /llm: 获取大模型列表"""
-    llm_list = await LLMManager.list_llm(llmId)
+    llm_list = await LLMManager.list_provider(llmId)
     return JSONResponse(
         status_code=status.HTTP_200_OK,
         content=ListLLMRsp(
+            code=status.HTTP_200_OK,
+            message="success",
+            result=llm_list,
+        ).model_dump(exclude_none=True, by_alias=True),
+    )
+
+
+@admin_router.get("/config", response_model=ListLLMAdminRsp,
+    responses={status.HTTP_404_NOT_FOUND: {"model": ResponseData}},
+)
+async def admin_list_llm(llmId: str | None = None) -> JSONResponse:  # noqa: N803
+    """GET /llm/config: 获取大模型配置列表（管理员视图）"""
+    llm_list = await LLMManager.list_llm(llmId)
+    return JSONResponse(
+        status_code=status.HTTP_200_OK,
+        content=ListLLMAdminRsp(
             code=status.HTTP_200_OK,
             message="success",
             result=llm_list,
