@@ -122,8 +122,8 @@ euler_copilot:
   framework:
     # [必填] 是否部署Framework后端框架服务
     enabled: true
-    # 镜像设置；默认为hub.oepkgs.net/neocopilot/euler-copilot-framework:0.9.6-x86
-    # 镜像标签：["0.9.6-x86", "0.9.6-arm"]
+    # 镜像设置；默认为hub.oepkgs.net/neocopilot/euler-copilot-framework:0.10.1-x86
+    # 镜像标签：["0.10.1-x86", "0.10.1-arm"]
     image:
     # 容器根目录只读
     readOnly:
@@ -139,8 +139,8 @@ euler_copilot:
   web:
     # [必填] 是否部署Web前端用户界面
     enabled: true
-    # 镜像设置；默认为hub.oepkgs.net/neocopilot/euler-copilot-web:0.9.6-x86
-    # 镜像标签：["0.9.6-x86", "0.9.6-arm"]
+    # 镜像设置；默认为hub.oepkgs.net/neocopilot/euler-copilot-web:0.10.1-x86
+    # 镜像标签：["0.10.1-x86", "0.10.1-arm"]
     image:
     # 容器根目录只读
     readOnly:
@@ -156,8 +156,8 @@ euler_copilot:
   rag_web:
     # [必填] 是否部署RAG Web前端用户界面
     enabled: true
-    # 镜像设置；默认为hub.oepkgs.net/neocopilot/data_chain_web:0.9.6-x86
-    # 镜像标签：["0.9.6-x86", "0.9.6-arm"]
+    # 镜像设置；默认为hub.oepkgs.net/neocopilot/data_chain_web:0.10.1-x86
+    # 镜像标签：["0.10.1-x86", "0.10.1-arm"]
     image:
     # 容器根目录只读
     readOnly:
@@ -173,8 +173,8 @@ euler_copilot:
   rag:
     # [必填] 是否部署RAG后端服务
     enabled: true
-    # 镜像设置；默认为hub.oepkgs.net/neocopilot/data_chain_back_end:0.9.6-x86
-    # 镜像标签：["0.9.6-x86", "0.9.6-arm"]
+    # 镜像设置；默认为hub.oepkgs.net/neocopilot/data_chain_back_end:0.10.1-x86
+    # 镜像标签：["0.10.1-x86", "0.10.1-arm"]
     image:
     # 容器根目录只读
     readOnly:

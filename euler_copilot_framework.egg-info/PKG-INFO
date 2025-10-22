@@ -1,6 +1,6 @@
 Metadata-Version: 2.4
 Name: euler-copilot-framework
-Version: 0.9.6
+Version: 0.10.1
 Summary: EulerCopilot 后端服务
 Requires-Python: ==3.11.6
 License-File: LICENSE
