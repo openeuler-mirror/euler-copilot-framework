@@ -3,7 +3,7 @@
 GITHUB_MIRROR="https://gh-proxy.com"
 ARCH=$(uname -m)
 TOOLS_DIR="/home/eulercopilot/tools"
-eulercopilot_version=0.9.6
+eulercopilot_version=0.10.1
 
 SCRIPT_PATH="$(
   cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1

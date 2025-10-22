@@ -6,7 +6,7 @@ from pathlib import Path
 project = "openEuler Intelligence Framework"
 copyright = "2025, Huawei Technologies Co., Ltd."
 author = "sig-intelligence"
-release = "0.9.6"
+release = "0.10.1"
 
 extensions = [
     "sphinx.ext.autodoc",
