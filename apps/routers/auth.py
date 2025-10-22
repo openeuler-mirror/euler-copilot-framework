@@ -122,7 +122,14 @@ async def oidc_login(request: Request, code: str = None, error: str = None, erro
         user_info = await oidc_provider.get_oidc_user(token["access_token"])
 
         user_sub: str | None = user_info.get("user_sub", None)
-        user_name: str = user_info.get("user_name", "")
+        if Config().get_config().login.provider == "authelia":
+            user_name: str = user_info.get("user_name", "")
+        elif Config().get_config().login.provider == "authhub":
+            user_name: str = user_sub
+        else:
+            user_name: str = user_info.get("username", "")
+        if not user_name:
+            user_name = user_sub
     except Exception as e:
         logger.exception("User login failed")
         reason = "无法验证登录信息，请重试。"
