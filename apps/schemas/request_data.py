@@ -2,7 +2,6 @@
 """FastAPI 请求体"""
 
 import uuid
-from datetime import datetime
 from typing import Any
 
 from pydantic import BaseModel, Field
@@ -30,7 +29,6 @@ class RequestData(BaseModel):
     )
     language: LanguageType = Field(default=LanguageType.CHINESE, description="语言")
     app: RequestDataApp | None = Field(default=None, description="应用")
-    task_id: str | None = Field(default=None, alias="taskId", description="任务ID")
     llm_id: str = Field(alias="llmId", description="大模型ID")
     kb_ids: list[uuid.UUID] = Field(default=[], description="知识库ID列表")
 
@@ -80,5 +78,3 @@ class UserUpdateRequest(BaseModel):
 
     user_name: str | None = Field(default=None, description="用户名", alias="userName")
     auto_execute: bool = Field(default=False, description="是否自动执行", alias="autoExecute")
-    agreement_confirmed: bool | None = Field(default=None, description="协议确认状态", alias="agreementConfirmed")
-    last_login: datetime | None = Field(default=None, description="最后一次登录时间", alias="lastLogin")
