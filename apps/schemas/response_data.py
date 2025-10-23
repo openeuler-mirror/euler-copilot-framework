@@ -179,7 +179,7 @@ class GetOperaRsp(ResponseData):
     result: list[OperateAndBindType] = Field(..., title="Result")
 
 
-class SelectedSpecialLLMID(BaseModel):
+class SelectedSpecialLlmID(BaseModel):
     """用户选择的LLM数据结构"""
 
     functionLLM: str | None = Field(default=None, description="函数模型ID")  # noqa: N815

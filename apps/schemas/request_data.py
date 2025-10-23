@@ -62,7 +62,7 @@ class UpdateLLMReq(BaseModel):
     extra_data: dict[str, Any] | None = Field(default=None, description="额外数据", alias="extraData")
 
 
-class UpdateUserSelectedLLMReq(BaseModel):
+class UpdateSpecialLlmReq(BaseModel):
     """更新用户特殊LLM请求体"""
 
     functionLLM: str = Field(description="Function Call LLM ID")  # noqa: N815

@@ -11,7 +11,7 @@ from jinja2.sandbox import SandboxedEnvironment
 
 from apps.common.queue import MessageQueue
 from apps.common.security import Security
-from apps.llm import LLM, Embedding, JsonGenerator, LLMConfig
+from apps.llm import LLM, LLMConfig, embedding, json_generator
 from apps.models import (
     AppType,
     Conversation,
@@ -291,23 +291,26 @@ class Scheduler:
             else:
                 function_llm = LLM(function_llm)
 
-        embedding_llm = None
+        # 获取并设置全局embedding模型
+        embedding_obj = None
         if not self.user.embeddingLLM:
             _logger.error("[Scheduler] 用户 %s 没有设置向量模型，相关功能将被禁用", self.user.userSub)
         else:
-            embedding_llm = await LLMManager.get_llm(self.user.embeddingLLM)
-            if not embedding_llm:
+            embedding_llm_config = await LLMManager.get_llm(self.user.embeddingLLM)
+            if not embedding_llm_config:
                 _logger.error(
                     "[Scheduler] 用户 %s 设置的向量模型ID %s 不存在，相关功能将被禁用",
                     self.user.userSub, self.user.embeddingLLM,
                 )
             else:
-                embedding_llm = Embedding(embedding_llm)
+                # 设置全局embedding配置
+                await embedding.init(embedding_llm_config)
+                embedding_obj = embedding
 
         return LLMConfig(
             reasoning=reasoning_llm,
             function=function_llm,
-            embedding=embedding_llm,
+            embedding=embedding_obj,
         )
 
 
@@ -346,10 +349,19 @@ class Scheduler:
         )
         schema = TopFlow.model_json_schema()
         schema["properties"]["choice"]["enum"] = [choice["name"] for choice in choices]
-        result_str = await JsonGenerator(self.llm.function, self.post_body.question, [
-            {"role": "system", "content": "You are a helpful assistant."},
-            {"role": "user", "content": prompt},
-        ], schema).generate()
+        function = {
+            "name": "select_flow",
+            "description": "Select the appropriate flow",
+            "parameters": schema,
+        }
+        result_str = await json_generator.generate(
+            query=self.post_body.question,
+            function=function,
+            conversation=[
+                {"role": "system", "content": "You are a helpful assistant."},
+                {"role": "user", "content": prompt},
+            ],
+        )
         result = TopFlow.model_validate(result_str)
         return result.choice
 

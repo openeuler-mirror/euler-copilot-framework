@@ -4,7 +4,7 @@
 import logging
 from typing import Any
 
-from apps.llm import JsonGenerator, LLMConfig
+from apps.llm import LLMConfig, json_generator
 from apps.models import LanguageType
 from apps.schemas.task import TaskData
 
@@ -44,12 +44,10 @@ class MCPBase:
 
     async def get_json_result(self, result: str, function: dict[str, Any]) -> dict[str, Any]:
         """解析推理结果；function使用OpenAI标准Function格式"""
-        json_generator = JsonGenerator(
-            self._llm,
-            "Please provide a JSON response based on the above information and schema.\n\n",
-            [
+        return await json_generator.generate(
+            query="Please provide a JSON response based on the above information and schema.\n\n",
+            function=function,
+            conversation=[
                 {"role": "user", "content": result},
             ],
-            function,
         )
-        return await json_generator.generate()
