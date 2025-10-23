@@ -75,11 +75,6 @@ class MCPHost(MCPBase):
         params: dict[str, Any] | None = None,
         params_description: str = "",
     ) -> dict[str, Any]:
-        if not self._llm.function:
-            err = "[MCPHost] 未找到函数调用模型"
-            _logger.error(err)
-            raise RuntimeError(err)
-
         llm_query = _LLM_QUERY_FIX[language]
         prompt = _env.from_string(REPAIR_PARAMS[language]).render(
             tool_name=mcp_tool.toolName,

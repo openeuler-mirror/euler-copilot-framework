@@ -102,12 +102,6 @@ class MCPHost:
 
     async def _fill_params(self, tool: MCPTools, query: str) -> dict[str, Any]:
         """填充工具参数"""
-        if not self._llm.function:
-            err = "[MCPHost] 未设置FunctionCall模型"
-            logger.error(err)
-            raise RuntimeError(err)
-
-        # 更清晰的输入·指令，这样可以调用generate
         llm_query = rf"""
             请使用参数生成工具，生成满足以下目标的工具参数：
 
