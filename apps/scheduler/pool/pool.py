@@ -11,7 +11,6 @@ from sqlalchemy import select
 
 from apps.common.config import config
 from apps.common.postgres import postgres
-from apps.llm import Embedding
 from apps.models import Flow as FlowInfo
 from apps.schemas.enum_var import MetadataType
 from apps.schemas.flow import Flow
@@ -135,12 +134,13 @@ class Pool:
         await self.mcp_loader.init()
 
 
-    async def set_vector(self, embedding_model: Embedding) -> None:
+    async def set_vector(self) -> None:
         """向数据库中写入向量化数据"""
         # 对所有的Loader进行向量化
-        await self.call_loader.set_vector(embedding_model)
-        await self.service_loader.set_vector(embedding_model)
-        await self.mcp_loader.set_vector(embedding_model)
+        await self.call_loader.set_vector()
+        await self.service_loader.set_vector()
+        await self.mcp_loader.set_vector()
+        await self.flow_loader.set_vector()
 
 
     async def get_flow_metadata(self, app_id: uuid.UUID) -> list[FlowInfo]:

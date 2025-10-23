@@ -13,7 +13,7 @@ from sqlalchemy import and_, delete, select, update
 from apps.common.postgres import postgres
 from apps.common.process_handler import ProcessHandler
 from apps.constants import MCP_PATH
-from apps.llm import Embedding
+from apps.llm.embedding import embedding
 from apps.models.mcp import MCPActivated, MCPInfo, MCPInstallStatus, MCPTools, MCPType
 from apps.scheduler.pool.mcp.client import MCPClient
 from apps.scheduler.pool.mcp.install import install_npx, install_uvx
@@ -330,30 +330,30 @@ class MCPLoader:
 
 
     @staticmethod
-    async def _insert_template_tool_vector(mcp_id: str, config: MCPServerConfig, embedding_model: Embedding) -> None:
+    async def _insert_template_tool_vector(mcp_id: str, config: MCPServerConfig) -> None:
         """插入MCP相关的向量数据"""
         # 获取工具列表
         tool_list = await MCPLoader._get_template_tool(mcp_id, config)
         tool_desc_list = [tool.description for tool in tool_list]
-        mcp_embedding = await embedding_model.get_embedding([config.description])
-        tool_embedding = await embedding_model.get_embedding(tool_desc_list)
+        mcp_embedding = await embedding.get_embedding([config.description])
+        tool_embedding = await embedding.get_embedding(tool_desc_list)
 
         async with postgres.session() as session:
             # 删除旧数据
-            await session.execute(delete(embedding_model.MCPVector).where(embedding_model.MCPVector.id == mcp_id))
+            await session.execute(delete(embedding.MCPVector).where(embedding.MCPVector.id == mcp_id))
             await session.execute(
-                delete(embedding_model.MCPToolVector).where(embedding_model.MCPToolVector.mcpId == mcp_id),
+                delete(embedding.MCPToolVector).where(embedding.MCPToolVector.mcpId == mcp_id),
             )
             # 插入新数据
-            session.add(embedding_model.MCPVector(
+            session.add(embedding.MCPVector(
                 id=mcp_id,
                 embedding=mcp_embedding[0],
             ))
-            for tool, embedding in zip(tool_list, tool_embedding, strict=True):
-                session.add(embedding_model.MCPToolVector(
+            for tool, emb in zip(tool_list, tool_embedding, strict=True):
+                session.add(embedding.MCPToolVector(
                     id=tool.id,
                     mcpId=mcp_id,
-                    embedding=embedding,
+                    embedding=emb,
                 ))
             await session.commit()
 
@@ -535,7 +535,7 @@ class MCPLoader:
 
 
     @staticmethod
-    async def remove_deleted_mcp(deleted_mcp_list: list[str], embedding_model: Embedding | None = None) -> None:
+    async def remove_deleted_mcp(deleted_mcp_list: list[str]) -> None:
         """
         删除无效的MCP在数据库中的记录
 
@@ -558,17 +558,16 @@ class MCPLoader:
             logger.info("[MCPLoader] 清除数据库中无效的MCP")
 
         # 删除MCP的向量化数据
-        if embedding_model:
-            async with postgres.session() as session:
-                for mcp_id in deleted_mcp_list:
-                    await session.execute(
-                        delete(embedding_model.MCPVector).where(embedding_model.MCPVector.id == mcp_id),
-                    )
-                    await session.execute(
-                        delete(embedding_model.MCPToolVector).where(embedding_model.MCPToolVector.mcpId == mcp_id),
-                    )
-                await session.commit()
-                logger.info("[MCPLoader] 清除数据库中无效的MCP向量化数据")
+        async with postgres.session() as session:
+            for mcp_id in deleted_mcp_list:
+                await session.execute(
+                    delete(embedding.MCPVector).where(embedding.MCPVector.id == mcp_id),
+                )
+                await session.execute(
+                    delete(embedding.MCPToolVector).where(embedding.MCPToolVector.mcpId == mcp_id),
+                )
+            await session.commit()
+            logger.info("[MCPLoader] 清除数据库中无效的MCP向量化数据")
 
 
     @staticmethod
@@ -653,11 +652,10 @@ class MCPLoader:
 
 
     @staticmethod
-    async def set_vector(embedding_model: Embedding) -> None:
+    async def set_vector() -> None:
         """
         将MCP工具描述进行向量化并存入数据库
 
-        :param Embedding embedding_model: 嵌入模型
         :return: 无
         """
         try:
@@ -667,7 +665,7 @@ class MCPLoader:
             for mcp_id, config in mcp_configs.items():
                 try:
                     # 进行向量化
-                    await MCPLoader._insert_template_tool_vector(mcp_id, config, embedding_model)
+                    await MCPLoader._insert_template_tool_vector(mcp_id, config)
                     logger.info("[MCPLoader] MCP工具向量化完成: %s", mcp_id)
                 except Exception as e:  # noqa: BLE001
                     logger.warning("[MCPLoader] MCP工具向量化失败: %s, 错误: %s", mcp_id, str(e))
