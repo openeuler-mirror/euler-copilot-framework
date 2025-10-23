@@ -11,6 +11,7 @@ from .flow import Flow
 from .llm import LLMData, LLMProvider, LLMType
 from .mcp import MCPActivated, MCPInfo, MCPInstallStatus, MCPTools, MCPType
 from .node import NodeInfo
+from .settings import GlobalSettings
 from .record import Record, RecordMetadata
 from .service import Service, ServiceACL, ServiceHashes
 from .session import Session, SessionActivity, SessionType
@@ -45,6 +46,7 @@ __all__ = [
     "ExecutorHistory",
     "ExecutorStatus",
     "Flow",
+    "GlobalSettings",
     "LLMData",
     "LLMProvider",
     "LLMType",
