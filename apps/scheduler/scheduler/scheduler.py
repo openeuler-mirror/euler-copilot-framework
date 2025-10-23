@@ -97,39 +97,6 @@ class Scheduler:
         # LLM
         self.llm = await self._get_scheduler_llm(post_body.llm_id)
 
-
-    async def _push_init_message(
-        self, context_num: int, *, is_flow: bool = False,
-    ) -> None:
-        """推送初始化消息"""
-        # 组装feature
-        if is_flow:
-            feature = InitContentFeature(
-                maxTokens=self.llm.reasoning.config.maxToken or 0,
-                contextNum=context_num,
-                enableFeedback=False,
-                enableRegenerate=False,
-            )
-        else:
-            feature = InitContentFeature(
-                maxTokens=self.llm.reasoning.config.maxToken or 0,
-                contextNum=context_num,
-                enableFeedback=True,
-                enableRegenerate=True,
-            )
-
-        # 保存必要信息到Task
-        created_at = round(datetime.now(UTC).timestamp(), 3)
-        self.task.runtime.time = created_at
-
-        # 推送初始化消息
-        await self.queue.push_output(
-            self.task,
-            self.llm,
-            event_type=EventType.INIT.value,
-            data=InitContent(feature=feature, createdAt=created_at).model_dump(exclude_none=True, by_alias=True),
-        )
-
     async def _push_done_message(self) -> None:
         """推送任务完成消息"""
         _logger.info("[Scheduler] 发送结束消息")
@@ -316,11 +283,6 @@ class Scheduler:
 
     async def get_top_flow(self) -> str:
         """获取Top1 Flow"""
-        if not self.llm.function:
-            err = "[Scheduler] 未设置Function模型"
-            _logger.error(err)
-            raise RuntimeError(err)
-
         # 获取所选应用的所有Flow
         if not self.post_body.app or not self.post_body.app.app_id:
             err = "[Scheduler] 未选择应用"
