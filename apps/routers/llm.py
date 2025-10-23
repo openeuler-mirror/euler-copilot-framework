@@ -39,7 +39,7 @@ admin_router = APIRouter(
 )
 async def list_llm(llmId: str | None = None) -> JSONResponse:  # noqa: N803
     """GET /llm: 获取大模型列表"""
-    llm_list = await LLMManager.list_provider(llmId)
+    llm_list = await LLMManager.list_llm(llmId, admin_view=False)
     return JSONResponse(
         status_code=status.HTTP_200_OK,
         content=ListLLMRsp(
@@ -55,7 +55,7 @@ async def list_llm(llmId: str | None = None) -> JSONResponse:  # noqa: N803
 )
 async def admin_list_llm(llmId: str | None = None) -> JSONResponse:  # noqa: N803
     """GET /llm/config: 获取大模型配置列表（管理员视图）"""
-    llm_list = await LLMManager.list_llm(llmId)
+    llm_list = await LLMManager.list_llm(llmId, admin_view=True)
     return JSONResponse(
         status_code=status.HTTP_200_OK,
         content=ListLLMAdminRsp(
