@@ -298,6 +298,8 @@ class Embedding:
 
     # 使用全局单例的 VectorTableManager
     _table_manager = VectorTableManager()
+    _llm_config: LLMData | None = None
+    _provider: BaseProvider | None = None
 
     # 便捷访问属性（指向 VectorTableManager 的表类）
     @property
@@ -330,38 +332,37 @@ class Embedding:
         """获取MCPToolVector"""
         return self._table_manager.MCPToolVector
 
-    def __init__(self, llm_config: LLMData | None = None) -> None:
-        """初始化Embedding对象"""
-        if not llm_config:
-            err = "[Embedding] 未设置LLM配置"
-            _logger.error(err)
-            raise RuntimeError(err)
-        self._llm_config = llm_config
-        self._provider = _CLASS_DICT[llm_config.provider](llm_config)
-
     async def _get_embedding_dimension(self) -> int:
         """获取Embedding的维度"""
         embedding = await self.get_embedding(["测试文本"])
         return len(embedding[0])
 
-    async def init(self) -> None:
+    async def init(self, llm_config: LLMData | None) -> None:
         """
-        在使用Embedding前初始化数据库表等资源
+        初始化Embedding配置和资源
 
-        检测embedding维度并确保向量表存在且维度正确。
-        如果模型或维度发生变化，会自动删除旧表并重建，避免向量空间不匹配。
+        设置LLM配置，检测向量维度，并确保数据库向量表存在且维度正确。
+        如果模型或维度发生变化，会自动删除旧表并重建。
+
+        :param llm_config: LLM配置
+        :raises RuntimeError: 当llm_config为None时抛出
         """
-        _logger.info(
-            "[Embedding] 开始初始化向量表，模型=%s/%s",
-            self._llm_config.provider,
-            self._llm_config.modelName,
-        )
+        if llm_config is None:
+            err = "[Embedding] 未设置LLM配置"
+            _logger.error(err)
+            raise RuntimeError(err)
+
+        _logger.info("[Embedding] 初始化Embedding，模型=%s/%s", llm_config.provider, llm_config.modelName)
+        self._llm_config = llm_config
+        self._provider = _CLASS_DICT[llm_config.provider](llm_config)
+
         # 检测维度
         dim = await self._get_embedding_dimension()
         _logger.info("[Embedding] 检测到向量维度: %d", dim)
 
         # 使用 VectorTableManager 确保表存在且维度和模型都正确
         await self._table_manager.ensure_tables(dim, self._llm_config)
+        _logger.info("[Embedding] 向量表检查完成")
 
     async def get_embedding(self, text: list[str]) -> list[list[float]]:
         """
@@ -370,4 +371,12 @@ class Embedding:
         :param text: 待向量化文本（多条文本组成List）
         :return: 文本对应的向量（顺序与text一致，也为List）
         """
+        if not self._provider:
+            err = "[Embedding] Provider未初始化，无法获取embedding"
+            _logger.error(err)
+            raise RuntimeError(err)
         return await self._provider.embedding(text)
+
+
+# 全局Embedding实例
+embedding = Embedding()
