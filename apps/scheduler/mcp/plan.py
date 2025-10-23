@@ -65,11 +65,6 @@ class MCPPlanner:
 
     async def _parse_plan_result(self, result: str, max_steps: int) -> MCPPlan:
         """将推理结果解析为结构化数据"""
-        if not self._llm.function:
-            err = "[MCPPlanner] 未设置Function模型"
-            _logger.error(err)
-            raise RuntimeError(err)
-
         # 构造标准 OpenAI Function 格式
         schema = MCPPlan.model_json_schema()
         schema["properties"]["plans"]["maxItems"] = max_steps

@@ -6,7 +6,7 @@ import logging
 from sqlalchemy import select
 
 from apps.common.postgres import postgres
-from apps.llm import LLMConfig, json_generator
+from apps.llm import LLMConfig, embedding, json_generator
 from apps.models import LanguageType, MCPTools
 from apps.schemas.mcp import MCPSelectResult
 from apps.services.mcp_service import MCPServiceManager
@@ -39,12 +39,6 @@ class MCPSelector:
 
     async def _call_function_mcp(self, reasoning_result: str, mcp_ids: list[str]) -> MCPSelectResult:
         """调用结构化输出小模型提取JSON"""
-        if not self._llm.function:
-            err = "[MCPSelector] 未设置Function模型"
-            logger.error(err)
-            raise RuntimeError(err)
-
-        logger.info("[MCPSelector] 调用结构化输出小模型")
         schema = MCPSelectResult.model_json_schema()
         # schema中加入选项
         schema["properties"]["mcp_id"]["enum"] = mcp_ids
@@ -79,16 +73,11 @@ class MCPSelector:
 
     async def select_top_tool(self, query: str, mcp_list: list[str], top_n: int = 10) -> list[MCPTools]:
         """选择最合适的工具"""
-        if not self._llm.embedding:
-            err = "[MCPSelector] 未设置Embedding模型"
-            logger.error(err)
-            raise RuntimeError(err)
-
-        query_embedding = await self._llm.embedding.get_embedding([query])
+        query_embedding = await embedding.get_embedding([query])
         async with postgres.session() as session:
             tool_vecs = await session.scalars(
-                select(self._llm.embedding.MCPToolVector).where(self._llm.embedding.MCPToolVector.mcpId.in_(mcp_list))
-                .order_by(self._llm.embedding.MCPToolVector.embedding.cosine_distance(query_embedding)).limit(top_n),
+                select(embedding.MCPToolVector).where(embedding.MCPToolVector.mcpId.in_(mcp_list))
+                .order_by(embedding.MCPToolVector.embedding.cosine_distance(query_embedding)).limit(top_n),
             )
 
         # 拿到工具

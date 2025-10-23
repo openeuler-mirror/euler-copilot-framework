@@ -35,10 +35,6 @@ class User(Base):
         String(100), default_factory=lambda: sha256(str(uuid.uuid4()).encode()).hexdigest()[:16], nullable=False,
     )
     """用户个人令牌"""
-    functionLLM: Mapped[str | None] = mapped_column(String(255), default=None, nullable=True)  # noqa: N815
-    """用户选择的函数模型ID"""
-    embeddingLLM: Mapped[str | None] = mapped_column(String(255), default=None, nullable=True)  # noqa: N815
-    """用户选择的向量模型ID"""
     autoExecute: Mapped[bool | None] = mapped_column(Boolean, default=False, nullable=True)  # noqa: N815
     """Agent是否自动执行"""
 

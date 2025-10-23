@@ -58,7 +58,7 @@ class SettingsManager:
                 await embedding.init(embedding_llm_config)
 
                 # 触发向量化
-                await pool.set_vector(embedding)
+                await pool.set_vector()
 
                 logger.info("[SettingsManager] Embedding模型已更新，向量化过程已完成")
             else:

@@ -13,7 +13,7 @@ from sqlalchemy import and_, delete, func, select
 
 from apps.common.config import config
 from apps.common.postgres import postgres
-from apps.llm import Embedding
+from apps.llm import embedding
 from apps.models import App, AppHashes
 from apps.models import Flow as FlowInfo
 from apps.scheduler.util import yaml_enum_presenter, yaml_str_presenter
@@ -27,6 +27,14 @@ BASE_PATH = Path(config.deploy.data_dir) / "semantics" / "app"
 
 class FlowLoader:
     """工作流加载器"""
+
+    @staticmethod
+    async def _load_all_flows() -> list[FlowInfo]:
+        """从数据库加载所有工作流"""
+        async with postgres.session() as session:
+            # 查询所有工作流
+            flows_query = select(FlowInfo)
+            return list((await session.scalars(flows_query)).all())
 
     async def _load_yaml_file(self, flow_path: Path) -> dict[str, Any]:
         """从YAML文件加载工作流配置"""
@@ -145,6 +153,8 @@ class FlowLoader:
                 debug=flow_config.checkStatus.debug,
             ),
         )
+        # 重新向量化该App的所有工作流
+        await self._update_vector(app_id)
         return Flow.model_validate(flow_yaml)
 
 
@@ -177,9 +187,11 @@ class FlowLoader:
                 debug=flow.checkStatus.debug,
             ),
         )
+        # 重新向量化该App的所有工作流
+        await self._update_vector(app_id)
 
 
-    async def delete(self, app_id: uuid.UUID, flow_id: str, embedding_model: Embedding | None = None) -> None:
+    async def delete(self, app_id: uuid.UUID, flow_id: str) -> None:
         """删除指定工作流文件"""
         flow_path = BASE_PATH / str(app_id) / "flow" / f"{flow_id}.yaml"
         # 确保目标为文件且存在
@@ -194,10 +206,9 @@ class FlowLoader:
                         FlowInfo.id == flow_id,
                     ),
                 ))
-                if embedding_model:
-                    await session.execute(
-                        delete(embedding_model.FlowPoolVector).where(embedding_model.FlowPoolVector.id == flow_id),
-                    )
+                await session.execute(
+                    delete(embedding.FlowPoolVector).where(embedding.FlowPoolVector.id == flow_id),
+                )
                 await session.commit()
                 return
         logger.warning("[FlowLoader] 工作流文件不存在或不是文件：%s", flow_path)
@@ -239,18 +250,54 @@ class FlowLoader:
             session.add(flow_hash)
             await session.commit()
 
-    async def _update_vector(self, app_id: uuid.UUID, metadata: FlowInfo, embedding_model: Embedding) -> None:
-        """将向量化数据存入数据库"""
+    async def _update_vector(self, app_id: uuid.UUID) -> None:
+        """重新向量化指定App的所有工作流"""
+        # 从数据库加载该App的所有工作流
         async with postgres.session() as session:
+            flows_query = select(FlowInfo).where(FlowInfo.appId == app_id)
+            flows = list((await session.scalars(flows_query)).all())
+
+        if not flows:
+            logger.warning("[FlowLoader] App %s 没有工作流，跳过向量化", app_id)
+            return
+
+        # 获取所有工作流的描述并生成向量
+        flow_descriptions = [flow.description for flow in flows]
+        flow_vecs = await embedding.get_embedding(flow_descriptions)
+
+        async with postgres.session() as session:
+            # 删除该App的所有旧向量数据
             await session.execute(
-                delete(embedding_model.FlowPoolVector).where(embedding_model.FlowPoolVector.id == metadata.id),
+                delete(embedding.FlowPoolVector).where(embedding.FlowPoolVector.appId == app_id),
             )
 
-            # 获取向量数据
-            service_embedding = await embedding_model.get_embedding([metadata.description])
-            session.add(embedding_model.FlowPoolVector(
-                id=metadata.id,
-                appId=app_id,
-                embedding=service_embedding[0],
-            ))
+            # 插入新的向量数据
+            for flow, vec in zip(flows, flow_vecs, strict=True):
+                session.add(embedding.FlowPoolVector(
+                    id=flow.id,
+                    appId=app_id,
+                    embedding=vec,
+                ))
             await session.commit()
+
+    @staticmethod
+    async def set_vector() -> None:
+        """将所有工作流的向量化数据存入数据库"""
+        flows = await FlowLoader._load_all_flows()
+
+        # 为每个工作流更新向量数据
+        for flow in flows:
+            flow_vecs = await embedding.get_embedding([flow.description])
+
+            async with postgres.session() as session:
+                # 删除旧数据
+                await session.execute(
+                    delete(embedding.FlowPoolVector).where(embedding.FlowPoolVector.id == flow.id),
+                )
+                # 插入新数据
+                session.add(embedding.FlowPoolVector(
+                    id=flow.id,
+                    appId=flow.appId,
+                    embedding=flow_vecs[0],
+                ))
+                await session.commit()

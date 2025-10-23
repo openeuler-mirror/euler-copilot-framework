@@ -19,7 +19,7 @@ router = APIRouter(
 )
 
 
-@router.post("/user", response_model=ResponseData)
+@router.post("", response_model=ResponseData)
 async def update_user_info(request: Request, data: UserUpdateRequest) -> JSONResponse:
     """POST /auth/user: 更新当前用户信息"""
     # 更新用户信息
