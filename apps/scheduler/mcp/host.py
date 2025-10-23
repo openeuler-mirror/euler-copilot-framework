@@ -10,7 +10,7 @@ from jinja2 import BaseLoader
 from jinja2.sandbox import SandboxedEnvironment
 from mcp.types import TextContent
 
-from apps.llm import JsonGenerator, LLMConfig
+from apps.llm import LLMConfig, json_generator
 from apps.models import LanguageType, MCPTools
 from apps.scheduler.mcp.prompt import MEMORY_TEMPLATE
 from apps.scheduler.pool.mcp.client import MCPClient
@@ -119,16 +119,14 @@ class MCPHost:
             "parameters": tool.inputSchema,
         }
 
-        # 进行生成
-        json_generator = JsonGenerator(
-            self._llm,
-            llm_query,
-            [
+        # 使用全局json_generator实例
+        return await json_generator.generate(
+            query=llm_query,
+            function=function_definition,
+            conversation=[
                 {"role": "user", "content": await self.assemble_memory()},
             ],
-            function_definition,
         )
-        return await json_generator.generate()
 
 
     async def call_tool(self, tool: MCPTools, plan_item: MCPPlanItem) -> list[dict[str, Any]]:

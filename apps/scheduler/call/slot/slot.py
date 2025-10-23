@@ -9,7 +9,7 @@ from jinja2 import BaseLoader
 from jinja2.sandbox import SandboxedEnvironment
 from pydantic import Field
 
-from apps.llm import JsonGenerator
+from apps.llm import json_generator
 from apps.models import LanguageType, NodeInfo
 from apps.scheduler.call.core import CoreCall
 from apps.scheduler.slot.slot import Slot as SlotProcessor
@@ -54,11 +54,8 @@ class Slot(CoreCall, input_model=SlotInput, output_model=SlotOutput):
             trim_blocks=True,
             lstrip_blocks=True,
         )
-
-        # 获取当前语言
         language = self._sys_vars.language
 
-        # 渲染查询模板（不包含历史信息）
         query_template = env.from_string(SLOT_GEN_PROMPT[language])
         query = query_template.render(
             current_tool={
@@ -68,10 +65,8 @@ class Slot(CoreCall, input_model=SlotInput, output_model=SlotOutput):
             schema=remaining_schema,
         )
 
-        # 组装conversation：将summary和历史工具调用组装为对话格式
         conversation = []
-
-        # 使用Jinja2模板渲染任务总结
+        # 任务总结
         if self.summary or self.facts:
             summary_template = env.from_string(SLOT_SUMMARY_TEMPLATE[language])
             summary_content = summary_template.render(
@@ -92,7 +87,7 @@ class Slot(CoreCall, input_model=SlotInput, output_model=SlotOutput):
                 "content": assistant_response,
             })
 
-        # 使用Jinja2模板渲染历史工具调用
+        # 历史工具调用
         if self._flow_history:
             history_template = env.from_string(SLOT_HISTORY_TEMPLATE[language])
             history_content = history_template.render(
@@ -104,22 +99,16 @@ class Slot(CoreCall, input_model=SlotInput, output_model=SlotOutput):
                     "content": history_content,
                 })
 
-        # 构建OpenAI标准FunctionCall格式
         function = {
             "name": "fill_parameters",
             "description": f"Fill the missing parameters for {self.name}. {self.description}",
             "parameters": remaining_schema,
         }
-
-        # 使用JsonGenerator进行参数填充
-        generator = JsonGenerator(
-            llm_config=self._llm_obj,
+        data = await json_generator.generate(
             query=query,
-            conversation=conversation,
             function=function,
+            conversation=conversation,
         )
-
-        data = await generator.generate()
         answer = json.dumps(data, ensure_ascii=False)
         return answer, data
 

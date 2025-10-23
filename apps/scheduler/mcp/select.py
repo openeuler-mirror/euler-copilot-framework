@@ -6,7 +6,7 @@ import logging
 from sqlalchemy import select
 
 from apps.common.postgres import postgres
-from apps.llm import JsonGenerator, LLMConfig
+from apps.llm import LLMConfig, json_generator
 from apps.models import LanguageType, MCPTools
 from apps.schemas.mcp import MCPSelectResult
 from apps.services.mcp_service import MCPServiceManager
@@ -63,13 +63,11 @@ class MCPSelector:
         )
 
         # 使用JsonGenerator生成JSON
-        generator = JsonGenerator(
-            llm_config=self._llm,
+        result = await json_generator.generate(
             query=user_prompt,
-            conversation=[],
             function=function,
+            conversation=[],
         )
-        result = await generator.generate()
 
         try:
             result = MCPSelectResult.model_validate(result)

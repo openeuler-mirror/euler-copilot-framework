@@ -8,7 +8,7 @@ from typing import Any
 from jinja2 import BaseLoader
 from jinja2.sandbox import SandboxedEnvironment
 
-from apps.llm import JsonGenerator
+from apps.llm import json_generator
 from apps.models import ExecutorHistory, LanguageType, MCPTools, TaskRuntime
 from apps.scheduler.mcp.prompt import MEMORY_TEMPLATE
 from apps.scheduler.mcp_agent.base import MCPBase
@@ -100,12 +100,10 @@ class MCPHost(MCPBase):
             "parameters": mcp_tool.inputSchema,
         }
 
-        json_generator = JsonGenerator(
-            self._llm,
-            llm_query,
-            [
+        return await json_generator.generate(
+            query=llm_query,
+            function=function,
+            conversation=[
                 {"role": "user", "content": prompt},
             ],
-            function,
         )
-        return await json_generator.generate()

@@ -6,7 +6,7 @@ import logging
 from jinja2 import BaseLoader
 from jinja2.sandbox import SandboxedEnvironment
 
-from apps.llm import JsonGenerator, LLMConfig
+from apps.llm import LLMConfig, json_generator
 from apps.models import LanguageType, MCPTools
 from apps.schemas.mcp import MCPPlan
 
@@ -83,16 +83,14 @@ class MCPPlanner:
             "parameters": schema,
         }
 
-        # 使用Function模型解析结果
-        json_generator = JsonGenerator(
-            self._llm,
-            result,
-            [
+        # 使用全局json_generator实例解析结果
+        plan = await json_generator.generate(
+            query=result,
+            function=function_def,
+            conversation=[
                 {"role": "user", "content": result},
             ],
-            function_def,
         )
-        plan = await json_generator.generate()
         return MCPPlan.model_validate(plan)
 
 
