@@ -40,7 +40,7 @@ response_mode = 'form_post'
 # OIDC 高级配置
 enable_pkce = true
 pkce_challenge_method = 'S256'
-token_endpoint_auth_method = 'client_secret_basic'
+token_endpoint_auth_method = 'client_secret_post'
 
 # 会话和令牌配置
 access_token_lifespan = '3600'  # 1小时
