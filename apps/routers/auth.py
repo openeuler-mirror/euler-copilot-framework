@@ -262,9 +262,22 @@ async def logout(
 
 
 @router.get("/redirect", response_model=OidcRedirectRsp)
-async def oidc_redirect() -> JSONResponse:
+async def oidc_redirect(action: str = "login") -> JSONResponse:
     """OIDC重定向URL"""
-    redirect_url = await oidc_provider.get_redirect_url()
+    if action == "authenticated":
+        # 返回authelia用户配置页面URL
+        from apps.common.config import Config
+        config = Config().get_config()
+        if hasattr(config.login, 'settings') and hasattr(config.login.settings, 'host'):
+            authelia_host = config.login.settings.host.rstrip('/')
+            redirect_url = f"{authelia_host}/authenticated"
+        else:
+            # 如果无法获取配置，返回默认的登录URL
+            redirect_url = await oidc_provider.get_redirect_url()
+    else:
+        # 默认返回登录URL
+        redirect_url = await oidc_provider.get_redirect_url()
+    
     return JSONResponse(
         status_code=status.HTTP_200_OK,
         content=OidcRedirectRsp(
