@@ -10,7 +10,7 @@ from apps.services.conversation import ConversationManager
 
 class TestUserQaRecordManager(unittest.TestCase):
 
-    def test_get_user_qa_record_by_user_sub(self):
+    def test_get_user_qa_record_by_user(self):
         user_sub = "test_user_sub"
         with patch.object(MysqlDB, 'get_session') as mock_get_session:
             mock_session = MagicMock()
@@ -19,7 +19,7 @@ class TestUserQaRecordManager(unittest.TestCase):
             mock_query.filter().all = mock_all
             mock_session.query.return_value = mock_query
             mock_get_session.return_value.__enter__.return_value = mock_session
-            result = ConversationManager.get_conversation_by_user_sub(user_sub)
+            result = ConversationManager.get_conversation_by_user(user_sub)
             self.assertEqual(result, ["result"])
 
     def test_get_user_qa_record_by_session_id(self):
@@ -34,7 +34,7 @@ class TestUserQaRecordManager(unittest.TestCase):
             result = ConversationManager.get_conversation_by_conversation_id(session_id)
             self.assertEqual(result, "result")
 
-    def test_add_user_qa_record_by_user_sub(self):
+    def test_add_user_qa_record_by_user(self):
         user_sub = "test_user_sub"
         with patch.object(MysqlDB, 'get_session') as mock_get_session:
             mock_session = MagicMock()
@@ -43,7 +43,7 @@ class TestUserQaRecordManager(unittest.TestCase):
             mock_session.add = mock_add
             mock_session.commit = mock_commit
             mock_get_session.return_value.__enter__.return_value = mock_session
-            result = ConversationManager.add_conversation_by_user_sub(user_sub)
+            result = ConversationManager.add_conversation_by_user(user_sub)
             self.assertIsInstance(result, str)
 
     def test_update_user_qa_record_by_session_id(self):
@@ -83,7 +83,7 @@ class TestUserQaRecordManager(unittest.TestCase):
             ConversationManager.delete_conversation_by_conversation_id(session_id)
             mock_delete.assert_called_once()
 
-    def test_delete_user_qa_record_by_user_sub(self):
+    def test_delete_user_qa_record_by_user(self):
         user_sub = "test_user_sub"
         with patch.object(MysqlDB, 'get_session') as mock_get_session:
             mock_session = MagicMock()
@@ -94,7 +94,7 @@ class TestUserQaRecordManager(unittest.TestCase):
             mock_query.filter().delete = mock_delete
             mock_session.commit = mock_commit
             mock_get_session.return_value.__enter__.return_value = mock_session
-            ConversationManager.delete_conversation_by_user_sub(user_sub)
+            ConversationManager.delete_conversation_by_user(user_sub)
             mock_delete.assert_called_once()
 
 

@@ -16,7 +16,7 @@ class Document(Base):
     """文件"""
 
     __tablename__ = "framework_document"
-    userSub: Mapped[str] = mapped_column(String(50), ForeignKey("framework_user.userSub"), nullable=False)  # noqa: N815
+    userId: Mapped[str] = mapped_column(String(50), ForeignKey("framework_user.id"), nullable=False)  # noqa: N815
     """用户ID"""
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     """文件名称"""
@@ -39,7 +39,7 @@ class Document(Base):
     )
     """文件的创建时间"""
     # 索引
-    idx_user_conversation: ClassVar[Index] = Index("idx_user_sub_conversation_id", "userSub", "conversationId")
+    idx_user_conversation: ClassVar[Index] = Index("idx_user_id_conversation_id", "userId", "conversationId")
 
     __table_args__: ClassVar[tuple[Any, ...]] = (
         idx_user_conversation,

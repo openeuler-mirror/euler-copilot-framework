@@ -20,13 +20,13 @@ class ConversationManager:
     """对话管理器"""
 
     @staticmethod
-    async def get_conversation_by_user_sub(user_sub: str) -> list[Conversation]:
+    async def get_conversation_by_user(user_id: str) -> list[Conversation]:
         """根据用户ID获取对话列表，按时间由近到远排序"""
         async with postgres.session() as session:
             result = (await session.scalars(
                 select(Conversation).where(
                     and_(
-                        Conversation.userSub == user_sub,
+                        Conversation.userId == user_id,
                         Conversation.isTemporary == False,  # noqa: E712
                     ),
                 ).order_by(
@@ -37,28 +37,28 @@ class ConversationManager:
 
 
     @staticmethod
-    async def get_conversation_by_conversation_id(user_sub: str, conversation_id: uuid.UUID) -> Conversation | None:
+    async def get_conversation_by_conversation_id(user_id: str, conversation_id: uuid.UUID) -> Conversation | None:
         """通过ConversationID查询对话信息"""
         async with postgres.session() as session:
             return (await session.scalars(
                 select(Conversation).where(
                     and_(
                         Conversation.id == conversation_id,
-                        Conversation.userSub == user_sub,
+                        Conversation.userId == user_id,
                     ),
                 ),
             )).one_or_none()
 
 
     @staticmethod
-    async def verify_conversation_access(user_sub: str, conversation_id: uuid.UUID) -> bool:
+    async def verify_conversation_access(user_id: str, conversation_id: uuid.UUID) -> bool:
         """验证对话是否属于用户"""
         async with postgres.session() as session:
             result = (await session.scalars(
                 func.count(Conversation.id).where(
                     and_(
                         Conversation.id == conversation_id,
-                        Conversation.userSub == user_sub,
+                        Conversation.userId == user_id,
                     ),
                 ),
             )).one()
@@ -66,14 +66,14 @@ class ConversationManager:
 
 
     @staticmethod
-    async def add_conversation_by_user_sub(
-        title: str, user_sub: str, app_id: uuid.UUID | None = None,
+    async def add_conversation_by_user(
+        title: str, user_id: str, app_id: uuid.UUID | None = None,
         *,
         debug: bool = False,
     ) -> Conversation | None:
         """通过用户ID新建对话"""
         conv = Conversation(
-            userSub=user_sub,
+            userId=user_id,
             appId=app_id,
             isTemporary=debug,
             title=title,
@@ -90,7 +90,7 @@ class ConversationManager:
                     app_obj = (await session.scalars(
                         select(UserAppUsage).where(
                             and_(
-                                UserAppUsage.userSub == user_sub,
+                                UserAppUsage.userId == user_id,
                                 UserAppUsage.appId == app_id,
                             ),
                         ),
@@ -104,7 +104,7 @@ class ConversationManager:
                         await session.commit()
                     else:
                         await session.merge(UserAppUsage(
-                            userSub=user_sub,
+                            userId=user_id,
                             appId=app_id,
                             usageCount=1,
                             lastUsed=datetime.now(tz=UTC),
@@ -118,7 +118,7 @@ class ConversationManager:
 
     @staticmethod
     async def update_conversation_by_conversation_id(
-        user_sub: str, conversation_id: uuid.UUID, data: dict[str, Any],
+        user_id: str, conversation_id: uuid.UUID, data: dict[str, Any],
     ) -> bool:
         """通过ConversationID更新对话信息"""
         async with postgres.session() as session:
@@ -126,7 +126,7 @@ class ConversationManager:
                 select(Conversation).where(
                     and_(
                         Conversation.id == conversation_id,
-                        Conversation.userSub == user_sub,
+                        Conversation.userId == user_id,
                     ),
                 ),
             )).one_or_none()
@@ -140,14 +140,14 @@ class ConversationManager:
 
 
     @staticmethod
-    async def delete_conversation_by_conversation_id(user_sub: str, conversation_id: uuid.UUID) -> None:
+    async def delete_conversation_by_conversation_id(user_id: str, conversation_id: uuid.UUID) -> None:
         """通过ConversationID删除对话"""
         async with postgres.session() as session:
             conv = (await session.scalars(
                 select(Conversation).where(
                     and_(
                         Conversation.id == conversation_id,
-                        Conversation.userSub == user_sub,
+                        Conversation.userId == user_id,
                     ),
                 ),
             )).one_or_none()
@@ -161,11 +161,11 @@ class ConversationManager:
 
 
     @staticmethod
-    async def delete_conversation_by_user_sub(user_sub: str) -> None:
+    async def delete_conversation_by_user(user_id: str) -> None:
         """通过用户ID删除对话"""
         async with postgres.session() as session:
             convs = list((await session.scalars(
-                select(Conversation).where(Conversation.userSub == user_sub),
+                select(Conversation).where(Conversation.userId == user_id),
             )).all())
             for conv in convs:
                 await session.delete(conv)
@@ -174,14 +174,14 @@ class ConversationManager:
 
 
     @staticmethod
-    async def verify_conversation_id(user_sub: str, conversation_id: uuid.UUID) -> bool:
+    async def verify_conversation_id(user_id: str, conversation_id: uuid.UUID) -> bool:
         """验证对话ID是否属于用户"""
         async with postgres.session() as session:
             result = (await session.scalars(
                 func.count(Conversation.id).where(
                     and_(
                         Conversation.id == conversation_id,
-                        Conversation.userSub == user_sub,
+                        Conversation.userId == user_id,
                     ),
                 ),
             )).one()

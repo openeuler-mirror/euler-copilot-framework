@@ -28,7 +28,7 @@ async def get_parameters(
     request: Request, appId: uuid.UUID, flowId: str, stepId: uuid.UUID,  # noqa: N803
 ) -> JSONResponse:
     """Get parameters for node choice."""
-    if not await AppCenterManager.validate_user_app_access(request.state.user_sub, appId):
+    if not await AppCenterManager.validate_user_app_access(request.state.user_id, appId):
         return JSONResponse(
             status_code=status.HTTP_403_FORBIDDEN,
             content=GetParamsRsp(

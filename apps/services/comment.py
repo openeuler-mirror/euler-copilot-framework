@@ -41,7 +41,7 @@ class CommentManager:
             return None
 
     @staticmethod
-    async def update_comment(record_id: str, data: RecordComment, user_sub: str) -> None:
+    async def update_comment(record_id: str, data: RecordComment, user_id: str) -> None:
         """
         更新评论
 
@@ -62,7 +62,7 @@ class CommentManager:
             else:
                 comment_info = Comment(
                     recordId=uuid.UUID(record_id),
-                    userSub=user_sub,
+                    userId=user_id,
                     commentType=data.comment,
                     feedbackType=data.feedback_type,
                     feedbackLink=data.feedback_link,

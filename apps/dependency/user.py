@@ -22,7 +22,7 @@ async def verify_session(request: HTTPConnection) -> None:
     - 如果Authorization头不存在或不以Bearer开头，抛出401
     - 如果Bearer token以sk-开头，跳过（由verify_personal_token处理）
     - 如果Bearer token不以sk-开头，则作为Session ID校验
-    - 如果是合法session则设置user_sub
+    - 如果是合法session则设置user_id
 
     :param request: HTTP请求
     :return:
@@ -48,29 +48,29 @@ async def verify_session(request: HTTPConnection) -> None:
     # 作为Session ID校验
     session_id = token
     request.state.session_id = session_id
-    user = await SessionManager.get_user(session_id)
-    if not user:
+    user_id = await SessionManager.get_user(session_id)
+    if not user_id:
         logger.warning("Session ID鉴权失败：无效的session_id=%s", session_id)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Session ID 鉴权失败",
         )
-    request.state.user_sub = user
+    request.state.user_id = user_id
 
 
 async def verify_personal_token(request: HTTPConnection) -> None:
     """
     验证Personal Token是否有效；作为第二层鉴权检查
 
-    - 如果已经通过verify_session设置了user_sub，则跳过
+    - 如果已经通过verify_session设置了user_id，则跳过
     - 如果Bearer token以sk-开头，则作为Personal Token校验
-    - 合法则设置user_sub，不合法则抛出401
+    - 合法则设置user_id，不合法则抛出401
 
     :param request: HTTP请求
     :return:
     """
     # 如果已经通过Session验证，则跳过
-    if hasattr(request.state, "user_sub"):
+    if hasattr(request.state, "user_id"):
         return
 
     auth_header = request.headers.get("Authorization")
@@ -87,9 +87,9 @@ async def verify_personal_token(request: HTTPConnection) -> None:
     # 检查是否为Personal Token（以sk-开头）
     if token.startswith("sk-"):
         # 验证是否为合法的Personal Token
-        user_sub = await PersonalTokenManager.get_user_by_personal_token(token)
-        if user_sub is not None:
-            request.state.user_sub = user_sub
+        user_id = await PersonalTokenManager.get_user_by_personal_token(token)
+        if user_id is not None:
+            request.state.user_id = user_id
         else:
             # Personal Token无效，抛出401
             logger.warning("Personal Token鉴权失败：无效的token")
@@ -100,15 +100,15 @@ async def verify_personal_token(request: HTTPConnection) -> None:
 
 async def verify_admin(request: HTTPConnection) -> None:
     """验证用户是否为管理员"""
-    if not hasattr(request.state, "user_sub"):
+    if not hasattr(request.state, "user_id"):
         logger.warning("管理员鉴权失败：用户未登录")
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="用户未登录")
-    user_sub = request.state.user_sub
-    user = await UserManager.get_user(user_sub)
+    user_id = request.state.user_id
+    user = await UserManager.get_user(user_id)
     request.state.user = user
     if not user:
-        logger.warning("管理员鉴权失败：用户不存在，user_sub=%s", user_sub)
+        logger.warning("管理员鉴权失败：用户不存在，user_id=%s", user_id)
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="用户不存在")
-    if user.userSub not in config.login.admin_user:
-        logger.warning("管理员鉴权失败：用户无管理员权限，user_sub=%s", user_sub)
+    if user.userName not in config.login.admin_user:
+        logger.warning("管理员鉴权失败：用户无管理员权限，user_id=%s", user_id)
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="用户无权限")

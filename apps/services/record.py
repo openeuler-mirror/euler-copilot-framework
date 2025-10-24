@@ -20,12 +20,12 @@ class RecordManager:
     """问答对相关操作"""
 
     @staticmethod
-    async def verify_record_in_conversation(record_id: uuid.UUID, user_sub: str, conversation_id: uuid.UUID) -> bool:
+    async def verify_record_in_conversation(record_id: uuid.UUID, user_id: str, conversation_id: uuid.UUID) -> bool:
         """
         校验指定record_id是否属于指定用户和会话（PostgreSQL实现）
 
         :param record_id: 记录ID
-        :param user_sub: 用户sub
+        :param user_id: 用户ID
         :param conversation_id: 会话ID
         :return: 是否存在
         """
@@ -34,7 +34,7 @@ class RecordManager:
                 select(PgRecord).where(
                     and_(
                         PgRecord.id == record_id,
-                        PgRecord.userSub == user_sub,
+                        PgRecord.userId == user_id,
                         PgRecord.conversationId == conversation_id,
                     ),
             ))).one_or_none()
@@ -42,14 +42,14 @@ class RecordManager:
 
 
     @staticmethod
-    async def insert_record_data(user_sub: str, conversation_id: uuid.UUID, record: Record) -> uuid.UUID | None:
+    async def insert_record_data(user_id: str, conversation_id: uuid.UUID, record: Record) -> uuid.UUID | None:
         """Record插入PostgreSQL"""
         async with postgres.session() as session:
             conv = (await session.scalars(
                 select(Conversation).where(
                     and_(
                         Conversation.id == conversation_id,
-                        Conversation.userSub == user_sub,
+                        Conversation.userId == user_id,
                     ),
                 ),
             )).one_or_none()
@@ -61,7 +61,7 @@ class RecordManager:
                 id=record.id,
                 conversationId=conversation_id,
                 taskId=record.task_id,
-                userSub=user_sub,
+                userId=user_id,
                 content=record.content,
                 key=record.key,
                 createdAt=datetime.fromtimestamp(record.created_at, tz=UTC),
@@ -73,7 +73,7 @@ class RecordManager:
 
     @staticmethod
     async def query_record_by_conversation_id(
-        user_sub: str,
+        user_id: str,
         conversation_id: uuid.UUID,
         total_pairs: int | None = None,
         order: Literal["desc", "asc"] = "desc",
@@ -83,7 +83,7 @@ class RecordManager:
             sql = select(PgRecord).where(
                 and_(
                     PgRecord.conversationId == conversation_id,
-                    PgRecord.userSub == user_sub,
+                    PgRecord.userId == user_id,
                 ),
             ).order_by(PgRecord.createdAt.desc() if order == "desc" else PgRecord.createdAt.asc())
             if total_pairs is not None:
@@ -97,7 +97,7 @@ class RecordManager:
                     id=pg_record.id,
                     conversationId=pg_record.conversationId,
                     task_id=pg_record.taskId,
-                    user_sub=pg_record.userSub,
+                    user_id=pg_record.userId,
                     content=pg_record.content,
                     key=pg_record.key,
                     createdAt=pg_record.createdAt.timestamp(),

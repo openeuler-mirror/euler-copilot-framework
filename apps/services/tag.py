@@ -41,16 +41,16 @@ class TagManager:
 
 
     @staticmethod
-    async def get_tag_by_user_sub(user_sub: str) -> list[Tag]:
+    async def get_tag_by_user(user_id: str) -> list[Tag]:
         """
-        根据用户sub获取用户标签信息
+        根据用户ID获取用户标签信息
 
-        :param user_sub: 用户sub
+        :param user_id: 用户ID
         :return: 用户标签信息
         """
         tags = []
         async with postgres.session() as session:
-            user_tags = (await session.scalars(select(UserTag).where(UserTag.userSub == user_sub))).all()
+            user_tags = (await session.scalars(select(UserTag).where(UserTag.userId == user_id))).all()
             for user_tag in user_tags:
                 tag = (await session.scalars(select(Tag).where(Tag.id == user_tag.tag))).one_or_none()
                 if tag:

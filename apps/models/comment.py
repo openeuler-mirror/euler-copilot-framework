@@ -30,8 +30,8 @@ class Comment(Base):
         UUID(as_uuid=True), ForeignKey("framework_record.id"), nullable=False, index=True,
     )
     """问答对ID"""
-    userSub: Mapped[str] = mapped_column(String(50), ForeignKey("framework_user.userSub"), nullable=False)  # noqa: N815
-    """用户名"""
+    userId: Mapped[str] = mapped_column(String(50), ForeignKey("framework_user.id"), nullable=False)  # noqa: N815
+    """用户ID"""
     commentType: Mapped[CommentType] = mapped_column(Enum(CommentType), nullable=False)  # noqa: N815
     """点赞点踩"""
     feedbackType: Mapped[list[str]] = mapped_column(ARRAY(String(100)), nullable=False)  # noqa: N815

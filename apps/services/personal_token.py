@@ -18,7 +18,7 @@ class PersonalTokenManager:
     @staticmethod
     async def get_user_by_personal_token(personal_token: str) -> str | None:
         """
-        根据Personal Token获取用户信息
+        根据Personal Token获取用户ID
 
         :param personal_token: Personal Token
         :return: 用户ID
@@ -27,7 +27,7 @@ class PersonalTokenManager:
             try:
                 result = (
                     await session.scalars(
-                        select(User.userSub).where(User.personalToken == personal_token),
+                        select(User.id).where(User.personalToken == personal_token),
                     )
                 ).one_or_none()
             except Exception:
@@ -38,11 +38,11 @@ class PersonalTokenManager:
 
 
     @staticmethod
-    async def update_personal_token(user_sub: str) -> str | None:
+    async def update_personal_token(user_id: str) -> str | None:
         """
         更新Personal Token
 
-        :param user_sub: 用户ID
+        :param user_id: 用户ID
         :return: 更新后的Personal Token
         """
         personal_token = uuid.uuid4().hex
@@ -50,7 +50,7 @@ class PersonalTokenManager:
         try:
             async with postgres.session() as session:
                 await session.execute(
-                    update(User).where(User.id == user_sub).values(personal_token=personal_token_with_prefix),
+                    update(User).where(User.id == user_id).values(personal_token=personal_token_with_prefix),
                 )
                 await session.commit()
         except Exception:

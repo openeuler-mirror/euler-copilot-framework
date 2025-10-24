@@ -40,8 +40,8 @@ _logger = logging.getLogger(__name__)
 )
 async def get_conversation_list(request: Request) -> JSONResponse:
     """GET /conversation: 获取对话列表"""
-    conversations = await ConversationManager.get_conversation_by_user_sub(
-        request.state.user_sub,
+    conversations = await ConversationManager.get_conversation_by_user(
+        request.state.user_id,
     )
     # 把已有对话转换为列表
     result_conversations = []
@@ -74,8 +74,8 @@ async def update_conversation(
 ) -> JSONResponse:
     """PUT /conversation: 更新特定Conversation的信息"""
     # 判断Conversation是否合法
-    conv = await ConversationManager.get_conversation_by_conversation_id(request.state.user_sub, conversation_id)
-    if not conv or conv.userSub != request.state.user_sub:
+    conv = await ConversationManager.get_conversation_by_conversation_id(request.state.user_id, conversation_id)
+    if not conv or conv.userId != request.state.user_id:
         _logger.error("[Conversation] conversation_id 不存在")
         return JSONResponse(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -89,7 +89,7 @@ async def update_conversation(
     # 更新Conversation数据
     try:
         await ConversationManager.update_conversation_by_conversation_id(
-            request.state.user_sub,
+            request.state.user_id,
             conversation_id,
             {
                 "title": post_body.title,
@@ -133,12 +133,12 @@ async def delete_conversation(
     for conversation_id in post_body.conversation_list:
         # 删除对话
         await ConversationManager.delete_conversation_by_conversation_id(
-            request.state.user_sub,
+            request.state.user_id,
             conversation_id,
         )
         # 删除对话对应的文件
         await DocumentManager.delete_document_by_conversation_id(
-            request.state.user_sub,
+            request.state.user_id,
             conversation_id,
         )
         deleted_conversation.append(conversation_id)

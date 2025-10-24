@@ -79,11 +79,11 @@ class FlowManager:
 
 
     @staticmethod
-    async def get_service_by_user_id(user_sub: str) -> list[NodeServiceItem] | None:
+    async def get_service_by_user(user_id: str) -> list[NodeServiceItem] | None:
         """
         通过user_id获取用户自己上传的或收藏的Service，用于插件中心展示
 
-        :user_sub: 用户的唯一标识符
+        :param user_id: str: 用户的唯一标识符
         :return: service的列表
         """
         async with postgres.session() as session:
@@ -92,7 +92,7 @@ class FlowManager:
             user_favs = list((await session.scalars(
                 select(UserFavorite.itemId).where(
                     and_(
-                        UserFavorite.userSub == user_sub,
+                        UserFavorite.userId == user_id,
                         UserFavorite.favouriteType == UserFavoriteType.SERVICE,
                     ),
                 ),
@@ -101,7 +101,7 @@ class FlowManager:
             # 用户所上传的Service
             user_services = list((await session.scalars(
                 select(Service.id).where(
-                    Service.author == user_sub,
+                    Service.authorId == user_id,
                 ),
             )).all())
             service_ids = service_ids + user_services

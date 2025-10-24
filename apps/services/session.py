@@ -19,18 +19,18 @@ class SessionManager:
     """浏览器Session管理"""
 
     @staticmethod
-    async def create_session(user_sub: str, ip: str) -> str:
+    async def create_session(user_id: str, ip: str) -> str:
         """创建浏览器Session"""
         if not ip:
             err = "用户IP错误！"
             raise ValueError(err)
 
-        if not user_sub:
-            err = "用户名错误！"
+        if not user_id:
+            err = "用户ID错误！"
             raise ValueError(err)
 
         data = Session(
-            userSub=user_sub,
+            userId=user_id,
             ip=ip,
             validUntil=datetime.now(UTC) + timedelta(minutes=SESSION_TTL),
             sessionType=SessionType.CODE,
@@ -57,26 +57,26 @@ class SessionManager:
 
     @staticmethod
     async def get_user(session_id: str) -> str | None:
-        """从Session中获取用户"""
+        """从Session中获取用户ID"""
         async with postgres.session() as session:
-            user_sub = (
-                await session.scalars(select(Session.userSub).where(Session.id == session_id))
+            user_id = (
+                await session.scalars(select(Session.userId).where(Session.id == session_id))
             ).one_or_none()
-            if not user_sub:
+            if not user_id:
                 return None
 
             # 查询黑名单
-            if user_sub and await UserBlacklistManager.check_blacklisted_users(user_sub):
+            if user_id and await UserBlacklistManager.check_blacklisted_users(user_id=user_id):
                 logger.error("[SessionManager] 用户在Session黑名单中")
                 await SessionManager.delete_session(session_id)
                 return None
 
-        return user_sub
+        return user_id
 
 
     @staticmethod
-    async def get_session_by_user_sub(user_sub: str) -> str | None:
-        """根据用户sub获取Session"""
+    async def get_session_by_user(user_id: str) -> str | None:
+        """根据用户ID获取Session"""
         async with postgres.session() as session:
-            data = await session.scalars(select(Session.id).where(Session.userSub == user_sub))
+            data = await session.scalars(select(Session.id).where(Session.userId == user_id))
             return data.one_or_none()

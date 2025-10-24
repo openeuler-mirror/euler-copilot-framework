@@ -1,5 +1,5 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2023-2025. All rights reserved.
-"""MCP服务（插件中心）管理器"""
+"""MCP服务（插件中心）管理"""
 
 import logging
 import re
@@ -42,22 +42,22 @@ MCP_ICON_PATH = ICON_PATH / "mcp"
 
 
 class MCPServiceManager:
-    """MCP服务管理器"""
+    """MCP服务管理"""
 
     @staticmethod
-    async def is_active(user_sub: str, mcp_id: str) -> bool:
+    async def is_active(user_id: str, mcp_id: str) -> bool:
         """
         判断用户是否激活MCP
 
-        :param str user_sub: 用户ID
-        :param str mcp_id: MCP服务ID
+        :param user_id: str: 用户ID
+        :param mcp_id: str: MCP服务ID
         :return: 是否激活
         """
         async with postgres.session() as session:
             mcp_info = (await session.scalars(select(MCPActivated).where(
                 and_(
                     MCPActivated.mcpId == mcp_id,
-                    MCPActivated.userSub == user_sub,
+                    MCPActivated.userId == user_id,
                 ),
             ))).one_or_none()
             return bool(mcp_info)
@@ -94,7 +94,7 @@ class MCPServiceManager:
     @staticmethod
     async def fetch_mcp_services(  # noqa: PLR0913
             search_type: SearchType,
-            user_sub: str,
+            user_id: str,
             keyword: str | None,
             page: int,
             *,
@@ -105,13 +105,15 @@ class MCPServiceManager:
         获取所有MCP服务列表
 
         :param search_type: SearchType: str: MCP搜索类型
-        :param user_sub: str: 用户ID
+        :param user_id: str: 用户ID
         :param keyword: str: MCP搜索关键字
         :param page: int: 页码
+        :param is_install: bool | None: 是否已安装
+        :param is_active: bool | None: 是否已激活
         :return: MCP服务列表
         """
         mcpservice_pools = await MCPServiceManager._search_mcpservice(
-            search_type, keyword, page, user_sub, is_active=is_active, is_installed=is_install,
+            search_type, keyword, page, user_id, is_active=is_active, is_installed=is_install,
         )
         return [
             MCPServiceCardItem(
@@ -119,8 +121,8 @@ class MCPServiceManager:
                 icon=await MCPServiceManager.get_icon_path(item.id),
                 name=item.name,
                 description=item.description,
-                author=item.author,
-                isActive=await MCPServiceManager.is_active(user_sub, item.id),
+                author=item.authorId,
+                isActive=await MCPServiceManager.is_active(user_id, item.id),
                 status=await MCPServiceManager.get_service_status(item.id),
             )
             for item in mcpservice_pools
@@ -155,7 +157,7 @@ class MCPServiceManager:
     @staticmethod
     async def get_mcp_tools(mcp_id: str) -> list[MCPTools]:
         """
-        获取MCP可以用工具
+        获取MCP可用工具
 
         :param mcp_id: str: MCP服务ID
         :return: MCP工具详细信息列表
@@ -169,7 +171,7 @@ class MCPServiceManager:
             search_type: SearchType,
             keyword: str | None,
             page: int,
-            user_sub: str,
+            user_id: str,
             *,
             is_active: bool | None = None,
             is_installed: bool | None = None,
@@ -191,7 +193,7 @@ class MCPServiceManager:
                     or_(
                         MCPInfo.name.like(f"%{keyword}%"),
                         MCPInfo.description.like(f"%{keyword}%"),
-                        MCPInfo.author.like(f"%{keyword}%"),
+                        MCPInfo.authorId.like(f"%{keyword}%"),
                     ),
                 )
             elif search_type == SearchType.NAME:
@@ -199,17 +201,17 @@ class MCPServiceManager:
             elif search_type == SearchType.DESCRIPTION:
                 sql = sql.where(MCPInfo.description.like(f"%{keyword}%"))
             elif search_type == SearchType.AUTHOR:
-                sql = sql.where(MCPInfo.author.like(f"%{keyword}%"))
+                sql = sql.where(MCPInfo.authorId.like(f"%{keyword}%"))
 
             sql = sql.offset(skip).limit(SERVICE_PAGE_SIZE)
 
             if is_installed is not None:
                 sql = sql.where(MCPInfo.id.in_(
-                    select(MCPActivated.mcpId).where(MCPActivated.userSub == user_sub),
+                    select(MCPActivated.mcpId).where(MCPActivated.userId == user_id),
                 ))
             if is_active is not None:
                 sql = sql.where(MCPInfo.id.in_(
-                    select(MCPActivated.mcpId).where(MCPActivated.userSub == user_sub),
+                    select(MCPActivated.mcpId).where(MCPActivated.userId == user_id),
                 ))
 
             result = list((await session.scalars(sql)).all())
@@ -218,12 +220,12 @@ class MCPServiceManager:
         if not result:
             logger.warning("[MCPServiceManager] 没有找到符合条件的MCP服务: %s", search_type)
             return []
-        # 将数据库中的MCP服务转换为对象
+        # 将数据库中的MCP服务转换为对应的对象列表
         return result
 
 
     @staticmethod
-    async def create_mcpservice(data: UpdateMCPServiceRequest, user_sub: str) -> str:
+    async def create_mcpservice(data: UpdateMCPServiceRequest, user_id: str) -> str:
         """
         创建MCP服务
 
@@ -245,7 +247,7 @@ class MCPServiceManager:
                 data.mcp_id: config,
             },
             mcpType=data.mcp_type,
-            author=user_sub,
+            author=user_id,
         )
 
         # 检查是否存在相同服务
@@ -255,8 +257,7 @@ class MCPServiceManager:
                 mcp_server.name = f"{mcp_server.name}-{uuid.uuid4().hex[:6]}"
                 logger.warning("[MCPServiceManager] 已存在相同ID或名称的MCP服务")
 
-        # 保存并载入配置
-        logger.info("[MCPServiceManager] 创建mcp：%s", mcp_server.name)
+        # 保存并载入配�?        logger.info("[MCPServiceManager] 创建mcp�?s", mcp_server.name)
         mcp_path = MCP_PATH / "template" / data.mcp_id / "project"
         index = None
         if isinstance(config, MCPServerStdioConfig):
@@ -280,7 +281,7 @@ class MCPServiceManager:
                 overview=mcp_server.overview,
                 description=mcp_server.description,
                 mcpType=mcp_server.mcpType,
-                author=mcp_server.author or "",
+                authorId=mcp_server.author or "",
             ))
             await session.commit()
         await MCPLoader.save_one(data.mcp_id, mcp_server)
@@ -289,7 +290,7 @@ class MCPServiceManager:
 
 
     @staticmethod
-    async def update_mcpservice(data: UpdateMCPServiceRequest, user_sub: str) -> str:
+    async def update_mcpservice(data: UpdateMCPServiceRequest, user_id: str) -> str:
         """
         更新MCP服务
 
@@ -304,7 +305,7 @@ class MCPServiceManager:
             db_service = (await session.scalars(select(MCPInfo).where(
                 and_(
                     MCPInfo.id == data.mcp_id,
-                    MCPInfo.author == user_sub,
+                    MCPInfo.authorId == user_id,
                 ),
             ))).one_or_none()
         if not db_service:
@@ -319,7 +320,7 @@ class MCPServiceManager:
 
         # 为每个激活的用户取消激活
         for activated_user in activated_users:
-            await MCPServiceManager.deactive_mcpservice(user_sub=activated_user.userSub, mcp_id=data.mcp_id)
+            await MCPServiceManager.deactive_mcpservice(user_id=activated_user.userId, mcp_id=data.mcp_id)
 
         mcp_config = MCPServerConfig(
             name=data.name,
@@ -329,7 +330,7 @@ class MCPServiceManager:
                 data.mcp_id: data.config[data.mcp_id],
             },
             mcpType=data.mcp_type,
-            author=user_sub,
+            author=user_id,
         )
         async with postgres.session() as session:
             await session.merge(MCPInfo(
@@ -338,7 +339,7 @@ class MCPServiceManager:
                 overview=mcp_config.overview,
                 description=mcp_config.description,
                 mcpType=mcp_config.mcpType,
-                author=mcp_config.author or "",
+                authorId=mcp_config.author or "",
             ))
             await session.commit()
         await MCPLoader.save_one(mcp_id=data.mcp_id, config=mcp_config)
@@ -366,15 +367,16 @@ class MCPServiceManager:
 
     @staticmethod
     async def active_mcpservice(
-            user_sub: str,
+            user_id: str,
             mcp_id: str,
             mcp_env: dict[str, Any] | None = None,
     ) -> None:
         """
         激活MCP服务
 
-        :param user_sub: str: 用户ID
+        :param user_id: str: 用户ID
         :param mcp_id: str: MCP服务ID
+        :param mcp_env: dict[str, Any] | None: MCP服务环境变量
         :return: 无
         """
         if mcp_env is None:
@@ -390,29 +392,29 @@ class MCPServiceManager:
                 raise RuntimeError(err)
             await session.merge(MCPActivated(
                 mcpId=mcp_info.id,
-                userSub=user_sub,
+                userId=user_id,
             ))
             await session.commit()
-            await MCPLoader.user_active_template(user_sub, mcp_id, mcp_env)
+            await MCPLoader.user_active_template(user_id, mcp_id, mcp_env)
 
 
     @staticmethod
     async def deactive_mcpservice(
-            user_sub: str,
+            user_id: str,
             mcp_id: str,
     ) -> None:
         """
         取消激活MCP服务
 
-        :param user_sub: str: 用户ID
+        :param user_id: str: 用户ID
         :param mcp_id: str: MCP服务ID
         :return: 无
         """
         try:
-            await mcp_pool.stop(mcp_id=mcp_id, user_sub=user_sub)
+            await mcp_pool.stop(mcp_id=mcp_id, user_id=user_id)
         except KeyError:
             logger.warning("[MCPServiceManager] MCP服务无进程")
-        await MCPLoader.user_deactive_template(user_sub, mcp_id)
+        await MCPLoader.user_deactive_template(user_id, mcp_id)
 
 
     @staticmethod
@@ -455,11 +457,11 @@ class MCPServiceManager:
 
 
     @staticmethod
-    async def is_user_actived(user_sub: str, mcp_id: str) -> bool:
+    async def is_user_actived(user_id: str, mcp_id: str) -> bool:
         """
         判断用户是否激活MCP
 
-        :param user_sub: str: 用户ID
+        :param user_id: str: 用户ID
         :param mcp_id: str: MCP服务ID
         :return: 是否激活
         """
@@ -467,7 +469,7 @@ class MCPServiceManager:
             mcp_info = (await session.scalars(select(MCPActivated).where(
                 and_(
                     MCPActivated.mcpId == mcp_id,
-                    MCPActivated.userSub == user_sub,
+                    MCPActivated.userId == user_id,
                 ),
             ))).one_or_none()
             return bool(mcp_info)
@@ -486,11 +488,11 @@ class MCPServiceManager:
 
 
     @staticmethod
-    async def install_mcpservice(user_sub: str, service_id: str, *, install: bool) -> None:
+    async def install_mcpservice(user_id: str, service_id: str, *, install: bool) -> None:
         """
         安装或卸载MCP服务
 
-        :param user_sub: str: 用户ID
+        :param user_id: str: 用户ID
         :param service_id: str: MCP服务ID
         :param install: bool: 是否安装
         :return: 无
@@ -499,7 +501,7 @@ class MCPServiceManager:
             db_service = (await session.scalars(select(MCPInfo).where(
                 and_(
                     MCPInfo.id == service_id,
-                    MCPInfo.author == user_sub,
+                    MCPInfo.authorId == user_id,
                 ),
             ))).one_or_none()
 

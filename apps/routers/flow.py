@@ -40,7 +40,7 @@ router = APIRouter(
 )
 async def get_services(request: Request) -> NodeServiceListRsp:
     """获取用户可访问的节点元数据所在服务的信息"""
-    services = await FlowManager.get_service_by_user_id(request.state.user_sub)
+    services = await FlowManager.get_service_by_user(request.state.user_id)
     if services is None:
         return NodeServiceListRsp(
             code=status.HTTP_404_NOT_FOUND,
@@ -62,7 +62,7 @@ async def get_services(request: Request) -> NodeServiceListRsp:
 )
 async def get_flow(request: Request, appId: uuid.UUID, flowId: str) -> JSONResponse:  # noqa: N803
     """获取流拓扑结构"""
-    if not await AppCenterManager.validate_user_app_access(request.state.user_sub, appId):
+    if not await AppCenterManager.validate_user_app_access(request.state.user_id, appId):
         return JSONResponse(
             status_code=status.HTTP_403_FORBIDDEN,
             content=FlowStructureGetRsp(
@@ -105,7 +105,7 @@ async def put_flow(
     put_body: Annotated[PutFlowReq, Body()],
 ) -> JSONResponse:
     """修改流拓扑结构"""
-    if not await AppCenterManager.validate_app_belong_to_user(request.state.user_sub, appId):
+    if not await AppCenterManager.validate_app_belong_to_user(request.state.user_id, appId):
         return JSONResponse(
             status_code=status.HTTP_403_FORBIDDEN,
             content=FlowStructurePutRsp(
@@ -131,7 +131,7 @@ async def put_flow(
         )
 
     flow = await FlowManager.get_flow_by_app_and_flow_id(appId, flowId)
-    await AppCenterManager.update_app_publish_status(appId, request.state.user_sub)
+    await AppCenterManager.update_app_publish_status(appId, request.state.user_id)
     if flow is None:
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -157,7 +157,7 @@ async def put_flow(
 )
 async def delete_flow(request: Request, appId: uuid.UUID, flowId: str) -> JSONResponse:  # noqa: N803
     """删除流拓扑结构"""
-    if not await AppCenterManager.validate_app_belong_to_user(request.state.user_sub, appId):
+    if not await AppCenterManager.validate_app_belong_to_user(request.state.user_id, appId):
         return JSONResponse(
             status_code=status.HTTP_403_FORBIDDEN,
             content=FlowStructureDeleteRsp(

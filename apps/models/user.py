@@ -17,9 +17,9 @@ class User(Base):
     """用户表"""
 
     __tablename__ = "framework_user"
-    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True, init=False)
+    id: Mapped[str] = mapped_column(String(50), primary_key=True, index=True, init=False)
     """用户ID"""
-    userSub: Mapped[str] = mapped_column(String(50), index=True, unique=True, nullable=False)  # noqa: N815
+    userName: Mapped[str] = mapped_column(String(50), index=True, unique=True, nullable=False)  # noqa: N815
     """用户名"""
     lastLogin: Mapped[datetime] = mapped_column(  # noqa: N815
         DateTime(timezone=True), default_factory=lambda: datetime.now(tz=UTC), nullable=False,
@@ -52,8 +52,8 @@ class UserFavorite(Base):
     __tablename__ = "framework_user_favorite"
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True, init=False)
     """用户收藏ID"""
-    userSub: Mapped[str] = mapped_column(String(50), ForeignKey("framework_user.userSub"), index=True, nullable=False)  # noqa: N815
-    """用户名"""
+    userId: Mapped[str] = mapped_column(String(50), ForeignKey("framework_user.id"), index=True, nullable=False)  # noqa: N815
+    """用户ID"""
     favouriteType: Mapped[UserFavoriteType] = mapped_column(Enum(UserFavoriteType), nullable=False)  # noqa: N815
     """收藏类型"""
     itemId: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), index=True, nullable=False)  # noqa: N815
@@ -66,8 +66,8 @@ class UserAppUsage(Base):
     __tablename__ = "framework_user_app_usage"
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True, init=False)
     """用户应用使用情况ID"""
-    userSub: Mapped[str] = mapped_column(String(50), ForeignKey("framework_user.userSub"), unique=True, nullable=False)  # noqa: N815
-    """用户名"""
+    userId: Mapped[str] = mapped_column(String(50), ForeignKey("framework_user.id"), unique=True, nullable=False)  # noqa: N815
+    """用户ID"""
     appId: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("framework_app.id"), nullable=False)  # noqa: N815
     """应用ID"""
     usageCount: Mapped[int] = mapped_column(Integer, default=0, nullable=False)  # noqa: N815
@@ -84,8 +84,8 @@ class UserTag(Base):
     __tablename__ = "framework_user_tag"
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True, init=False)
     """用户标签ID"""
-    userSub: Mapped[str] = mapped_column(String(50), ForeignKey("framework_user.userSub"), unique=True, nullable=False)  # noqa: N815
-    """用户名"""
+    userId: Mapped[str] = mapped_column(String(50), ForeignKey("framework_user.id"), unique=True, nullable=False)  # noqa: N815
+    """用户ID"""
     tag: Mapped[int] = mapped_column(BigInteger, ForeignKey("framework_tag.id"), nullable=False)
     """标签ID"""
     count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)

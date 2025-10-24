@@ -7,7 +7,7 @@ import pytest
 
 from apps.common.queue import MessageQueue
 from apps.schemas.enum_var import EventType
-from apps.schemas.message import HeartbeatData, MessageBase, MessageFlow, MessageMetadata
+from apps.schemas.message import HeartbeatData, MessageBase, MessageExecutor, MessageMetadata
 from apps.schemas.task import Task
 
 

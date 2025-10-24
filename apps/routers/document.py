@@ -39,7 +39,7 @@ async def document_upload(
     documents: list[UploadFile],
 ) -> JSONResponse:
     """POST /document/{conversation_id}: 上传文档到指定对话"""
-    result = await DocumentManager.storage_docs(request.state.user_sub, conversation_id, documents)
+    result = await DocumentManager.storage_docs(request.state.user_id, conversation_id, documents)
     await KnowledgeBaseService.send_file_to_rag(request.state.session_id, result)
 
     # 返回所有Framework已知的文档
@@ -71,7 +71,7 @@ async def get_document_list(
 ) -> JSONResponse:
     """GET /document/{conversation_id}: 获取特定对话的文档列表"""
     # 判断Conversation有权访问
-    if not await ConversationManager.verify_conversation_access(request.state.user_sub, conversation_id):
+    if not await ConversationManager.verify_conversation_access(request.state.user_id, conversation_id):
         return JSONResponse(
             status_code=status.HTTP_403_FORBIDDEN,
             content=ResponseData(
@@ -143,7 +143,7 @@ async def delete_single_document(
 ) -> JSONResponse:
     """DELETE /document/{document_id}: 删除单个文件"""
     # 在Framework侧删除
-    result = await DocumentManager.delete_document(request.state.user_sub, [document_id])
+    result = await DocumentManager.delete_document(request.state.user_id, [document_id])
     if not result:
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

@@ -24,7 +24,6 @@ class LLMManager:
         """
         通过ID获取大模型
 
-        :param user_sub: 用户ID
         :param llm_id: 大模型ID
         :return: 大模型对象
         """

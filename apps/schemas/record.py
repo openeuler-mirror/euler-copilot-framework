@@ -16,7 +16,7 @@ class RecordDocument(BaseModel):
     id: str = Field(alias="_id", default="")
     order: int = Field(default=0, description="文档顺序")
     abstract: str = Field(default="", description="文档摘要")
-    user_sub: None = None
+    user_id: None = None
     author: str = Field(default="", description="文档作者")
     associated: Literal["question", "answer"]
 
@@ -102,7 +102,7 @@ class FlowHistory(BaseModel):
 class Record(RecordData):
     """问答，用于保存在MongoDB中"""
 
-    user_sub: str
+    user_id: str
     key: dict[str, Any] = {}
     task_id: uuid.UUID | None = Field(default=None, description="任务ID")
     content: str = Field(default="", description="Record内容，已加密")
