@@ -6,9 +6,9 @@ from fastapi.responses import JSONResponse
 
 from apps.dependency import verify_personal_token, verify_session
 from apps.schemas.request_data import UserUpdateRequest
-from apps.schemas.response_data import ResponseData, UserGetMsp, UserGetRsp
+from apps.schemas.response_data import ResponseData
 from apps.schemas.tag import UserTagListResponse
-from apps.schemas.user import UserInfo
+from apps.schemas.user import UserListItem, UserListMsg, UserListRsp
 from apps.services.user import UserManager
 from apps.services.user_tag import UserTagManager
 
@@ -21,9 +21,9 @@ router = APIRouter(
 
 @router.post("", response_model=ResponseData)
 async def update_user_info(request: Request, data: UserUpdateRequest) -> JSONResponse:
-    """POST /auth/user: 更新当前用户信息"""
+    """POST /api/user: 更新当前用户信息"""
     # 更新用户信息
-    await UserManager.update_user(request.state.user_sub, data)
+    await UserManager.update_user(request.state.user_sub, data.model_dump(exclude_unset=True, exclude_none=True))
 
     return JSONResponse(
         status_code=status.HTTP_200_OK,
@@ -31,7 +31,18 @@ async def update_user_info(request: Request, data: UserUpdateRequest) -> JSONRes
     )
 
 
+# TODO
 @router.get("")
+async def get_user_info(request: Request) -> JSONResponse:
+    """GET /api/user/info: 获取当前用户信息"""
+    user = await UserManager.get_user(request.state.user_sub)
+    return JSONResponse(
+        status_code=status.HTTP_200_OK,
+        content=ResponseData(code=status.HTTP_200_OK, message="success", result=user),
+    )
+
+
+@router.get("/list")
 async def list_user(
     request: Request, page_size: int = 10, page_num: int = 1,
 ) -> JSONResponse:
@@ -41,7 +52,7 @@ async def list_user(
     for user in user_list:
         if user.userSub == request.state.user_sub:
             continue
-        info = UserInfo(
+        info = UserListItem(
             userName=user.userSub,
             userSub=user.userSub,
         )
@@ -49,10 +60,10 @@ async def list_user(
 
     return JSONResponse(
         status_code=status.HTTP_200_OK,
-        content=UserGetRsp(
+        content=UserListRsp(
             code=status.HTTP_200_OK,
             message="用户数据详细信息获取成功",
-            result=UserGetMsp(userInfoList=user_info_list, total=total),
+            result=UserListMsg(userInfoList=user_info_list, total=total),
         ).model_dump(exclude_none=True, by_alias=True),
     )
 
@@ -66,7 +77,7 @@ async def get_user_tag(
 ) -> JSONResponse:
     """GET /user/tag?topk=5: 获取用户标签"""
     try:
-        tags = await UserTagManager.get_user_domain_by_user_sub_and_topk(request.state.user_sub, topk)
+        tags = await UserTagManager.get_user_domain_by_user_and_topk(request.state.user_sub, topk)
     except ValueError as e:
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

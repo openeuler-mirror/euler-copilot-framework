@@ -10,14 +10,10 @@ from fastapi import APIRouter, Body, Depends, Request, status
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 
-from apps.common.config import config
 from apps.common.oidc import oidc_provider
 from apps.dependency import verify_personal_token, verify_session
 from apps.schemas.personal_token import PostPersonalTokenMsg, PostPersonalTokenRsp
-from apps.schemas.request_data import UserUpdateRequest
 from apps.schemas.response_data import (
-    AuthUserMsg,
-    AuthUserRsp,
     OidcRedirectMsg,
     OidcRedirectRsp,
     ResponseData,
@@ -81,7 +77,9 @@ async def oidc_login(request: Request, code: str) -> HTMLResponse:
             status_code=status.HTTP_403_FORBIDDEN,
         )
     # 更新用户信息
-    await UserManager.update_user(user_sub, UserUpdateRequest(lastLogin=datetime.now(UTC)))
+    await UserManager.update_user(user_sub, {
+        "lastLogin": datetime.now(UTC),
+    })
     # 创建会话
     current_session = await SessionManager.create_session(user_sub, user_host)
     return _templates.TemplateResponse(
@@ -141,35 +139,6 @@ async def oidc_logout(token: Annotated[str, Body()]) -> JSONResponse:
             code=status.HTTP_200_OK,
             message="success",
             result={},
-        ).model_dump(exclude_none=True, by_alias=True),
-    )
-
-
-@router.get("/user", response_model=AuthUserRsp)
-async def userinfo(request: Request) -> JSONResponse:
-    """GET /auth/user: 获取当前用户信息"""
-    user = await UserManager.get_user(user_sub=request.state.user_sub)
-    if not user:
-        return JSONResponse(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            content=ResponseData(
-                code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                message="Get UserInfo failed.",
-                result={},
-            ).model_dump(exclude_none=True, by_alias=True),
-        )
-    is_admin = user.userSub in config.login.admin_user
-    return JSONResponse(
-        status_code=status.HTTP_200_OK,
-        content=AuthUserRsp(
-            code=status.HTTP_200_OK,
-            message="success",
-            result=AuthUserMsg(
-                user_sub=request.state.user_sub,
-                revision=user.isActive,
-                is_admin=is_admin,
-                auto_execute=user.autoExecute or False,
-            ),
         ).model_dump(exclude_none=True, by_alias=True),
     )
 

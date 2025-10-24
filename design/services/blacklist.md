@@ -26,7 +26,7 @@ erDiagram
     Record ||--|| User : "属于用户"
 
     Blacklist {
-        bigint id PK "主键ID"
+        int id PK "主键ID"
         uuid recordId FK "问答对ID"
         text question "黑名单问题"
         text answer "固定回答"
@@ -38,14 +38,14 @@ erDiagram
 
     Record {
         uuid id PK "问答对ID"
-        string userSub FK "用户标识"
+        int userId FK "用户标识"
         text content "加密内容"
         text key "加密密钥"
     }
 
     User {
-        bigint id PK "用户ID"
-        string userSub UK "用户标识"
+        int id PK "用户ID"
+        int userId UK "用户标识"
         int credit "信用分"
         boolean isWhitelisted "白名单标识"
     }
@@ -112,7 +112,7 @@ sequenceDiagram
     participant DB as 数据库
 
     Admin->>Router: POST /api/blacklist/user
-    Router->>Manager: change_blacklisted_users(user_sub, credit_diff)
+    Router->>Manager: change_blacklisted_users(user_id, credit_diff)
 
     Manager->>DB: 查询用户信息
     DB-->>Manager: 返回用户数据
@@ -150,10 +150,10 @@ sequenceDiagram
 1. **get_blacklisted_users(limit, offset)**: 分页获取所有信用分小于等于0的
    黑名单用户标识列表。
 
-2. **check_blacklisted_users(user_sub)**: 检测指定用户是否被拉黑。
+2. **check_blacklisted_users(user_id)**: 检测指定用户是否被拉黑。
    同时检查信用分和白名单状态,白名单用户即使信用分为0也不会被拦截。
 
-3. **change_blacklisted_users(user_sub, credit_diff, credit_limit)**:
+3. **change_blacklisted_users(user_id, credit_diff, credit_limit)**:
    修改用户信用分。传入负值用于封禁用户,传入正值用于解禁用户。
    系统会自动计算新信用分并确保其在有效范围内。
 
@@ -260,7 +260,7 @@ sequenceDiagram
 
 #### 举报管理主要方法
 
-1. **change_abuse_report(user_sub, record_id, reason_type, reason)**:
+1. **change_abuse_report(user_id, record_id, reason_type, reason)**:
    用户提交举报。验证问答对归属关系,解密内容后创建待审核黑名单记录,
    记录举报类型和原因。
 
@@ -300,10 +300,10 @@ X-Personal-Token: <personal_token>
   "code": 200,
   "message": "ok",
   "result": {
-    "user_subs": [
-      "user-sub-123",
-      "user-sub-456",
-      "user-sub-789"
+    "userName": [
+      "user-123",
+      "user-456",
+      "user-789"
     ]
   }
 }
@@ -320,7 +320,7 @@ Authorization: Bearer <session_token>
 X-Personal-Token: <personal_token>
 
 {
-  "user_sub": "user-sub-123",
+  "userName": "user-123",
   "is_ban": 1
 }
 ```
@@ -329,7 +329,7 @@ X-Personal-Token: <personal_token>
 
 ```json
 {
-  "user_sub": "user-sub-123",
+  "userName": "user-123",
   "is_ban": 0
 }
 ```
@@ -683,7 +683,7 @@ sequenceDiagram
 
 | 错误场景 | HTTP状态码 | 错误信息 | 处理建议 |
 |---------|-----------|---------|---------|
-| 用户不存在 | 500 | Change user blacklist error. | 检查user_sub是否正确 |
+| 用户不存在 | 500 | Change user blacklist error. | 检查userId是否正确 |
 | 黑名单记录不存在 | 500 | Modify question blacklist error. | 检查黑名单ID是否有效 |
 | 举报记录不合法 | 500 | Report abuse complaint error. | 确认问答对ID正确且属于当前用户 |
 | 待审核问题不存在 | 500 | Audit abuse question error. | 检查record_id是否有效且为待审核状态 |

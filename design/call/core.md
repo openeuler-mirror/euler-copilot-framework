@@ -108,7 +108,7 @@ DataBase提供了动态Schema填充能力，允许子类在运行时通过overri
 - `task_id`: executor.task.metadata.id
 - `executor_id`: executor.task.state.executorId
 - `session_id`: executor.task.runtime.sessionId
-- `user_sub`: executor.task.metadata.userSub
+- `user_id`: executor.task.metadata.userId
 - `app_id`: executor.task.state.appId
 - `conversation_id`: executor.task.metadata.conversationId
 - `question`: executor.question

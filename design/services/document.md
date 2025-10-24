@@ -29,7 +29,7 @@ Document 模块负责处理文档上传、存储、检索和删除等核心功�
 ```python
 {
     "id": "uuid",
-    "userSub": "string",          # 用户标识
+    "userId": "string",          # 用户标识
     "name": "string",             # 文件名
     "extension": "string",        # MIME 类型
     "size": "float",              # 文件大小 (KB)
@@ -508,11 +508,11 @@ sequenceDiagram
 
     User->>API: POST /api/document/:conv_id
     API->>Auth: verify_session()
-    Auth-->>API: ✓ user_sub
+    Auth-->>API: ✓ user_id
     API->>Auth: verify_personal_token()
     Auth-->>API: ✓ session_id
 
-    API->>DM: storage_docs(user_sub, conv_id, files)
+    API->>DM: storage_docs(user_id, conv_id, files)
 
     loop 每个文件
         DM->>DM: 检测 MIME 类型
@@ -545,7 +545,7 @@ sequenceDiagram
 
     User->>API: GET /api/document/:conv_id?used=true&unused=true
 
-    API->>CM: verify_conversation_access(user_sub, conv_id)
+    API->>CM: verify_conversation_access(user_id, conv_id)
     CM->>DB: SELECT Conversation
     DB-->>CM: Conversation 数据
     CM-->>API: ✓ 有权限
@@ -600,7 +600,7 @@ sequenceDiagram
 
     User->>API: DELETE /api/document/:doc_id
 
-    API->>DM: delete_document(user_sub, [doc_id])
+    API->>DM: delete_document(user_id, [doc_id])
 
     DM->>DB: SELECT Document (验证所有权)
     DB-->>DM: Document 数据
@@ -642,7 +642,7 @@ sequenceDiagram
 
     User->>Chat: 发送消息引用文档
 
-    Chat->>DM: change_doc_status(user_sub, conv_id)
+    Chat->>DM: change_doc_status(user_id, conv_id)
 
     DM->>DB: SELECT Conversation (验证权限)
     DB-->>DM: Conversation 数据
@@ -659,7 +659,7 @@ sequenceDiagram
 
     Note over Chat: 继续处理对话<br/>生成回答
 
-    Chat->>DM: save_answer_doc(user_sub, record_id, doc_infos)
+    Chat->>DM: save_answer_doc(user_id, record_id, doc_infos)
 
     DM->>DB: SELECT Record (验证)
     DB-->>DM: Record 数据
@@ -731,7 +731,7 @@ erDiagram
 
     Document {
         uuid id PK
-        string userSub
+        int userId
         string name
         string extension
         float size
@@ -750,7 +750,7 @@ erDiagram
 
     Conversation {
         uuid id PK
-        string userSub
+        int userId
         string title
         datetime createdAt
     }
@@ -758,7 +758,7 @@ erDiagram
     Record {
         uuid id PK
         uuid conversationId FK
-        string userSub
+        int userId
         string content
         datetime createdAt
     }

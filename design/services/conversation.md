@@ -49,7 +49,7 @@ erDiagram
 
     Conversation {
         uuid id PK
-        string userSub FK
+        int userId FK
         uuid appId FK
         string title
         boolean isTemporary
@@ -57,7 +57,7 @@ erDiagram
     }
 
     UserAppUsage {
-        string userSub FK
+        int userId FK
         uuid appId FK
         int usageCount
         datetime lastUsed
@@ -90,8 +90,8 @@ sequenceDiagram
     C->>R: GET /api/conversation
     R->>Auth: 验证会话和令牌
     Auth-->>R: 验证通过
-    R->>CM: get_conversation_by_user_sub(user_sub)
-    CM->>DB: SELECT * FROM Conversation WHERE userSub=?
+    R->>CM: get_conversation_by_user_id(user_id)
+    CM->>DB: SELECT * FROM Conversation WHERE userId=?
     DB-->>CM: 返回对话列表
     CM-->>R: 返回Conversation对象列表
 
@@ -116,7 +116,7 @@ sequenceDiagram
 
 ```mermaid
 flowchart TD
-    Start([开始创建对话]) --> Input[接收参数: title, user_sub, app_id, debug]
+    Start([开始创建对话]) --> Input[接收参数: title, user_id, app_id, debug]
     Input --> CreateObj[创建Conversation对象]
     CreateObj --> SaveDB{保存到数据库}
     SaveDB -->|失败| Error[记录错误日志]
@@ -162,15 +162,15 @@ sequenceDiagram
     C->>R: POST /api/conversation?conversationId=xxx
     Note over C,R: Body: {title: "新标题"}
 
-    R->>CM: get_conversation_by_conversation_id(user_sub, conversation_id)
-    CM->>DB: SELECT * FROM Conversation WHERE id=? AND userSub=?
+    R->>CM: get_conversation_by_conversation_id(user_id, conversation_id)
+    CM->>DB: SELECT * FROM Conversation WHERE id=? AND userId=?
     DB-->>CM: 返回对话对象
     CM-->>R: 返回Conversation
 
     alt 对话不存在或权限不足
         R-->>C: 400 Bad Request
     else 对话存在
-        R->>CM: update_conversation_by_conversation_id(user_sub, id, data)
+        R->>CM: update_conversation_by_conversation_id(user_id, id, data)
         CM->>DB: UPDATE Conversation SET title=? WHERE id=?
         DB-->>CM: 更新成功
         CM-->>R: 返回True
@@ -205,8 +205,8 @@ sequenceDiagram
     Note over C,R: Body: {conversation_list: [id1, id2, ...]}
 
     loop 遍历每个conversation_id
-        R->>CM: delete_conversation_by_conversation_id(user_sub, id)
-        CM->>DB: SELECT * FROM Conversation WHERE id=? AND userSub=?
+        R->>CM: delete_conversation_by_conversation_id(user_id, id)
+        CM->>DB: SELECT * FROM Conversation WHERE id=? AND userId=?
         DB-->>CM: 返回对话对象
 
         alt 对话存在
@@ -218,7 +218,7 @@ sequenceDiagram
 
         CM-->>R: 删除完成
 
-        R->>DM: delete_document_by_conversation_id(user_sub, id)
+        R->>DM: delete_document_by_conversation_id(user_id, id)
         DM-->>R: 文档删除完成
     end
 
@@ -238,9 +238,9 @@ sequenceDiagram
 
 ```mermaid
 flowchart TD
-    Start([开始验证]) --> Input[输入: user_sub, conversation_id]
+    Start([开始验证]) --> Input[输入: user_id, conversation_id]
     Input --> Query[查询数据库]
-    Query --> SQL["SELECT COUNT(id) FROM Conversation<br/>WHERE id=? AND userSub=?"]
+    Query --> SQL["SELECT COUNT(id) FROM Conversation<br/>WHERE id=? AND userId=?"]
     SQL --> GetResult[获取查询结果]
     GetResult --> CheckCount{count > 0?}
     CheckCount -->|是| ReturnTrue[返回 True]
@@ -342,25 +342,25 @@ flowchart TD
 
 | 方法名 | 功能描述 | 参数 | 返回值 |
 |-------|---------|------|--------|
-| `get_conversation_by_user_sub` | 获取用户的对话列表 | `user_sub: str` | `list[Conversation]` |
-| `get_conversation_by_conversation_id` | 通过ID获取对话 | `user_sub: str, conversation_id: UUID` | `Conversation \| None` |
-| `verify_conversation_access` | 验证对话访问权限 | `user_sub: str, conversation_id: UUID` | `bool` |
-| `add_conversation_by_user_sub` | 创建新对话 | `title: str, user_sub: str, app_id: UUID, debug: bool` | `Conversation \| None` |
-| `update_conversation_by_conversation_id` | 更新对话信息 | `user_sub: str, conversation_id: UUID, data: dict` | `bool` |
-| `delete_conversation_by_conversation_id` | 删除指定对话 | `user_sub: str, conversation_id: UUID` | `None` |
-| `delete_conversation_by_user_sub` | 删除用户所有对话 | `user_sub: str` | `None` |
-| `verify_conversation_id` | 验证对话ID有效性 | `user_sub: str, conversation_id: UUID` | `bool` |
+| `get_conversation_by_user_id` | 获取用户的对话列表 | `user_id: str` | `list[Conversation]` |
+| `get_conversation_by_conversation_id` | 通过ID获取对话 | `user_id: str, conversation_id: UUID` | `Conversation \| None` |
+| `verify_conversation_access` | 验证对话访问权限 | `user_id: str, conversation_id: UUID` | `bool` |
+| `add_conversation_by_user_id` | 创建新对话 | `title: str, user_id: str, app_id: UUID, debug: bool` | `Conversation \| None` |
+| `update_conversation_by_conversation_id` | 更新对话信息 | `user_id: str, conversation_id: UUID, data: dict` | `bool` |
+| `delete_conversation_by_conversation_id` | 删除指定对话 | `user_id: str, conversation_id: UUID` | `None` |
+| `delete_conversation_by_user_id` | 删除用户所有对话 | `user_id: str` | `None` |
+| `verify_conversation_id` | 验证对话ID有效性 | `user_id: str, conversation_id: UUID` | `bool` |
 
 ### 5.2 方法调用关系
 
 ```mermaid
 graph LR
-    API[API Router] --> Get[get_conversation_by_user_sub]
+    API[API Router] --> Get[get_conversation_by_user_id]
     API --> GetById[get_conversation_by_conversation_id]
-    API --> Add[add_conversation_by_user_sub]
+    API --> Add[add_conversation_by_user_id]
     API --> Update[update_conversation_by_conversation_id]
     API --> Delete[delete_conversation_by_conversation_id]
-    API --> DeleteUser[delete_conversation_by_user_sub]
+    API --> DeleteUser[delete_conversation_by_user_id]
     API --> Verify[verify_conversation_access]
     API --> VerifyId[verify_conversation_id]
 
@@ -378,12 +378,12 @@ graph LR
 
 ### 6.1 权限控制
 
-所有操作都基于 `user_sub` 进行权限验证，确保用户只能访问自己的对话：
+所有操作都基于 `user_id` 进行权限验证，确保用户只能访问自己的对话：
 
 ```python
 and_(
     Conversation.id == conversation_id,
-    Conversation.userSub == user_sub,
+    Conversation.userId == user_id,
 )
 ```
 

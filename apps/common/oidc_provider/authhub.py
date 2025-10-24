@@ -92,6 +92,7 @@ class AuthhubOIDCProvider(OIDCProviderBase):
 
         return {
             "user_sub": result["data"],
+            "user_name": result["data"],
         }
 
     @classmethod
