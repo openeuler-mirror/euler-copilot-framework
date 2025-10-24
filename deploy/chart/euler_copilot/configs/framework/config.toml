@@ -13,24 +13,18 @@ data_dir = '/app/data'
 
 [login]
 provider = '{{ .Values.login.provider | default "authhub" }}'
-{{- if eq (.Values.login.provider | default "authhub") "authelia" }}
-{{- $eulerCopilotDomain := .Values.domain.euler_copilot | default "http://127.0.0.1:30080" }}
-{{- $autheliaDomain := .Values.domain.authelia }}
-{{- if not $autheliaDomain }}
+{{- if eq (.Values.login.provider | default "authhub") "openeuler" }}
+{{- $openeulerDomain := .Values.domain.openeuler }}
+{{- if not $openeulerDomain }}
+  {{- $eulerCopilotDomain := .Values.domain.euler_copilot | default "http://127.0.0.1:30080" }}
   {{- $baseHost := regexReplaceAll "^https?://|:[0-9]+$" $eulerCopilotDomain "" }}
   {{- $protocol := regexFind "^https?://" $eulerCopilotDomain }}
-  {{- $autheliaPort := .Values.ports.authelia | default 30091 | toString }}
-  {{- $autheliaDomain = printf "%s%s:%s" $protocol $baseHost $autheliaPort }}
+  {{- $openeulerPort := .Values.ports.openeuler | default 30082 | toString }}
+  {{- $openeulerDomain = printf "%s%s:%s" $protocol $baseHost $openeulerPort }}
 {{- end }}
 [login.settings]
-host = '{{ $autheliaDomain }}'
-client_id = '{{ .Values.login.authelia.client_id | default "euler-copilot" }}'
-client_secret = '{{ .Values.login.authelia.client_secret | default "your-client-secret-here" }}'
-redirect_uri = '{{ $eulerCopilotDomain }}/api/auth/login'
-authorization_endpoint = '{{ $autheliaDomain }}/api/oidc/authorization'
-token_endpoint = '{{ $autheliaDomain }}/api/oidc/token'
-userinfo_endpoint = '{{ $autheliaDomain }}/api/oidc/userinfo'
-scopes = 'openid profile email'
+host = '{{ $openeulerDomain }}'
+redirect_settings_url = '{{ $openeulerDomain }}/my/zh/settings'
 {{- else }}
 [login.settings]
 {{- $eulerCopilotDomain := .Values.domain.euler_copilot | default "http://127.0.0.1:30080" }}

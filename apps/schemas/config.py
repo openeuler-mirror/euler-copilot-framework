@@ -37,6 +37,7 @@ class OIDCConfig(BaseModel):
     login_api: str = Field(description="EulerCopilot登录API")
     app_id: str = Field(description="OIDC AppID")
     app_secret: str = Field(description="OIDC App Secret")
+    redirect_settings_url: str | None = Field(description="用户设置页面重定向URL", default=None)
 
 
 class AutheliaConfig(BaseModel):
@@ -48,6 +49,14 @@ class AutheliaConfig(BaseModel):
     redirect_uri: str = Field(description="重定向URI")
     enable_pkce: bool = Field(description="是否启用PKCE", default=True)
     pkce_challenge_method: str = Field(description="PKCE挑战方法", default="S256")
+    redirect_settings_url: str | None = Field(description="用户设置页面重定向URL", default=None)
+
+
+class OpenEulerConfig(BaseModel):
+    """OpenEuler认证配置"""
+
+    host: str = Field(description="OpenEuler服务路径")
+    redirect_settings_url: str | None = Field(description="用户设置页面重定向URL", default=None)
 
 
 class FixedUserConfig(BaseModel):
@@ -61,7 +70,7 @@ class LoginConfig(BaseModel):
 
     provider: Literal["authhub", "openeuler", "authelia", "disable"] = Field(
         description="OIDC Provider", default="authhub")
-    settings: OIDCConfig | AutheliaConfig | FixedUserConfig = Field(
+    settings: OIDCConfig | AutheliaConfig | OpenEulerConfig | FixedUserConfig = Field(
         description="OIDC 配置")
 
 
