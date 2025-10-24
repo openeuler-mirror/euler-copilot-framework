@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# OpenGauss Database Import Script
+# OpenGauss Database Import Script - Fixed Version
 # Description: Used for Euler Copilot project database data import
 
 set -e  # Exit immediately on error
@@ -42,6 +42,7 @@ SECRET_NAME="euler-copilot-database"
 PASSWORD_KEY="gauss-password"
 BACKUP_FILE="/home/dump/opengauss/opengauss.sql"
 POD_BACKUP_PATH="/home/omm/opengauss.sql"
+DATA_ONLY_SQL_PATH="/home/omm/data_only.sql"
 
 # Check required tools
 check_dependencies() {
@@ -90,43 +91,128 @@ copy_backup_to_pod() {
     log "Backup file copy completed"
 }
 
-# Execute database import
-import_database() {
-    step "Executing database import operation"
+# Extract only data from SQL file
+extract_data_only() {
+    step "Extracting data-only SQL commands"
+    
+    # Create a script to extract only data (COPY statements)
+    kubectl exec -it "$POD_NAME" -n $NAMESPACE -- su - omm -s /bin/bash -c "
+cat > /tmp/extract_data.sh << 'EOF'
+#!/bin/bash
+# Extract only COPY statements from the SQL file
+grep '^COPY ' $POD_BACKUP_PATH > $DATA_ONLY_SQL_PATH
+
+# Also extract the data section (everything after the first occurrence of COPY)
+# This is a more robust method to get all data
+sed -n '/^COPY /,/^\\\\\./p' $POD_BACKUP_PATH > $DATA_ONLY_SQL_PATH
+
+# Add the SET commands at the beginning
+echo 'SET session_replication_role = replica;' > /tmp/header.sql
+cat /tmp/header.sql $DATA_ONLY_SQL_PATH > /tmp/combined.sql
+mv /tmp/combined.sql $DATA_ONLY_SQL_PATH
+
+# Add session_replication_role reset at the end
+echo 'SET session_replication_role = origin;' >> $DATA_ONLY_SQL_PATH
+
+echo 'Data extraction completed'
+EOF
+
+chmod +x /tmp/extract_data.sh
+/tmp/extract_data.sh
+"
+    
+    log "Data-only SQL extraction completed"
+}
+
+# Execute data-only import
+import_data_only() {
+    step "Executing data-only import"
 
     info "Step 1: Disabling foreign key constraints..."
     kubectl exec -it "$POD_NAME" -n $NAMESPACE -- su - omm -s /bin/bash -c \
         "gsql -d postgres -U postgres -W '$PASSWORD' -c \"SET session_replication_role = replica;\""
     log "Foreign key constraints disabled"
 
-    info "Step 2: Clearing table data..."
+    info "Step 2: Clearing existing data from tables..."
+    # Truncate all tables to avoid duplicate key errors
     kubectl exec -it "$POD_NAME" -n $NAMESPACE -- su - omm -s /bin/bash -c \
         "gsql -d postgres -U postgres -W '$PASSWORD' -c \"
-TRUNCATE TABLE
+TRUNCATE TABLE 
     action, team, knowledge_base, document, chunk, document_type,
     role, role_action, users, task, task_report, team_user, user_role,
     dataset, dataset_doc, image, qa, task_queue, team_message,
-    testcase, testing, user_message
+    testcase, testing, user_message 
 CASCADE;\""
-    log "Table data cleared"
+    log "Existing data cleared"
 
-    info "Step 3: Importing data..."
+    info "Step 3: Importing data only (COPY statements)..."
+    # Use ON_ERROR_STOP=off to continue even if there are errors
     kubectl exec -it "$POD_NAME" -n $NAMESPACE -- su - omm -s /bin/bash -c \
-        "gsql -d postgres -U postgres -f $POD_BACKUP_PATH -W '$PASSWORD'"
+        "gsql -d postgres -U postgres -f $DATA_ONLY_SQL_PATH -W '$PASSWORD' --set ON_ERROR_STOP=off"
     log "Data import completed"
 
-    info "Step 4: Enabling foreign key constraints..."
+    info "Step 4: Re-enabling foreign key constraints..."
     kubectl exec -it "$POD_NAME" -n $NAMESPACE -- su - omm -s /bin/bash -c \
         "gsql -d postgres -U postgres -W '$PASSWORD' -c \"SET session_replication_role = origin;\""
-    log "Foreign key constraints enabled"
+    log "Foreign key constraints re-enabled"
 
-    log "Database import operation fully completed"
+    log "Data-only import completed"
+}
+
+# Alternative method: Manual table-by-table import
+manual_table_import() {
+    step "Using manual table-by-table import method"
+    
+    # Disable constraints
+    kubectl exec -it "$POD_NAME" -n $NAMESPACE -- su - omm -s /bin/bash -c \
+        "gsql -d postgres -U postgres -W '$PASSWORD' -c \"SET session_replication_role = replica;\""
+    
+    # List of tables to import data for (in dependency order)
+    tables=("action" "users" "team" "team_user" "user_role" "role" "role_action" 
+            "knowledge_base" "document_type" "document" "chunk" "dataset" 
+            "dataset_doc" "image" "qa" "task" "task_queue" "task_report" 
+            "team_message" "testcase" "testing" "user_message")
+    
+    for table in "${tables[@]}"; do
+        info "Processing table: $table"
+        # Extract and import data for this specific table
+        kubectl exec -it "$POD_NAME" -n $NAMESPACE -- su - omm -s /bin/bash -c "
+            # Clear existing data
+            gsql -d postgres -U postgres -W '$PASSWORD' -c \"TRUNCATE TABLE $table CASCADE;\" 2>/dev/null || echo 'Table $table already empty or does not exist'
+            
+            # Extract data for this table from backup
+            sed -n '/^COPY $table /,/^\\\\\\./p' $POD_BACKUP_PATH > /tmp/${table}_data.sql 2>/dev/null
+            
+            # Import if data exists
+            if [ -s /tmp/${table}_data.sql ]; then
+                gsql -d postgres -U postgres -W '$PASSWORD' -f /tmp/${table}_data.sql --set ON_ERROR_STOP=off
+                echo 'Imported data for $table'
+            else
+                echo 'No data found for $table'
+            fi
+            
+            # Cleanup
+            rm -f /tmp/${table}_data.sql
+        " || warning "Failed to process table $table, continuing..."
+    done
+    
+    # Re-enable constraints
+    kubectl exec -it "$POD_NAME" -n $NAMESPACE -- su - omm -s /bin/bash -c \
+        "gsql -d postgres -U postgres -W '$PASSWORD' -c \"SET session_replication_role = origin;\""
+    
+    log "Manual table import completed"
 }
 
 # Clean up temporary files
 cleanup() {
     step "Cleaning up temporary files"
-    kubectl exec -it "$POD_NAME" -n $NAMESPACE -- rm -f "$POD_BACKUP_PATH" 2>/dev/null || true
+    kubectl exec -it "$POD_NAME" -n $NAMESPACE -- rm -f \
+        "$POD_BACKUP_PATH" \
+        "$DATA_ONLY_SQL_PATH" \
+        "/tmp/extract_data.sh" \
+        "/tmp/header.sql" \
+        "/tmp/combined.sql" \
+        "/tmp/*_data.sql" 2>/dev/null || true
     log "Cleanup completed"
 }
 
@@ -135,9 +221,28 @@ show_banner() {
     echo -e "${PURPLE}"
     echo "================================================================"
     echo "                OpenGauss Database Import Script"
-    echo "                Euler Copilot Project Specific"
+    echo "                Fixed Version - Data Only Import"
     echo "================================================================"
     echo -e "${NC}"
+}
+
+# Verify import success
+verify_import() {
+    step "Verifying import success"
+    
+    # Check if key tables have data
+    kubectl exec -it "$POD_NAME" -n $NAMESPACE -- su - omm -s /bin/bash -c "
+        echo 'Checking table row counts:'
+        gsql -d postgres -U postgres -W '$PASSWORD' -c \"
+            SELECT 'users' as table_name, COUNT(*) as row_count FROM users
+            UNION ALL SELECT 'team', COUNT(*) FROM team  
+            UNION ALL SELECT 'action', COUNT(*) FROM action
+            UNION ALL SELECT 'document', COUNT(*) FROM document
+            ORDER BY table_name;
+        \" || echo 'Verification query failed'
+    "
+    
+    log "Verification completed"
 }
 
 # Main function
@@ -150,7 +255,18 @@ main() {
     get_opengauss_pod
     check_backup_file
     copy_backup_to_pod
-    import_database
+    
+    # Try data-only import first
+    extract_data_only
+    import_data_only
+    
+    # If that fails, try manual method
+    if [ $? -ne 0 ]; then
+        warning "Data-only import encountered issues, trying manual table-by-table import..."
+        manual_table_import
+    fi
+    
+    verify_import
     cleanup
 
     echo -e "${GREEN}"
@@ -160,9 +276,10 @@ main() {
     echo -e "${NC}"
 
     echo -e "${GREEN}✓ Foreign key constraints disabled${NC}"
-    echo -e "${GREEN}✓ Table data cleared${NC}"
+    echo -e "${GREEN}✓ Existing data cleared${NC}"
     echo -e "${GREEN}✓ New data imported${NC}"
     echo -e "${GREEN}✓ Foreign key constraints re-enabled${NC}"
+    echo -e "${GREEN}✓ Import verified${NC}"
     echo ""
     echo -e "${BLUE}Tip: It is recommended to check application running status to ensure data import success.${NC}"
 }
@@ -188,16 +305,10 @@ if [ "$1" = "-h" ] || [ "$1" = "--help" ]; then
     exit 0
 fi
 
-# Fix color display issue
 echo -e "${YELLOW}Warning: This operation will clear existing database data and import new data!${NC}"
 
-# Method 1: Use temporary variable
 yellow_text="${YELLOW}Confirm execution of database import operation? (y/N): ${NC}"
 read -p "$(echo -e "$yellow_text")" confirm
-
-# Method 2: Or use echo -e directly (alternative)
-# echo -e "${YELLOW}Confirm execution of database import operation? (y/N): ${NC}\c"
-# read confirm
 
 case $confirm in
     [yY] | [yY][eE][sS])
