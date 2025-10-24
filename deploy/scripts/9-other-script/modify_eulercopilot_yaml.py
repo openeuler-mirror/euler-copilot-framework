@@ -79,6 +79,12 @@ def main():
         yaml_processor = YAML()
         yaml_processor.preserve_quotes = True
         yaml_processor.indent(mapping=2, sequence=4, offset=2)
+        # 设置字符串的宽度限制，避免不必要的换行
+        yaml_processor.width = 4096
+        yaml_processor.map_indent = 2
+        yaml_processor.sequence_indent = 4
+        # 保持字符串为单行格式
+        yaml_processor.default_style = None
     else:
         yaml_processor = yaml  # 使用 PyYAML 模块
 

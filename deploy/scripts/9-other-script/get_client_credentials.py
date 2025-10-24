@@ -217,12 +217,17 @@ class AutheliaService(AuthServiceBase):
         alphabet = string.ascii_letters + string.digits
         return ''.join(secrets.choice(alphabet) for _ in range(64))
     
+    def generate_uuid(self) -> str:
+        """生成UUID格式的客户端ID"""
+        import uuid
+        return str(uuid.uuid4())
+    
     def get_or_create_client(self) -> Dict[str, str]:
         """获取或创建客户端凭证"""
         print(f"\n正在处理 authelia 客户端配置...")
         
-        # 生成客户端ID和密钥
-        client_id = self.client_name.lower().replace(' ', '-')
+        # 生成客户端ID和密钥（使用UUID格式）
+        client_id = self.generate_uuid()
         client_secret = self.generate_client_secret()
         
         # 创建客户端配置
@@ -269,8 +274,8 @@ class AutheliaService(AuthServiceBase):
             "client_secret": client_secret
         }
 
-def get_service_cluster_ip(namespace: str, service_name: str) -> str:
-    """获取Kubernetes服务的ClusterIP"""
+def get_service_nodeport_info(namespace: str, service_name: str) -> tuple:
+    """获取Kubernetes服务的NodePort信息，返回(host_ip, nodeport)"""
     cmd = ["kubectl", "get", "service", service_name, "-n", namespace, "-o", "json"]
     result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
@@ -287,12 +292,58 @@ def get_service_cluster_ip(namespace: str, service_name: str) -> str:
         sys.exit(1)
 
     service_info = json.loads(result.stdout.decode())
-    return service_info['spec'].get('clusterIP', 'No Cluster IP found')
+    
+    # 检查服务类型
+    service_type = service_info['spec'].get('type', 'ClusterIP')
+    if service_type != 'NodePort':
+        print(f"警告: 服务 {service_name} 不是 NodePort 类型，当前类型: {service_type}")
+        # 如果不是NodePort，返回ClusterIP作为fallback
+        cluster_ip = service_info['spec'].get('clusterIP', 'No Cluster IP found')
+        return cluster_ip, None
+    
+    # 获取NodePort
+    ports = service_info['spec'].get('ports', [])
+    if not ports:
+        print(f"错误: 服务 {service_name} 没有配置端口")
+        sys.exit(1)
+    
+    nodeport = ports[0].get('nodePort')
+    if not nodeport:
+        print(f"错误: 服务 {service_name} 没有配置 NodePort")
+        sys.exit(1)
+    
+    # 获取节点IP（使用当前主机IP）
+    try:
+        # 尝试获取当前主机的IP地址
+        import socket
+        hostname = socket.gethostname()
+        host_ip = socket.gethostbyname(hostname)
+        
+        # 如果获取到的是localhost，尝试其他方法
+        if host_ip.startswith('127.'):
+            # 尝试通过网络接口获取
+            hostname_result = subprocess.run(['hostname', '-I'], capture_output=True, text=True)
+            if hostname_result.returncode == 0:
+                ips = hostname_result.stdout.strip().split()
+                if ips:
+                    host_ip = ips[0]  # 使用第一个IP
+    except Exception:
+        host_ip = "127.0.0.1"  # fallback
+    
+    return host_ip, nodeport
+
+def get_service_cluster_ip(namespace: str, service_name: str) -> str:
+    """获取Kubernetes服务的ClusterIP（保留兼容性）"""
+    host_ip, nodeport = get_service_nodeport_info(namespace, service_name)
+    if nodeport is None:
+        return host_ip  # 返回ClusterIP
+    return host_ip
 
 def detect_auth_service() -> Tuple[str, str]:
     """检测已部署的鉴权服务"""
     services_to_check = [
         ("euler-copilot", "authhub-web-service", "authHub"),
+        ("euler-copilot", "authelia", "authelia"),
         ("authelia", "authelia-service", "authelia"),
         ("default", "authelia", "authelia")
     ]
@@ -365,12 +416,21 @@ def main():
     # 获取服务信息
     print(f"\n正在查询服务信息: [命名空间: {namespace}] [服务名: {service_name}]")
     
+    # 获取NodePort信息
+    host_ip, nodeport = get_service_nodeport_info(namespace, service_name)
+    
     if service_type.lower() == "authhub":
-        cluster_ip = get_service_cluster_ip(namespace, service_name)
-        service_url = f"http://{cluster_ip}:8000"
+        if nodeport:
+            service_url = f"http://{host_ip}:{nodeport}"
+        else:
+            # fallback to cluster IP for authhub
+            service_url = f"http://{host_ip}:8000"
     else:  # authelia
-        cluster_ip = get_service_cluster_ip(namespace, service_name)
-        service_url = f"http://{cluster_ip}:9091"
+        if nodeport:
+            service_url = f"https://{host_ip}:{nodeport}"
+        else:
+            # fallback to cluster IP for authelia
+            service_url = f"https://{host_ip}:9091"
     
     print(f"✓ 服务地址: {service_url}")
 
