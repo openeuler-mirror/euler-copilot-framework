@@ -154,7 +154,7 @@ try:
         'client_secret': '$client_secret',
         'public': False,
         'authorization_policy': '$auth_policy',
-        'token_endpoint_auth_method': 'client_secret_basic',
+        'token_endpoint_auth_method': 'client_secret_post',
         'require_pkce': True,  # 明确设置为 True
         'pkce_challenge_method': 'S256',
         'redirect_uris': ['$redirect_uri'],
