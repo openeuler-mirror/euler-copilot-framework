@@ -10,7 +10,7 @@ NC='\033[0m'
 
 # 脚本目录
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-CHART_DIR="$(dirname "$SCRIPT_DIR")/chart"
+CHART_DIR="$(dirname "$(dirname "$SCRIPT_DIR")")/chart"
 VALUES_FILE="$CHART_DIR/euler_copilot/values.yaml"
 
 # 生成UUID
