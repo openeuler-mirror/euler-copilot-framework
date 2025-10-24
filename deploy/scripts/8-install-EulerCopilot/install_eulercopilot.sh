@@ -18,6 +18,10 @@ client_secret=""
 eulercopilot_address=""
 auth_service_type=""
 auth_service_address=""
+auth_policy=""  # 新增：检测到的认证策略
+use_tls=""
+tls_cert_path=""
+tls_key_path=""
 
 SCRIPT_PATH="$(
   cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1
@@ -35,9 +39,15 @@ show_help() {
     echo -e "选项:"
     echo -e "  --help                   显示此帮助信息"
     echo -e "  --eulercopilot_address   指定EulerCopilot前端访问URL"
+    echo -e "  --enable-tls             启用TLS证书支持"
+    echo -e "  --tls-cert               指定TLS证书文件路径"
+    echo -e "  --tls-key                指定TLS私钥文件路径"
+    echo -e "  --generate-cert          为指定域名生成自签名证书"
     echo -e ""
     echo -e "示例:"
-    echo -e "  $0 --eulercopilot_address http://myhost:30080${NC}"
+    echo -e "  $0 --eulercopilot_address http://myhost:30080"
+    echo -e "  $0 --eulercopilot_address https://myhost:30443 --enable-tls --generate-cert myhost"
+    echo -e "  $0 --eulercopilot_address https://myhost:30443 --enable-tls --tls-cert /path/to/cert.crt --tls-key /path/to/key.key${NC}"
     echo -e ""
     echo -e "${YELLOW}注意: 鉴权服务将自动检测并提供选择${NC}"
     exit 0
@@ -59,6 +69,37 @@ parse_arguments() {
                     exit 1
                 fi
                 ;;
+            --enable-tls)
+                use_tls="true"
+                ;;
+            --tls-cert)
+                if [ -n "$2" ]; then
+                    tls_cert_path="$2"
+                    shift
+                else
+                    echo -e "${RED}错误: --tls-cert 需要提供证书文件路径${NC}" >&2
+                    exit 1
+                fi
+                ;;
+            --tls-key)
+                if [ -n "$2" ]; then
+                    tls_key_path="$2"
+                    shift
+                else
+                    echo -e "${RED}错误: --tls-key 需要提供私钥文件路径${NC}" >&2
+                    exit 1
+                fi
+                ;;
+            --generate-cert)
+                if [ -n "$2" ]; then
+                    generate_cert_domain="$2"
+                    use_tls="true"
+                    shift
+                else
+                    echo -e "${RED}错误: --generate-cert 需要提供域名${NC}" >&2
+                    exit 1
+                fi
+                ;;
             *)
                 echo -e "${RED}未知选项: $1${NC}" >&2
                 show_help
@@ -69,6 +110,143 @@ parse_arguments() {
     done
 }
 
+# TLS证书管理函数
+manage_tls_certificates() {
+    local tls_cert_manager="${DEPLOY_DIR}/scripts/9-other-script/tls_cert_manager.sh"
+    
+    # 检查TLS证书管理工具是否存在
+    if [ ! -f "$tls_cert_manager" ]; then
+        echo -e "${RED}错误: TLS证书管理工具不存在: $tls_cert_manager${NC}" >&2
+        exit 1
+    fi
+    
+    # 如果需要生成证书
+    if [ -n "$generate_cert_domain" ]; then
+        echo -e "${BLUE}为域名 '$generate_cert_domain' 生成自签名证书...${NC}"
+        if ! "$tls_cert_manager" --generate "$generate_cert_domain"; then
+            echo -e "${RED}错误: 生成自签名证书失败${NC}" >&2
+            exit 1
+        fi
+        
+        # 设置证书路径
+        local cert_name="${generate_cert_domain//[^a-zA-Z0-9]/_}"
+        local cert_dir="${DEPLOY_DIR}/scripts/9-other-script/certs/${cert_name}"
+        tls_cert_path="$cert_dir/tls.crt"
+        tls_key_path="$cert_dir/tls.key"
+        
+        echo -e "${GREEN}自签名证书生成完成${NC}"
+        echo -e "证书路径: $tls_cert_path"
+        echo -e "私钥路径: $tls_key_path"
+    fi
+    
+    # 验证证书文件
+    if [ "$use_tls" = "true" ]; then
+        if [ -z "$tls_cert_path" ] || [ -z "$tls_key_path" ]; then
+            echo -e "${RED}错误: 启用TLS但未提供证书文件路径${NC}" >&2
+            echo -e "${YELLOW}请使用 --tls-cert 和 --tls-key 指定证书文件，或使用 --generate-cert 生成自签名证书${NC}" >&2
+            exit 1
+        fi
+        
+        if [ ! -f "$tls_cert_path" ]; then
+            echo -e "${RED}错误: 证书文件不存在: $tls_cert_path${NC}" >&2
+            exit 1
+        fi
+        
+        if [ ! -f "$tls_key_path" ]; then
+            echo -e "${RED}错误: 私钥文件不存在: $tls_key_path${NC}" >&2
+            exit 1
+        fi
+        
+        # 验证证书
+        echo -e "${BLUE}验证TLS证书...${NC}"
+        if ! "$tls_cert_manager" --verify "$tls_cert_path"; then
+            echo -e "${RED}错误: 证书验证失败${NC}" >&2
+            exit 1
+        fi
+        
+        echo -e "${GREEN}TLS证书验证通过${NC}"
+    fi
+}
+
+# 检查authelia服务的HTTPS协议和TLS证书
+check_authelia_https_requirements() {
+    if [ "$auth_service_type" = "authelia" ]; then
+        echo -e "${BLUE}检查authelia鉴权服务的HTTPS要求...${NC}"
+        
+        # 检查鉴权服务地址是否使用HTTPS协议
+        if [[ ! "$auth_service_address" =~ ^https:// ]]; then
+            echo -e "${RED}错误: authelia鉴权服务必须使用HTTPS协议${NC}" >&2
+            echo -e "${YELLOW}当前地址: $auth_service_address${NC}" >&2
+            echo -e "${YELLOW}请确保authelia服务配置为HTTPS访问${NC}" >&2
+            exit 1
+        fi
+        
+        # 强制要求TLS证书
+        if [ "$use_tls" != "true" ]; then
+            echo -e "${YELLOW}警告: 检测到authelia鉴权服务，强制启用TLS证书支持${NC}"
+            use_tls="true"
+            
+            # 如果没有提供证书，提示用户选择
+            if [ -z "$tls_cert_path" ] && [ -z "$generate_cert_domain" ]; then
+                echo -e "${BLUE}authelia鉴权服务需要TLS证书，请选择：${NC}"
+                echo -e "1) 生成自签名证书"
+                echo -e "2) 使用已有证书"
+                
+                if [ -t 0 ]; then  # 交互式模式
+                    while true; do
+                        read -p "请选择 (1/2): " choice
+                        case "$choice" in
+                            1)
+                                # 从鉴权服务地址提取域名
+                                local domain=$(echo "$auth_service_address" | sed -E 's|https?://([^:/]+).*|\1|')
+                                generate_cert_domain="$domain"
+                                echo -e "${GREEN}将为域名 '$domain' 生成自签名证书${NC}"
+                                break
+                                ;;
+                            2)
+                                echo -e "${YELLOW}请重新运行脚本并使用 --tls-cert 和 --tls-key 参数指定证书文件${NC}"
+                                exit 1
+                                ;;
+                            *)
+                                echo -e "${RED}无效选择，请输入1或2${NC}"
+                                ;;
+                        esac
+                    done
+                else
+                    # 非交互式模式，自动生成证书
+                    local domain=$(echo "$auth_service_address" | sed -E 's|https?://([^:/]+).*|\1|')
+                    generate_cert_domain="$domain"
+                    echo -e "${GREEN}非交互式模式：将为域名 '$domain' 自动生成自签名证书${NC}"
+                fi
+            fi
+        fi
+        
+        echo -e "${GREEN}authelia HTTPS要求检查通过${NC}"
+    fi
+}
+
+# 创建TLS Secret
+create_tls_secret() {
+    if [ "$use_tls" = "true" ] && [ -n "$tls_cert_path" ] && [ -n "$tls_key_path" ]; then
+        echo -e "${BLUE}创建TLS Secret...${NC}"
+        
+        local secret_name="eulercopilot-tls-secret"
+        
+        # 删除现有Secret（如果存在）
+        kubectl delete secret "$secret_name" -n "$NAMESPACE" 2>/dev/null || true
+        
+        # 创建TLS Secret
+        if kubectl create secret tls "$secret_name" \
+            --cert="$tls_cert_path" \
+            --key="$tls_key_path" \
+            -n "$NAMESPACE"; then
+            echo -e "${GREEN}TLS Secret创建成功: $secret_name${NC}"
+        else
+            echo -e "${RED}错误: TLS Secret创建失败${NC}" >&2
+            exit 1
+        fi
+    fi
+}
 
 # 安装成功信息显示函数
 show_success_message() {
@@ -83,6 +261,12 @@ show_success_message() {
     echo -e "EulerCopilot UI:    ${eulercopilot_address}"
     if [ -n "$auth_service_address" ]; then
         echo -e "鉴权服务 (${auth_service_type}): ${auth_service_address}"
+    fi
+    if [ "$use_tls" = "true" ]; then
+        echo -e "TLS证书:        已启用"
+        if [ -n "$tls_cert_path" ]; then
+            echo -e "证书文件:       ${tls_cert_path}"
+        fi
     fi
 
     echo -e "\n${YELLOW}系统信息：${NC}"
@@ -172,11 +356,173 @@ get_address_input() {
     echo -e "${YELLOW}注意: 鉴权服务将自动检测并提供选择${NC}"
 }
 
+# 检测已部署的Authelia认证策略
+detect_authelia_policy() {
+    echo -e "${BLUE}检测已部署的Authelia认证策略...${NC}"
+    
+    # 首先尝试从配置文件读取
+    local config_file="/tmp/authelia_auth_policy.conf"
+    if [ -f "$config_file" ]; then
+        source "$config_file"
+        if [ -n "$AUTH_POLICY" ]; then
+            auth_policy="$AUTH_POLICY"
+            echo -e "${GREEN}从配置文件检测到认证策略：$auth_policy${NC}"
+            return 0
+        fi
+    fi
+    
+    # 如果配置文件不存在，从Kubernetes ConfigMap检测
+    if kubectl get configmap authelia-config -n euler-copilot &>/dev/null; then
+        local default_policy
+        default_policy=$(kubectl get configmap authelia-config -n euler-copilot -o yaml | grep -E "default_policy:" | awk '{print $2}' | head -1)
+        
+        if [ -n "$default_policy" ]; then
+            auth_policy="$default_policy"
+            echo -e "${GREEN}从ConfigMap检测到认证策略：$auth_policy${NC}"
+        else
+            # 默认策略
+            auth_policy="one_factor"
+            echo -e "${YELLOW}无法检测到认证策略，使用默认值：$auth_policy${NC}"
+        fi
+    else
+        auth_policy="one_factor"
+        echo -e "${YELLOW}未找到Authelia配置，使用默认认证策略：$auth_policy${NC}"
+    fi
+    
+    return 0
+}
+
+# 选择兼容的认证策略
+select_compatible_policy() {
+    echo -e "${BLUE}根据已部署的Authelia服务选择兼容的认证策略...${NC}"
+    
+    if [ "$auth_policy" = "two_factor" ]; then
+        echo -e "${YELLOW}检测到Authelia配置为双因子认证${NC}"
+        echo -e "${BLUE}请选择EulerCopilot的认证策略：${NC}"
+        echo "1) two_factor   - 双因子认证（与Authelia保持一致）"
+        echo "2) one_factor   - 单因子认证（降级使用）"
+        echo -n "请输入选项编号（1-2）: "
+        
+        local choice
+        read -r choice
+        
+        case $choice in
+            1)
+                echo -e "${GREEN}选择双因子认证，与Authelia保持一致${NC}"
+                ;;
+            2)
+                auth_policy="one_factor"
+                echo -e "${YELLOW}选择单因子认证，将使用降级模式${NC}"
+                ;;
+            *)
+                echo -e "${YELLOW}无效选择，默认使用双因子认证${NC}"
+                ;;
+        esac
+    else
+        echo -e "${GREEN}检测到Authelia配置为单因子认证，EulerCopilot将使用相同策略${NC}"
+    fi
+    
+    return 0
+}
+
+# 使用新的authelia客户端管理工具创建OIDC客户端
+create_authelia_client() {
+    local client_manager="${DEPLOY_DIR}/scripts/9-other-script/authelia_client_manager.sh"
+    
+    echo -e "${BLUE}正在使用authelia客户端管理工具创建OIDC客户端...${NC}"
+    
+    # 检查客户端管理工具是否存在
+    if [ ! -f "$client_manager" ]; then
+        echo -e "${RED}错误：未找到authelia客户端管理工具: $client_manager${NC}"
+        return 1
+    fi
+    
+    # 确保脚本可执行
+    chmod +x "$client_manager"
+    
+    # 检测并选择认证策略
+    detect_authelia_policy
+    select_compatible_policy
+    
+    # 生成客户端名称和重定向URI
+    local client_name="EulerCopilot"
+    local redirect_uri="${eulercopilot_address}/api/auth/login"
+    
+    echo -e "${BLUE}创建OIDC客户端配置：${NC}"
+    echo -e "  客户端名称: $client_name"
+    echo -e "  重定向URI: $redirect_uri"
+    
+    # 创建OIDC客户端
+    local temp_output
+    temp_output=$(mktemp)
+    
+    if "$client_manager" create "$client_name" "$redirect_uri" "" "" "$auth_policy" > "$temp_output" 2>&1; then
+        # 从输出中提取客户端信息
+        local output_content
+        output_content=$(cat "$temp_output")
+        
+        # 提取client_id和client_secret
+        client_id=$(echo "$output_content" | grep -oP 'Client ID:\s*\K[^\s]+' | head -1)
+        client_secret=$(echo "$output_content" | grep -oP 'Client Secret:\s*\K[^\s]+' | head -1)
+        
+        rm -f "$temp_output"
+        
+        if [ -n "$client_id" ] && [ -n "$client_secret" ]; then
+            echo -e "${GREEN}✓ OIDC客户端创建成功：${NC}"
+            echo -e "  Client ID: $client_id"
+            echo -e "  Client Secret: $client_secret"
+            
+            # 设置服务信息
+            auth_service_type="authelia"
+            local host_ip
+            host_ip=$(hostname -I | awk '{print $1}')
+            auth_service_address="https://${host_ip}:30091"
+            
+            return 0
+        else
+            echo -e "${RED}错误：无法从客户端管理工具输出中提取客户端信息${NC}"
+            echo -e "${YELLOW}脚本输出：${NC}"
+            cat "$temp_output"
+            rm -f "$temp_output"
+            return 1
+        fi
+    else
+        echo -e "${RED}错误：authelia客户端管理工具执行失败${NC}"
+        cat "$temp_output"
+        rm -f "$temp_output"
+        return 1
+    fi
+}
+
 get_client_info_auto() {
     # 获取用户输入地址
     get_address_input
     
     echo -e "${BLUE}正在自动获取认证信息...${NC}"
+    
+    # 检测鉴权服务类型
+    echo -e "${BLUE}检测已部署的鉴权服务...${NC}"
+    
+    # 检查authelia服务
+    if kubectl get service authelia -n euler-copilot &>/dev/null; then
+        echo -e "${GREEN}检测到authelia服务，使用authelia_automation.sh创建客户端${NC}"
+        auth_service_type="authelia"
+        
+        # 获取authelia服务地址
+        local host_ip
+        host_ip=$(hostname -I | awk '{print $1}')
+        auth_service_address="https://${host_ip}:30091"
+        
+        # 使用authelia_automation.sh创建客户端
+        if create_authelia_client; then
+            return 0
+        else
+            echo -e "${YELLOW}authelia客户端创建失败，尝试使用备用方法...${NC}"
+        fi
+    fi
+    
+    # 如果authelia方法失败，回退到原来的方法
+    echo -e "${BLUE}使用通用脚本获取认证信息...${NC}"
     
     # 创建临时文件
     local temp_file
@@ -339,13 +685,40 @@ modify_yaml() {
     # 添加其他必填参数
     set_args+=(
         "--set" "globals.arch=$arch"
-        "--set" "login.client.id=${client_id}"
-        "--set" "login.client.secret=${client_secret}"
         "--set" "domain.euler_copilot=${eulercopilot_address}"
     )
     
-    # 注意：authhub和authelia的域名将通过Helm模板自动构建
-    # 不再需要在这里手动设置domain.authhub和domain.authelia
+    # 根据检测到的认证服务类型设置相应的配置
+    if [ "$auth_service_type" = "authelia" ]; then
+        set_args+=(
+            "--set" "login.provider=authelia"
+            "--set" "login.authelia.url=${auth_service_address}"
+            "--set" "login.authelia.client_id=${client_id}"
+            "--set" "login.authelia.client_secret=${client_secret}"
+            "--set" "domain.authelia=${auth_service_address}"
+        )
+        echo -e "${GREEN}配置认证服务类型: authelia (${auth_service_address})${NC}" >&2
+    elif [ "$auth_service_type" = "authhub" ] || [ "$auth_service_type" = "authHub" ]; then
+        set_args+=(
+            "--set" "login.provider=authhub"
+            "--set" "login.client.id=${client_id}"
+            "--set" "login.client.secret=${client_secret}"
+            "--set" "domain.authhub=${auth_service_address}"
+        )
+        echo -e "${GREEN}配置认证服务类型: ${auth_service_type} (${auth_service_address})${NC}" >&2
+    else
+        echo -e "${RED}错误：未知的认证服务类型: ${auth_service_type}${NC}" >&2
+        exit 1
+    fi
+
+    # 如果启用了TLS，添加TLS相关配置
+    if [ "$use_tls" = "true" ]; then
+        set_args+=(
+            "--set" "tls.enabled=true"
+            "--set" "tls.secretName=eulercopilot-tls-secret"
+        )
+        echo -e "${GREEN}已启用TLS配置${NC}" >&2
+    fi
 
     # 如果不需要保留模型配置，则添加模型相关的参数
     if [[ "$preserve_models" != [Yy]* ]]; then
@@ -462,6 +835,12 @@ main() {
         get_client_info_manual
     fi
     
+    # 检查authelia的HTTPS要求
+    check_authelia_https_requirements
+    
+    # 管理TLS证书
+    manage_tls_certificates
+    
     check_directories
     
     # 交互式提示优化
@@ -482,6 +861,9 @@ main() {
     
     echo -e "${BLUE}开始修改YAML配置...${NC}"
     modify_yaml "$host" "$preserve_models"
+    
+    # 创建TLS Secret（在Helm安装之前）
+    create_tls_secret
     
     echo -e "${BLUE}开始Helm安装...${NC}"
     execute_helm_install

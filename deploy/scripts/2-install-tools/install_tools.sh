@@ -123,6 +123,20 @@ install_basic_tools() {
         PyYAML ruamel.yaml requests; then
         echo -e "[ERROR] Failed to install PyYAML ruamel.yaml and requests via pip" >&2
     fi
+
+    # 安装 argon2 工具（用于认证服务密码哈希）
+    echo "Installing argon2 password hashing tool..."
+    if ! command -v argon2 &> /dev/null; then
+        if yum install -y argon2; then
+            echo -e "\033[32m[Success] argon2 安装完成\033[0m"
+        else
+            echo -e "\033[31m[Error] argon2 安装失败\033[0m"
+            return 1
+        fi
+    else
+        echo -e "\033[32m[Info] argon2 已经安装，跳过安装步骤\033[0m"
+    fi
+
     echo "All basic tools have been installed."
     return 0
 }

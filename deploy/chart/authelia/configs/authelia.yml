@@ -72,9 +72,7 @@ identity_providers:
     hmac_secret: {{ .Values.authelia.config.identity_providers.oidc.hmac_secret | quote }}
     enable_client_debug_messages: {{ .Values.authelia.config.identity_providers.oidc.enable_client_debug_messages | default false }}
     
-    # 发行者配置 - 必须与实际访问地址匹配
-    issuer_certificate_chain: {{ .Values.authelia.config.identity_providers.oidc.issuer_certificate_chain | quote }}
-    issuer_private_key: {{ .Values.authelia.config.identity_providers.oidc.issuer_private_key | quote }}
+    # 发行者配置 - 使用新的JWKS配置
     
     # JWKS 密钥配置
     jwks:
@@ -97,7 +95,7 @@ identity_providers:
         
         # 认证方法配置
         token_endpoint_auth_method: {{ .token_endpoint_auth_method | default "client_secret_basic" | quote }}
-        require_pkce: {{ .require_pkce | default false }}
+        require_pkce: {{ .require_pkce | default true }}
         pkce_challenge_method: {{ .pkce_challenge_method | default "S256" | quote }}
         
         # 重定向URI配置
@@ -137,9 +135,5 @@ identity_providers:
         consent_mode: {{ .consent_mode | default "implicit" | quote }}
         pre_configured_consent_duration: {{ .pre_configured_consent_duration | default "1y" | quote }}
         
-        # 会话配置
-        access_token_lifespan: {{ .access_token_lifespan | default "1h" | quote }}
-        authorize_code_lifespan: {{ .authorize_code_lifespan | default "1m" | quote }}
-        id_token_lifespan: {{ .id_token_lifespan | default "1h" | quote }}
-        refresh_token_lifespan: {{ .refresh_token_lifespan | default "90m" | quote }}
+        # 注意：access_token_lifespan等配置项在新版本中已移除
       {{- end }}
