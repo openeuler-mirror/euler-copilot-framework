@@ -27,7 +27,7 @@ class HeartbeatData(BaseModel):
     )
 
 
-class MessageFlow(BaseModel):
+class MessageExecutor(BaseModel):
     """消息中有关Flow信息的部分"""
 
     app_id: uuid.UUID | None = Field(description="插件ID", alias="appId", default=None)
@@ -48,22 +48,6 @@ class MessageMetadata(RecordMetadata):
     feature: None = None
 
 
-class InitContentFeature(BaseModel):
-    """init消息的feature"""
-
-    max_tokens: int = Field(description="最大生成token数", ge=0, alias="maxTokens")
-    context_num: int = Field(description="上下文消息数量", le=10, ge=0, alias="contextNum")
-    enable_feedback: bool = Field(description="是否启用反馈", alias="enableFeedback")
-    enable_regenerate: bool = Field(description="是否启用重新生成", alias="enableRegenerate")
-
-
-class InitContent(BaseModel):
-    """init消息的content"""
-
-    feature: InitContentFeature = Field(description="问答功能开关")
-    created_at: float = Field(description="创建时间", alias="createdAt")
-
-
 class TextAddContent(BaseModel):
     """text.add消息的content"""
 
@@ -75,6 +59,6 @@ class MessageBase(HeartbeatData):
 
     id: uuid.UUID = Field(min_length=36, max_length=36)
     conversation_id: uuid.UUID | None = Field(min_length=36, max_length=36, alias="conversationId", default=None)
-    flow: MessageFlow | None = None
+    flow: MessageExecutor | None = None
     content: Any | None = Field(default=None, description="消息内容")
     metadata: MessageMetadata

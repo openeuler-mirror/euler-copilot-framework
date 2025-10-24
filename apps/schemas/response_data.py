@@ -17,7 +17,6 @@ from .parameters import (
     Type,
 )
 from .record import RecordData
-from .user import UserInfo
 
 
 class ResponseData(BaseModel):
@@ -26,21 +25,6 @@ class ResponseData(BaseModel):
     code: int
     message: str
     result: Any
-
-
-class AuthUserMsg(BaseModel):
-    """GET /api/auth/user Result数据结构"""
-
-    user_sub: str
-    revision: bool
-    is_admin: bool
-    auto_execute: bool
-
-
-class AuthUserRsp(ResponseData):
-    """GET /api/auth/user 返回数据结构"""
-
-    result: AuthUserMsg
 
 
 class HealthCheckRsp(BaseModel):
@@ -85,19 +69,6 @@ class ListTeamKnowledgeRsp(ResponseData):
     """GET /api/knowledge 返回数据结构"""
 
     result: ListTeamKnowledgeMsg
-
-
-class UserGetMsp(BaseModel):
-    """GET /api/user result"""
-
-    total: int = Field(default=0)
-    user_info_list: list[UserInfo] = Field(alias="userInfoList", default=[])
-
-
-class UserGetRsp(ResponseData):
-    """GET /api/user 返回数据结构"""
-
-    result: UserGetMsp
 
 
 class LLMProviderInfo(BaseModel):
