@@ -24,8 +24,8 @@ class Session(Base):
     """会话"""
 
     __tablename__ = "framework_session"
-    userSub: Mapped[str] = mapped_column(String(50), ForeignKey("framework_user.userSub"), nullable=False)  # noqa: N815
-    """用户名"""
+    userId: Mapped[str] = mapped_column(String(50), ForeignKey("framework_user.id"), nullable=False)  # noqa: N815
+    """用户ID"""
     ip: Mapped[str | None] = mapped_column(String(255), nullable=True, default=None)
     """IP地址"""
     pluginId: Mapped[str | None] = mapped_column(String(255), nullable=True, default=None)  # noqa: N815
@@ -51,7 +51,7 @@ class SessionActivity(Base):
     __tablename__ = "framework_session_activity"
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True, init=False)
     """主键ID"""
-    userSub: Mapped[str] = mapped_column(String(50), ForeignKey("framework_user.userSub"), nullable=False)  # noqa: N815
-    """用户名"""
+    userId: Mapped[str] = mapped_column(String(50), ForeignKey("framework_user.id"), nullable=False)  # noqa: N815
+    """用户ID"""
     timestamp: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     """时间戳"""

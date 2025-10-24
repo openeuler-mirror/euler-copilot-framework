@@ -54,7 +54,7 @@ class MCPAgentExecutor(BaseExecutor):
         # 初始化MCP Host相关对象
         self._planner = MCPPlanner(self.task, self.llm)
         self._host = MCPHost(self.task, self.llm)
-        user = await UserManager.get_user(self.task.metadata.userSub)
+        user = await UserManager.get_user(self.task.metadata.userId)
         if not user:
             err = "[MCPAgentExecutor] 用户不存在: %s"
             _logger.error(err)
@@ -75,10 +75,10 @@ class MCPAgentExecutor(BaseExecutor):
 
         mcp_ids = app_metadata.mcp_service
         for mcp_id in mcp_ids:
-            if not await MCPServiceManager.is_user_actived(self.task.metadata.userSub, mcp_id):
+            if not await MCPServiceManager.is_user_actived(self.task.metadata.userId, mcp_id):
                 _logger.warning(
                     "[MCPAgentExecutor] 用户 %s 未启用MCP %s",
-                    self.task.metadata.userSub,
+                    self.task.metadata.userId,
                     mcp_id,
                 )
                 continue
@@ -231,7 +231,7 @@ class MCPAgentExecutor(BaseExecutor):
         self._validate_current_tool()
         current_tool = cast("MCPTools", self._current_tool)
 
-        mcp_client = await mcp_pool.get(current_tool.mcpId, self.task.metadata.userSub)
+        mcp_client = await mcp_pool.get(current_tool.mcpId, self.task.metadata.userId)
         if not mcp_client:
             _logger.exception("[MCPAgentExecutor] MCP客户端不存在: %s", current_tool.mcpId)
             state.stepStatus = StepStatus.ERROR
@@ -247,7 +247,7 @@ class MCPAgentExecutor(BaseExecutor):
         except anyio.ClosedResourceError as e:
             _logger.exception("[MCPAgentExecutor] MCP客户端连接已关闭: %s", current_tool.mcpId)
             # 停止当前用户MCP进程
-            await mcp_pool.stop(current_tool.mcpId, self.task.metadata.userSub)
+            await mcp_pool.stop(current_tool.mcpId, self.task.metadata.userId)
             state.stepStatus = StepStatus.ERROR
             state.errorMessage = {
                 "err_msg": str(e),
@@ -435,7 +435,7 @@ class MCPAgentExecutor(BaseExecutor):
             if self._retry_times >= AGENT_MAX_RETRY_TIMES:
                 await self.error_handle_after_step()
             else:
-                user_info = await UserManager.get_user(self.task.metadata.userSub)
+                user_info = await UserManager.get_user(self.task.metadata.userId)
                 if not user_info:
                     err = "[MCPAgentExecutor] 用户不存在"
                     _logger.error(err)
@@ -539,6 +539,6 @@ class MCPAgentExecutor(BaseExecutor):
         finally:
             for mcp_service in self._mcp_list:
                 try:
-                    await mcp_pool.stop(mcp_service.id, self.task.metadata.userSub)
+                    await mcp_pool.stop(mcp_service.id, self.task.metadata.userId)
                 except Exception:
                     _logger.exception("[MCPAgentExecutor] 停止MCP客户端时发生错误")

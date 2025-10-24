@@ -16,8 +16,8 @@ class Record(Base):
     """问答对"""
 
     __tablename__ = "framework_record"
-    userSub: Mapped[str] = mapped_column(String(50), ForeignKey("framework_user.userSub"), nullable=False)  # noqa: N815
-    """用户名"""
+    userId: Mapped[str] = mapped_column(String(50), ForeignKey("framework_user.id"), nullable=False)  # noqa: N815
+    """用户ID"""
     conversationId: Mapped[uuid.UUID] = mapped_column(    # noqa: N815
         UUID(as_uuid=True), ForeignKey("framework_conversation.id"), nullable=False,
     )

@@ -18,8 +18,8 @@ class Conversation(Base):
     """对话"""
 
     __tablename__ = "framework_conversation"
-    userSub: Mapped[str] = mapped_column(String(50), ForeignKey("framework_user.userSub"), nullable=False)  # noqa: N815
-    """用户名"""
+    userId: Mapped[str] = mapped_column(String(50), ForeignKey("framework_user.id"), nullable=False)  # noqa: N815
+    """用户ID"""
     appId: Mapped[uuid.UUID | None] = mapped_column(  # noqa: N815
         UUID(as_uuid=True), ForeignKey("framework_app.id"), nullable=True,
     )

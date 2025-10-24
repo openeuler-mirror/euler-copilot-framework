@@ -39,7 +39,7 @@ class MCPClient:
         self.status = MCPStatus.UNINITIALIZED
 
     async def _main_loop(
-        self, user_sub: str | None, mcp_id: str, config: MCPServerSSEConfig | MCPServerStdioConfig,
+        self, user_id: str | None, mcp_id: str, config: MCPServerSSEConfig | MCPServerStdioConfig,
     ) -> None:
         """
         创建MCP Client
@@ -47,7 +47,7 @@ class MCPClient:
         抽象函数；作用为在初始化的时候使用MCP SDK创建Client
         由于目前MCP的实现中Client和Session是1:1的关系，所以直接创建了 :class:`~mcp.ClientSession`
 
-        :param str user_sub: 用户ID
+        :param str user_id: 用户ID
         :param str mcp_id: MCP ID
         :param MCPServerSSEConfig | MCPServerStdioConfig config: MCP配置
         :return: MCP ClientSession
@@ -61,8 +61,8 @@ class MCPClient:
                 headers=env,
             )
         elif isinstance(config, MCPServerStdioConfig):
-            if user_sub:
-                cwd = MCP_PATH / "users" / user_sub / mcp_id / "project"
+            if user_id:
+                cwd = MCP_PATH / "users" / user_id / mcp_id / "project"
             else:
                 cwd = MCP_PATH / "template" / mcp_id / "project"
             await cwd.mkdir(parents=True, exist_ok=True)
@@ -108,13 +108,13 @@ class MCPClient:
             logger.exception("[MCPClient] MCP %s：关闭失败", mcp_id)
 
 
-    async def init(self, user_sub: str | None, mcp_id: str, config: MCPServerSSEConfig | MCPServerStdioConfig) -> None:
+    async def init(self, user_id: str | None, mcp_id: str, config: MCPServerSSEConfig | MCPServerStdioConfig) -> None:
         """
         初始化 MCP Client类
 
         初始化MCP Client，并创建MCP Server进程和ClientSession
 
-        :param str user_sub: 用户ID
+        :param str user_id: 用户ID
         :param str mcp_id: MCP ID
         :param MCPServerSSEConfig | MCPServerStdioConfig config: MCP配置
         :return: None
@@ -126,7 +126,7 @@ class MCPClient:
         self.stop_sign = asyncio.Event()
 
         # 创建协程
-        self.task = asyncio.create_task(self._main_loop(user_sub, mcp_id, config))
+        self.task = asyncio.create_task(self._main_loop(user_id, mcp_id, config))
 
         # 等待初始化完成
         done, pending = await asyncio.wait(

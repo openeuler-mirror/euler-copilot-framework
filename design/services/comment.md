@@ -30,7 +30,7 @@ erDiagram
     COMMENT {
         bigint      id                "主键ID (Primary Key, Auto Increment)"
         uuid        recordId          "问答对ID (Foreign Key → framework_record.id, Indexed)"
-        string      userSub           "用户标识 (Foreign Key → framework_user.userSub, max 50)"
+        int         userId            "用户标识 (Foreign Key → framework_user.id)"
         CommentType commentType       "评论类型 (Not Null)"
         string[]    feedbackType      "投诉类别列表 (Not Null)"
         string      feedbackLink      "投诉相关链接 (Not Null, max 1000)"
@@ -57,7 +57,7 @@ erDiagram
 提供评论的核心业务逻辑操作：
 
 - **query_comment(record_id: str)**: 根据问答ID查询评论
-- **update_comment(record_id: str, data: RecordComment, user_sub: str)**: 创建或更新评论
+- **update_comment(record_id: str, data: RecordComment, user_id: str)**: 创建或更新评论
 
 ### 3. 路由层 (routers/comment.py)
 
@@ -151,7 +151,7 @@ flowchart TD
     CreateDTO --> QueryDB{查询数据库<br/>记录是否存在?}
 
     QueryDB -->|存在| Update[更新现有记录<br/>commentType<br/>feedbackType<br/>feedbackLink<br/>feedbackContent]
-    QueryDB -->|不存在| Create[创建新记录<br/>包含recordId<br/>userSub等字段]
+    QueryDB -->|不存在| Create[创建新记录<br/>包含recordId<br/>userId等字段]
 
     Update --> Commit[提交事务]
     Create --> Merge[Merge操作]
@@ -198,7 +198,7 @@ sequenceDiagram
     Router->>Router: 解析dislike_reason<br/>分号分隔 → list
     Router->>Router: 创建RecordComment对象<br/>设置feedback_time
 
-    Router->>Manager: update_comment(record_id, data, user_sub)
+    Router->>Manager: update_comment(record_id, data, user_id)
     activate Manager
 
     Manager->>Session: 创建异步会话
@@ -299,7 +299,7 @@ classDiagram
     class Comment {
         +int id
         +UUID recordId
-        +str userSub
+        +int userId
         +CommentType commentType
         +list~str~ feedbackType
         +str feedbackLink
@@ -333,7 +333,7 @@ classDiagram
 
     class CommentManager {
         +query_comment(record_id)$ RecordComment|None
-        +update_comment(record_id, data, user_sub)$ None
+        +update_comment(record_id, data, user_id)$ None
     }
 
     class Router {
@@ -357,7 +357,7 @@ erDiagram
     FRAMEWORK_RECORD ||--o| FRAMEWORK_COMMENT : has
 
     FRAMEWORK_USER {
-        string userSub PK
+        int userId PK
         string userName
         datetime createdAt
     }
@@ -365,7 +365,7 @@ erDiagram
     FRAMEWORK_RECORD {
         uuid id PK
         uuid conversationId
-        string userSub FK
+        int userId FK
         string content
         datetime createdAt
     }
@@ -373,7 +373,7 @@ erDiagram
     FRAMEWORK_COMMENT {
         bigint id PK
         uuid recordId FK
-        string userSub FK
+        int userId FK
         enum commentType
         array feedbackType
         string feedbackLink
@@ -531,7 +531,7 @@ curl -X POST "http://localhost:8000/api/comment" \
 ### 2. 数据完整性
 
 - recordId 外键约束 → framework_record.id
-- userSub 外键约束 → framework_user.userSub
+- userId 外键约束 → framework_user.userId
 - 索引优化：recordId 字段建立索引提高查询性能
 
 ### 3. 字段别名映射
@@ -574,7 +574,7 @@ curl -X POST "http://localhost:8000/api/comment" \
 ### 1. 认证与授权
 
 - **双重认证**：Session + Personal Token
-- **用户隔离**：userSub 关联确保数据隔离
+- **用户隔离**：userId 关联确保数据隔离
 - **依赖注入**：在路由层统一进行身份验证
 
 ### 2. 输入验证

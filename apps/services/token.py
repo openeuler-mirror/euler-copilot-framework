@@ -32,8 +32,8 @@ class TokenManager:
         expire_time: int,
     ) -> str:
         """获取插件Token"""
-        user_sub = await SessionManager.get_user(session_id=session_id)
-        if not user_sub:
+        user_id = await SessionManager.get_user(session_id=session_id)
+        if not user_id:
             err = "用户不存在！"
             raise ValueError(err)
 
@@ -43,7 +43,7 @@ class TokenManager:
                     select(Session)
                     .where(
                         and_(
-                            Session.userSub == user_sub,
+                            Session.userId == user_id,
                             Session.sessionType == SessionType.ACCESS_TOKEN,
                             Session.pluginId == str(plugin_id),
                         ),
@@ -57,7 +57,7 @@ class TokenManager:
             token = await TokenManager.generate_plugin_token(
                 plugin_id,
                 session_id,
-                user_sub,
+                user_id,
                 access_token_url,
                 expire_time,
             )
@@ -66,7 +66,7 @@ class TokenManager:
                 raise RuntimeError(err)
 
             await session.merge(Session(
-                userSub=user_sub,
+                userId=user_id,
                 sessionType=SessionType.PLUGIN_TOKEN,
                 pluginId=str(plugin_id),
                 token=token,
@@ -89,7 +89,7 @@ class TokenManager:
     async def generate_plugin_token(
         plugin_name: uuid.UUID,
         session_id: str,
-        user_sub: str,
+        user_id: str,
         access_token_url: str,
         expire_time: int,
     ) -> str | None:
@@ -100,7 +100,7 @@ class TokenManager:
                     select(Session)
                     .where(
                         and_(
-                            Session.userSub == user_sub,
+                            Session.userId == user_id,
                             Session.sessionType == SessionType.ACCESS_TOKEN,
                         ),
                     ),
@@ -117,7 +117,7 @@ class TokenManager:
                         select(Session)
                         .where(
                             and_(
-                                Session.userSub == user_sub,
+                                Session.userId == user_id,
                                 Session.sessionType == SessionType.REFRESH_TOKEN,
                             ),
                         ),
@@ -138,7 +138,7 @@ class TokenManager:
                 # 更新OIDC token
                 async with postgres.session() as session:
                     await session.merge(Session(
-                        userSub=user_sub,
+                        userId=user_id,
                         sessionType=SessionType.ACCESS_TOKEN,
                         token=oidc_access_token,
                         validUntil=datetime.now(UTC) + timedelta(minutes=OIDC_ACCESS_TOKEN_EXPIRE_TIME),
@@ -165,7 +165,7 @@ class TokenManager:
             # 保存插件token
             async with postgres.session() as session:
                 await session.merge(Session(
-                    userSub=user_sub,
+                    userId=user_id,
                     sessionType=SessionType.ACCESS_TOKEN,
                     pluginId=str(plugin_name),
                     token=ret["access_token"],
@@ -177,14 +177,14 @@ class TokenManager:
 
 
     @staticmethod
-    async def delete_plugin_token(user_sub: str) -> None:
+    async def delete_plugin_token(user_id: str) -> None:
         """删除插件token（使用PostgreSQL）"""
         async with postgres.session() as session:
             token_data = (await session.scalars(
                 select(Session)
                 .where(
                     and_(
-                        Session.userSub == user_sub,
+                        Session.userId == user_id,
                         Session.sessionType.in_([
                             SessionType.ACCESS_TOKEN,
                             SessionType.REFRESH_TOKEN,

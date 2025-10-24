@@ -13,7 +13,7 @@ from apps.schemas.enum_var import EventType
 from apps.schemas.message import (
     HeartbeatData,
     MessageBase,
-    MessageFlow,
+    MessageExecutor,
     MessageMetadata,
 )
 from apps.schemas.task import TaskData
@@ -54,7 +54,7 @@ class MessageQueue:
 
         if task.state:
             # 如果使用了Flow
-            flow = MessageFlow(
+            flow = MessageExecutor(
                 appId=task.state.appId,
                 executorId=task.state.executorId,
                 executorName=task.state.executorName,

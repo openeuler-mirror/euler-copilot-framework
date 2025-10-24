@@ -2,13 +2,13 @@
 """用户 Manager"""
 
 import logging
+import secrets
 from datetime import UTC, datetime
 
 from sqlalchemy import func, select
 
 from apps.common.postgres import postgres
 from apps.models import User
-from apps.schemas.request_data import UserUpdateRequest
 
 from .conversation import ConversationManager
 
@@ -34,37 +34,34 @@ class UserManager:
 
 
     @staticmethod
-    async def get_user(user_sub: str) -> User | None:
+    async def get_user(user_id: str) -> User | None:
         """
-        根据用户sub获取用户信息
+        根据用户ID获取用户信息
 
-        :param user_sub: 用户sub
+        :param user_id: 用户ID
         :return: 用户信息
         """
         async with postgres.session() as session:
             return (
-                await session.scalars(select(User).where(User.userSub == user_sub))
+                await session.scalars(select(User).where(User.id == user_id))
             ).one_or_none()
 
 
     @staticmethod
-    async def update_user(user_sub: str, data: UserUpdateRequest) -> None:
+    async def update_user(user_id: str, data: dict) -> None:
         """
         根据用户sub更新用户信息
 
-        :param user_sub: 用户sub
+        :param user_id: 用户ID
         :param data: 更新数据
         """
-        # 将 Pydantic 模型转换为字典
-        update_data = data.model_dump(exclude_unset=True, exclude_none=True)
-
         async with postgres.session() as session:
             user = (
-                await session.scalars(select(User).where(User.userSub == user_sub))
+                await session.scalars(select(User).where(User.id == user_id))
             ).one_or_none()
             if not user:
                 user = User(
-                    userSub=user_sub,
+                    userName=data.get("userName", f"用户-{secrets.token_hex(8)}"),
                     isActive=True,
                     isWhitelisted=False,
                     credit=0,
@@ -74,7 +71,7 @@ class UserManager:
                 return
 
             # 更新指定字段
-            for key, value in update_data.items():
+            for key, value in data.items():
                 if hasattr(user, key) and value is not None:
                     setattr(user, key, value)
 
@@ -82,15 +79,15 @@ class UserManager:
             await session.commit()
 
     @staticmethod
-    async def delete_user(user_sub: str) -> None:
+    async def delete_user(user_id: str) -> None:
         """
         根据用户sub删除用户信息
 
-        :param user_sub: 用户sub
+        :param user_id: 用户ID
         """
         async with postgres.session() as session:
             user = (
-                await session.scalars(select(User).where(User.userSub == user_sub))
+                await session.scalars(select(User).where(User.id == user_id))
             ).one_or_none()
             if not user:
                 return
@@ -98,4 +95,4 @@ class UserManager:
             await session.delete(user)
             await session.commit()
 
-            await ConversationManager.delete_conversation_by_user_sub(user_sub)
+            await ConversationManager.delete_conversation_by_user(user_id)

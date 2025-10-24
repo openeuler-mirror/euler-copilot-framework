@@ -23,15 +23,15 @@ class TaskManager:
     """从数据库中获取任务信息"""
 
     @staticmethod
-    async def get_task_by_conversation_id(conversation_id: uuid.UUID, user_sub: str) -> Task:
+    async def get_task_by_conversation_id(conversation_id: uuid.UUID, user_id: str) -> Task:
         """获取对话ID的最后一个任务"""
         async with postgres.session() as session:
-            # 检查user_sub是否匹配Conversation
+            # 检查user_id是否匹配Conversation
             conversation = (await session.scalars(
                 select(Conversation.id).where(
                     and_(
                         Conversation.id == conversation_id,
-                        Conversation.userSub == user_sub,
+                        Conversation.userId == user_id,
                     ),
                 ),
             )).one_or_none()
@@ -46,7 +46,7 @@ class TaskManager:
                 # 任务不存在，新建Task
                 return Task(
                     conversationId=conversation_id,
-                    userSub=user_sub,
+                    userId=user_id,
                 )
             logger.info("[TaskManager] 新建任务 %s", task.id)
             return task

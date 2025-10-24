@@ -112,7 +112,7 @@ erDiagram
     }
 
     UserFavorite {
-        string userSub
+        string userId
         uuid itemId
         string favouriteType
     }
@@ -194,7 +194,7 @@ sequenceDiagram
 
     Note over Client,NM: 获取用户服务列表
     Client->>API: GET /api/flow/service
-    API->>FM: get_service_by_user_id(user_sub)
+    API->>FM: get_service_by_user_id(user_id)
     FM->>DB: 查询用户收藏的服务
     FM->>DB: 查询用户上传的服务
     FM->>DB: 去重并查询服务详情
@@ -443,7 +443,7 @@ Authorization: Bearer <token>
 |------|------|------|--------|
 | `get_flows_by_app_id` | 获取应用的所有工作流 | `app_id: UUID` | `list[FlowInfo]` |
 | `get_node_id_by_service_id` | 获取服务下的节点列表 | `service_id: UUID` | `list[NodeMetaDataBase]` |
-| `get_service_by_user_id` | 获取用户的服务列表 | `user_sub: str` | `list[NodeServiceItem]` |
+| `get_service_by_user_id` | 获取用户的服务列表 | `user_id: str` | `list[NodeServiceItem]` |
 | `get_node_by_node_id` | 获取节点详细信息 | `node_id: str` | `NodeMetaDataItem` |
 | `get_flow_by_app_and_flow_id` | 获取工作流详情 | `app_id: UUID, flow_id: str` | `FlowItem` |
 | `put_flow_by_app_and_flow_id` | 保存/更新工作流 | `app_id: UUID, flow_id: str, flow_item: FlowItem` | `None` |

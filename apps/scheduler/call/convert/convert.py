@@ -11,9 +11,10 @@ from jinja2.sandbox import SandboxedEnvironment
 from pydantic import Field
 
 from apps.models import LanguageType
-from apps.scheduler.call.core import CallError, CoreCall
+from apps.scheduler.call.core import CoreCall
 from apps.schemas.enum_var import CallOutputType
 from apps.schemas.scheduler import (
+    CallError,
     CallInfo,
     CallOutputChunk,
     CallVars,

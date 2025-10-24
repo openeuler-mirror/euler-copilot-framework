@@ -34,7 +34,7 @@ erDiagram
     
     User {
         bigint id PK "用户ID"
-        string userSub UK "用户标识"
+        string userName UK "用户标识"
         datetime lastLogin "最后登录时间"
         boolean isActive "是否活跃"
         boolean isWhitelisted "是否白名单"
@@ -47,14 +47,14 @@ erDiagram
     
     UserFavorite {
         bigint id PK "收藏ID"
-        string userSub FK "用户标识"
+        int userId FK "用户标识"
         enum favouriteType "收藏类型"
         uuid itemId "项目ID"
     }
     
     UserAppUsage {
         bigint id PK "使用记录ID"
-        string userSub FK "用户标识"
+        int userId FK "用户标识"
         uuid appId FK "应用ID"
         int usageCount "使用次数"
         datetime lastUsed "最后使用时间"
@@ -62,7 +62,7 @@ erDiagram
     
     UserTag {
         bigint id PK "标签ID"
-        string userSub FK "用户标识"
+        int userId FK "用户标识"
         bigint tag FK "标签ID"
         int count "标签归类次数"
     }
@@ -103,7 +103,7 @@ flowchart TD
     C1 --> C2[分页查询用户列表]
     C2 --> C3[返回用户列表和总数]
     
-    D --> D1[根据userSub查询用户]
+    D --> D1[根据userId查询用户]
     D1 --> D2[返回用户信息或None]
     
     E --> E1{用户是否存在}
@@ -268,7 +268,7 @@ flowchart TD
     "total": 100,
     "userInfoList": [
       {
-        "userSub": "user-123",
+        "userId": "123",
         "userName": "张三"
       }
     ]

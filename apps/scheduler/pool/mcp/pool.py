@@ -24,13 +24,13 @@ class _MCPPool:
         self.pool: dict[str, dict[str, MCPClient]] = {}
 
 
-    async def init_mcp(self, mcp_id: str, user_sub: str) -> MCPClient | None:
+    async def init_mcp(self, mcp_id: str, user_id: str) -> MCPClient | None:
         """初始化MCP池"""
-        config_path = MCP_USER_PATH / user_sub / mcp_id / "config.json"
+        config_path = MCP_USER_PATH / user_id / mcp_id / "config.json"
 
         flag = (await config_path.exists())
         if not flag:
-            logger.warning("[MCPPool] 用户 %s 的MCP %s 配置文件不存在", user_sub, mcp_id)
+            logger.warning("[MCPPool] 用户 %s 的MCP %s 配置文件不存在", user_id, mcp_id)
             return None
 
         config = MCPServerConfig.model_validate_json(await config_path.read_text())
@@ -38,67 +38,67 @@ class _MCPPool:
         if config.mcpType in (MCPType.SSE, MCPType.STDIO):
             client = MCPClient()
         else:
-            logger.warning("[MCPPool] 用户 %s 的MCP %s 类型错误", user_sub, mcp_id)
+            logger.warning("[MCPPool] 用户 %s 的MCP %s 类型错误", user_id, mcp_id)
             return None
 
-        await client.init(user_sub, mcp_id, config.mcpServers[mcp_id])
-        if user_sub not in self.pool:
-            self.pool[user_sub] = {}
-        self.pool[user_sub][mcp_id] = client
+        await client.init(user_id, mcp_id, config.mcpServers[mcp_id])
+        if user_id not in self.pool:
+            self.pool[user_id] = {}
+        self.pool[user_id][mcp_id] = client
         return client
 
 
-    async def _get_from_dict(self, mcp_id: str, user_sub: str) -> MCPClient | None:
+    async def _get_from_dict(self, mcp_id: str, user_id: str) -> MCPClient | None:
         """从字典中获取MCP客户端"""
-        if user_sub not in self.pool:
+        if user_id not in self.pool:
             return None
 
-        if mcp_id not in self.pool[user_sub]:
+        if mcp_id not in self.pool[user_id]:
             return None
 
-        return self.pool[user_sub][mcp_id]
+        return self.pool[user_id][mcp_id]
 
 
-    async def _validate_user(self, mcp_id: str, user_sub: str) -> bool:
+    async def _validate_user(self, mcp_id: str, user_id: str) -> bool:
         """验证用户是否已激活"""
         async with postgres.session() as session:
             result = (await session.scalars(
                 select(MCPActivated).where(
                     and_(
                         MCPActivated.mcpId == mcp_id,
-                        MCPActivated.userSub == user_sub,
+                        MCPActivated.userId == user_id,
                     ),
                 ).limit(1),
             )).one_or_none()
             return result is not None
 
 
-    async def get(self, mcp_id: str, user_sub: str) -> MCPClient | None:
+    async def get(self, mcp_id: str, user_id: str) -> MCPClient | None:
         """获取MCP客户端"""
-        item = await self._get_from_dict(mcp_id, user_sub)
+        item = await self._get_from_dict(mcp_id, user_id)
         if item is None:
             # 检查用户是否已激活
-            if not await self._validate_user(mcp_id, user_sub):
-                logger.warning("用户 %s 未激活MCP %s", user_sub, mcp_id)
+            if not await self._validate_user(mcp_id, user_id):
+                logger.warning("用户 %s 未激活MCP %s", user_id, mcp_id)
                 return None
 
             # 初始化进程
-            item = await self.init_mcp(mcp_id, user_sub)
+            item = await self.init_mcp(mcp_id, user_id)
             if item is None:
                 return None
 
-            if user_sub not in self.pool:
-                self.pool[user_sub] = {}
+            if user_id not in self.pool:
+                self.pool[user_id] = {}
 
-            self.pool[user_sub][mcp_id] = item
+            self.pool[user_id][mcp_id] = item
 
         return item
 
 
-    async def stop(self, mcp_id: str, user_sub: str) -> None:
+    async def stop(self, mcp_id: str, user_id: str) -> None:
         """停止MCP客户端"""
-        await self.pool[user_sub][mcp_id].stop()
-        del self.pool[user_sub][mcp_id]
+        await self.pool[user_id][mcp_id].stop()
+        del self.pool[user_id][mcp_id]
 
 
 # 创建单例对象

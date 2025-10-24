@@ -69,13 +69,13 @@ class SettingsManager:
 
     @staticmethod
     async def update_global_llm_settings(
-        user_sub: str,
+        user_id: str,
         req: UpdateSpecialLlmReq,
     ) -> None:
         """
         更新全局默认LLM（仅管理员）
 
-        :param user_sub: 操作的管理员user_sub
+        :param user_id: 操作的管理员user_id
         :param req: 更新请求体
         """
         # 验证functionLLM是否支持Function Call
@@ -116,7 +116,7 @@ class SettingsManager:
             # 更新全局设置
             settings.functionLlmId = req.functionLLM
             settings.embeddingLlmId = req.embeddingLLM
-            settings.lastEditedBy = user_sub
+            settings.lastEditedBy = user_id
             await session.commit()
 
         # 如果embedding模型发生变化，在新协程中触发向量化过程

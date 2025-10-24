@@ -34,7 +34,7 @@ async def add_comment(request: Request, post_body: AddCommentData) -> JSONRespon
         reason_description=post_body.reason_description,
         feedback_time=round(datetime.now(tz=UTC).timestamp(), 3),
     )
-    result = await CommentManager.update_comment(post_body.record_id, comment_data, request.state.user_sub)
+    result = await CommentManager.update_comment(post_body.record_id, comment_data, request.state.user_id)
     if not result:
         return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content=ResponseData(
             code=status.HTTP_400_BAD_REQUEST,

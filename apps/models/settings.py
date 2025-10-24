@@ -36,6 +36,6 @@ class GlobalSettings(Base):
     """设置更新时间"""
 
     lastEditedBy: Mapped[str | None] = mapped_column(  # noqa: N815
-        String(50), ForeignKey("framework_user.userSub"), nullable=True, default=None,
+        String(50), ForeignKey("framework_user.id"), nullable=True, default=None,
     )
     """最后一次修改的用户sub"""

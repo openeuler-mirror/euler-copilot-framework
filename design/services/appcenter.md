@@ -335,7 +335,7 @@ sequenceDiagram
 
     Client->>Router: POST /api/app (无appId)
     Router->>Router: 验证用户会话和令牌
-    Router->>Manager: create_app(user_sub, request)
+    Router->>Manager: create_app(user_id, request)
     Manager->>Manager: 生成新的app_id
     Manager->>Manager: _process_app_and_save()
     Manager->>Pool: 从资源池获取app_loader
@@ -369,8 +369,8 @@ sequenceDiagram
 
     Client->>Router: POST /api/app (含appId)
     Router->>Router: 验证用户会话和令牌
-    Router->>Manager: update_app(user_sub, app_id, request)
-    Manager->>Manager: _get_app_data(app_id, user_sub)
+    Router->>Manager: update_app(user_id, app_id, request)
+    Manager->>Manager: _get_app_data(app_id, user_id)
     Manager->>DB: 查询应用信息
     alt 应用不存在
         DB-->>Manager: 返回空
@@ -378,7 +378,7 @@ sequenceDiagram
         Router-->>Client: 400 BAD_REQUEST
     else 权限不足
         DB-->>Manager: 返回应用信息
-        Manager->>Manager: 检查author != user_sub
+        Manager->>Manager: 检查author != user_id
         Manager-->>Router: 抛出InstancePermissionError
         Router-->>Client: 403 FORBIDDEN
     else 更改应用类型
@@ -456,8 +456,8 @@ sequenceDiagram
 
     Client->>Router: POST /api/app/{appId}
     Router->>Router: 验证用户会话和令牌
-    Router->>Manager: update_app_publish_status(app_id, user_sub)
-    Manager->>Manager: _get_app_data(app_id, user_sub)
+    Router->>Manager: update_app_publish_status(app_id, user_id)
+    Manager->>Manager: _get_app_data(app_id, user_id)
     Manager->>DB: 查询应用并验证权限
 
     alt 权限验证失败
@@ -783,7 +783,7 @@ erDiagram
 
     AppACL {
         uuid appId PK "FK"
-        string userSub "FK"
+        int userId "FK"
         string action
     }
 
@@ -794,7 +794,7 @@ erDiagram
     }
 
     User {
-        string userSub PK
+        int userId PK
         datetime lastLogin
         boolean isActive
         string personalToken
@@ -802,14 +802,14 @@ erDiagram
 
     UserFavorite {
         int id PK
-        string userSub "FK"
+        int userId "FK"
         enum favouriteType
         uuid itemId
     }
 
     UserAppUsage {
         int id PK
-        string userSub "FK"
+        int userId "FK"
         uuid appId "FK"
         int usageCount
         datetime lastUsed

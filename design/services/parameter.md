@@ -86,7 +86,7 @@ sequenceDiagram
     R->>Auth: 验证会话和令牌
     Auth-->>R: 验证通过
 
-    R->>AM: validate_user_app_access(user_sub, appId)
+    R->>AM: validate_user_app_access(user_id, appId)
     AM->>DB: 查询用户应用权限
     DB-->>AM: 返回权限结果
     AM-->>R: 返回权限验证结果

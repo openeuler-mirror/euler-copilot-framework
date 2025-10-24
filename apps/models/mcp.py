@@ -40,8 +40,8 @@ class MCPInfo(Base):
     """MCP 概述"""
     description: Mapped[str] = mapped_column(Text, nullable=False)
     """MCP 描述"""
-    author: Mapped[str] = mapped_column(String(50), ForeignKey("framework_user.userSub"), nullable=False)
-    """MCP 创建者"""
+    authorId: Mapped[str] = mapped_column(String(50), ForeignKey("framework_user.id"), nullable=False)  # noqa: N815
+    """MCP 创建者ID"""
     id: Mapped[str] = mapped_column(String(255), primary_key=True)
     """MCP ID"""
     updatedAt: Mapped[datetime] = mapped_column(  # noqa: N815
@@ -70,7 +70,7 @@ class MCPActivated(Base):
         String(255), ForeignKey("framework_mcp.id"), index=True, nullable=False,
     )
     """MCP ID"""
-    userSub: Mapped[str] = mapped_column(String(50), ForeignKey("framework_user.userSub"), nullable=False)  # noqa: N815
+    userId: Mapped[str] = mapped_column(String(50), ForeignKey("framework_user.id"), nullable=False)  # noqa: N815
     """用户ID"""
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True, init=False)
     """主键ID"""

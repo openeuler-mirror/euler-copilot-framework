@@ -81,7 +81,7 @@ class Suggestion(CoreCall, input_model=SuggestionInput, output_model=SuggestionO
             self._history_questions = []
         else:
             self._history_questions = await self._get_history_questions(
-                call_vars.ids.user_sub,
+                call_vars.ids.user_id,
                 self.conversation_id,
             )
         self._app_id = call_vars.ids.app_id
@@ -107,15 +107,15 @@ class Suggestion(CoreCall, input_model=SuggestionInput, output_model=SuggestionO
 
         return SuggestionInput(
             question=call_vars.question,
-            user_sub=call_vars.ids.user_sub,
+            user_id=call_vars.ids.user_id,
             history_questions=self._history_questions,
         )
 
 
-    async def _get_history_questions(self, user_sub: str, conversation_id: uuid.UUID) -> list[str]:
+    async def _get_history_questions(self, user_id: str, conversation_id: uuid.UUID) -> list[str]:
         """获取当前对话的历史问题"""
         records = await RecordManager.query_record_by_conversation_id(
-            user_sub,
+            user_id,
             conversation_id,
             15,
         )
@@ -132,7 +132,7 @@ class Suggestion(CoreCall, input_model=SuggestionInput, output_model=SuggestionO
         data = SuggestionInput(**input_data)
 
         # 获取当前用户的画像
-        user_domain_info = await UserTagManager.get_user_domain_by_user_sub_and_topk(data.user_sub, 5)
+        user_domain_info = await UserTagManager.get_user_domain_by_user_and_topk(data.user_id, 5)
         user_domain = [tag.name for tag in user_domain_info]
         # 初始化Prompt
         prompt_tpl = self._env.from_string(SUGGEST_PROMPT[self._sys_vars.language])

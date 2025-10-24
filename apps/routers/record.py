@@ -45,7 +45,7 @@ router = APIRouter(
 async def get_record(request: Request, conversationId: Annotated[uuid.UUID, Path()]) -> JSONResponse:  # noqa: N803
     """GET /record/{conversationId}: 获取某个对话的所有问答对"""
     cur_conv = await ConversationManager.get_conversation_by_conversation_id(
-        request.state.user_sub, conversationId,
+        request.state.user_id, conversationId,
     )
     # 判断conversation是否合法
     if not cur_conv:
@@ -82,7 +82,7 @@ async def get_record(request: Request, conversationId: Annotated[uuid.UUID, Path
             )
 
             # 获得Record关联的文档
-            tmp_record.document = await DocumentManager.get_used_docs_by_record(user_sub, record_group.id)
+            tmp_record.document = await DocumentManager.get_used_docs_by_record(user_id, record_group.id)
             # 获得Record关联的flow数据
             flow_step_list = await TaskManager.get_context_by_record_id(record_group.id, record.id)
             if flow_step_list:

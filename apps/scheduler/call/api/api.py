@@ -88,7 +88,7 @@ class API(CoreCall, input_model=APIInput, output_model=APIOutput):
         if self.node.serviceId:
             try:
                 service_metadata = await ServiceCenterManager.get_service_metadata(
-                    call_vars.ids.user_sub,
+                    call_vars.ids.user_id,
                     self.node.serviceId,
                 )
                 # 获取Service对应的Auth

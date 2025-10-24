@@ -63,11 +63,11 @@ class ServiceCenterManager:
                 SearchType.ALL: or_(
                     Service.name.like(f"%{keyword}%"),
                     Service.description.like(f"%{keyword}%"),
-                    Service.author.like(f"%{keyword}%"),
+                    Service.authorId.like(f"%{keyword}%"),
                 ),
                 SearchType.NAME: Service.name.like(f"%{keyword}%"),
                 SearchType.DESCRIPTION: Service.description.like(f"%{keyword}%"),
-                SearchType.AUTHOR: Service.author.like(f"%{keyword}%"),
+                SearchType.AUTHOR: Service.authorId.like(f"%{keyword}%"),
             }
             search_conditions = [search_condition_map.get(search_type)]
 
@@ -85,7 +85,7 @@ class ServiceCenterManager:
 
     @staticmethod
     async def fetch_all_services(
-        user_sub: str,
+        user_id: str,
         search_type: SearchType,
         keyword: str | None,
         page: int,
@@ -99,7 +99,7 @@ class ServiceCenterManager:
             service_pools = list((await session.scalars(data_query)).all())
             total_count = (await session.scalar(count_query)) or 0
 
-        fav_service_ids = await ServiceCenterManager._get_favorite_service_ids_by_user(user_sub)
+        fav_service_ids = await ServiceCenterManager._get_favorite_service_ids_by_user(user_id)
         services = [
             ServiceCardItem(
                 serviceId=service_pool.id,
@@ -116,7 +116,7 @@ class ServiceCenterManager:
 
     @staticmethod
     async def fetch_user_services(
-        user_sub: str,
+        user_id: str,
         search_type: SearchType,
         keyword: str | None,
         page: int,
@@ -124,18 +124,18 @@ class ServiceCenterManager:
     ) -> tuple[list[ServiceCardItem], int]:
         """获取用户创建的服务"""
         if search_type == SearchType.AUTHOR:
-            if keyword is not None and keyword not in user_sub:
+            if keyword is not None and user_id not in keyword:
                 return [], 0
-            keyword = user_sub
+            keyword = user_id
 
         async with postgres.session() as session:
             data_query, count_query = await ServiceCenterManager._build_service_query(
-                search_type, keyword, page, page_size, base_conditions=[Service.author == user_sub],
+                search_type, keyword, page, page_size, base_conditions=[Service.authorId == user_id],
             )
             service_pools = list((await session.scalars(data_query)).all())
             total_count = (await session.scalar(count_query)) or 0
 
-        fav_service_ids = await ServiceCenterManager._get_favorite_service_ids_by_user(user_sub)
+        fav_service_ids = await ServiceCenterManager._get_favorite_service_ids_by_user(user_id)
         services = [
             ServiceCardItem(
                 serviceId=service_pool.id,
@@ -152,7 +152,7 @@ class ServiceCenterManager:
 
     @staticmethod
     async def fetch_favorite_services(
-        user_sub: str,
+        user_id: str,
         search_type: SearchType,
         keyword: str | None,
         page: int,
@@ -165,7 +165,7 @@ class ServiceCenterManager:
                 select(UserFavorite.itemId)
                 .where(
                     and_(
-                        UserFavorite.userSub == user_sub,
+                        UserFavorite.userId == user_id,
                         UserFavorite.favouriteType == UserFavoriteType.SERVICE,
                     ),
                 )
@@ -197,7 +197,7 @@ class ServiceCenterManager:
 
     @staticmethod
     async def create_service(
-        user_sub: str,
+        user_id: str,
         data: dict[str, Any],
     ) -> uuid.UUID:
         """创建服务"""
@@ -225,7 +225,7 @@ class ServiceCenterManager:
             id=service_id,
             name=validated_data.id,
             description=validated_data.description,
-            author=user_sub,
+            author=user_id,
             api=ServiceApiConfig(server=validated_data.servers),
             permission=Permission(type=PermissionType.PUBLIC),  # 默认公开
         )
@@ -237,7 +237,7 @@ class ServiceCenterManager:
 
     @staticmethod
     async def update_service(
-        user_sub: str,
+        user_id: str,
         service_id: uuid.UUID,
         data: dict[str, Any],
     ) -> uuid.UUID:
@@ -252,7 +252,7 @@ class ServiceCenterManager:
             if not db_service:
                 msg = "[ServiceCenterManager] Service not found"
                 raise RuntimeError(msg)
-            if db_service.author != user_sub:
+            if db_service.authorId != user_id:
                 msg = "[ServiceCenterManager] Permission denied"
                 raise RuntimeError(msg)
             db_service.updatedAt = datetime.now(tz=UTC)
@@ -263,7 +263,7 @@ class ServiceCenterManager:
             id=service_id,
             name=validated_data.id,
             description=validated_data.description,
-            author=user_sub,
+            author=user_id,
             api=ServiceApiConfig(server=validated_data.servers),
         )
         service_loader = ServiceLoader()
@@ -309,7 +309,7 @@ class ServiceCenterManager:
 
     @staticmethod
     async def get_service_data(
-        user_sub: str,
+        user_id: str,
         service_id: uuid.UUID,
     ) -> tuple[str, dict[str, Any]]:
         """获取服务数据"""
@@ -319,7 +319,7 @@ class ServiceCenterManager:
                 select(Service).where(
                     and_(
                         Service.id == service_id,
-                        Service.author == user_sub,
+                        Service.authorId == user_id,
                     ),
                 ),
             )).one_or_none()
@@ -338,17 +338,17 @@ class ServiceCenterManager:
 
     @staticmethod
     async def get_service_metadata(
-        user_sub: str,
+        user_id: str,
         service_id: uuid.UUID,
     ) -> ServiceMetadata:
         """获取服务元数据"""
         async with postgres.session() as session:
             allowed_user = list((await session.scalars(
-                select(ServiceACL.userSub).where(
+                select(ServiceACL.userId).where(
                     ServiceACL.serviceId == service_id,
                 ),
             )).all())
-            if user_sub in allowed_user:
+            if user_id in allowed_user:
                 db_service = (await session.scalars(
                     select(Service).where(
                         and_(
@@ -364,11 +364,11 @@ class ServiceCenterManager:
                             Service.id == service_id,
                             or_(
                                 and_(
-                                    Service.author == user_sub,
+                                    Service.authorId == user_id,
                                     Service.permission == PermissionType.PRIVATE,
                                 ),
                                 Service.permission == PermissionType.PUBLIC,
-                                Service.author == user_sub,
+                                Service.authorId == user_id,
                             ),
                         ),
                     ),
@@ -386,14 +386,14 @@ class ServiceCenterManager:
 
 
     @staticmethod
-    async def delete_service(user_sub: str, service_id: uuid.UUID) -> None:
+    async def delete_service(user_id: str, service_id: uuid.UUID) -> None:
         """删除服务"""
         async with postgres.session() as session:
             db_service = (await session.scalars(
                 select(Service).where(
                     and_(
                         Service.id == service_id,
-                        Service.author == user_sub,
+                        Service.authorId == user_id,
                     ),
                 ),
             )).one_or_none()
@@ -422,7 +422,7 @@ class ServiceCenterManager:
 
     @staticmethod
     async def modify_favorite_service(
-        user_sub: str,
+        user_id: str,
         service_id: uuid.UUID,
         *,
         favorited: bool,
@@ -440,12 +440,12 @@ class ServiceCenterManager:
                 raise RuntimeError(msg)
 
             user = (await session.scalars(
-                select(func.count(User.userSub)).where(
-                    User.userSub == user_sub,
+                select(func.count(User.id)).where(
+                    User.id == user_id,
                 ),
             )).one()
             if not user:
-                msg = f"[ServiceCenterManager] 用户未找到: {user_sub}"
+                msg = f"[ServiceCenterManager] 用户未找到: {user_id}"
                 logger.warning(msg)
                 raise RuntimeError(msg)
 
@@ -454,7 +454,7 @@ class ServiceCenterManager:
                 select(UserFavorite).where(
                     and_(
                         UserFavorite.itemId == service_id,
-                        UserFavorite.userSub == user_sub,
+                        UserFavorite.userId == user_id,
                         UserFavorite.favouriteType == UserFavoriteType.SERVICE,
                     ),
                 ),
@@ -463,7 +463,7 @@ class ServiceCenterManager:
                 # 创建收藏条目
                 user_favourite = UserFavorite(
                     itemId=service_id,
-                    userSub=user_sub,
+                    userId=user_id,
                     favouriteType=UserFavoriteType.SERVICE,
                 )
                 session.add(user_favourite)
@@ -475,12 +475,12 @@ class ServiceCenterManager:
 
 
     @staticmethod
-    async def _get_favorite_service_ids_by_user(user_sub: str) -> list[uuid.UUID]:
+    async def _get_favorite_service_ids_by_user(user_id: str) -> list[uuid.UUID]:
         """获取用户收藏的服务ID"""
         async with postgres.session() as session:
             user_favourite = (await session.scalars(
                 select(UserFavorite).where(
-                    UserFavorite.userSub == user_sub,
+                    UserFavorite.userId == user_id,
                     UserFavorite.favouriteType == UserFavoriteType.SERVICE,
                 ),
             )).all()

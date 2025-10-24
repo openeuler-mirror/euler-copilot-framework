@@ -19,7 +19,7 @@ Session 模块是 openEuler Intelligence 框架中的会话管理系统，负责
 - **表名**: `framework_session`
 - **主键**: `id` (String(255), 默认为随机生成的16字节十六进制字符串)
 - **字段**:
-  - `userSub`: 用户标识 (String(50), 外键关联framework_user.userSub)
+  - `userId`: 用户标识 (String(50), 外键关联framework_user.id)
   - `ip`: IP地址 (String(255), 可为空)
   - `pluginId`: 插件ID (String(255), 可为空)
   - `token`: Token信息 (String(2000), 可为空)
@@ -73,7 +73,7 @@ sequenceDiagram
 
     Note over Client, DB: 获取用户流程
     Client->>SessionMgr: get_user(session_id)
-    SessionMgr->>DB: 查询Session.userSub
+    SessionMgr->>DB: 查询Session.userId
     DB-->>SessionMgr: 返回user_sub或None
     
     alt 用户不存在
@@ -126,7 +126,7 @@ erDiagram
     User ||--o{ SessionActivity : "用户产生活动"
     
     User {
-        string userSub PK "用户标识"
+        int userId PK "用户标识"
         boolean isWhitelisted "是否白名单"
         integer credit "信用分"
         string personalToken "个人令牌"
@@ -134,7 +134,7 @@ erDiagram
     
     Session {
         string id PK "会话ID"
-        string userSub FK "用户标识"
+        int userId FK "用户标识"
         string ip "IP地址"
         string pluginId "插件ID"
         string token "Token信息"
@@ -144,7 +144,7 @@ erDiagram
     
     SessionActivity {
         BigInteger id PK
-        string userSub FK "用户标识"
+        int userId FK "用户标识"
         datetime timestamp "活动时间戳"
     }
 ```
@@ -212,10 +212,10 @@ flowchart TD
 
 ## 性能优化
 
-1. **数据库索引**: 对userSub和id字段建立索引，提高查询效率
+1. **数据库索引**: 对userId和id字段建立索引，提高查询效率
 2. **异步操作**: 所有数据库操作使用异步方式，提高并发性能
 3. **连接池管理**: 使用数据库连接池管理连接，减少连接开销
-4. **最小化查询**: get_user方法只查询必要的userSub字段，而非整个Session对象
+4. **最小化查询**: get_user方法只查询必要的userId字段，而非整个Session对象
 
 ## 与其他模块的交互
 

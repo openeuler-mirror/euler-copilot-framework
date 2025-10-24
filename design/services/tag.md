@@ -20,7 +20,7 @@ erDiagram
     
     framework_user {
         BigInteger id PK "主键"
-        string userSub UK "用户标识"
+        int userId UK "用户标识"
         datetime lastLogin "最后登录时间"
         boolean isActive "是否活跃"
         boolean isWhitelisted "是否白名单"
@@ -40,7 +40,7 @@ erDiagram
     
     framework_user_tag {
         BigInteger id PK "主键"
-        string userSub FK "用户标识(外键)"
+        int userId FK "用户标识(外键)"
         BigInteger tag FK "标签ID(外键)"
         integer count "标签使用频次(默认0)"
     }
@@ -50,7 +50,7 @@ erDiagram
 
 - **framework_tag**: 标签基础信息表，存储标签的定义和元数据
 - **framework_user_tag**: 用户标签关联表，记录用户与标签的多对多关系及使用频次
-- **framework_user**: 用户基础信息表，通过userSub字段与标签系统关联
+- **framework_user**: 用户基础信息表，通过userId字段与标签系统关联
 
 ## API接口
 
@@ -86,7 +86,7 @@ erDiagram
 
 - `get_all_tag()`: 获取所有标签
 - `get_tag_by_name(name)`: 根据名称获取标签
-- `get_tag_by_user_sub(user_sub)`: 获取用户的所有标签
+- `get_tag_by_user_id(user_id)`: 获取用户的所有标签
 - `add_tag(data)`: 添加新标签（当前路由未调用）
 - `update_tag_by_name(data)`: 更新标签定义，标签不存在时抛出 `ValueError`
 - `delete_tag(data)`: 删除标签
@@ -139,8 +139,8 @@ sequenceDiagram
 
     Note over Client, DB: 用户标签查询流程
     Client->>Router: GET /api/user/tag
-    Router->>Service: get_tag_by_user_sub(user_sub)
-    Service->>DB: SELECT * FROM framework_user_tag WHERE userSub=?
+    Router->>Service: get_tag_by_user_id(user_id)
+    Service->>DB: SELECT * FROM framework_user_tag WHERE userId=?
     DB-->>Service: 返回用户标签关联
     loop 遍历用户标签
         Service->>DB: SELECT * FROM framework_tag WHERE id=?

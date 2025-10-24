@@ -546,7 +546,7 @@ sequenceDiagram
 
     Client->>Router: PUT /api/admin/mcp (无mcp_id)
     Router->>Router: 验证管理员权限
-    Router->>Manager: create_mcpservice(data, user_sub)
+    Router->>Manager: create_mcpservice(data, user_id)
     Manager->>Manager: 验证配置类型
     alt mcp_type为SSE
         Manager->>Manager: MCPServerSSEConfig.model_validate()
@@ -588,7 +588,7 @@ sequenceDiagram
 
     Client->>Router: PUT /api/admin/mcp (含mcp_id)
     Router->>Router: 验证管理员权限
-    Router->>Manager: update_mcpservice(data, user_sub)
+    Router->>Manager: update_mcpservice(data, user_id)
 
     alt mcp_id为空
         Manager-->>Router: 抛出ValueError
@@ -606,10 +606,10 @@ sequenceDiagram
         DB-->>Manager: 返回activated_users列表
 
         loop 对每个激活用户
-            Manager->>Manager: deactive_mcpservice(user_sub, mcp_id)
-            Manager->>Pool: stop(mcp_id, user_sub)
+            Manager->>Manager: deactive_mcpservice(user_id, mcp_id)
+            Manager->>Pool: stop(mcp_id, user_id)
             Note over Pool: 停止用户的MCP进程
-            Manager->>Loader: user_deactive_template(user_sub, mcp_id)
+            Manager->>Loader: user_deactive_template(user_id, mcp_id)
         end
 
         Manager->>Manager: 构建新的MCPServerConfig
@@ -634,7 +634,7 @@ sequenceDiagram
 
     Client->>Router: POST /api/admin/mcp/{serviceId}/install?install=true
     Router->>Router: 验证管理员权限
-    Router->>Manager: install_mcpservice(user_sub, service_id, install=true)
+    Router->>Manager: install_mcpservice(user_id, service_id, install=true)
     Manager->>DB: 查询服务并验证作者权限
 
     alt 服务不存在或无权限
@@ -681,7 +681,7 @@ sequenceDiagram
 
     Client->>Router: POST /api/mcp/{mcpId} (active=true)
     Router->>Router: 验证用户身份
-    Router->>Manager: active_mcpservice(user_sub, mcp_id, mcp_env)
+    Router->>Manager: active_mcpservice(user_id, mcp_id, mcp_env)
     Manager->>DB: 查询MCPInfo记录
 
     alt 服务不存在
@@ -695,8 +695,8 @@ sequenceDiagram
     else 可以激活
         DB-->>Manager: 返回服务信息(status=READY)
         Manager->>DB: 插入或更新MCPActivated记录
-        Note over DB: mcpId + userSub为复合键
-        Manager->>Loader: user_active_template(user_sub, mcp_id, mcp_env)
+        Note over DB: mcpId + userId为复合键
+        Manager->>Loader: user_active_template(user_id, mcp_id, mcp_env)
         Loader->>FileSystem: 创建用户专属配置文件
         Note over FileSystem: 合并用户环境变量<br/>生成用户配置
         Loader->>Pool: 启动用户的MCP进程
@@ -790,7 +790,7 @@ stateDiagram-v2
 判断指定用户是否已激活指定MCP服务。
 
 - **功能描述**: 检查用户对MCP服务的激活状态
-- **查询逻辑**: 在MCPActivated表中查找同时匹配mcpId和userSub的记录
+- **查询逻辑**: 在MCPActivated表中查找同时匹配mcpId和userId的记录
 - **返回值**: 存在记录返回True，否则返回False
 - **使用场景**: 服务列表展示时标注激活状态，权限验证
 
@@ -875,7 +875,7 @@ stateDiagram-v2
   - DESCRIPTION: 仅匹配description字段
   - AUTHOR: 仅匹配author字段
 - **安装状态过滤**: 通过子查询检查mcpId是否在MCPActivated表中
-- **激活状态过滤**: 同样使用子查询，并额外过滤userSub
+- **激活状态过滤**: 同样使用子查询，并额外过滤userId
 - **返回结果**: MCPInfo对象列表或空列表
 
 ### create_mcpservice
@@ -1047,7 +1047,7 @@ erDiagram
 
     MCPActivated {
         string mcpId PK "FK"
-        string userSub PK "FK"
+        int userId PK "FK"
         json env
         datetime activatedAt
     }
@@ -1068,7 +1068,7 @@ erDiagram
     }
 
     User {
-        string userSub PK
+        int userId PK
         string email
         boolean isAdmin
     }
@@ -1298,7 +1298,7 @@ Server-Sent Events类型的MCP服务通过HTTP连接实现：
 │   │       └── src/            # 源代码
 │   └── ...
 └── user/                        # 用户配置目录
-    ├── {user_sub}/             # 单个用户目录
+    ├── {user_name}/             # 单个用户目录
     │   ├── {mcp_id}.json       # 用户专属配置
     │   └── ...
     └── ...

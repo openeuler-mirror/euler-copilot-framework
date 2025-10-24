@@ -16,10 +16,10 @@ class UserTagManager:
     """用户画像管理"""
 
     @staticmethod
-    async def get_user_domain_by_user_sub_and_topk(user_sub: str, topk: int | None = None) -> list[UserTagInfo]:
+    async def get_user_domain_by_user_and_topk(user_id: str, topk: int | None = None) -> list[UserTagInfo]:
         """根据用户ID，查询用户最常涉及的n个领域"""
         async with postgres.session() as session:
-            query = select(UserTag).where(UserTag.userSub == user_sub).order_by(UserTag.count.desc())
+            query = select(UserTag).where(UserTag.userId == user_id).order_by(UserTag.count.desc())
 
             if topk is not None:
                 query = query.limit(topk)
@@ -35,7 +35,7 @@ class UserTagManager:
 
 
     @staticmethod
-    async def update_user_domain_by_user_sub_and_domain_name(user_sub: str, domain_name: str) -> None:
+    async def update_user_domain_by_user_and_domain_name(user_id: str, domain_name: str) -> None:
         """增加特定用户特定领域的频次"""
         async with postgres.session() as session:
             tag = (
@@ -52,7 +52,7 @@ class UserTagManager:
                 await session.scalars(
                     select(UserTag).where(
                         and_(
-                            UserTag.userSub == user_sub,
+                            UserTag.userId == user_id,
                             UserTag.tag == tag.id,
                         ),
                     ),
@@ -60,7 +60,7 @@ class UserTagManager:
             ).one_or_none()
 
             if not user_domain:
-                user_domain = UserTag(userSub=user_sub, tag=tag.id, count=1)
+                user_domain = UserTag(userId=user_id, tag=tag.id, count=1)
                 await session.merge(user_domain)
             else:
                 user_domain.count += 1

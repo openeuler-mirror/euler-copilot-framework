@@ -15,20 +15,19 @@ class Activity:
     """活动控制：全局并发限制，同时最多有 n 个任务在执行（与用户无关）"""
 
     @staticmethod
-    async def is_active(user_sub: str) -> bool:
+    async def is_active(user_id: str) -> bool:
         """
         判断系统是否达到全局并发上限
 
-        :param user_sub: 用户实体ID（兼容现有接口签名）
+        :param user_id: 用户实体ID（兼容现有接口签名）
         :return: 达到并发上限返回 True，否则 False
         """
-        _ = user_sub
         time = datetime.now(tz=UTC)
 
         async with postgres.session() as session:
             # 单用户滑动窗口限流：统计该用户在窗口内的请求数
             count = (await session.scalars(select(func.count(SessionActivity.id)).where(
-                SessionActivity.userSub == user_sub,
+                SessionActivity.userId == user_id,
                 SessionActivity.timestamp >= time - timedelta(seconds=SLIDE_WINDOW_TIME),
                 SessionActivity.timestamp <= time,
             ))).one()
@@ -40,7 +39,7 @@ class Activity:
             return current_active >= MAX_CONCURRENT_TASKS
 
     @staticmethod
-    async def set_active(user_sub: str) -> None:
+    async def set_active(user_id: str) -> None:
         """设置活跃标识：当未超过全局并发上限时登记一个活动任务"""
         time = datetime.now(UTC)
         async with postgres.session() as session:
@@ -49,19 +48,19 @@ class Activity:
             if current_active >= MAX_CONCURRENT_TASKS:
                 err = "系统并发已达上限"
                 raise ActivityError(err)
-            await session.merge(SessionActivity(userSub=user_sub, timestamp=time))
+            await session.merge(SessionActivity(userId=user_id, timestamp=time))
             await session.commit()
 
 
     @staticmethod
-    async def remove_active(user_sub: str) -> None:
+    async def remove_active(user_id: str) -> None:
         """
         释放一个活动任务名额（按发起者标识清除对应记录）
 
-        :param user_sub: 用户实体ID
+        :param user_id: 用户实体ID
         """
         async with postgres.session() as session:
             await session.execute(
-                delete(SessionActivity).where(SessionActivity.userSub == user_sub),
+                delete(SessionActivity).where(SessionActivity.userId == user_id),
             )
             await session.commit()

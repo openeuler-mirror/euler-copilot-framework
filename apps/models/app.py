@@ -36,8 +36,8 @@ class App(Base):
     """应用名称"""
     description: Mapped[str] = mapped_column(String(2000), nullable=False)
     """应用描述"""
-    author: Mapped[str] = mapped_column(String(50), ForeignKey("framework_user.userSub"), nullable=False)
-    """应用作者"""
+    authorId: Mapped[str] = mapped_column(String(50), ForeignKey("framework_user.id"), nullable=False)  # noqa: N815
+    """应用作者ID"""
     appType: Mapped[AppType] = mapped_column(Enum(AppType), nullable=False)  # noqa: N815
     """应用类型"""
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default_factory=uuid.uuid4)
@@ -60,7 +60,7 @@ class App(Base):
     """权限类型"""
     # 索引
     idx_published_updated_at: ClassVar[Index] = Index("idx_published_updated_at", "isPublished", "updatedAt")
-    idx_author_id_name: ClassVar[Index] = Index("idx_author_id_name", "author", "id", "name")
+    idx_author_id_name: ClassVar[Index] = Index("idx_author_id_name", "authorId", "id", "name")
 
     __table_args__: ClassVar[tuple[Any, ...]] = (
         idx_published_updated_at,
@@ -75,8 +75,8 @@ class AppACL(Base):
     __tablename__ = "framework_app_acl"
     appId: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("framework_app.id"), primary_key=True)  # noqa: N815
     """关联的应用ID"""
-    userSub: Mapped[str] = mapped_column(String(50), ForeignKey("framework_user.userSub"), nullable=False, index=True)  # noqa: N815
-    """用户名"""
+    userId: Mapped[str] = mapped_column(String(50), ForeignKey("framework_user.id"), nullable=False, index=True)  # noqa: N815
+    """用户ID"""
     action: Mapped[str] = mapped_column(String(255), default="", index=True, nullable=False)
     """操作类型（读/写）"""
 

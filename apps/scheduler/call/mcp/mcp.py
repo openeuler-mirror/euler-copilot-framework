@@ -9,11 +9,12 @@ from typing import Any
 from pydantic import Field
 
 from apps.models import LanguageType
-from apps.scheduler.call.core import CallError, CoreCall
+from apps.scheduler.call.core import CoreCall
 from apps.scheduler.mcp import MCPHost, MCPPlanner, MCPSelector
 from apps.schemas.enum_var import CallOutputType
 from apps.schemas.mcp import MCPPlanItem
 from apps.schemas.scheduler import (
+    CallError,
     CallInfo,
     CallOutputChunk,
     CallVars,
@@ -87,7 +88,7 @@ class MCP(CoreCall, input_model=MCPInput, output_model=MCPOutput):
         """初始化MCP"""
         # 获取MCP交互类
         self._host = MCPHost(
-            call_vars.ids.user_sub,
+            call_vars.ids.user_id,
             call_vars.ids.task_id,
             self._llm_obj,
             self._sys_vars.language,

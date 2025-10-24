@@ -20,8 +20,8 @@ class Service(Base):
     """插件名称"""
     description: Mapped[str] = mapped_column(String(2000), nullable=False)
     """插件描述"""
-    author: Mapped[str] = mapped_column(String(50), ForeignKey("framework_user.userSub"), nullable=False)
-    """插件作者"""
+    authorId: Mapped[str] = mapped_column(String(50), ForeignKey("framework_user.id"), nullable=False)  # noqa: N815
+    """插件作者ID"""
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     """插件ID"""
     updatedAt: Mapped[datetime] = mapped_column(  # noqa: N815
@@ -45,8 +45,8 @@ class ServiceACL(Base):
     __tablename__ = "framework_service_acl"
     serviceId: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("framework_service.id"), nullable=False)  # noqa: N815
     """关联的插件ID"""
-    userSub: Mapped[str] = mapped_column(String(50), ForeignKey("framework_user.userSub"), nullable=False)  # noqa: N815
-    """用户名"""
+    userId: Mapped[str] = mapped_column(String(50), ForeignKey("framework_user.id"), nullable=False)  # noqa: N815
+    """用户ID"""
     action: Mapped[str] = mapped_column(String(255), default="", nullable=False)
     """操作类型（读/写）"""
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True, init=False)

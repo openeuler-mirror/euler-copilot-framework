@@ -69,7 +69,7 @@ class FactsCall(CoreCall, input_model=FactsInput, output_model=FactsOutput):
         ]
 
         return FactsInput(
-            user_sub=call_vars.ids.user_sub,
+            user_id=call_vars.ids.user_id,
             message=message,
         )
 
@@ -105,7 +105,7 @@ class FactsCall(CoreCall, input_model=FactsInput, output_model=FactsOutput):
         domain_list = DomainGen.model_validate(domain_list)
 
         for domain in domain_list.keywords:
-            await UserTagManager.update_user_domain_by_user_sub_and_domain_name(data.user_sub, domain)
+            await UserTagManager.update_user_domain_by_user_and_domain_name(data.user_id, domain)
 
         yield CallOutputChunk(
             type=CallOutputType.DATA,

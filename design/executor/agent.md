@@ -710,7 +710,7 @@ erDiagram
 
     Task {
         UUID id PK "任务ID"
-        string userSub FK "用户ID"
+        int userId FK "用户ID"
         UUID conversationId FK "对话ID"
         UUID checkpointId FK "检查点ID"
         datetime updatedAt "更新时间"

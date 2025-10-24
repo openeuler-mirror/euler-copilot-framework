@@ -21,7 +21,7 @@ class FactsGen(BaseModel):
 class FactsInput(DataBase):
     """提取事实工具的输入"""
 
-    user_sub: str = Field(description="用户ID")
+    user_id: str = Field(description="用户ID")
     message: list[dict[str, str]] = Field(description="消息")
 
 
