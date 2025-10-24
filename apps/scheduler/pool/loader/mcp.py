@@ -249,14 +249,14 @@ class MCPLoader:
     async def _get_template_tool(
             mcp_id: str,
             config: MCPServerConfig,
-            user_sub: str | None = None,
+            user_id: str | None = None,
     ) -> list[MCPTools]:
         """
         获取MCP模板的工具列表
 
         :param str mcp_id: MCP模板ID
         :param MCPServerConfig config: MCP配置
-        :param str | None user_sub: 用户ID,默认为None
+        :param str | None user_id: 用户ID,默认为None
         :return: 工具列表
         :rtype: list[str]
         """
@@ -271,7 +271,7 @@ class MCPLoader:
             logger.error(err)
             raise ValueError(err)
 
-        await client.init(user_sub, mcp_id, config.mcpServers[mcp_id])
+        await client.init(user_id, mcp_id, config.mcpServers[mcp_id])
 
         # 获取工具列表
         tool_list = []
@@ -303,7 +303,7 @@ class MCPLoader:
                 overview=config.overview,
                 description=config.description,
                 mcpType=config.mcpType,
-                author=config.author or "",
+                authorId=config.author or "",
             ))
             await session.commit()
 
@@ -396,19 +396,19 @@ class MCPLoader:
 
 
     @staticmethod
-    async def user_active_template(user_sub: str, mcp_id: str, mcp_env: dict[str, Any] | None = None) -> None:
+    async def user_active_template(user_id: str, mcp_id: str, mcp_env: dict[str, Any] | None = None) -> None:
         """
         用户激活MCP模板
 
         激活MCP模板时，将已安装的环境拷贝一份到用户目录，并更新数据库
 
-        :param str user_sub: 用户ID
+        :param str user_id: 用户ID
         :param str mcp_id: MCP模板ID
         :return: 无
         :raises FileExistsError: MCP模板已存在或有同名文件，无法激活
         """
         template_path = MCP_PATH / "template" / str(mcp_id)
-        user_path = MCP_PATH / "users" / user_sub / str(mcp_id)
+        user_path = MCP_PATH / "users" / user_id / str(mcp_id)
 
         # 判断是否存在
         if await user_path.exists():
@@ -457,23 +457,23 @@ class MCPLoader:
         async with postgres.session() as session:
             await session.merge(MCPActivated(
                 mcpId=mcp_id,
-                userSub=user_sub,
+                userId=user_id,
             ))
             await session.commit()
 
     @staticmethod
-    async def user_deactive_template(user_sub: str, mcp_id: str) -> None:
+    async def user_deactive_template(user_id: str, mcp_id: str) -> None:
         """
         取消激活MCP模板
 
         取消激活MCP模板时，删除用户目录下对应的MCP环境文件夹，并更新数据库
 
-        :param str user_sub: 用户ID
+        :param str user_id: 用户ID
         :param str mcp_id: MCP模板ID
         :return: 无
         """
         # 删除用户目录
-        user_path = MCP_PATH / "users" / user_sub / str(mcp_id)
+        user_path = MCP_PATH / "users" / user_id / str(mcp_id)
         await asyncer.asyncify(shutil.rmtree)(user_path.as_posix(), ignore_errors=True)
 
         # 更新数据库
@@ -481,7 +481,7 @@ class MCPLoader:
             await session.execute(delete(MCPActivated).where(
                 and_(
                     MCPActivated.mcpId == mcp_id,
-                    MCPActivated.userSub == user_sub,
+                    MCPActivated.userId == user_id,
                 ),
             ))
             await session.commit()
@@ -551,7 +551,7 @@ class MCPLoader:
 
                 mcp_activated = (await session.scalars(select(MCPActivated).where(MCPActivated.mcpId == mcp_id))).all()
                 for activated in mcp_activated:
-                    await MCPLoader.user_deactive_template(activated.userSub, mcp_id)
+                    await MCPLoader.user_deactive_template(activated.userId, mcp_id)
                     await session.delete(activated)
                 await session.delete(mcp_info)
             await session.commit()
@@ -643,10 +643,10 @@ class MCPLoader:
                 # 删除所有的激活情况
                 await session.execute(delete(MCPActivated).where(MCPActivated.mcpId == mcp_id))
                 # 插入新的激活情况
-                for user_sub in user_list:
+                for user_id in user_list:
                     session.add(MCPActivated(
                         mcpId=mcp_id,
-                        userSub=user_sub,
+                        userId=user_id,
                     ))
             await session.commit()
 

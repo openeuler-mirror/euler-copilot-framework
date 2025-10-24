@@ -6,7 +6,7 @@ import shutil
 import uuid
 
 from anyio import Path
-from sqlalchemy import delete, select
+from sqlalchemy import delete, inspect, select
 
 from apps.common.config import config
 from apps.common.postgres import postgres
@@ -26,6 +26,14 @@ from .openapi import OpenAPILoader
 
 logger = logging.getLogger(__name__)
 BASE_PATH = Path(config.deploy.data_dir) / "semantics" / "service"
+
+
+async def _table_exists(table_name: str) -> bool:
+    """检查表是否存在"""
+    async with postgres.engine.connect() as conn:
+        return await conn.run_sync(
+            lambda sync_conn: inspect(sync_conn).has_table(table_name),
+        )
 
 
 class ServiceLoader:
@@ -179,6 +187,14 @@ class ServiceLoader:
         service_description: str,
     ) -> None:
         """更新向量数据"""
+        # 检查表是否存在
+        if not await _table_exists(embedding.ServicePoolVector.__tablename__):
+            logger.warning(
+                "[ServiceLoader] 表 %s 不存在,跳过向量数据更新",
+                embedding.ServicePoolVector.__tablename__,
+            )
+            return
+
         service_vecs = await embedding.get_embedding([service_description])
         node_descriptions = []
         for node in nodes:

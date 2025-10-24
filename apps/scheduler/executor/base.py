@@ -51,7 +51,7 @@ class BaseExecutor(BaseModel, ABC):
             return
         # 获取最后n+5条Record
         records = await RecordManager.query_record_by_conversation_id(
-            self.task.metadata.userSub, self.task.metadata.conversationId, n + 5,
+            self.task.metadata.userId, self.task.metadata.conversationId, n + 5,
         )
         # 组装问答
         context = []

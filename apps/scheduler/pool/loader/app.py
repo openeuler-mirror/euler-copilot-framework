@@ -159,7 +159,7 @@ class AppLoader:
                 id=metadata.id,
                 name=metadata.name,
                 description=metadata.description,
-                author=metadata.author,
+                authorId=metadata.author,
                 appType=metadata.app_type,
                 isPublished=metadata.published,
                 permission=metadata.permission.type if metadata.permission else PermissionType.PRIVATE,
@@ -171,10 +171,10 @@ class AppLoader:
                 and metadata.permission.type == PermissionType.PROTECTED
                 and metadata.permission.users
             ):
-                for user_sub in metadata.permission.users:
+                for user_id in metadata.permission.users:
                     await session.merge(AppACL(
                         appId=metadata.id,
-                        userSub=user_sub,
+                        userId=user_id,
                         action="",
                     ))
             # 保存AppHashes表

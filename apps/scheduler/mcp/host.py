@@ -24,10 +24,10 @@ logger = logging.getLogger(__name__)
 class MCPHost:
     """MCP宿主服务"""
 
-    def __init__(self, user_sub: str, task_id: uuid.UUID, llm: LLMConfig, language: LanguageType) -> None:
+    def __init__(self, user_id: str, task_id: uuid.UUID, llm: LLMConfig, language: LanguageType) -> None:
         """初始化MCP宿主"""
         self._task_id = task_id
-        self._user_sub = user_sub
+        self._user_id = user_id
         self._context_list = []
         self._language = language
         self._llm = llm
@@ -44,15 +44,15 @@ class MCPHost:
 
     async def get_client(self, mcp_id: str) -> MCPClient | None:
         """获取MCP客户端"""
-        if not await MCPServiceManager.is_user_actived(self._user_sub, mcp_id):
-            logger.warning("用户 %s 未启用MCP %s", self._user_sub, mcp_id)
+        if not await MCPServiceManager.is_user_actived(self._user_id, mcp_id):
+            logger.warning("用户 %s 未启用MCP %s", self._user_id, mcp_id)
             return None
 
         # 获取MCP配置
         try:
-            return await mcp_pool.get(mcp_id, self._user_sub)
+            return await mcp_pool.get(mcp_id, self._user_id)
         except KeyError:
-            logger.warning("用户 %s 的MCP %s 没有运行中的实例，请检查环境", self._user_sub, mcp_id)
+            logger.warning("用户 %s 的MCP %s 没有运行中的实例，请检查环境", self._user_id, mcp_id)
             return None
 
 
@@ -126,7 +126,7 @@ class MCPHost:
     async def call_tool(self, tool: MCPTools, plan_item: MCPPlanItem) -> list[dict[str, Any]]:
         """调用工具"""
         # 拿到Client
-        client = await mcp_pool.get(tool.mcpId, self._user_sub)
+        client = await mcp_pool.get(tool.mcpId, self._user_id)
         if client is None:
             err = f"[MCPHost] MCP Server不合法: {tool.mcpId}"
             logger.error(err)
@@ -153,14 +153,14 @@ class MCPHost:
         tool_list = []
         for mcp_id in mcp_id_list:
             # 检查用户是否启用了这个mcp
-            if not await MCPServiceManager.is_user_actived(self._user_sub, mcp_id):
-                logger.warning("用户 %s 未启用MCP %s", self._user_sub, mcp_id)
+            if not await MCPServiceManager.is_user_actived(self._user_id, mcp_id):
+                logger.warning("用户 %s 未启用MCP %s", self._user_id, mcp_id)
                 continue
             # 获取MCP工具配置
             try:
                 tool_list.extend(await MCPServiceManager.get_mcp_tools(mcp_id))
             except KeyError:
-                logger.warning("用户 %s 的MCP Tool %s 配置错误", self._user_sub, mcp_id)
+                logger.warning("用户 %s 的MCP Tool %s 配置错误", self._user_id, mcp_id)
                 continue
 
         return tool_list

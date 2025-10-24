@@ -23,7 +23,7 @@ class SuggestionInput(DataBase):
     """问题推荐输入"""
 
     question: str
-    user_sub: str
+    user_id: str
     history_questions: list[str]
 
 

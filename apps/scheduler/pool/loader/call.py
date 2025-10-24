@@ -71,7 +71,7 @@ class CallLoader:
         # 检查表是否存在
         if not await _table_exists(embedding.NodePoolVector.__tablename__):
             _logger.warning(
-                "表 %s 不存在，跳过向量数据插入",
+                "[CallLoader] 表 %s 不存在，跳过向量数据插入",
                 embedding.NodePoolVector.__tablename__,
             )
             return

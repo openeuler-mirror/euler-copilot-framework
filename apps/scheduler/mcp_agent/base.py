@@ -14,14 +14,14 @@ _logger = logging.getLogger(__name__)
 class MCPBase:
     """MCP基类"""
 
-    _user_sub: str
+    _user_id: str
     _llm: LLMConfig
     _goal: str
     _language: LanguageType
 
     def __init__(self, task: TaskData, llm: LLMConfig) -> None:
         """初始化MCP基类"""
-        self._user_sub = task.metadata.userSub
+        self._user_id = task.metadata.userId
         self._llm = llm
         self._goal = task.runtime.userInput
         self._language = task.runtime.language
