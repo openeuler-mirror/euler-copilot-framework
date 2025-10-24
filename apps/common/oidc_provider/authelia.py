@@ -113,10 +113,54 @@ class AutheliaOIDCProvider(OIDCProviderBase):
             logger.info("[Authelia] 获取用户信息成功: %s", resp.text)
             result = resp.json()
 
+        # 获取用户名和默认的user_sub
+        user_name = result.get("name", result.get("preferred_username", result.get("nickname", "")))
+        default_user_sub = result.get("sub", result.get("preferred_username", ""))
+        
+        # 管理员用户特殊处理逻辑
+        final_user_sub = await cls._handle_admin_user_sub(user_name, default_user_sub)
+
         return {
-            "user_sub": result.get("sub", result.get("preferred_username", "")),
-            "user_name": result.get("name", result.get("preferred_username", result.get("nickname", ""))),
+            "user_sub": final_user_sub,
+            "user_name": user_name,
         }
+    
+    @classmethod
+    async def _handle_admin_user_sub(cls, user_name: str, default_user_sub: str) -> str:
+        """处理管理员用户的user_sub逻辑（仅适用于Authelia）"""
+        from apps.common.config import Config
+        
+        config = Config().get_config()
+        
+        # 只有在使用Authelia provider时才应用此逻辑
+        if config.login.provider != "authelia":
+            return default_user_sub
+        
+        # 检查是否启用了管理员配置且用户名匹配
+        if not config.admin.enable or user_name != config.admin.user_name:
+            return default_user_sub
+        
+        # 检查数据库中是否已存在管理员用户
+        try:
+            from apps.common.mongo import MongoDB
+            mongo = MongoDB()
+            user_collection = mongo.get_collection("user")
+            
+            existing_admin = await user_collection.find_one({"_id": config.admin.user_sub})
+            
+            if existing_admin:
+                # 数据库中已存在管理员用户，使用默认的user_sub
+                logger.info(f"[_handle_admin_user_sub] 管理员用户已存在，使用默认user_sub: {default_user_sub}")
+                return default_user_sub
+            else:
+                # 数据库中不存在管理员用户，使用配置的管理员user_sub
+                logger.info(f"[_handle_admin_user_sub] 管理员用户不存在，使用配置的user_sub: {config.admin.user_sub}")
+                return config.admin.user_sub
+                
+        except Exception as e:
+            logger.error(f"[_handle_admin_user_sub] 检查管理员用户时出错: {e}")
+            # 出错时使用默认的user_sub
+            return default_user_sub
 
     @classmethod
     async def get_login_status(cls, cookie: dict[str, str]) -> dict[str, Any]:
