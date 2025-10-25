@@ -83,8 +83,8 @@ classDiagram
     }
 
     class MCPPool {
-        +get(mcp_id, user_sub) MCPClient
-        +stop(mcp_id, user_sub) None
+        +get(mcp_id, user_id) MCPClient
+        +stop(mcp_id, user_id) None
     }
 
     BaseExecutor <|-- MCPAgentExecutor
@@ -710,7 +710,7 @@ erDiagram
 
     Task {
         UUID id PK "任务ID"
-        int userId FK "用户ID"
+        string userId FK "用户ID"
         UUID conversationId FK "对话ID"
         UUID checkpointId FK "检查点ID"
         datetime updatedAt "更新时间"
@@ -1043,7 +1043,7 @@ graph TD
 ### 10.1 MCP 连接池
 
 - 使用 `MCPPool` 管理 MCP 客户端
-- 按 `(mcp_id, user_sub)` 复用连接
+- 按 `(mcp_id, user_id)` 复用连接
 - 任务结束后统一关闭连接
 
 ### 10.2 上下文管理

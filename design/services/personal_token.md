@@ -41,14 +41,14 @@ sequenceDiagram
 
   Client->>Router: 调用受保护接口（携带 Authorization ）
     Router->>Dep: verify_session
-    Dep-->>Router: 注入 request.state.session_id / user_sub（可选）
+    Dep-->>Router: 注入 request.state.session_id / user_id（可选）
     Router->>Dep: verify_personal_token
   Dep->>PTM: get_user_by_personal_token(token)
-    PTM->>DB: SELECT userSub WHERE personalToken == token
-    DB-->>PTM: userSub 或 None
-    PTM-->>Dep: userSub 或 None
+    PTM->>DB: SELECT userId WHERE personalToken == token
+    DB-->>PTM: userId 或 None
+    PTM-->>Dep: userId 或 None
     alt token 有效
-        Dep-->>Router: 注入 request.state.user_sub
+        Dep-->>Router: 注入 request.state.user_id
         Router-->>Client: 200 成功响应
     else token 无效
         Dep-->>Router: 抛出 401 Personal Token 无效
@@ -58,7 +58,7 @@ sequenceDiagram
 
 ## 数据模型摘要
 
-- 用户表 `User` 至少包含：`userSub`（用户唯一标识）、`personalToken`（个人令牌）。
+- 用户表 `User` 至少包含：`userId`（用户唯一标识）、`personalToken`（个人令牌）。
 - 个人令牌生成逻辑：`sha256(uuid4().hex)[:16]`（16 位十六进制字符串）。
 
 ## 接口规范
@@ -129,7 +129,7 @@ curl -X GET \
   "message": "用户数据详细信息获取成功",
   "result": {
     "userInfoList": [
-      { "userName": "alice", "userSub": "alice" }
+      { "userName": "alice", "userId": "alice" }
     ],
     "total": 42
   }
@@ -159,7 +159,7 @@ curl -X GET \
 
 - 令牌-用户映射与更新
   - “令牌查用户”：按“令牌等于用户表中的个人令牌字段”的条件检索，返回匹配到的用户标识；异常会被记录并视为查找失败。
-  - “更新令牌”：按用户标识定位记录并写入新生成的令牌；当前实现缺少 `commit` 且使用 `User.id` 过滤（与传入的 `user_sub` 类型不符），导致数据库值保持不变。
+  - “更新令牌”：按用户标识定位记录并写入新生成的令牌；当前实现缺少 `commit` 且使用 `User.id` 过滤（与传入的 `user_id` 类型不符），导致数据库值保持不变。
 
   ## 已知限制与建议
 

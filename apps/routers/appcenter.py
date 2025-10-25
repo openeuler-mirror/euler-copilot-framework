@@ -54,7 +54,7 @@ async def get_applications(  # noqa: PLR0913
     page: Annotated[int, Query(ge=1)] = 1,
 ) -> JSONResponse:
     """获取应用列表"""
-    user_sub: str = request.state.user_sub
+    user_id: str = request.state.user_id
     if createdByMe and favorited:  # 只能同时使用一个过滤条件
         return JSONResponse(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -70,7 +70,7 @@ async def get_applications(  # noqa: PLR0913
             AppFilterType.USER if createdByMe else (AppFilterType.FAVORITE if favorited else AppFilterType.ALL)
         )
         app_cards, total_apps = await AppCenterManager.fetch_apps(
-            user_sub,
+            user_id,
             keyword,
             appType,
             page,
@@ -103,12 +103,12 @@ async def get_applications(  # noqa: PLR0913
 @router.post("", response_model=BaseAppOperationRsp | ResponseData)
 async def create_or_update_application(raw_request: Request, request: CreateAppRequest) -> JSONResponse:
     """创建或更新应用"""
-    user_sub: str = raw_request.state.user_sub
+    user_id: str = raw_request.state.user_id
 
     app_id = request.app_id
     if app_id:  # 更新应用
         try:
-            await AppCenterManager.update_app(user_sub, app_id, request)
+            await AppCenterManager.update_app(user_id, app_id, request)
         except ValueError:
             logger.exception("[AppCenter] 更新应用请求无效")
             return JSONResponse(
@@ -141,7 +141,7 @@ async def create_or_update_application(raw_request: Request, request: CreateAppR
             )
     else:  # 创建应用
         try:
-            app_id = await AppCenterManager.create_app(user_sub, request)
+            app_id = await AppCenterManager.create_app(user_id, request)
         except Exception:
             logger.exception("[AppCenter] 创建应用失败")
             return JSONResponse(
@@ -168,9 +168,9 @@ async def get_recently_used_applications(
     count: Annotated[int, Query(ge=1, le=10)] = 5,
 ) -> JSONResponse:
     """获取最近使用的应用"""
-    user_sub: str = request.state.user_sub
+    user_id: str = request.state.user_id
     try:
-        recent_apps = await AppCenterManager.get_recently_used_apps(count, user_sub)
+        recent_apps = await AppCenterManager.get_recently_used_apps(count, user_id)
     except Exception:
         logger.exception("[AppCenter] 获取最近使用的应用失败")
         return JSONResponse(
@@ -306,9 +306,9 @@ async def delete_application(
     app_id: Annotated[uuid.UUID, Path(..., alias="appId", description="应用ID")],
 ) -> JSONResponse:
     """删除应用"""
-    user_sub: str = request.state.user_sub
+    user_id: str = request.state.user_id
     try:
-        await AppCenterManager.delete_app(app_id, user_sub)
+        await AppCenterManager.delete_app(app_id, user_id)
     except ValueError:
         logger.exception("[AppCenter] 删除应用请求无效")
         return JSONResponse(
@@ -355,9 +355,9 @@ async def publish_application(
     app_id: Annotated[uuid.UUID, Path(..., alias="appId", description="应用ID")],
 ) -> JSONResponse:
     """发布应用"""
-    user_sub: str = request.state.user_sub
+    user_id: str = request.state.user_id
     try:
-        published = await AppCenterManager.update_app_publish_status(app_id, user_sub)
+        published = await AppCenterManager.update_app_publish_status(app_id, user_id)
         if not published:
             logger.error("[AppCenter] 发布应用失败")
             return JSONResponse(
@@ -405,9 +405,9 @@ async def modify_favorite_application(
     request: Annotated[ChangeFavouriteAppRequest, Body(...)],
 ) -> JSONResponse:
     """更改应用收藏状态"""
-    user_sub: str = raw_request.state.user_sub
+    user_id: str = raw_request.state.user_id
     try:
-        await AppCenterManager.modify_favorite_app(app_id, user_sub, favorited=request.favorited)
+        await AppCenterManager.modify_favorite_app(app_id, user_id, favorited=request.favorited)
     except ValueError:
         logger.exception("[AppCenter] 修改收藏状态请求无效")
         return JSONResponse(

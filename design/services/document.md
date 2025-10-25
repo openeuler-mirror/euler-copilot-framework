@@ -731,7 +731,7 @@ erDiagram
 
     Document {
         uuid id PK
-        int userId
+        string userId
         string name
         string extension
         float size
@@ -750,7 +750,7 @@ erDiagram
 
     Conversation {
         uuid id PK
-        int userId
+        string userId
         string title
         datetime createdAt
     }
@@ -758,7 +758,7 @@ erDiagram
     Record {
         uuid id PK
         uuid conversationId FK
-        int userId
+        string userId
         string content
         datetime createdAt
     }

@@ -56,7 +56,7 @@ graph TB
 ```mermaid
 classDiagram
     class FactsInput {
-        +str user_sub
+        +str user_id
         +list~dict~ message
     }
 
@@ -220,7 +220,7 @@ graph TB
 
 ```python
 input_data = {
-    "user_sub": "user123",
+    "user_id": "user123",
     "message": [
         {"role": "user", "content": "北京天气如何？"},
         {"role": "assistant", "content": "北京今天晴天，温度25度。"}
