@@ -49,7 +49,7 @@ erDiagram
 
     Conversation {
         uuid id PK
-        int userId FK
+        string userId FK
         uuid appId FK
         string title
         boolean isTemporary
@@ -57,7 +57,7 @@ erDiagram
     }
 
     UserAppUsage {
-        int userId FK
+        string userId FK
         uuid appId FK
         int usageCount
         datetime lastUsed

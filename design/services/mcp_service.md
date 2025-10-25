@@ -1047,7 +1047,7 @@ erDiagram
 
     MCPActivated {
         string mcpId PK "FK"
-        int userId PK "FK"
+        string userId PK "FK"
         json env
         datetime activatedAt
     }
@@ -1068,7 +1068,7 @@ erDiagram
     }
 
     User {
-        int userId PK
+        string userId PK
         string email
         boolean isAdmin
     }

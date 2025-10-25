@@ -43,10 +43,10 @@ Session 模块是 openEuler Intelligence 框架中的会话管理系统，负责
 
 #### 静态方法
 
-- `create_session(user_sub, ip)`: 创建浏览器会话
+- `create_session(user_id, ip)`: 创建浏览器会话
 - `delete_session(session_id)`: 删除浏览器会话
 - `get_user(session_id)`: 从会话中获取用户
-- `get_session_by_user_sub(user_sub)`: 根据用户标识获取会话
+- `get_session_by_user(user_id)`: 根据用户标识获取会话
 
 ## 时序图
 
@@ -58,7 +58,7 @@ sequenceDiagram
     participant DB as 数据库
 
     Note over Client, DB: 创建会话流程
-    Client->>SessionMgr: create_session(user_sub, ip)
+    Client->>SessionMgr: create_session(user_id, ip)
     SessionMgr->>SessionMgr: 验证参数
     alt 参数无效
         SessionMgr-->>Client: 抛出ValueError
@@ -74,12 +74,12 @@ sequenceDiagram
     Note over Client, DB: 获取用户流程
     Client->>SessionMgr: get_user(session_id)
     SessionMgr->>DB: 查询Session.userId
-    DB-->>SessionMgr: 返回user_sub或None
+    DB-->>SessionMgr: 返回user_id或None
     
     alt 用户不存在
         SessionMgr-->>Client: 返回None
     else 用户存在
-        SessionMgr->>BlacklistMgr: check_blacklisted_users(user_sub)
+        SessionMgr->>BlacklistMgr: check_blacklisted_users(user_id)
         BlacklistMgr->>DB: 查询用户黑名单状态
         DB-->>BlacklistMgr: 返回黑名单状态
         BlacklistMgr-->>SessionMgr: 返回是否在黑名单中
@@ -91,7 +91,7 @@ sequenceDiagram
             DB-->>SessionMgr: 删除成功
             SessionMgr-->>Client: 返回None
         else 用户不在黑名单中
-            SessionMgr-->>Client: 返回user_sub
+            SessionMgr-->>Client: 返回user_id
         end
     end
 
@@ -112,7 +112,7 @@ sequenceDiagram
     end
 
     Note over Client, DB: 根据用户查询会话流程
-    Client->>SessionMgr: get_session_by_user_sub(user_sub)
+    Client->>SessionMgr: get_session_by_user(user_id)
     SessionMgr->>DB: 查询Session.id
     DB-->>SessionMgr: 返回session_id或None
     SessionMgr-->>Client: 返回session_id或None
@@ -126,7 +126,7 @@ erDiagram
     User ||--o{ SessionActivity : "用户产生活动"
     
     User {
-        int userId PK "用户标识"
+        string userId PK "用户标识"
         boolean isWhitelisted "是否白名单"
         integer credit "信用分"
         string personalToken "个人令牌"
@@ -134,7 +134,7 @@ erDiagram
     
     Session {
         string id PK "会话ID"
-        int userId FK "用户标识"
+        string userId FK "用户标识"
         string ip "IP地址"
         string pluginId "插件ID"
         string token "Token信息"
@@ -144,7 +144,7 @@ erDiagram
     
     SessionActivity {
         BigInteger id PK
-        int userId FK "用户标识"
+        string userId FK "用户标识"
         datetime timestamp "活动时间戳"
     }
 ```
@@ -171,7 +171,7 @@ flowchart TD
         F2 -->|是| G2[记录错误日志]
         G2 --> H2[删除会话]
         H2 --> I2[返回None]
-        F2 -->|否| J2[返回user_sub]
+        F2 -->|否| J2[返回user_id]
     end
     
     subgraph "删除会话流程"
@@ -243,11 +243,11 @@ SESSION_TTL = 43200  # 会话有效期(分钟)，默认30天
 
 ```python
 # 创建会话
-session_id = await SessionManager.create_session(user_sub="user123", ip="192.168.1.1")
+session_id = await SessionManager.create_session(user_id="user123", ip="192.168.1.1")
 
 # 获取用户信息
-user_sub = await SessionManager.get_user(session_id)
-if user_sub:
+user_id = await SessionManager.get_user(session_id)
+if user_id:
     # 用户有效，处理业务逻辑
 else:
     # 用户无效或在黑名单中
@@ -256,7 +256,7 @@ else:
 await SessionManager.delete_session(session_id)
 
 # 根据用户查询会话
-session_id = await SessionManager.get_session_by_user_sub(user_sub)
+session_id = await SessionManager.get_session_by_user(user_id)
 ```
 
 ## 扩展性

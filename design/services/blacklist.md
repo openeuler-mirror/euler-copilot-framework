@@ -38,14 +38,14 @@ erDiagram
 
     Record {
         uuid id PK "问答对ID"
-        int userId FK "用户标识"
+        string userId FK "用户标识"
         text content "加密内容"
         text key "加密密钥"
     }
 
     User {
         int id PK "用户ID"
-        int userId UK "用户标识"
+        string userId UK "用户标识"
         int credit "信用分"
         boolean isWhitelisted "白名单标识"
     }

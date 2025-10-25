@@ -47,14 +47,14 @@ erDiagram
     
     UserFavorite {
         bigint id PK "收藏ID"
-        int userId FK "用户标识"
+        string userId FK "用户标识"
         enum favouriteType "收藏类型"
         uuid itemId "项目ID"
     }
     
     UserAppUsage {
         bigint id PK "使用记录ID"
-        int userId FK "用户标识"
+        string userId FK "用户标识"
         uuid appId FK "应用ID"
         int usageCount "使用次数"
         datetime lastUsed "最后使用时间"
@@ -62,7 +62,7 @@ erDiagram
     
     UserTag {
         bigint id PK "标签ID"
-        int userId FK "用户标识"
+        string userId FK "用户标识"
         bigint tag FK "标签ID"
         int count "标签归类次数"
     }

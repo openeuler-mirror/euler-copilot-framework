@@ -200,7 +200,7 @@ sequenceDiagram
     API->>+API: _init(call_vars)
 
     alt 存在ServiceId
-        API->>+Service: get_service_metadata(user_sub, service_id)
+        API->>+Service: get_service_metadata(user_id, service_id)
         Service-->>-API: service_metadata
         API->>API: 保存_auth认证信息
     end

@@ -299,7 +299,7 @@ classDiagram
     class Comment {
         +int id
         +UUID recordId
-        +int userId
+        +string userId
         +CommentType commentType
         +list~str~ feedbackType
         +str feedbackLink
@@ -357,7 +357,7 @@ erDiagram
     FRAMEWORK_RECORD ||--o| FRAMEWORK_COMMENT : has
 
     FRAMEWORK_USER {
-        int userId PK
+        string userId PK
         string userName
         datetime createdAt
     }
@@ -365,7 +365,7 @@ erDiagram
     FRAMEWORK_RECORD {
         uuid id PK
         uuid conversationId
-        int userId FK
+        string userId FK
         string content
         datetime createdAt
     }
@@ -373,7 +373,7 @@ erDiagram
     FRAMEWORK_COMMENT {
         bigint id PK
         uuid recordId FK
-        int userId FK
+        string userId FK
         enum commentType
         array feedbackType
         string feedbackLink

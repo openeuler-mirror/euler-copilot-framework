@@ -323,7 +323,7 @@ classDiagram
         +task_id: UUID
         +executor_id: str
         +session_id: str | None
-        +user_sub: str
+        +user_id: str
         +app_id: UUID | None
         +conversation_id: UUID | None
     }
@@ -577,7 +577,7 @@ CallVars是CoreCall中最重要的数据结构，包含了执行Call所需的所
 | `task_id` | UUID | ✅ | 当前任务的唯一标识符 |
 | `executor_id` | str | ✅ | Flow执行器的ID |
 | `session_id` | str \| None | ❌ | 用户会话ID（可选） |
-| `user_sub` | str | ✅ | 用户唯一标识符 |
+| `user_id` | str | ✅ | 用户唯一标识符 |
 | `app_id` | UUID \| None | ❌ | 应用ID（可选） |
 | `conversation_id` | UUID \| None | ❌ | 对话ID（可选） |
 

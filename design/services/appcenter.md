@@ -783,7 +783,7 @@ erDiagram
 
     AppACL {
         uuid appId PK "FK"
-        int userId "FK"
+        string userId "FK"
         string action
     }
 
@@ -794,7 +794,7 @@ erDiagram
     }
 
     User {
-        int userId PK
+        string userId PK
         datetime lastLogin
         boolean isActive
         string personalToken
@@ -802,14 +802,14 @@ erDiagram
 
     UserFavorite {
         int id PK
-        int userId "FK"
+        string userId "FK"
         enum favouriteType
         uuid itemId
     }
 
     UserAppUsage {
         int id PK
-        int userId "FK"
+        string userId "FK"
         uuid appId "FK"
         int usageCount
         datetime lastUsed

@@ -20,7 +20,7 @@ erDiagram
     
     framework_user {
         BigInteger id PK "主键"
-        int userId UK "用户标识"
+        string userId UK "用户标识"
         datetime lastLogin "最后登录时间"
         boolean isActive "是否活跃"
         boolean isWhitelisted "是否白名单"
@@ -40,7 +40,7 @@ erDiagram
     
     framework_user_tag {
         BigInteger id PK "主键"
-        int userId FK "用户标识(外键)"
+        string userId FK "用户标识(外键)"
         BigInteger tag FK "标签ID(外键)"
         integer count "标签使用频次(默认0)"
     }

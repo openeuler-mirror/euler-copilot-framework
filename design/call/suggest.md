@@ -49,7 +49,7 @@ classDiagram
 
     class SuggestionInput {
         +str question
-        +str user_sub
+        +str user_id
         +list~str~ history_questions
     }
 
@@ -86,7 +86,7 @@ erDiagram
 
     UserTag {
         bigint id PK
-        string userSub FK
+        string userId FK
         bigint tag FK
         int count
     }
@@ -100,13 +100,13 @@ erDiagram
 
     User {
         bigint id PK
-        string userSub UK
+        string userId UK
     }
 
     Record {
         uuid id PK
         uuid conversation_id
-        string user_sub
+        string user_id
         string content
         dict key
     }
@@ -128,7 +128,7 @@ erDiagram
 ```json
 {
   "question": "杭州有哪些著名景点?",
-  "user_sub": "user_12345",
+  "user_id": "user_12345",
   "history_questions": [
     "简单介绍一下杭州",
     "杭州有哪些著名景点?"
@@ -139,7 +139,7 @@ erDiagram
 **字段说明:**
 
 - `question` (string): 当前用户提出的问题
-- `user_sub` (string): 用户唯一标识
+- `user_id` (string): 用户唯一标识
 - `history_questions` (list[string]): 该对话中的历史问题列表
 
 #### SingleFlowSuggestionConfig
@@ -404,7 +404,7 @@ sequenceDiagram
     Executor->>Suggestion: _init(call_vars)
     activate Suggestion
 
-    Suggestion->>UserTagMgr: get_user_domain_by_user_sub_and_topk(user_sub, 5)
+    Suggestion->>UserTagMgr: get_user_domain_by_user_and_topk(user_id, 5)
     activate UserTagMgr
     UserTagMgr-->>Suggestion: 返回用户偏好标签列表
     deactivate UserTagMgr
@@ -584,7 +584,7 @@ sequenceDiagram
 
 **查询逻辑:**
 
-1. 根据 user_sub 和 conversation_id 查询 MongoDB
+1. 根据 user_id 和 conversation_id 查询 MongoDB
 2. 限制返回最近 15 条记录
 3. 解密每条记录的 content 字段
 4. 从 RecordContent 中提取 question 字段
@@ -597,7 +597,7 @@ MongoDB Record → 解密 → RecordContent → question
 
 ### 9.2 用户画像查询
 
-**查询方法:** `UserTagManager.get_user_domain_by_user_sub_and_topk()`
+**查询方法:** `UserTagManager.get_user_domain_by_user_and_topk()`
 
 **SQL 查询逻辑:**
 
@@ -605,7 +605,7 @@ MongoDB Record → 解密 → RecordContent → question
 SELECT ut.*, t.name, t.definition
 FROM framework_user_tag ut
 JOIN framework_tag t ON ut.tag = t.id
-WHERE ut.userSub = ?
+WHERE ut.userId = ?
 ORDER BY ut.count DESC
 LIMIT 5
 ```

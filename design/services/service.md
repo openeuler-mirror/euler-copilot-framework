@@ -540,7 +540,7 @@ sequenceDiagram
 
     Client->>Router: POST /api/admin/service (无service_id)
     Router->>Router: 验证管理员权限
-    Router->>Manager: create_service(user_sub, data)
+    Router->>Manager: create_service(user_id, data)
     Manager->>Manager: 生成UUID服务ID
     Manager->>Validator: load_dict(data)
     Note over Validator: 验证OpenAPI规范<br/>提取服务元数据
@@ -587,7 +587,7 @@ sequenceDiagram
 
     Client->>Router: POST /api/admin/service (含service_id)
     Router->>Router: 验证管理员权限
-    Router->>Manager: update_service(user_sub, service_id, data)
+    Router->>Manager: update_service(user_id, service_id, data)
 
     Manager->>DB: 查询Service记录
     alt 服务不存在
@@ -718,7 +718,7 @@ sequenceDiagram
 
     Client->>Router: PUT /api/service/{serviceId}
     Router->>Router: 验证用户身份
-    Router->>Manager: modify_favorite_service(user_sub, service_id, favorited)
+    Router->>Manager: modify_favorite_service(user_id, service_id, favorited)
 
     Manager->>DB: 查询Service是否存在
     alt 服务不存在
@@ -738,7 +738,7 @@ sequenceDiagram
             alt favorited=true且未收藏
                 DB-->>Manager: 返回空
                 Manager->>DB: 插入UserFavorite记录
-                Note over DB: itemId=service_id<br/>userSub=user_sub<br/>favouriteType=SERVICE
+                Note over DB: itemId=service_id<br/>userId=user_id<br/>favouriteType=SERVICE
                 Manager->>DB: 提交事务
                 Manager-->>Router: 返回成功
                 Router-->>Client: 200 OK
@@ -789,7 +789,7 @@ sequenceDiagram
 - **特殊处理**:
   - 当搜索类型为AUTHOR时，验证关键字是否包含在用户标识中
   - 如果不包含，直接返回空列表
-  - 自动将关键字替换为完整的user_sub进行精确匹配
+  - 自动将关键字替换为完整的user_id进行精确匹配
 - **执行步骤**:
   1. 构建包含author条件的查询语句
   2. 根据搜索类型添加额外的过滤条件
@@ -942,7 +942,7 @@ sequenceDiagram
   - **添加收藏**: 查询UserFavorite不存在且favorited=true时插入新记录
   - **取消收藏**: 查询UserFavorite存在且favorited=false时删除记录
   - **无变化**: 其他情况不执行数据库操作，直接返回成功
-- **复合键**: UserFavorite表使用(itemId, userSub, favouriteType)作为唯一键
+- **复合键**: UserFavorite表使用(itemId, userId, favouriteType)作为唯一键
 - **类型标识**: favouriteType固定为UserFavoriteType.SERVICE
 - **幂等性**: 多次调用相同参数不会产生错误，状态最终一致
 - **使用场景**: 服务列表中的收藏按钮点击事件
@@ -953,7 +953,7 @@ sequenceDiagram
 
 - **功能描述**: 从UserFavorite表提取用户收藏的服务UUID
 - **查询条件**:
-  - userSub等于指定用户标识
+  - userId等于指定用户标识
   - favouriteType等于SERVICE类型
 - **执行步骤**:
   1. 构建查询语句筛选UserFavorite记录
@@ -1010,7 +1010,7 @@ sequenceDiagram
 
 - **功能描述**: 在通用查询基础上添加作者过滤
 - **执行步骤**:
-  1. 创建基础SELECT并添加author=user_sub条件
+  1. 创建基础SELECT并添加author=user_id条件
   2. 如果有keyword，使用AND组合作者条件和搜索条件
   3. 根据searchType选择搜索字段
   4. 应用排序和分页
@@ -1067,19 +1067,19 @@ erDiagram
 
     ServiceACL {
         uuid serviceId PK "FK"
-        string userSub PK "FK"
+        string userId PK "FK"
         datetime createdAt
     }
 
     UserFavorite {
         uuid itemId PK "FK"
-        string userSub PK "FK"
+        string userId PK "FK"
         enum favouriteType PK
         datetime createdAt
     }
 
     User {
-        string userSub PK
+        string userId PK
         string email
         boolean isAdmin
     }
@@ -1143,7 +1143,7 @@ erDiagram
 
 #### 收藏唯一性
 
-- UserFavorite表使用(itemId, userSub, favouriteType)复合主键
+- UserFavorite表使用(itemId, userId, favouriteType)复合主键
 - 同一用户不能重复收藏同一服务
 - 数据库约束自动保证唯一性
 
@@ -1437,7 +1437,7 @@ ReducedOpenAPISpec包含提取的核心信息：
 
 ServiceACL表维护私有服务的授权用户：
 
-- 复合主键：(serviceId, userSub)
+- 复合主键：(serviceId, userId)
 - 作者自动拥有访问权限
 - ACL列表用户可访问PRIVATE服务的元数据
 - 服务删除时级联删除ACL记录
