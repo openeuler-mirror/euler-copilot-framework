@@ -46,6 +46,8 @@ class AutheliaConfig(BaseModel):
     client_id: str = Field(description="OIDC Client ID")
     client_secret: str = Field(description="OIDC Client Secret")
     redirect_uri: str = Field(description="重定向URI")
+    enable_pkce: bool = Field(description="是否启用PKCE", default=True)
+    pkce_challenge_method: str = Field(description="PKCE挑战方法", default="S256")
 
 
 class FixedUserConfig(BaseModel):
