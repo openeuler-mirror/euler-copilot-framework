@@ -1,6 +1,8 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2023-2025. All rights reserved.
 """Authelia OIDC Provider"""
 
+import base64
+import hashlib
 import logging
 import secrets
 from typing import Any
@@ -17,6 +19,25 @@ logger = logging.getLogger(__name__)
 
 class AutheliaOIDCProvider(OIDCProviderBase):
     """Authelia OIDC Provider"""
+    
+    # PKCE相关的类变量，用于存储code_verifier
+    _code_verifier: str = ""
+
+    @classmethod
+    def _generate_pkce_params(cls) -> tuple[str, str]:
+        """生成PKCE参数"""
+        # 生成code_verifier (43-128个字符的随机字符串)
+        code_verifier = base64.urlsafe_b64encode(secrets.token_bytes(32)).decode('utf-8').rstrip('=')
+        
+        # 生成code_challenge (code_verifier的SHA256哈希值)
+        code_challenge = base64.urlsafe_b64encode(
+            hashlib.sha256(code_verifier.encode('utf-8')).digest()
+        ).decode('utf-8').rstrip('=')
+        
+        # 存储code_verifier供后续使用
+        cls._code_verifier = code_verifier
+        
+        return code_verifier, code_challenge
 
     @classmethod
     def _get_login_config(cls) -> AutheliaConfig:
@@ -39,6 +60,11 @@ class AutheliaOIDCProvider(OIDCProviderBase):
             "grant_type": "authorization_code",
             "code": code,
         }
+        
+        # 如果启用了PKCE，添加code_verifier参数
+        if login_config.enable_pkce and cls._code_verifier:
+            data["code_verifier"] = cls._code_verifier
+            logger.info("[Authelia] 使用PKCE流程，添加code_verifier参数")
         headers = {
             "Content-Type": "application/x-www-form-urlencoded",
         }
@@ -148,12 +174,26 @@ class AutheliaOIDCProvider(OIDCProviderBase):
 
         # 生成随机的 state 参数以确保安全性和唯一性
         state = secrets.token_urlsafe(32)
-        return (f"{login_config.host.rstrip('/')}/api/oidc/authorization?"
-                f"client_id={login_config.client_id}&"
-                f"response_type=code&"
-                f"scope=openid profile email&"
-                f"redirect_uri={login_config.redirect_uri}&"
-                f"state={state}")
+        
+        # 基础URL参数
+        url_params = [
+            f"client_id={login_config.client_id}",
+            f"response_type=code",
+            f"scope=openid profile email",
+            f"redirect_uri={login_config.redirect_uri}",
+            f"state={state}"
+        ]
+        
+        # 如果启用PKCE，添加PKCE参数
+        if login_config.enable_pkce:
+            code_verifier, code_challenge = cls._generate_pkce_params()
+            url_params.extend([
+                f"code_challenge={code_challenge}",
+                f"code_challenge_method={login_config.pkce_challenge_method}"
+            ])
+            logger.info("[Authelia] 启用PKCE流程，生成code_challenge参数")
+        
+        return f"{login_config.host.rstrip('/')}/api/oidc/authorization?" + "&".join(url_params)
 
     @classmethod
     async def get_access_token_url(cls) -> str:

@@ -1,5 +1,5 @@
 [no_auth]
-enable = true
+enable = false
 user_sub = "openEuler"
 user_name = "openEuler"
 
@@ -10,19 +10,27 @@ data_dir = '/app/data'
 
 [login]
 provider = 'authelia'
+{{- $eulerCopilotDomain := .Values.domain.euler_copilot | default "http://127.0.0.1:30080" }}
+{{- $autheliaDomain := .Values.domain.authelia }}
+{{- if not $autheliaDomain }}
+  {{- $baseHost := regexReplaceAll "^https?://|:[0-9]+$" $eulerCopilotDomain "" }}
+  {{- $protocol := regexFind "^https?://" $eulerCopilotDomain }}
+  {{- $autheliaPort := .Values.ports.authelia | default 30091 | toString }}
+  {{- $autheliaDomain = printf "%s%s:%s" $protocol $baseHost $autheliaPort }}
+{{- end }}
 [login.settings]
 # Authelia OIDC 服务器配置
-host = '{{ .Values.domain.authelia | default (printf "%s:%d" (.Values.domain.euler_copilot | default "http://127.0.0.1") (.Values.ports.authelia | default 30091)) }}'
+host = '{{ $autheliaDomain }}'
 client_id = '{{ .Values.login.authelia.client_id | default "euler-copilot" }}'
 client_secret = '{{ .Values.login.authelia.client_secret | default "your-client-secret-here" }}'
 
 # OIDC 端点配置
-redirect_uri = '{{ .Values.domain.euler_copilot | default "http://127.0.0.1:30080" }}/api/auth/login'
-authorization_endpoint = '{{ .Values.domain.authelia | default (printf "%s:%d" (.Values.domain.euler_copilot | default "http://127.0.0.1") (.Values.ports.authelia | default 30091)) }}/api/oidc/authorization'
-token_endpoint = '{{ .Values.domain.authelia | default (printf "%s:%d" (.Values.domain.euler_copilot | default "http://127.0.0.1") (.Values.ports.authelia | default 30091)) }}/api/oidc/token'
-userinfo_endpoint = '{{ .Values.domain.authelia | default (printf "%s:%d" (.Values.domain.euler_copilot | default "http://127.0.0.1") (.Values.ports.authelia | default 30091)) }}/api/oidc/userinfo'
-jwks_uri = '{{ .Values.domain.authelia | default (printf "%s:%d" (.Values.domain.euler_copilot | default "http://127.0.0.1") (.Values.ports.authelia | default 30091)) }}/.well-known/jwks.json'
-issuer = '{{ .Values.domain.authelia | default (printf "%s:%d" (.Values.domain.euler_copilot | default "http://127.0.0.1") (.Values.ports.authelia | default 30091)) }}'
+redirect_uri = '{{ $eulerCopilotDomain }}/api/auth/login'
+authorization_endpoint = '{{ $autheliaDomain }}/api/oidc/authorization'
+token_endpoint = '{{ $autheliaDomain }}/api/oidc/token'
+userinfo_endpoint = '{{ $autheliaDomain }}/api/oidc/userinfo'
+jwks_uri = '{{ $autheliaDomain }}/.well-known/jwks.json'
+issuer = '{{ $autheliaDomain }}'
 
 # OIDC 作用域和声明配置
 scopes = 'openid profile email groups'
@@ -30,7 +38,7 @@ response_type = 'code'
 response_mode = 'form_post'
 
 # OIDC 高级配置
-enable_pkce = false
+enable_pkce = true
 pkce_challenge_method = 'S256'
 token_endpoint_auth_method = 'client_secret_basic'
 
@@ -53,6 +61,14 @@ type = '{{ default "openai" .Values.models.embedding.type }}'
 endpoint = '{{ .Values.models.embedding.endpoint }}'
 api_key = '{{ .Values.models.embedding.key }}'
 model = '{{ default "bge-m3" .Values.models.embedding.name }}'
+icon = '{{ .Values.models.embedding.icon }}'
+
+[reranker]
+type = '{{ .Values.models.reranker.type }}'
+endpoint = '{{ .Values.models.reranker.endpoint }}'
+api_key = '{{ .Values.models.reranker.key }}'
+model = '{{ default "BAAI/bge-reranker-v2-m3" .Values.models.reranker.name }}'
+icon = '{{ .Values.models.reranker.icon }}'
 
 [rag]
 rag_service = 'http://rag-service.{{ .Release.Namespace }}.svc.cluster.local:9988'
@@ -63,6 +79,17 @@ port = 27017
 user = 'euler_copilot'
 password = '${mongo-password}'
 database = 'euler_copilot'
+
+[redis]
+host = 'redis-db.{{ .Release.Namespace }}.svc.cluster.local'
+port = 6379
+password = '${redis-password}'
+database = 0
+decode_responses = true
+socket_timeout = 5.0
+socket_connect_timeout = 5.0
+max_connections = 10
+health_check_interval = 30
 
 [minio]
 endpoint = 'minio-service.{{ .Release.Namespace }}.svc.cluster.local:9000'

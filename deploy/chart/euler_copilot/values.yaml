@@ -76,27 +76,35 @@ login:
     secret:
   # Authelia OIDC设置，仅在provider为authelia时有效
   authelia:
-    # [必填] OIDC客户端ID
-    client_id: euler-copilot
+    # [必填] Authelia服务URL
+    url:
+    # [必填] OIDC客户端ID（建议使用UUID）
+    client_id:
     # [必填] OIDC客户端密钥
-    client_secret: your-client-secret-here
+    client_secret:
 
 #域名设置
 domain:
   # [必填] EulerCopilot的web前端url；默认为http://127.0.0.1:30080
   euler_copilot:
-  # [必填] authhub的web前端url；默认为http://127.0.0.1:30081
-  # 如果不设置，将自动使用 euler_copilot + authhub_port 构建
+  # [可选] authhub的web前端url
+  # 如果不设置，将自动从euler_copilot域名和ports.authhub构建
+  # 建议：部署认证服务时，将实际的认证服务地址设置到这里
   authhub:
-  # [必填] authelia的web前端url；默认为http://127.0.0.1:30091
-  # 如果不设置，将自动使用 euler_copilot + authelia_port 构建
+  # [可选] authelia的web前端url  
+  # 如果不设置，将自动从euler_copilot域名和ports.authelia构建
+  # 建议：部署认证服务时，将实际的认证服务地址设置到这里
+  # 例如：如果认证服务部署在 https://10.211.55.10:30091，请设置此值
   authelia:
 
-# 服务端口设置（用于自动构建域名）
+# 服务端口设置（仅在domain未设置时用于自动构建域名）
+# 注意：这些端口仅作为fallback，实际应该在domain中设置完整的认证服务地址
 ports:
   # AuthHub web服务端口；默认为30081
+  # 仅在domain.authhub未设置时使用
   authhub: 30081
-  # Authelia服务端口；默认为30091
+  # Authelia服务端口；默认为30091  
+  # 仅在domain.authelia未设置时使用
   authelia: 30091
 
 # 存储设置
@@ -238,3 +246,6 @@ euler_copilot:
       type:
       # 当类型为NodePort时，填写主机的端口号
       nodePort:
+tls:
+  enabled:
+  secretName: eulercopilot-tls-secret

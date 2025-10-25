@@ -186,7 +186,7 @@ class FlowManager:
                 NodeServiceItem(
                     serviceId=record["_id"],
                     name=record["name"],
-                    type="default", # TODO record["type"]?
+                    type="plugin",  # 除了system固有节点，其余均为插件
                     nodeMetaDatas=[],
                     createdAt=str(record["created_at"]),
                 )

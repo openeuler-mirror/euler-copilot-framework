@@ -14,18 +14,34 @@ data_dir = '/app/data'
 [login]
 provider = '{{ .Values.login.provider | default "authhub" }}'
 {{- if eq (.Values.login.provider | default "authhub") "authelia" }}
+{{- $eulerCopilotDomain := .Values.domain.euler_copilot | default "http://127.0.0.1:30080" }}
+{{- $autheliaDomain := .Values.domain.authelia }}
+{{- if not $autheliaDomain }}
+  {{- $baseHost := regexReplaceAll "^https?://|:[0-9]+$" $eulerCopilotDomain "" }}
+  {{- $protocol := regexFind "^https?://" $eulerCopilotDomain }}
+  {{- $autheliaPort := .Values.ports.authelia | default 30091 | toString }}
+  {{- $autheliaDomain = printf "%s%s:%s" $protocol $baseHost $autheliaPort }}
+{{- end }}
 [login.settings]
-host = '{{ .Values.domain.authelia | default "http://127.0.0.1:30091" }}'
+host = '{{ $autheliaDomain }}'
 client_id = '{{ .Values.login.authelia.client_id | default "euler-copilot" }}'
 client_secret = '{{ .Values.login.authelia.client_secret | default "your-client-secret-here" }}'
-redirect_uri = '{{ .Values.domain.euler_copilot | default "http://127.0.0.1:30080" }}/api/auth/login'
-authorization_endpoint = '{{ .Values.domain.authelia | default "http://127.0.0.1:30091" }}/api/oidc/authorization'
-token_endpoint = '{{ .Values.domain.authelia | default "http://127.0.0.1:30091" }}/api/oidc/token'
-userinfo_endpoint = '{{ .Values.domain.authelia | default "http://127.0.0.1:30091" }}/api/oidc/userinfo'
+redirect_uri = '{{ $eulerCopilotDomain }}/api/auth/login'
+authorization_endpoint = '{{ $autheliaDomain }}/api/oidc/authorization'
+token_endpoint = '{{ $autheliaDomain }}/api/oidc/token'
+userinfo_endpoint = '{{ $autheliaDomain }}/api/oidc/userinfo'
 scopes = 'openid profile email'
 {{- else }}
 [login.settings]
-host = '{{ if .Values.domain.authhub }}{{ .Values.domain.authhub }}{{ else }}http://{{ regexReplaceAll "^https?://|:[0-9]+$" (.Values.domain.euler_copilot | default "http://127.0.0.1") "" }}:{{ .Values.ports.authhub | default 30081 }}{{ end }}'
+{{- $eulerCopilotDomain := .Values.domain.euler_copilot | default "http://127.0.0.1:30080" }}
+{{- $authhubDomain := .Values.domain.authhub }}
+{{- if not $authhubDomain }}
+  {{- $baseHost := regexReplaceAll "^https?://|:[0-9]+$" $eulerCopilotDomain "" }}
+  {{- $protocol := regexFind "^https?://" $eulerCopilotDomain }}
+  {{- $authhubPort := .Values.ports.authhub | default 30081 | toString }}
+  {{- $authhubDomain = printf "%s%s:%s" $protocol $baseHost $authhubPort }}
+{{- end }}
+host = '{{ $authhubDomain }}'
 host_inner = 'http://authhub-backend-service.{{ .Release.Namespace }}.svc.cluster.local:11120'
 login_api = '{{ .Values.domain.euler_copilot | default "http://127.0.0.1:30080" }}/api/auth/login'
 app_id = '${clientId}'

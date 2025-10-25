@@ -26,7 +26,7 @@
 
 3. OIDC Configuration for Euler Copilot Framework:
    - Client ID: {{ (index .Values.authelia.config.identity_providers.oidc.clients 0).client_id | default "euler-copilot" }}
-   - Client Secret: your-client-secret-here
+   - Client Secret: [已在安装过程中生成并显示]
    - Authorization URL: {{ .Values.domain.authelia | default "http://127.0.0.1:30091" }}/api/oidc/authorization
    - Token URL: {{ .Values.domain.authelia | default "http://127.0.0.1:30091" }}/api/oidc/token
    - User Info URL: {{ .Values.domain.authelia | default "http://127.0.0.1:30091" }}/api/oidc/userinfo

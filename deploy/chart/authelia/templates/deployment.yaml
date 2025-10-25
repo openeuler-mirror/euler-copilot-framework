@@ -29,6 +29,9 @@ spec:
         - name: http
           containerPort: 9091
           protocol: TCP
+        args:
+        - --config
+        - /app/configuration.yml
         env:
         - name: AUTHELIA_LOG_LEVEL
           value: {{ .Values.authelia.config.log.level | default "info" | quote }}
@@ -53,6 +56,8 @@ spec:
           mountPath: /etc/authelia/certs
           readOnly: true
         {{- end }}
+        - name: tmp
+          mountPath: /tmp
         livenessProbe:
           httpGet:
             path: /api/health
@@ -80,7 +85,7 @@ spec:
           capabilities:
             drop:
             - ALL
-          readOnlyRootFilesystem: true
+          readOnlyRootFilesystem: false
         {{- if .Values.authelia.resources }}
         resources:
           {{- toYaml .Values.authelia.resources | nindent 10 }}
@@ -106,4 +111,6 @@ spec:
           secretName: authelia-tls-secret
           defaultMode: 0400
       {{- end }}
+      - name: tmp
+        emptyDir: {}
 {{- end }}

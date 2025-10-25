@@ -88,8 +88,8 @@ authelia:
       domain: "127.0.0.1"
       # SameSite策略；默认为lax，可选：strict, lax, none
       same_site: lax
-      # [必填] 会话密钥，生产环境请修改
-      secret: "insecure_session_secret_change_me_in_production"
+      # [必填] 会话密钥，将通过Helm参数动态设置
+      secret: ""
       # 会话过期时间；默认为1h
       expiration: 1h
       # 会话非活跃超时时间；默认为5m
@@ -129,8 +129,8 @@ authelia:
     
     # 存储配置
     storage:
-      # [必填] 存储加密密钥，生产环境请修改
-      encryption_key: "insecure_storage_encryption_key_change_me_in_production"
+      # [必填] 存储加密密钥，将通过Helm参数动态设置
+      encryption_key: ""
       # 本地SQLite存储配置
       local:
         # 数据库文件路径；默认为/etc/authelia/db.sqlite3
@@ -154,8 +154,8 @@ authelia:
     identity_validation:
       # 密码重置配置
       reset_password:
-        # [必填] JWT密钥，生产环境请修改
-        jwt_secret: "a_very_important_secret_for_jwt_tokens_change_me_in_production"
+        # [必填] JWT密钥，将通过Helm参数动态设置
+        jwt_secret: ""
     
     # 访问限制配置
     regulation:
@@ -180,8 +180,8 @@ authelia:
     # OIDC 身份提供者配置
     identity_providers:
       oidc:
-        # [必填] HMAC密钥，生产环境请修改
-        hmac_secret: "this_is_a_secret_abc123abc123abc123"
+        # [必填] HMAC密钥，将通过Helm参数动态设置
+        hmac_secret: ""
         # 是否启用客户端调试消息；默认为true
         enable_client_debug_messages: true
         # JWT签名密钥配置
@@ -190,52 +190,24 @@ authelia:
             key_id: main-signing-key
             # 签名算法；默认为RS256
             algorithm: RS256
-            # [必填] RSA私钥，生产环境请使用真实的私钥
-            key: |
-              -----BEGIN PRIVATE KEY-----
-              MIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQCssLU+8eRFwGVA
-              E/8BPxpneEzp0rbfM1m+osuedZ+nad8L1CQompCmx8A/hXHynUGgCxS6QJj+5qNH
-              ZXqSIr+JDfixDqb2CpkUMBhrG7JIYZCyLQevBR5sGPwGXMeHyTGfWI6hoSUCfbqG
-              Hg+40n/2shisbqUyIQiR934RaA32Wn42fqcXyzaUU0xqy55aKyXBhAojsrDT09Mv
-              vNJce9tO9D7e0p1n0YQJdDFVyCZzCnVWL3i+iyf5rkK9OzS7TBAiQLZWfMcCBOZC
-              t0XBsQj91klwp17dDWzKM9seBfB83riMRqxBoSQ2NUFU27h6eJwUpOBc4PMpORlH
-              BBhaaHUPAgMBAAECggEAOWOaQBpcHbAUFejvSGdDq5onmVcs7d0fWIK6f2Ugkx7U
-              gJZWE+ZV5w8f/RwoY5POMNUt5L29+owEPCBlzPXeSDpL6O9xHfgkqjhXjRTNuU8v
-              Kn9be9cMJqlg6+5eYupCYu2nrOAkMAE/gP2xhN7zprTGDVvR62hd9EBW9YrqhPE+
-              gsPzRr4Gg9MRiUesS+pOFkhseb+1gvNozBRhKxRs7zm2KlFpZMK6vAgG9/ZSVCxq
-              SbTp7NwFJsBEuVPgEWWDexflsbBxgkQ44q5VYK5MjEf0pr0IWEhIZNM+1fUnrYV0
-              fhlEfT4G/gdIcEXKvzo5r3wzr1+sdIWO+Fe9JG3ZBQKBgQDmmkxektOmBt5yEdEA
-              aXNJBWxTQFU/vb7tm+B+/yR3jgTn8jMPmH87gl+C8SfufbGEsOatP44k2NUVad4R
-              yf2xtoeWuRlPw4akLWXzZdSlRzF5Q7Y4aRxzKQWcsEdKKAOvsDsuoHOQGdeE79Xw
-              xNqu1c2aui0qqKVBUbXDWE/H6wKBgQC/tZqAS+umFoVYfT/4t3xnW0X8z8rJqfA0
-              BmosDaKdvzkUpGYaWjsUpETqGrlVdh+OfbGlfdlMCslluhaW1GVR/tD4Ji6WWt10
-              EavaBnt9xYHE153FYJqshV5eku9egussRLNzccp4cltAE3InQkYGMPRlmCGNMz2j
-              eh0qHwGCbQKBgBPmzSB8W3fAsAH4N6lpcGGk7ixhKPpPTeMDyOQs8ODAiPvbkzyN
-              VK22GrgaR+/1ORTSj5X0Hjhf3kPy1w+B9zsXHayMXPrdTQluQZY3+5ooAsUMavWD
-              XMkziSB0tjJYMbk/5FupzU9qa4c1i6kz1AuyuAPafXtpApoYiy9It9nxAoGBAKH9
-              QNTh0ffglcJE61YtLNhk3omVx0OJ7eb3+KTKzLrAhunzVDc2QS/a8kRiWnJlQprz
-              iLVO1tsTTkQ/7rB6Pjb/uvHDyZ/Qncli2TR8P8Lxrgp3KuBKFchrVWdSfyL8Ot2I
-              G54T68LE1mgZRl73+BVpLkneN5OJVa8aEySxWGQtAoGAUnguyoO+Hs73Vyz22KLi
-              b5ieWQghi63GaoGHA0qeUMy5njgHKUAcuSBB9TIZGxnnDA9u0hHhOieCmhAJU21h
-              zoKntzIFuaZgt4Tgat72oPBw1hGE+2bN5lHmC+SsL9oxyvsH2gDFjSiLWpg7GTC6
-              2mFOM+pjK2mWWQe1ADC6tbA=
-              -----END PRIVATE KEY-----
+            # [必填] RSA私钥，将通过Helm参数动态设置
+            key: ""
         # OIDC客户端配置
         clients:
-          - # OIDC客户端ID；默认为euler-copilot
+          - # OIDC客户端ID；建议使用UUID，将通过Helm参数动态设置
             client_id: "euler-copilot"
             # 客户端显示名称；默认为Euler Copilot Framework
             client_name: "Euler Copilot Framework"
-            # [必填] 客户端密钥，生产环境请修改
-            client_secret: "$argon2id$v=19$m=65536,t=3,p=4$XYeq1N+rtYxALylzWxOxCQ$mWQaPRuYGuNa9d4rnAc7eq25HIJc0dwOYQrlEzJ792k"
+            # [必填] 客户端密钥，将通过Helm参数动态设置
+            client_secret: ""
             # 是否为公共客户端；默认为false
             public: false
             # 授权策略；默认为one_factor
             authorization_policy: one_factor
             # Token端点认证方法；默认为client_secret_post
             token_endpoint_auth_method: client_secret_post
-            # 是否需要PKCE；默认为false
-            require_pkce: false
+            # 是否需要PKCE；默认为true
+            require_pkce: true
             # 重定向URI列表
             redirect_uris:
               - "https://127.0.0.1/api/auth/login"
