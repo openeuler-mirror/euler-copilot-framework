@@ -5,11 +5,12 @@ import asyncio
 import logging
 from contextlib import AsyncExitStack
 from typing import TYPE_CHECKING
-
+from datetime import timedelta
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.sse import sse_client
 from mcp.client.stdio import stdio_client
 
+from apps.common.config import Config
 from apps.constants import MCP_PATH
 from apps.schemas.mcp import (
     MCPServerSSEConfig,
@@ -58,7 +59,9 @@ class MCPClient:
             headers = config.headers or {}
             client = sse_client(
                 url=config.url,
-                headers=headers
+                headers=headers,
+                timeout=Config().get_config().mcp_config.sse_client_init_timeout,
+                sse_read_timeout=Config().get_config().mcp_config.sse_client_read_timeout,
             )
         elif isinstance(config, MCPServerStdioConfig):
             if user_sub:
@@ -123,7 +126,8 @@ class MCPClient:
         self.stop_sign = asyncio.Event()
 
         # 创建协程
-        self.task = asyncio.create_task(self._main_loop(user_sub, mcp_id, config))
+        self.task = asyncio.create_task(
+            self._main_loop(user_sub, mcp_id, config))
 
         # 等待初始化完成
         done, pending = await asyncio.wait(
@@ -141,7 +145,7 @@ class MCPClient:
 
     async def call_tool(self, tool_name: str, params: dict) -> "CallToolResult":
         """调用MCP Server的工具"""
-        return await self.client.call_tool(tool_name, params)
+        return await self.client.call_tool(tool_name, params, read_timeout_seconds=timedelta(seconds=3600))
 
     async def stop(self) -> None:
         """停止MCP Client"""
