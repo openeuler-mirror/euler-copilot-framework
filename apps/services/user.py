@@ -17,6 +17,42 @@ class UserManager:
     """用户相关操作"""
 
     @staticmethod
+    async def _handle_admin_user_creation(user_sub: str, user_name: str) -> str:
+        """处理管理员用户创建时的user_sub逻辑（仅适用于Authelia）"""
+        from apps.common.config import Config
+        
+        config = Config().get_config()
+        
+        # 只有在使用Authelia provider时才应用此逻辑
+        if config.login.provider != "authelia":
+            return user_sub
+        
+        # 检查是否启用了管理员配置且用户名匹配
+        if not config.admin.enable or user_name != config.admin.user_name:
+            return user_sub
+        
+        # 检查数据库中是否已存在管理员用户
+        try:
+            mongo = MongoDB()
+            user_collection = mongo.get_collection("user")
+            
+            existing_admin = await user_collection.find_one({"_id": config.admin.user_sub})
+            
+            if existing_admin:
+                # 数据库中已存在管理员用户，使用原始的user_sub
+                logger.info(f"[_handle_admin_user_creation] 管理员用户已存在，使用原始user_sub: {user_sub}")
+                return user_sub
+            else:
+                # 数据库中不存在管理员用户，使用配置的管理员user_sub
+                logger.info(f"[_handle_admin_user_creation] 管理员用户不存在，使用配置的user_sub: {config.admin.user_sub}")
+                return config.admin.user_sub
+                
+        except Exception as e:
+            logger.error(f"[_handle_admin_user_creation] 检查管理员用户时出错: {e}")
+            # 出错时使用原始的user_sub
+            return user_sub
+
+    @staticmethod
     async def add_userinfo(user_sub: str, user_name: str = "") -> None:
         """
         向数据库中添加用户信息
@@ -26,8 +62,12 @@ class UserManager:
         """
         mongo = MongoDB()
         user_collection = mongo.get_collection("user")
+        
+        # 管理员用户特殊处理：检查是否应该使用配置的管理员user_sub
+        final_user_sub = await UserManager._handle_admin_user_creation(user_sub, user_name)
+        
         await user_collection.insert_one(User(
-            _id=user_sub,
+            _id=final_user_sub,
             user_name=user_name,
         ).model_dump(by_alias=True))
 
