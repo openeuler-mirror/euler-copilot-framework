@@ -39,7 +39,8 @@ class FixedUserConfig(BaseModel):
 class LoginConfig(BaseModel):
     """OIDC配置"""
 
-    provider: Literal["authhub", "openeuler", "disable"] = Field(description="OIDC Provider", default="authhub")
+    provider: Literal["authhub", "openeuler", "disable"] = Field(
+        description="OIDC Provider", default="authhub")
     settings: OIDCConfig | FixedUserConfig = Field(description="OIDC 配置")
 
 
@@ -89,7 +90,8 @@ class LLMConfig(BaseModel):
     key: str = Field(description="LLM API密钥")
     endpoint: str = Field(description="LLM API URL地址")
     model: str = Field(description="LLM API 模型名")
-    max_tokens: int | None = Field(description="LLM API 最大Token数", default=None)
+    max_tokens: int | None = Field(
+        description="LLM API 最大Token数", default=None)
     temperature: float | None = Field(description="LLM API 温度", default=None)
 
 
@@ -100,12 +102,20 @@ class FunctionCallConfig(BaseModel):
     model: str = Field(description="Function Call 模型名")
     endpoint: str = Field(description="Function Call API URL地址")
     api_key: str = Field(description="Function Call API密钥")
-    max_tokens: int | None = Field(description="Function Call 最大Token数", default=None)
-    temperature: float | None = Field(description="Function Call 温度", default=None)
+    max_tokens: int | None = Field(
+        description="Function Call 最大Token数", default=None)
+    temperature: float | None = Field(
+        description="Function Call 温度", default=None)
+
+
 class McpConfig(BaseModel):
     """MCP配置"""
-    sse_client_init_timeout: int = Field(description="MCP SSE连接超时时间，单位秒", default=60)
-    sse_client_read_timeout: int = Field(description="MCP SSE读取超时时间，单位秒", default=3600)
+    sse_client_init_timeout: int = Field(
+        description="MCP SSE连接超时时间，单位秒", default=60)
+    sse_client_read_timeout: int = Field(
+        description="MCP SSE读取超时时间，单位秒", default=3600)
+
+
 class SecurityConfig(BaseModel):
     """安全配置"""
 
@@ -140,7 +150,7 @@ class ConfigModel(BaseModel):
     mongodb: MongoDBConfig
     llm: LLMConfig
     function_call: FunctionCallConfig
-    mcp_config: McpConfig
+    mcp_config: McpConfig = Field(description="MCP配置", default=McpConfig())
     security: SecurityConfig
     check: CheckConfig
     extra: ExtraConfig
