@@ -9,14 +9,14 @@ from .response_data import ResponseData
 class UserListItem(BaseModel):
     """用户信息数据结构"""
 
-    user_sub: str = Field(alias="userSub", default="")
+    user_id: str = Field(alias="userId", default="")
     user_name: str = Field(alias="userName", default="")
 
 
 class UserInfoMsg(BaseModel):
     """GET /api/user Result数据结构"""
 
-    id: int
+    id: str = Field(alias="userId", default="")
     user_name: str = Field(alias="userName", default="")
     is_admin: bool = Field(alias="isAdmin", default=False)
     personal_token: str = Field(alias="personalToken", default="")

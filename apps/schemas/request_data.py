@@ -76,5 +76,4 @@ class UpdateUserKnowledgebaseReq(BaseModel):
 class UserUpdateRequest(BaseModel):
     """更新用户信息请求体"""
 
-    user_name: str | None = Field(default=None, description="用户名", alias="userName")
     auto_execute: bool = Field(default=False, description="是否自动执行", alias="autoExecute")

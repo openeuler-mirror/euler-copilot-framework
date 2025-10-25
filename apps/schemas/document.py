@@ -17,7 +17,7 @@ class BaseDocumentItem(BaseModel):
     type: str = Field(default="", description="文档类型")
     size: float = Field(default=0.0, description="文档大小")
     created_at: datetime | None = Field(default=None, description="创建时间")
-    user_sub: str | None = None
+    user_name: str | None = Field(default=None, description="上传者用户名")
     conversation_id: str | None = None
 
     class Config:

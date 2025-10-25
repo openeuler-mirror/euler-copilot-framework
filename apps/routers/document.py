@@ -1,6 +1,7 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2023-2025. All rights reserved.
 """FastAPI文件上传路由"""
 
+import logging
 import uuid
 from typing import Annotated
 
@@ -21,6 +22,9 @@ from apps.schemas.response_data import ResponseData
 from apps.services.conversation import ConversationManager
 from apps.services.document import DocumentManager
 from apps.services.knowledge_service import KnowledgeBaseService
+from apps.services.user import UserManager
+
+_logger = logging.getLogger(__name__)
 
 router = APIRouter(
     prefix="/api/document",
@@ -63,6 +67,88 @@ async def document_upload(
     )
 
 
+async def _get_user_name_or_skip(user_id: str, document_id: uuid.UUID) -> str | None:
+    """获取用户名，如果用户不存在则记录警告并返回None"""
+    user = await UserManager.get_user(user_id)
+    if user is None:
+        _logger.warning(
+            "User not found for document %s (userId: %s), skipping document",
+            document_id,
+            user_id,
+        )
+        return None
+    return user.userName
+
+
+async def _process_used_documents(conversation_id: uuid.UUID) -> list[ConversationDocumentItem]:
+    """处理已使用的文档列表"""
+    result = []
+    docs = await DocumentManager.get_used_docs(conversation_id)
+
+    for item in docs:
+        user_name = await _get_user_name_or_skip(item.userId, item.id)
+        if user_name is None:
+            continue
+
+        result.append(
+            ConversationDocumentItem(
+                id=item.id,
+                name=item.name,
+                type=item.extension,
+                size=round(item.size, 2),
+                status=DocumentStatus.USED,
+                created_at=item.createdAt,
+                user_name=user_name,
+            ),
+        )
+
+    return result
+
+
+async def _process_unused_documents(
+    conversation_id: uuid.UUID,
+    session_id: str,
+) -> list[ConversationDocumentItem]:
+    """处理未使用的文档列表"""
+    result = []
+    unused_docs = await DocumentManager.get_unused_docs(conversation_id)
+    doc_status = await KnowledgeBaseService.get_doc_status_from_rag(
+        session_id, [item.id for item in unused_docs],
+    )
+
+    for current_doc in unused_docs:
+        for status_item in doc_status:
+            if current_doc.id != status_item.id:
+                continue
+
+            # 确定文档状态
+            if status_item.status == "success":
+                new_status = DocumentStatus.UNUSED
+            elif status_item.status == "failed":
+                new_status = DocumentStatus.FAILED
+            else:
+                new_status = DocumentStatus.PROCESSING
+
+            # 获取用户名
+            user_name = await _get_user_name_or_skip(current_doc.userId, current_doc.id)
+            if user_name is None:
+                continue
+
+            result.append(
+                ConversationDocumentItem(
+                    id=current_doc.id,
+                    name=current_doc.name,
+                    type=current_doc.extension,
+                    size=round(current_doc.size, 2),
+                    status=new_status,
+                    created_at=current_doc.createdAt,
+                    user_name=user_name,
+                ),
+            )
+
+    return result
+
+
 @router.get("/{conversation_id}", response_model=ConversationDocumentRsp)
 async def get_document_list(
     request: Request, conversation_id: Annotated[uuid.UUID, Path()],
@@ -83,48 +169,10 @@ async def get_document_list(
 
     result = []
     if used:
-        # 拿到所有已使用的文档
-        docs = await DocumentManager.get_used_docs(conversation_id)
-        result += [
-            ConversationDocumentItem(
-                id=item.id,
-                name=item.name,
-                type=item.extension,
-                size=round(item.size, 2),
-                status=DocumentStatus.USED,
-                created_at=item.createdAt,
-            )
-            for item in docs
-        ]
+        result.extend(await _process_used_documents(conversation_id))
 
     if unused:
-        # 拿到所有未使用的文档
-        unused_docs = await DocumentManager.get_unused_docs(conversation_id)
-        doc_status = await KnowledgeBaseService.get_doc_status_from_rag(
-            request.state.session_id, [item.id for item in unused_docs],
-        )
-        for current_doc in unused_docs:
-            for status_item in doc_status:
-                if current_doc.id != status_item.id:
-                    continue
-
-                if status_item.status == "success":
-                    new_status = DocumentStatus.UNUSED
-                elif status_item.status == "failed":
-                    new_status = DocumentStatus.FAILED
-                else:
-                    new_status = DocumentStatus.PROCESSING
-
-                result += [
-                    ConversationDocumentItem(
-                        id=current_doc.id,
-                        name=current_doc.name,
-                        type=current_doc.extension,
-                        size=round(current_doc.size, 2),
-                        status=new_status,
-                        created_at=current_doc.createdAt,
-                    ),
-                ]
+        result.extend(await _process_unused_documents(conversation_id, request.state.session_id))
 
     # 对外展示的时候用id，不用alias
     return JSONResponse(

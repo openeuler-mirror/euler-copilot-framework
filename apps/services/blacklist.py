@@ -9,6 +9,7 @@ from sqlalchemy import and_, select
 from apps.common.postgres import postgres
 from apps.common.security import Security
 from apps.models import Blacklist, Record, User
+from apps.schemas.blacklist import BlacklistedUser
 from apps.schemas.record import RecordContent
 
 logger = logging.getLogger(__name__)
@@ -77,23 +78,26 @@ class UserBlacklistManager:
     """用户黑名单相关操作"""
 
     @staticmethod
-    async def get_blacklisted_users(limit: int, offset: int) -> list[str]:
+    async def get_blacklisted_users(limit: int, offset: int) -> list[BlacklistedUser]:
         """获取当前所有黑名单用户"""
         async with postgres.session() as session:
-            return list((await session.scalars(select(User.userSub).where(
+            users = (await session.scalars(select(User).where(
                 User.credit <= 0,
-            ).order_by(User.userSub).offset(offset).limit(limit))).all())
+            ).order_by(User.userName).offset(offset).limit(limit))).all()
+            return [BlacklistedUser(user_id=user.id, user_name=user.userName) for user in users]
 
     @staticmethod
-    async def check_blacklisted_users(user_sub: str) -> bool:
+    async def check_blacklisted_users(user_id: str) -> bool:
         """检测某用户是否已被拉黑"""
         async with postgres.session() as session:
+            conditions = [
+                User.credit <= 0,
+                User.isWhitelisted == False,  # noqa: E712
+                User.id == user_id,
+            ]
+
             user = (await session.scalars(select(User).where(
-                and_(
-                    User.userSub == user_sub,
-                    User.credit <= 0,
-                    User.isWhitelisted == False,  # noqa: E712
-                ),
+                and_(*conditions),
             ).limit(1))).one_or_none()
 
             if user:
@@ -102,11 +106,11 @@ class UserBlacklistManager:
             return False
 
     @staticmethod
-    async def change_blacklisted_users(user_sub: str, credit_diff: int, credit_limit: int = 100) -> bool:
+    async def change_blacklisted_users(user_id: str, credit_diff: int, credit_limit: int = 100) -> bool:
         """修改用户的信用分"""
         async with postgres.session() as session:
             # 获取用户当前信用分
-            user = (await session.scalars(select(User).where(User.userSub == user_sub))).one_or_none()
+            user = (await session.scalars(select(User).where(User.id == user_id))).one_or_none()
 
             # 用户不存在
             if user is None:
@@ -143,12 +147,18 @@ class AbuseManager:
     """用户举报相关操作"""
 
     @staticmethod
-    async def change_abuse_report(user_sub: str, record_id: uuid.UUID, reason_type: str, reason: str) -> bool:
+    async def change_abuse_report(user_id: str, record_id: uuid.UUID, reason_type: str, reason: str) -> bool:
         """存储用户举报详情"""
         async with postgres.session() as session:
+            # Verify user exists
+            user = (await session.scalars(select(User).where(User.id == user_id))).one_or_none()
+            if not user:
+                logger.info("[AbuseManager] 用户不存在")
+                return False
+
             record = (await session.scalars(select(Record).where(
                 and_(
-                    Record.userSub == user_sub,
+                    Record.userId == user_id,
                     Record.id == record_id,
                 ),
             ))).one_or_none()

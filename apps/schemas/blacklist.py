@@ -20,7 +20,7 @@ class QuestionBlacklistRequest(BaseModel):
 class UserBlacklistRequest(BaseModel):
     """POST /api/blacklist/user 请求数据结构"""
 
-    user_sub: str
+    user_id: str
     is_ban: int
 
 
@@ -65,10 +65,17 @@ class BlacklistSchema(BaseModel):
         from_attributes = True
 
 
+class BlacklistedUser(BaseModel):
+    """被封禁用户的数据结构"""
+
+    user_id: str
+    user_name: str
+
+
 class GetBlacklistUserMsg(BaseModel):
     """GET /api/blacklist/user Result数据结构"""
 
-    user_subs: list[str]
+    users: list[BlacklistedUser]
 
 
 class GetBlacklistUserRsp(ResponseData):

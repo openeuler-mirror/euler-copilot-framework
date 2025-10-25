@@ -88,48 +88,70 @@ class TestUserManager:
         mock_session.scalars.assert_called_once()
 
     @patch("apps.services.user.postgres.session")
-    async def test_update_user_create_new(self, mock_session_maker, mock_user):
-        """测试 update_user 方法 - 创建新用户"""
-        # 配置模拟会话
-        mock_session = AsyncMock()
-        mock_session_maker.return_value.__aenter__.return_value = mock_session
-        mock_session.scalars.return_value.one_or_none.return_value = None
-
-        # 准备测试数据
-        update_data = UserUpdateRequest(
-            isActive=True,
-            isWhitelisted=False,
-            credit=150,
-        )
-
-        # 调用被测试方法
-        await UserManager.update_user("new_user_sub", update_data)
-
-        # 验证调用
-        mock_session.merge.assert_called_once()
-        mock_session.commit.assert_called_once()
-
-    @patch("apps.services.user.postgres.session")
-    async def test_update_user_update_existing(self, mock_session_maker, mock_user):
-        """测试 update_user 方法 - 更新现有用户"""
+    async def test_update_user_info_success(self, mock_session_maker, mock_user):
+        """测试 update_user_info 方法 - 更新现有用户"""
         # 配置模拟会话
         mock_session = AsyncMock()
         mock_session_maker.return_value.__aenter__.return_value = mock_session
         mock_session.scalars.return_value.one_or_none.return_value = mock_user
 
         # 准备测试数据
-        update_data = UserUpdateRequest(
-            isActive=False,
-            credit=200
-        )
+        update_data = UserUpdateRequest(autoExecute=True)
 
         # 调用被测试方法
-        await UserManager.update_user("test_user_sub", update_data)
+        await UserManager.update_user_info("test_user_sub", update_data)
 
         # 验证调用
-        assert mock_user.isActive == False
-        assert mock_user.credit == 200
+        assert mock_user.autoExecute is True
+        mock_session.commit.assert_called_once()
+
+    @patch("apps.services.user.postgres.session")
+    async def test_update_user_info_not_found(self, mock_session_maker):
+        """测试 update_user_info 方法 - 用户不存在"""
+        # 配置模拟会话
+        mock_session = AsyncMock()
+        mock_session_maker.return_value.__aenter__.return_value = mock_session
+        mock_session.scalars.return_value.one_or_none.return_value = None
+
+        # 准备测试数据
+        update_data = UserUpdateRequest(autoExecute=True)
+
+        # 调用被测试方法并验证抛出异常
+        with pytest.raises(ValueError, match="User .* not found"):
+            await UserManager.update_user_info("nonexistent_user", update_data)
+
+        # 验证未提交
+        mock_session.commit.assert_not_called()
+
+    @patch("apps.services.user.postgres.session")
+    async def test_create_or_update_on_login_create_new(self, mock_session_maker):
+        """测试 create_or_update_on_login 方法 - 创建新用户"""
+        # 配置模拟会话
+        mock_session = AsyncMock()
+        mock_session_maker.return_value.__aenter__.return_value = mock_session
+        mock_session.scalars.return_value.one_or_none.return_value = None
+
+        # 调用被测试方法
+        await UserManager.create_or_update_on_login("new_user_id", "TestUser")
+
+        # 验证调用
+        mock_session.add.assert_called_once()
+        mock_session.commit.assert_called_once()
+
+    @patch("apps.services.user.postgres.session")
+    async def test_create_or_update_on_login_update_existing(self, mock_session_maker, mock_user):
+        """测试 create_or_update_on_login 方法 - 更新已有用户"""
+        # 配置模拟会话
+        mock_session = AsyncMock()
+        mock_session_maker.return_value.__aenter__.return_value = mock_session
+        mock_session.scalars.return_value.one_or_none.return_value = mock_user
+
+        # 调用被测试方法
+        await UserManager.create_or_update_on_login("test_user_sub")
+
+        # 验证调用
         assert mock_user.lastLogin is not None
+        mock_session.add.assert_not_called()
         mock_session.commit.assert_called_once()
 
     @patch("apps.services.user.postgres.session")

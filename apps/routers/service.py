@@ -75,7 +75,7 @@ async def get_service_list(  # noqa: PLR0913
     try:
         if createdByMe:  # 筛选我创建的
             service_cards, total_count = await ServiceCenterManager.fetch_user_services(
-                request.state.user_sub,
+                request.state.user_id,
                 searchType,
                 keyword,
                 page,
@@ -83,7 +83,7 @@ async def get_service_list(  # noqa: PLR0913
             )
         elif favorited:  # 筛选我收藏的
             service_cards, total_count = await ServiceCenterManager.fetch_favorite_services(
-                request.state.user_sub,
+                request.state.user_id,
                 searchType,
                 keyword,
                 page,
@@ -91,7 +91,7 @@ async def get_service_list(  # noqa: PLR0913
             )
         else:  # 获取所有服务
             service_cards, total_count = await ServiceCenterManager.fetch_all_services(
-                request.state.user_sub,
+                request.state.user_id,
                 searchType,
                 keyword,
                 page,
@@ -135,7 +135,7 @@ async def update_service(request: Request, data: UpdateServiceRequest) -> JSONRe
     """POST /service: 上传并解析服务"""
     if not data.service_id:
         try:
-            service_id = await ServiceCenterManager.create_service(request.state.user_sub, data.data)
+            service_id = await ServiceCenterManager.create_service(request.state.user_id, data.data)
         except Exception as e:
             _logger.exception("[ServiceCenter] 创建服务失败")
             return JSONResponse(
@@ -148,7 +148,7 @@ async def update_service(request: Request, data: UpdateServiceRequest) -> JSONRe
             )
     else:
         try:
-            service_id = await ServiceCenterManager.update_service(request.state.user_sub, data.service_id, data.data)
+            service_id = await ServiceCenterManager.update_service(request.state.user_id, data.service_id, data.data)
         except InstancePermissionError:
             return JSONResponse(
                 status_code=status.HTTP_403_FORBIDDEN,
@@ -194,7 +194,7 @@ async def get_service_detail(
     # 示例：返回指定服务的详情
     if edit:
         try:
-            name, data = await ServiceCenterManager.get_service_data(request.state.user_sub, serviceId)
+            name, data = await ServiceCenterManager.get_service_data(request.state.user_id, serviceId)
         except InstancePermissionError:
             return JSONResponse(
                 status_code=status.HTTP_403_FORBIDDEN,
@@ -237,7 +237,7 @@ async def get_service_detail(
 async def delete_service(request: Request, serviceId: Annotated[uuid.UUID, Path()]) -> JSONResponse:  # noqa: N803
     """DELETE /service/{serviceId}: 删除服务"""
     try:
-        await ServiceCenterManager.delete_service(request.state.user_sub, serviceId)
+        await ServiceCenterManager.delete_service(request.state.user_id, serviceId)
     except InstancePermissionError:
         return JSONResponse(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -271,7 +271,7 @@ async def modify_favorite_service(
     """PUT /service/{serviceId}: 修改服务收藏状态"""
     try:
         success = await ServiceCenterManager.modify_favorite_service(
-            request.state.user_sub,
+            request.state.user_id,
             serviceId,
             favorited=data.favorited,
         )
