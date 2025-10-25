@@ -203,7 +203,7 @@ class ConfigModel(BaseModel):
     redis: RedisConfig
     llm: LLMConfig
     function_call: FunctionCallConfig
-    mcp_config: McpConfig
+    mcp_config: McpConfig = Field(description="MCP配置", default=McpConfig())
     security: SecurityConfig
     check: CheckConfig
     sandbox: SandboxConfig
