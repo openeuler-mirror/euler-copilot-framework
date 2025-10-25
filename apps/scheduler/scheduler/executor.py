@@ -76,7 +76,6 @@ class ExecutorMixin:
         """
         if final_app_id is None:
             _logger.info("[Scheduler] 运行智能问答模式")
-            await self._push_init_message(3, is_flow=False)
             return asyncio.create_task(self._run_qa())
 
         try:
@@ -91,11 +90,9 @@ class ExecutorMixin:
 
         if app_data.app_type == AppType.FLOW:
             _logger.info("[Scheduler] 运行Flow应用")
-            await self._push_init_message(context_num, is_flow=True)
             return asyncio.create_task(self._run_flow())
 
         _logger.info("[Scheduler] 运行MCP Agent应用")
-        await self._push_init_message(context_num, is_flow=False)
         return asyncio.create_task(self._run_agent())
 
     async def _handle_task_cancellation(self, main_task: asyncio.Task) -> None:

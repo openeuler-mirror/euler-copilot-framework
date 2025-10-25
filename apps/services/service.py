@@ -31,6 +31,7 @@ from apps.schemas.flow import (
     ServiceMetadata,
 )
 from apps.schemas.service import ServiceApiData, ServiceCardItem
+from apps.services.user import UserManager
 
 logger = logging.getLogger(__name__)
 
@@ -59,17 +60,26 @@ class ServiceCenterManager:
         # 构建搜索条件
         search_conditions = []
         if keyword:
-            search_condition_map = {
-                SearchType.ALL: or_(
+            # 处理按作者搜索的特殊情况：根据用户名关键字查询用户ID
+            if search_type == SearchType.AUTHOR:
+                user_ids = await UserManager.get_user_ids_by_username_keyword(keyword)
+                # 如果没有匹配的用户，添加一个永远为 False 的条件
+                search_conditions = [Service.authorId.in_(user_ids)] if user_ids else [Service.authorId.is_(None)]
+            elif search_type == SearchType.ALL:
+                # 全局搜索时，也需要根据用户名搜索作者
+                user_ids = await UserManager.get_user_ids_by_username_keyword(keyword)
+                author_condition = Service.authorId.in_(user_ids) if user_ids else Service.authorId.is_(None)
+                search_conditions = [or_(
                     Service.name.like(f"%{keyword}%"),
                     Service.description.like(f"%{keyword}%"),
-                    Service.authorId.like(f"%{keyword}%"),
-                ),
-                SearchType.NAME: Service.name.like(f"%{keyword}%"),
-                SearchType.DESCRIPTION: Service.description.like(f"%{keyword}%"),
-                SearchType.AUTHOR: Service.authorId.like(f"%{keyword}%"),
-            }
-            search_conditions = [search_condition_map.get(search_type)]
+                    author_condition,
+                )]
+            else:
+                search_condition_map = {
+                    SearchType.NAME: Service.name.like(f"%{keyword}%"),
+                    SearchType.DESCRIPTION: Service.description.like(f"%{keyword}%"),
+                }
+                search_conditions = [search_condition_map.get(search_type)]
 
         all_conditions = (base_conditions or []) + search_conditions
 
@@ -99,6 +109,10 @@ class ServiceCenterManager:
             service_pools = list((await session.scalars(data_query)).all())
             total_count = (await session.scalar(count_query)) or 0
 
+        # 获取作者的用户名
+        author_ids = {service_pool.authorId for service_pool in service_pools}
+        author_map = await UserManager.get_usernames_by_ids(author_ids)
+
         fav_service_ids = await ServiceCenterManager._get_favorite_service_ids_by_user(user_id)
         services = [
             ServiceCardItem(
@@ -106,7 +120,7 @@ class ServiceCenterManager:
                 icon="",
                 name=service_pool.name,
                 description=service_pool.description,
-                author=service_pool.author,
+                author=author_map[service_pool.authorId],
                 favorited=(service_pool.id in fav_service_ids),
             )
             for service_pool in service_pools
@@ -135,6 +149,10 @@ class ServiceCenterManager:
             service_pools = list((await session.scalars(data_query)).all())
             total_count = (await session.scalar(count_query)) or 0
 
+        # 获取作者的用户名
+        author_ids = {service_pool.authorId for service_pool in service_pools}
+        author_map = await UserManager.get_usernames_by_ids(author_ids)
+
         fav_service_ids = await ServiceCenterManager._get_favorite_service_ids_by_user(user_id)
         services = [
             ServiceCardItem(
@@ -142,7 +160,7 @@ class ServiceCenterManager:
                 icon="",
                 name=service_pool.name,
                 description=service_pool.description,
-                author=service_pool.author,
+                author=author_map[service_pool.authorId],
                 favorited=(service_pool.id in fav_service_ids),
             )
             for service_pool in service_pools
@@ -181,18 +199,22 @@ class ServiceCenterManager:
             service_pools = list((await session.scalars(data_query)).all())
             total_count = (await session.scalar(count_query)) or 0
 
-            services = [
-                ServiceCardItem(
-                    serviceId=service_pool.id,
-                    icon="",
-                    name=service_pool.name,
-                    description=service_pool.description,
-                    author=service_pool.author,
-                    favorited=True,
-                )
-                for service_pool in service_pools
-            ]
-            return services, total_count
+        # 获取作者的用户名
+        author_ids = {service_pool.authorId for service_pool in service_pools}
+        author_map = await UserManager.get_usernames_by_ids(author_ids)
+
+        services = [
+            ServiceCardItem(
+                serviceId=service_pool.id,
+                icon="",
+                name=service_pool.name,
+                description=service_pool.description,
+                author=author_map[service_pool.authorId],
+                favorited=True,
+            )
+            for service_pool in service_pools
+        ]
+        return services, total_count
 
 
     @staticmethod

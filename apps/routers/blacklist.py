@@ -54,7 +54,7 @@ async def get_blacklist_user(page: int = 0) -> JSONResponse:
     return JSONResponse(status_code=status.HTTP_200_OK, content=GetBlacklistUserRsp(
         code=status.HTTP_200_OK,
         message="ok",
-        result=GetBlacklistUserMsg(user_subs=user_list),
+        result=GetBlacklistUserMsg(users=user_list),
     ).model_dump(exclude_none=True, by_alias=True))
 
 
@@ -64,13 +64,13 @@ async def change_blacklist_user(request: UserBlacklistRequest) -> JSONResponse:
     # 拉黑用户
     if request.is_ban:
         result = await UserBlacklistManager.change_blacklisted_users(
-            request.user_sub,
+            request.user_id,
             -MAX_CREDIT,
         )
     # 解除拉黑
     else:
         result = await UserBlacklistManager.change_blacklisted_users(
-            request.user_sub,
+            request.user_id,
             MAX_CREDIT,
         )
 
@@ -144,7 +144,7 @@ async def change_blacklist_question(request: QuestionBlacklistRequest) -> JSONRe
 async def abuse_report(raw_request: Request, request: AbuseRequest) -> JSONResponse:
     """POST /blacklist/complaint: 用户实施举报"""
     result = await AbuseManager.change_abuse_report(
-        raw_request.state.user_sub,
+        raw_request.state.user_id,
         request.record_id,
         request.reason_type,
         request.reason,

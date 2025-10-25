@@ -66,7 +66,7 @@ class SessionManager:
                 return None
 
             # 查询黑名单
-            if user_id and await UserBlacklistManager.check_blacklisted_users(user_id=user_id):
+            if user_id and await UserBlacklistManager.check_blacklisted_users(user_id):
                 logger.error("[SessionManager] 用户在Session黑名单中")
                 await SessionManager.delete_session(session_id)
                 return None

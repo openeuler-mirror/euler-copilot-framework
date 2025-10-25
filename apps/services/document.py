@@ -56,7 +56,7 @@ class DocumentManager:
 
     @staticmethod
     async def storage_docs(
-        user_sub: str, conversation_id: uuid.UUID, documents: list[UploadFile],
+        user_id: str, conversation_id: uuid.UUID, documents: list[UploadFile],
     ) -> list[Document]:
         """存储多个文件"""
         uploaded_files = []
@@ -75,7 +75,7 @@ class DocumentManager:
 
             # 保存到数据库
             doc_info = Document(
-                userSub=user_sub,
+                userId=user_id,
                 name=document.filename,
                 extension=mime,
                 size=document.size / 1024.0,
@@ -176,7 +176,7 @@ class DocumentManager:
 
 
     @staticmethod
-    async def delete_document(user_sub: str, document_list: list[str]) -> None:
+    async def delete_document(user_id: str, document_list: list[str]) -> None:
         """从未使用文件列表中删除一个文件"""
         async with postgres.session() as session:
             for doc in document_list:
@@ -184,7 +184,7 @@ class DocumentManager:
                     select(Document).where(
                         and_(
                             Document.id == doc,
-                            Document.userSub == user_sub,
+                            Document.userId == user_id,
                         ),
                     ),
                 )
@@ -213,7 +213,7 @@ class DocumentManager:
 
 
     @staticmethod
-    async def delete_document_by_conversation_id(user_sub: str, conversation_id: uuid.UUID) -> list[str]:
+    async def delete_document_by_conversation_id(user_id: str, conversation_id: uuid.UUID) -> list[str]:
         """通过ConversationID删除文件"""
         doc_ids = []
 
@@ -227,9 +227,9 @@ class DocumentManager:
                 await session.delete(doc)
             await session.commit()
 
-        session_id = await SessionManager.get_session_by_user_sub(user_sub)
+        session_id = await SessionManager.get_session_by_user(user_id)
         if not session_id:
-            logger.error("[DocumentManager] Session不存在: %s", user_sub)
+            logger.error("[DocumentManager] Session不存在: %s", user_id)
             return []
         await KnowledgeBaseService.delete_doc_from_rag(session_id, doc_ids)
         return doc_ids
@@ -247,14 +247,14 @@ class DocumentManager:
 
 
     @staticmethod
-    async def change_doc_status(user_sub: str, conversation_id: uuid.UUID) -> None:
+    async def change_doc_status(user_id: str, conversation_id: uuid.UUID) -> None:
         """文件状态由unused改为used"""
         async with postgres.session() as session:
             conversation = (await session.scalars(
                 select(Conversation).where(
                     and_(
                         Conversation.id == conversation_id,
-                        Conversation.userSub == user_sub,
+                        Conversation.userId == user_id,
                     ),
                 ),
             )).one_or_none()
@@ -280,7 +280,7 @@ class DocumentManager:
 
 
     @staticmethod
-    async def save_answer_doc(user_sub: str, record_id: uuid.UUID, doc_infos: list[ConversationDocument]) -> None:
+    async def save_answer_doc(user_id: str, record_id: uuid.UUID, doc_infos: list[ConversationDocument]) -> None:
         """保存与答案关联的文件（使用PostgreSQL）"""
         async with postgres.session() as session:
             # 查询对应的Record
@@ -288,7 +288,7 @@ class DocumentManager:
                 select(Record).where(
                     and_(
                         Record.id == record_id,
-                        Record.userSub == user_sub,
+                        Record.userId == user_id,
                     ),
                 ),
             )).one_or_none()

@@ -58,11 +58,11 @@ async def get_mcpservice_list(  # noqa: PLR0913
     isActive: bool | None = None,  # noqa: N803
 ) -> JSONResponse:
     """GET /mcp?searchType=xxx&keyword=xxx&page=xxx&isInstall=xxx&isActive=xxx: 获取服务列表"""
-    user_sub = request.state.user_sub
+    user_id = request.state.user_id
     try:
         service_cards = await MCPServiceManager.fetch_mcp_services(
             searchType,
-            user_sub,
+            user_id,
             keyword,
             page,
             is_install=isInstall,
@@ -101,7 +101,7 @@ async def create_or_update_mcpservice(
     """PUT /mcp: 新建或更新MCP服务"""
     if not data.mcp_id:
         try:
-            service_id = await MCPServiceManager.create_mcpservice(data, request.state.user_sub)
+            service_id = await MCPServiceManager.create_mcpservice(data, request.state.user_id)
         except Exception as e:
             _logger.exception("[MCPServiceCenter] MCP服务创建失败")
             return JSONResponse(
@@ -114,7 +114,7 @@ async def create_or_update_mcpservice(
             )
     else:
         try:
-            service_id = await MCPServiceManager.update_mcpservice(data, request.state.user_sub)
+            service_id = await MCPServiceManager.update_mcpservice(data, request.state.user_id)
         except Exception as e:
             _logger.exception("[MCPService] 更新MCP服务失败")
             return JSONResponse(
@@ -144,7 +144,7 @@ async def install_mcp_service(
 ) -> JSONResponse:
     """安装MCP服务"""
     try:
-        await MCPServiceManager.install_mcpservice(request.state.user_sub, service_id, install=install)
+        await MCPServiceManager.install_mcpservice(request.state.user_id, service_id, install=install)
     except Exception as e:
         err = f"[MCPService] 安装mcp服务失败: {e!s}" if install else f"[MCPService] 卸载mcp服务失败: {e!s}"
         _logger.exception(err)
@@ -314,9 +314,9 @@ async def active_or_deactivate_mcp_service(
     """激活/取消激活mcp"""
     try:
         if data.active:
-            await MCPServiceManager.active_mcpservice(request.state.user_sub, mcpId, data.mcp_env)
+            await MCPServiceManager.active_mcpservice(request.state.user_id, mcpId, data.mcp_env)
         else:
-            await MCPServiceManager.deactive_mcpservice(request.state.user_sub, mcpId)
+            await MCPServiceManager.deactive_mcpservice(request.state.user_id, mcpId)
     except Exception as e:
         err = f"[MCPService] 激活mcp服务失败: {e!s}" if data.active else f"[MCPService] 取消激活mcp服务失败: {e!s}"
         _logger.exception(err)
