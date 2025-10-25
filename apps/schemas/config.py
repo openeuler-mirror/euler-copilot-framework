@@ -203,7 +203,7 @@ class ConfigModel(BaseModel):
     redis: RedisConfig
     llm: LLMConfig
     function_call: FunctionCallConfig
-    mcp: McpConfig
+    mcp_config: McpConfig
     security: SecurityConfig
     check: CheckConfig
     sandbox: SandboxConfig
