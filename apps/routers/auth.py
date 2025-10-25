@@ -2,7 +2,6 @@
 """FastAPI 用户认证相关路由"""
 
 import logging
-from datetime import UTC, datetime
 from pathlib import Path
 from typing import Annotated
 
@@ -76,10 +75,8 @@ async def oidc_login(request: Request, code: str) -> HTMLResponse:
             {"request": request, "reason": "未能获取用户信息，请关闭本窗口并重试。"},
             status_code=status.HTTP_403_FORBIDDEN,
         )
-    # 更新用户信息
-    await UserManager.update_user(user_sub, {
-        "lastLogin": datetime.now(UTC),
-    })
+    # 创建或更新用户登录信息
+    await UserManager.create_or_update_on_login(user_sub)
     # 创建会话
     current_session = await SessionManager.create_session(user_sub, user_host)
     return _templates.TemplateResponse(

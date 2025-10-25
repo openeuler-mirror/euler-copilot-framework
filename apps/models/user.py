@@ -17,7 +17,7 @@ class User(Base):
     """用户表"""
 
     __tablename__ = "framework_user"
-    id: Mapped[str] = mapped_column(String(50), primary_key=True, index=True, init=False)
+    id: Mapped[str] = mapped_column(String(50), primary_key=True, index=True)
     """用户ID"""
     userName: Mapped[str] = mapped_column(String(50), index=True, unique=True, nullable=False)  # noqa: N815
     """用户名"""
