@@ -102,8 +102,10 @@ class FunctionCallConfig(BaseModel):
     api_key: str = Field(description="Function Call API密钥")
     max_tokens: int | None = Field(description="Function Call 最大Token数", default=None)
     temperature: float | None = Field(description="Function Call 温度", default=None)
-
-
+class McpConfig(BaseModel):
+    """MCP配置"""
+    sse_client_init_timeout: int = Field(description="MCP SSE连接超时时间，单位秒", default=60)
+    sse_client_read_timeout: int = Field(description="MCP SSE读取超时时间，单位秒", default=3600)
 class SecurityConfig(BaseModel):
     """安全配置"""
 
@@ -138,6 +140,7 @@ class ConfigModel(BaseModel):
     mongodb: MongoDBConfig
     llm: LLMConfig
     function_call: FunctionCallConfig
+    mcp_config: McpConfig
     security: SecurityConfig
     check: CheckConfig
     extra: ExtraConfig
