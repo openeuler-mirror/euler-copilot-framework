@@ -66,7 +66,7 @@ class MCPClient:
 
             try:
                 # 先测试端点可达性 - 对于SSE端点，我们只检查连接性，不读取内容
-                async with httpx.AsyncClient(timeout=httpx.Timeout(connect=5.0, read=3.0)) as test_client:
+                async with httpx.AsyncClient(timeout=httpx.Timeout(5.0)) as test_client:
                     try:
                         # 首先尝试HEAD请求
                         response = await test_client.head(config.url, headers=headers)
@@ -122,8 +122,8 @@ class MCPClient:
             client = sse_client(
                 url=config.url,
                 headers=headers,
-                timeout=Config().get_config().mcp.sse_client_read_timeout,
-                sse_read_timeout=Config().get_config().mcp.sse_client_read_timeout
+                timeout=Config().get_config().mcp_config.sse_client_read_timeout,
+                sse_read_timeout=Config().get_config().mcp_config.sse_client_read_timeout
             )
         elif isinstance(config, MCPServerStdioConfig):
             if user_sub:
@@ -287,7 +287,7 @@ class MCPClient:
 
     async def call_tool(self, tool_name: str, params: dict) -> "CallToolResult":
         """调用MCP Server的工具"""
-        return await self.client.call_tool(tool_name, params, timeout=timedelta(seconds=3600))
+        return await self.client.call_tool(tool_name, params, read_timeout_seconds=timedelta(seconds=3600))
 
     async def stop(self) -> None:
         """停止MCP Client"""
