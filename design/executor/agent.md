@@ -777,11 +777,11 @@ erDiagram
     }
 
     ExecutorStatus {
-        string value "UNKNOWN|INIT|WAITING|RUNNING|SUCCESS|ERROR|CANCELLED"
+        string value "INIT|WAITING|RUNNING|SUCCESS|ERROR|CANCELLED"
     }
 
     StepStatus {
-        string value "UNKNOWN|INIT|WAITING|RUNNING|SUCCESS|ERROR|PARAM|CANCELLED"
+        string value "INIT|WAITING|RUNNING|SUCCESS|ERROR|PARAM|CANCELLED"
     }
 ```
 
@@ -791,7 +791,6 @@ erDiagram
 classDiagram
     class ExecutorStatus {
         <<enumeration>>
-        UNKNOWN 未知状态
         INIT 初始化
         WAITING 等待用户输入
         RUNNING 运行中
@@ -802,7 +801,6 @@ classDiagram
 
     class StepStatus {
         <<enumeration>>
-        UNKNOWN 未知状态
         INIT 初始化
         WAITING 等待用户确认
         RUNNING 运行中

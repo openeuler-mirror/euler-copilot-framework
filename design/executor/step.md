@@ -960,7 +960,6 @@ erDiagram
 classDiagram
     class StepStatus {
         <<enumeration>>
-        UNKNOWN 未知状态
         INIT 初始化
         WAITING 等待确认
         RUNNING 运行中
@@ -972,7 +971,6 @@ classDiagram
 
     class StepType {
         <<enumeration>>
-        UNKNOWN 未知类型
         START 开始节点
         END 结束节点
         AGENT 智能体节点

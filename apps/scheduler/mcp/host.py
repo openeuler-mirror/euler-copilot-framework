@@ -10,7 +10,7 @@ from jinja2 import BaseLoader
 from jinja2.sandbox import SandboxedEnvironment
 from mcp.types import TextContent
 
-from apps.llm import LLMConfig, json_generator
+from apps.llm import LLM, json_generator
 from apps.models import LanguageType, MCPTools
 from apps.scheduler.mcp.prompt import MEMORY_TEMPLATE
 from apps.scheduler.pool.mcp.client import MCPClient
@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 class MCPHost:
     """MCP宿主服务"""
 
-    def __init__(self, user_id: str, task_id: uuid.UUID, llm: LLMConfig, language: LanguageType) -> None:
+    def __init__(self, user_id: str, task_id: uuid.UUID, llm: LLM, language: LanguageType) -> None:
         """初始化MCP宿主"""
         self._task_id = task_id
         self._user_id = user_id

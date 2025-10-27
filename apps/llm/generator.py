@@ -15,7 +15,6 @@ from apps.schemas.llm import LLMFunctions
 
 from .llm import LLM
 from .prompt import JSON_GEN_BASIC, JSON_NO_FUNCTION_CALL
-from .schema import LLMConfig
 
 _logger = logging.getLogger(__name__)
 
@@ -24,7 +23,7 @@ JSON_GEN_MAX_TRIAL = 3
 class JsonGenerator:
     """综合Json生成器（全局单例）"""
 
-    def __init__(self) -> None:
+    def __init__(self, llm: LLM | None = None) -> None:
         """创建JsonGenerator实例"""
         # Jinja2环境，可以复用
         self._env = SandboxedEnvironment(
@@ -35,22 +34,24 @@ class JsonGenerator:
             extensions=["jinja2.ext.loopcontrols"],
         )
         # 初始化时设为None，调用init后设置
-        self._llm: LLM | None = None
+        self._llm: LLM | None = llm
         self._support_function_call: bool = False
+        if llm is not None:
+            self._check_function_call_support()
 
-    def init(self, llm_config: LLMConfig) -> None:
+    def init(self, llm: LLM) -> None:
         """初始化JsonGenerator，设置LLM配置"""
-        # 选择LLM：优先使用Function模型（如果存在且支持FunctionCall），否则回退到Reasoning模型
-        self._llm, self._support_function_call = self._select_llm(llm_config)
+        self._llm = llm
+        self._check_function_call_support()
 
-    def _select_llm(self, llm_config: LLMConfig) -> tuple[LLM, bool]:
-        """选择LLM：优先使用Function模型（如果存在且支持FunctionCall），否则回退到Reasoning模型"""
-        if llm_config.function is not None and LLMType.FUNCTION in llm_config.function.config.llmType:
-            _logger.info("[JSONGenerator] 使用Function模型，支持FunctionCall")
-            return llm_config.function, True
-
-        _logger.info("[JSONGenerator] Function模型不可用或不支持FunctionCall，回退到Reasoning模型")
-        return llm_config.reasoning, False
+    def _check_function_call_support(self) -> None:
+        """检查LLM是否支持FunctionCall"""
+        if self._llm is not None and LLMType.FUNCTION in self._llm.config.llmType:
+            _logger.info("[JSONGenerator] LLM支持FunctionCall")
+            self._support_function_call = True
+        else:
+            _logger.info("[JSONGenerator] LLM不支持FunctionCall，将使用prompt方式")
+            self._support_function_call = False
 
     async def _single_trial(
         self,

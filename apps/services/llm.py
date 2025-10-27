@@ -6,7 +6,7 @@ import logging
 from sqlalchemy import select
 
 from apps.common.postgres import postgres
-from apps.models import LLMData, User
+from apps.models import GlobalSettings, LLMData
 from apps.schemas.request_data import UpdateLLMReq
 from apps.schemas.response_data import (
     LLMAdminInfo,
@@ -162,16 +162,13 @@ class LLMManager:
             await session.commit()
 
         async with postgres.session() as session:
-            # 清除所有FunctionLLM的引用
-            user = list((await session.scalars(
-                select(User).where(User.functionLLM == llm_id),
-            )).all())
-            for item in user:
-                item.functionLLM = None
-            # 清除所有EmbeddingLLM的引用
-            user = list((await session.scalars(
-                select(User).where(User.embeddingLLM == llm_id),
-            )).all())
-            for item in user:
-                item.embeddingLLM = None
+            # 清除GlobalSettings中的引用
+            global_settings = (await session.scalars(
+                select(GlobalSettings),
+            )).all()
+            for settings in global_settings:
+                if settings.functionLlmId == llm_id:
+                    settings.functionLlmId = None
+                if settings.embeddingLlmId == llm_id:
+                    settings.embeddingLlmId = None
             await session.commit()

@@ -4,7 +4,7 @@
 import logging
 from typing import Any
 
-from apps.llm import LLMConfig, json_generator
+from apps.llm import LLM, json_generator
 from apps.models import LanguageType
 from apps.schemas.task import TaskData
 
@@ -15,11 +15,11 @@ class MCPBase:
     """MCP基类"""
 
     _user_id: str
-    _llm: LLMConfig
+    _llm: LLM
     _goal: str
     _language: LanguageType
 
-    def __init__(self, task: TaskData, llm: LLMConfig) -> None:
+    def __init__(self, task: TaskData, llm: LLM) -> None:
         """初始化MCP基类"""
         self._user_id = task.metadata.userId
         self._llm = llm
@@ -34,7 +34,7 @@ class MCPBase:
             {"role": "user", "content": "Please provide a JSON response based on the above information and schema."},
         ]
         result = ""
-        async for chunk in self._llm.reasoning.call(
+        async for chunk in self._llm.call(
             message,
             streaming=False,
         ):

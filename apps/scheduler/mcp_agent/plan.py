@@ -212,7 +212,7 @@ class MCPPlanner(MCPBase):
             memory=memory,
             goal=self._goal,
         )
-        async for chunk in self._llm.reasoning.call(
+        async for chunk in self._llm.call(
             [{"role": "user", "content": prompt}],
             streaming=True,
         ):

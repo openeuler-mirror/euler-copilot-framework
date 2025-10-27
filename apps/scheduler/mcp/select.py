@@ -6,7 +6,7 @@ import logging
 from sqlalchemy import select
 
 from apps.common.postgres import postgres
-from apps.llm import LLMConfig, embedding, json_generator
+from apps.llm import LLM, embedding, json_generator
 from apps.models import LanguageType, MCPTools
 from apps.schemas.mcp import MCPSelectResult
 from apps.services.mcp_service import MCPServiceManager
@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 class MCPSelector:
     """MCP选择器"""
 
-    def __init__(self, llm: LLMConfig, language: LanguageType = LanguageType.CHINESE) -> None:
+    def __init__(self, llm: LLM, language: LanguageType = LanguageType.CHINESE) -> None:
         """初始化MCP选择器"""
         self._llm = llm
         self._language = language
@@ -32,7 +32,7 @@ class MCPSelector:
             {"role": "user", "content": prompt},
         ]
         result = ""
-        async for chunk in self._llm.reasoning.call(message):
+        async for chunk in self._llm.call(message):
             result += chunk.content or ""
         return result
 

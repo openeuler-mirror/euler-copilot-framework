@@ -8,7 +8,7 @@ from collections.abc import AsyncGenerator
 from datetime import UTC, datetime
 from typing import Any
 
-from apps.llm import LLMConfig
+from apps.llm import LLM
 from apps.schemas.enum_var import EventType
 from apps.schemas.message import (
     HeartbeatData,
@@ -36,7 +36,7 @@ class MessageQueue:
         self._close = False
         self._heartbeat_task = asyncio.get_event_loop().create_task(self._heartbeat())
 
-    async def push_output(self, task: TaskData, llm: LLMConfig, event_type: str, data: dict[str, Any]) -> None:
+    async def push_output(self, task: TaskData, llm: LLM, event_type: str, data: dict[str, Any]) -> None:
         """组装用于向用户（前端/Shell端）输出的消息"""
         if event_type == EventType.DONE.value:
             await self._queue.put("[DONE]")
@@ -48,8 +48,8 @@ class MessageQueue:
 
         metadata = MessageMetadata(
             timeCost=step_time,
-            inputTokens=llm.reasoning.input_tokens,
-            outputTokens=llm.reasoning.output_tokens,
+            inputTokens=llm.input_tokens,
+            outputTokens=llm.output_tokens,
         )
 
         if task.state:
