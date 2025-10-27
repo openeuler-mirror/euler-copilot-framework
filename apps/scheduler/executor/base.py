@@ -15,7 +15,7 @@ from apps.services.record import RecordManager
 
 if TYPE_CHECKING:
     from apps.common.queue import MessageQueue
-    from apps.llm import LLMConfig
+    from apps.llm import LLM
     from apps.schemas.task import TaskData
 
 
@@ -24,7 +24,7 @@ class BaseExecutor(BaseModel, ABC):
 
     task: "TaskData"
     msg_queue: "MessageQueue"
-    llm: "LLMConfig"
+    llm: "LLM"
 
     question: str
 
@@ -74,7 +74,7 @@ class BaseExecutor(BaseModel, ABC):
         统一的消息推送接口
 
         :param event_type: 事件类型
-        :param data: 消息数据，如果是FLOW_START事件且data为None，则自动构建FlowStartContent
+        :param data: 消息数据，如果是EXECUTOR_START事件且data为None，则自动构建ExecutorStartContent
         """
         if event_type == EventType.TEXT_ADD.value and isinstance(data, str):
             data = TextAddContent(text=data).model_dump(exclude_none=True, by_alias=True)

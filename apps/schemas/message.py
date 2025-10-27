@@ -34,7 +34,7 @@ class MessageExecutor(BaseModel):
     executor_id: str = Field(description="Flow ID", alias="executorId")
     executor_name: str = Field(description="Flow名称", alias="executorName")
     executor_status: ExecutorStatus = Field(
-        description="Flow状态", alias="executorStatus", default=ExecutorStatus.UNKNOWN,
+        description="Flow状态", alias="executorStatus", default=ExecutorStatus.INIT,
     )
     step_id: uuid.UUID = Field(description="当前步骤ID", alias="stepId")
     step_name: str = Field(description="当前步骤名称", alias="stepName")

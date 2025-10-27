@@ -78,7 +78,7 @@ class FlowExecutor(BaseExecutor):
         # 尝试恢复State
         if (
             self.state
-            and self.state.executorStatus not in [ExecutorStatus.INIT, ExecutorStatus.UNKNOWN]
+            and self.state.executorStatus != ExecutorStatus.INIT
         ):
             # 创建ExecutorState
             self.state = ExecutorCheckpoint(
@@ -182,8 +182,6 @@ class FlowExecutor(BaseExecutor):
         数据通过向Queue发送消息的方式传输
         """
         logger.info("[FlowExecutor] 运行工作流")
-        # 推送Flow开始消息
-        await self._push_message(EventType.FLOW_START.value)
 
         # 获取首个步骤
         first_step = StepQueueItem(
@@ -271,7 +269,4 @@ class FlowExecutor(BaseExecutor):
         # FlowStop需要返回总时间，需要倒推最初的开始时间（当前时间减去当前已用总时间）
         self.task.runtime.time = round(datetime.now(UTC).timestamp(), 2) - self.task.runtime.fullTime
         # 推送Flow停止消息
-        if is_error:
-            await self._push_message(EventType.FLOW_FAILED.value)
-        else:
-            await self._push_message(EventType.FLOW_SUCCESS.value)
+        await self._push_message(EventType.EXECUTOR_STOP.value)
