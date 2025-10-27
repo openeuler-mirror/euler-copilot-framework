@@ -16,7 +16,6 @@ from .base import Base
 class ExecutorStatus(str, PyEnum):
     """执行器状态"""
 
-    UNKNOWN = "unknown"
     INIT = "init"
     WAITING = "waiting"
     RUNNING = "running"
@@ -35,7 +34,6 @@ class LanguageType(str, PyEnum):
 class StepStatus(str, PyEnum):
     """步骤状态"""
 
-    UNKNOWN = "unknown"
     INIT = "init"
     WAITING = "waiting"
     RUNNING = "running"

@@ -6,7 +6,7 @@ import logging
 from jinja2 import BaseLoader
 from jinja2.sandbox import SandboxedEnvironment
 
-from apps.llm import LLMConfig, json_generator
+from apps.llm import LLM, json_generator
 from apps.models import LanguageType, MCPTools
 from apps.schemas.mcp import MCPPlan
 
@@ -17,7 +17,7 @@ _logger = logging.getLogger(__name__)
 class MCPPlanner:
     """MCP 用户目标拆解与规划"""
 
-    def __init__(self, user_goal: str, language: LanguageType, llm: LLMConfig) -> None:
+    def __init__(self, user_goal: str, language: LanguageType, llm: LLM) -> None:
         """初始化MCP规划器"""
         self._user_goal = user_goal
         self._env = SandboxedEnvironment(
@@ -55,7 +55,7 @@ class MCPPlanner:
             {"role": "user", "content": prompt},
         ]
         result = ""
-        async for chunk in self._llm.reasoning.call(
+        async for chunk in self._llm.call(
             message,
             streaming=False,
         ):
@@ -99,7 +99,7 @@ class MCPPlanner:
         )
 
         result = ""
-        async for chunk in self._llm.reasoning.call(
+        async for chunk in self._llm.call(
             [{"role": "user", "content": prompt}],
             streaming=False,
         ):

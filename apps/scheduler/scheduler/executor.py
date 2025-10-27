@@ -6,7 +6,7 @@ import logging
 import uuid
 
 from apps.common.queue import MessageQueue
-from apps.llm import LLMConfig
+from apps.llm import LLM
 from apps.models import AppType, ExecutorStatus
 from apps.scheduler.executor.agent import MCPAgentExecutor
 from apps.scheduler.executor.flow import FlowExecutor
@@ -27,11 +27,11 @@ class ExecutorMixin:
     task: TaskData
     post_body: RequestData
     queue: MessageQueue
-    llm: LLMConfig
+    llm: LLM
 
     async def get_top_flow(self) -> str:
         """获取Top1 Flow (由FlowMixin实现)"""
-        ...
+        ...  # noqa: PIE790
 
     async def _determine_app_id(self) -> uuid.UUID | None:
         """确定最终使用的 app_id"""
@@ -64,16 +64,7 @@ class ExecutorMixin:
         return final_app_id
 
     async def _create_executor_task(self, final_app_id: uuid.UUID | None) -> asyncio.Task | None:
-        """
-        根据 app_id 创建对应的执行器任务
-
-        Args:
-            final_app_id: 要使用的 app_id，None 表示使用 QA 模式
-
-        Returns:
-            创建的异步任务，如果发生错误则返回 None
-
-        """
+        """根据 app_id 创建对应的执行器任务"""
         if final_app_id is None:
             _logger.info("[Scheduler] 运行智能问答模式")
             return asyncio.create_task(self._run_qa())

@@ -8,7 +8,7 @@ from jinja2 import BaseLoader
 from jinja2.sandbox import SandboxedEnvironment
 
 from apps.common.queue import MessageQueue
-from apps.llm import LLM, LLMConfig, embedding
+from apps.llm import LLM
 from apps.models import Task, TaskRuntime, User
 from apps.schemas.request_data import RequestData
 from apps.schemas.task import TaskData
@@ -27,54 +27,21 @@ class InitializationMixin:
     user: User
     post_body: RequestData
     queue: MessageQueue
-    llm: LLMConfig
+    llm: LLM
     _env: SandboxedEnvironment
 
-    async def _get_scheduler_llm(self, reasoning_llm_id: str) -> LLMConfig:
+    async def _get_scheduler_llm(self, reasoning_llm_id: str) -> LLM:
         """获取RAG大模型"""
         reasoning_llm = await LLMManager.get_llm(reasoning_llm_id)
         if not reasoning_llm:
             err = "[Scheduler] 获取问答用大模型ID失败"
             _logger.error(err)
             raise ValueError(err)
-        reasoning_llm = LLM(reasoning_llm)
+        return LLM(reasoning_llm)
 
-        function_llm = None
-        if not self.user.functionLLM:
-            _logger.error("[Scheduler] 用户 %s 没有设置函数调用大模型，相关功能将被禁用", self.user.id)
-        else:
-            function_llm = await LLMManager.get_llm(self.user.functionLLM)
-            if not function_llm:
-                _logger.error(
-                    "[Scheduler] 用户 %s 设置的函数调用大模型ID %s 不存在，相关功能将被禁用",
-                    self.user.id, self.user.functionLLM,
-                )
-            else:
-                function_llm = LLM(function_llm)
-
-        embedding_obj = None
-        if not self.user.embeddingLLM:
-            _logger.error("[Scheduler] 用户 %s 没有设置向量模型，相关功能将被禁用", self.user.id)
-        else:
-            embedding_llm_config = await LLMManager.get_llm(self.user.embeddingLLM)
-            if not embedding_llm_config:
-                _logger.error(
-                    "[Scheduler] 用户 %s 设置的向量模型ID %s 不存在，相关功能将被禁用",
-                    self.user.id, self.user.embeddingLLM,
-                )
-            else:
-                await embedding.init(embedding_llm_config)
-                embedding_obj = embedding
-
-        return LLMConfig(
-            reasoning=reasoning_llm,
-            function=function_llm,
-            embedding=embedding_obj,
-        )
-
-    def _create_new_task(self, task_id: uuid.UUID, user_id: str, conversation_id: uuid.UUID | None) -> TaskData:
+    def _create_new_task(self, task_id: uuid.UUID, user_id: str, conversation_id: uuid.UUID | None) -> None:
         """创建新的TaskData"""
-        return TaskData(
+        self.task = TaskData(
             metadata=Task(
                 id=task_id,
                 userId=user_id,
@@ -93,7 +60,7 @@ class InitializationMixin:
 
         if not conversation_id:
             _logger.info("[Scheduler] 无Conversation ID，直接创建新任务")
-            self.task = self._create_new_task(task_id, user_id, None)
+            self._create_new_task(task_id, user_id, None)
             return
 
         _logger.info("[Scheduler] 尝试从Conversation ID %s 恢复任务", conversation_id)
@@ -128,7 +95,7 @@ class InitializationMixin:
 
         if not restored:
             _logger.info("[Scheduler] 无法恢复任务，创建新任务")
-            self.task = self._create_new_task(task_id, user_id, conversation_id)
+            self._create_new_task(task_id, user_id, conversation_id)
 
     async def _init_user(self, user_id: str) -> None:
         """初始化用户"""
