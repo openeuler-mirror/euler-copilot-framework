@@ -739,17 +739,46 @@ uninstall_eulercopilot() {
         echo -e "${YELLOW}未找到需要清理的Helm Release: euler-copilot${NC}"
     fi
 
-    # 删除 PVC: framework-semantics-claim 和 web-static
+    # 强制清理PVC（改进版本）
+    echo -e "${BLUE}开始强制清理PVC...${NC}"
     local pvc_names=("framework-semantics-claim" "web-static")
     for pvc_name in "${pvc_names[@]}"; do
         if kubectl get pvc "$pvc_name" -n euler-copilot &>/dev/null; then
-            echo -e "${GREEN}找到PVC: ${pvc_name}，开始清理...${NC}"
-            if ! kubectl delete pvc "$pvc_name" -n euler-copilot --force --grace-period=0; then
-                echo -e "${RED}错误：删除PVC ${pvc_name} 失败！${NC}" >&2
-                return 1
+            echo -e "${GREEN}强制清理PVC: ${pvc_name}...${NC}"
+            
+            # 先尝试移除finalizer
+            kubectl patch pvc "$pvc_name" -n euler-copilot -p '{"metadata":{"finalizers":null}}' 2>/dev/null || true
+            
+            # 强制删除PVC
+            kubectl delete pvc "$pvc_name" -n euler-copilot --force --grace-period=0 2>/dev/null || true
+            
+            # 等待确认删除
+            local timeout=30
+            local count=0
+            while kubectl get pvc "$pvc_name" -n euler-copilot &>/dev/null && [ $count -lt $timeout ]; do
+                echo -e "${YELLOW}等待PVC ${pvc_name} 删除完成...${NC}"
+                sleep 1
+                ((count++))
+            done
+            
+            if kubectl get pvc "$pvc_name" -n euler-copilot &>/dev/null; then
+                echo -e "${YELLOW}警告：PVC ${pvc_name} 删除超时，但继续执行${NC}"
+            else
+                echo -e "${GREEN}PVC ${pvc_name} 删除成功${NC}"
             fi
         else
             echo -e "${YELLOW}未找到需要清理的PVC: ${pvc_name}${NC}"
+        fi
+    done
+
+    # 清理可能存在的PV
+    echo -e "${BLUE}检查并清理相关PV...${NC}"
+    local pv_names=("framework-semantics" "web-static-pv")
+    for pv_name in "${pv_names[@]}"; do
+        if kubectl get pv "$pv_name" &>/dev/null; then
+            echo -e "${GREEN}清理PV: ${pv_name}...${NC}"
+            kubectl patch pv "$pv_name" -p '{"metadata":{"finalizers":null}}' 2>/dev/null || true
+            kubectl delete pv "$pv_name" --force --grace-period=0 2>/dev/null || true
         fi
     done
 
@@ -765,7 +794,67 @@ uninstall_eulercopilot() {
         echo -e "${YELLOW}未找到需要清理的Secret: ${secret_name}${NC}"
     fi
 
+    # 等待所有资源完全清理
+    echo -e "${BLUE}等待资源完全清理...${NC}"
+    sleep 5
+
     echo -e "${GREEN}资源清理完成${NC}"
+}
+
+# PVC冲突预检查机制
+check_pvc_conflicts() {
+    echo -e "${BLUE}检查PVC冲突...${NC}"
+    
+    local conflicts_found=false
+    
+    # 检查是否存在冲突的PVC绑定
+    if kubectl get pvc web-static -n euler-copilot &>/dev/null; then
+        local bound_pv=$(kubectl get pvc web-static -n euler-copilot -o jsonpath='{.spec.volumeName}' 2>/dev/null)
+        if [ "$bound_pv" = "framework-semantics" ]; then
+            echo -e "${YELLOW}检测到PVC冲突：web-static绑定到了framework-semantics PV${NC}"
+            conflicts_found=true
+        fi
+    fi
+    
+    # 检查framework-semantics-claim是否绑定到错误的PV
+    if kubectl get pvc framework-semantics-claim -n euler-copilot &>/dev/null; then
+        local bound_pv=$(kubectl get pvc framework-semantics-claim -n euler-copilot -o jsonpath='{.spec.volumeName}' 2>/dev/null)
+        local pv_size=$(kubectl get pv "$bound_pv" -o jsonpath='{.spec.capacity.storage}' 2>/dev/null)
+        if [ "$pv_size" = "10Gi" ]; then
+            echo -e "${YELLOW}检测到PVC冲突：framework-semantics-claim绑定到了10Gi的PV（应该是5Gi）${NC}"
+            conflicts_found=true
+        fi
+    fi
+    
+    # 如果发现冲突，进行清理
+    if [ "$conflicts_found" = true ]; then
+        echo -e "${YELLOW}发现PVC冲突，正在自动清理...${NC}"
+        
+        # 强制清理冲突的PVC
+        local pvc_names=("web-static" "framework-semantics-claim")
+        for pvc_name in "${pvc_names[@]}"; do
+            if kubectl get pvc "$pvc_name" -n euler-copilot &>/dev/null; then
+                echo -e "${GREEN}清理冲突PVC: ${pvc_name}${NC}"
+                kubectl patch pvc "$pvc_name" -n euler-copilot -p '{"metadata":{"finalizers":null}}' 2>/dev/null || true
+                kubectl delete pvc "$pvc_name" -n euler-copilot --force --grace-period=0 2>/dev/null || true
+            fi
+        done
+        
+        # 清理相关的pod
+        local framework_pod=$(kubectl get pods -n euler-copilot | grep framework | awk '{print $1}' | head -1)
+        if [ -n "$framework_pod" ]; then
+            echo -e "${GREEN}重启framework pod: ${framework_pod}${NC}"
+            kubectl delete pod "$framework_pod" -n euler-copilot 2>/dev/null || true
+        fi
+        
+        # 等待清理完成
+        echo -e "${BLUE}等待冲突清理完成...${NC}"
+        sleep 10
+        
+        echo -e "${GREEN}PVC冲突清理完成${NC}"
+    else
+        echo -e "${GREEN}未发现PVC冲突${NC}"
+    fi
 }
 
 modify_yaml() {
@@ -924,6 +1013,9 @@ main() {
     host=$(get_network_ip) || exit 1
     
     uninstall_eulercopilot
+    
+    # 检查PVC冲突（在重新部署前）
+    check_pvc_conflicts
     
     if ! get_client_info_auto; then
         get_client_info_manual
