@@ -37,6 +37,9 @@ scopes = 'openid profile email groups'
 response_type = 'code'
 response_mode = 'form_post'
 
+# 用户设置页面重定向URL配置
+redirect_settings_url = '{{ $autheliaDomain }}/authenticated'
+
 # OIDC 高级配置
 enable_pkce = true
 pkce_challenge_method = 'S256'

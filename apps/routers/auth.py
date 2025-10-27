@@ -262,9 +262,30 @@ async def logout(
 
 
 @router.get("/redirect", response_model=OidcRedirectRsp)
-async def oidc_redirect() -> JSONResponse:
+async def oidc_redirect(action: str = "login") -> JSONResponse:
     """OIDC重定向URL"""
-    redirect_url = await oidc_provider.get_redirect_url()
+    if action == "settings":
+        # 直接读取配置中的redirect_settings_url
+        from apps.common.config import Config
+        config = Config().get_config()
+        
+        if hasattr(config.login.settings, 'redirect_settings_url') and config.login.settings.redirect_settings_url:
+            # 直接使用配置文件中的redirect_settings_url
+            redirect_url = config.login.settings.redirect_settings_url
+        else:
+            # 如果无法获取配置，返回特定响应提示
+            return JSONResponse(
+                status_code=status.HTTP_200_OK,
+                content=ResponseData(
+                    code=status.HTTP_400_BAD_REQUEST,
+                    message="当前鉴权服务暂无用户主页",
+                    result={},
+                ).model_dump(exclude_none=True, by_alias=True),
+            )
+    else:
+        # 默认返回登录URL
+        redirect_url = await oidc_provider.get_redirect_url()
+    
     return JSONResponse(
         status_code=status.HTTP_200_OK,
         content=OidcRedirectRsp(
