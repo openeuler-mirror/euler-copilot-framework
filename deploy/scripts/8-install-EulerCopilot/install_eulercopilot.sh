@@ -39,6 +39,8 @@ show_help() {
     echo -e "选项:"
     echo -e "  --help                   显示此帮助信息"
     echo -e "  --eulercopilot_address   指定EulerCopilot前端访问URL"
+    echo -e "  --authhub_address        指定AuthHub认证服务地址"
+    echo -e "  --authelia_address       指定Authelia认证服务地址"
     echo -e "  --enable-tls             启用TLS证书支持"
     echo -e "  --tls-cert               指定TLS证书文件路径"
     echo -e "  --tls-key                指定TLS私钥文件路径"
@@ -46,6 +48,7 @@ show_help() {
     echo -e ""
     echo -e "示例:"
     echo -e "  $0 --eulercopilot_address http://myhost:30080"
+    echo -e "  $0 --eulercopilot_address http://myhost:30080 --authhub_address http://139.9.242.191:30081"
     echo -e "  $0 --eulercopilot_address https://myhost:30443 --enable-tls --generate-cert myhost"
     echo -e "  $0 --eulercopilot_address https://myhost:30443 --enable-tls --tls-cert /path/to/cert.crt --tls-key /path/to/key.key${NC}"
     echo -e ""
@@ -66,6 +69,26 @@ parse_arguments() {
                     shift
                 else
                     echo -e "${RED}错误: --eulercopilot_address 需要提供一个值${NC}" >&2
+                    exit 1
+                fi
+                ;;
+            --authhub_address)
+                if [ -n "$2" ]; then
+                    auth_service_address="$2"
+                    auth_service_type="authhub"
+                    shift
+                else
+                    echo -e "${RED}错误: --authhub_address 需要提供一个值${NC}" >&2
+                    exit 1
+                fi
+                ;;
+            --authelia_address)
+                if [ -n "$2" ]; then
+                    auth_service_address="$2"
+                    auth_service_type="authelia"
+                    shift
+                else
+                    echo -e "${RED}错误: --authelia_address 需要提供一个值${NC}" >&2
                     exit 1
                 fi
                 ;;
@@ -474,9 +497,24 @@ create_authelia_client() {
             
             # 设置服务信息
             auth_service_type="authelia"
-            local host_ip
-            host_ip=$(hostname -I | awk '{print $1}')
-            auth_service_address="https://${host_ip}:30091"
+            # 优先使用用户输入的地址或从values.yaml获取已配置的地址
+            if [ -z "$auth_service_address" ]; then
+                # 尝试从values.yaml获取已配置的authelia地址
+                local configured_address
+                configured_address=$(grep -E "^\s*authelia:\s*https?://" "${DEPLOY_DIR}/chart/euler_copilot/values.yaml" 2>/dev/null | sed -E 's/^\s*authelia:\s*//' | tr -d '"' | head -1)
+                if [ -n "$configured_address" ]; then
+                    auth_service_address="$configured_address"
+                    echo -e "${GREEN}使用已配置的authelia地址: $auth_service_address${NC}"
+                else
+                    # 使用统一的IP获取方法
+                    local host_ip
+                    host_ip=$(get_network_ip)
+                    auth_service_address="https://${host_ip}:30091"
+                    echo -e "${YELLOW}自动检测到authelia地址: $auth_service_address${NC}"
+                fi
+            else
+                echo -e "${GREEN}使用指定的authelia地址: $auth_service_address${NC}"
+            fi
             
             return 0
         else
@@ -500,6 +538,25 @@ get_client_info_auto() {
     
     echo -e "${BLUE}正在自动获取认证信息...${NC}"
     
+    # 如果用户通过命令行指定了认证服务，直接使用
+    if [ -n "$auth_service_type" ] && [ -n "$auth_service_address" ]; then
+        echo -e "${GREEN}使用命令行指定的认证服务：${auth_service_type} (${auth_service_address})${NC}"
+        
+        # 根据服务类型设置相应的配置
+        if [ "$auth_service_type" = "authelia" ]; then
+            # 使用authelia客户端管理工具创建客户端
+            if create_authelia_client; then
+                return 0
+            else
+                echo -e "${YELLOW}authelia客户端创建失败，尝试使用备用方法...${NC}"
+            fi
+        else
+            # 对于authhub，需要设置默认的client_id和client_secret
+            # 这些将通过Python脚本获取或使用默认值
+            echo -e "${YELLOW}将使用通用脚本获取${auth_service_type}认证信息...${NC}"
+        fi
+    fi
+    
     # 检测鉴权服务类型
     echo -e "${BLUE}检测已部署的鉴权服务...${NC}"
     
@@ -508,10 +565,24 @@ get_client_info_auto() {
         echo -e "${GREEN}检测到authelia服务，使用authelia_automation.sh创建客户端${NC}"
         auth_service_type="authelia"
         
-        # 获取authelia服务地址
-        local host_ip
-        host_ip=$(hostname -I | awk '{print $1}')
-        auth_service_address="https://${host_ip}:30091"
+        # 获取authelia服务地址 - 优先使用用户输入或已配置的地址
+        if [ -z "$auth_service_address" ]; then
+            # 尝试从values.yaml获取已配置的authelia地址
+            local configured_address
+            configured_address=$(grep -E "^\s*authelia:\s*https?://" "${DEPLOY_DIR}/chart/euler_copilot/values.yaml" 2>/dev/null | sed -E 's/^\s*authelia:\s*//' | tr -d '"' | head -1)
+            if [ -n "$configured_address" ]; then
+                auth_service_address="$configured_address"
+                echo -e "${GREEN}使用已配置的authelia地址: $auth_service_address${NC}"
+            else
+                # 使用统一的IP获取方法
+                local host_ip
+                host_ip=$(get_network_ip)
+                auth_service_address="https://${host_ip}:30091"
+                echo -e "${YELLOW}自动检测到authelia地址: $auth_service_address${NC}"
+            fi
+        else
+            echo -e "${GREEN}使用指定的authelia地址: $auth_service_address${NC}"
+        fi
         
         # 使用authelia_automation.sh创建客户端
         if create_authelia_client; then
@@ -560,6 +631,29 @@ get_client_info_auto() {
     # 提取服务信息（用于显示）
     auth_service_type=$(echo "$output" | grep -oP '鉴权服务类型:\s*\K\S+' | tail -1)
     auth_service_address=$(echo "$output" | grep -oP '鉴权服务地址:\s*\K\S+' | tail -1)
+    
+    # 优化服务地址：优先使用用户输入或已配置的地址
+    if [ "$auth_service_type" = "authhub" ] || [ "$auth_service_type" = "authHub" ]; then
+        # 尝试从values.yaml获取已配置的authhub地址
+        local configured_address
+        configured_address=$(grep -E "^\s*authhub:\s*https?://" "${DEPLOY_DIR}/chart/euler_copilot/values.yaml" 2>/dev/null | sed -E 's/^\s*authhub:\s*//' | tr -d '"' | head -1)
+        if [ -n "$configured_address" ]; then
+            auth_service_address="$configured_address"
+            echo -e "${GREEN}使用已配置的authhub地址: $auth_service_address${NC}"
+        else
+            echo -e "${YELLOW}使用脚本检测到的authhub地址: $auth_service_address${NC}"
+        fi
+    elif [ "$auth_service_type" = "authelia" ]; then
+        # 尝试从values.yaml获取已配置的authelia地址
+        local configured_address
+        configured_address=$(grep -E "^\s*authelia:\s*https?://" "${DEPLOY_DIR}/chart/euler_copilot/values.yaml" 2>/dev/null | sed -E 's/^\s*authelia:\s*//' | tr -d '"' | head -1)
+        if [ -n "$configured_address" ]; then
+            auth_service_address="$configured_address"
+            echo -e "${GREEN}使用已配置的authelia地址: $auth_service_address${NC}"
+        else
+            echo -e "${YELLOW}使用脚本检测到的authelia地址: $auth_service_address${NC}"
+        fi
+    fi
     
     # 清理临时文件
     rm -f "$temp_file"
