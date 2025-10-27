@@ -1,5 +1,6 @@
 {{- if .Values.euler_copilot.framework.enabled -}}
 ---
+# 语义数据存储PV - 专门用于framework语义接口数据
 apiVersion: v1
 kind: PersistentVolume
 metadata:
@@ -8,13 +9,30 @@ metadata:
 spec:
   storageClassName: {{ default "local-path" .Values.globals.storageClass }}
   capacity:
-    storage: {{ default "10Gi" .Values.storage.frameworkSemantics.size }}
+    storage: {{ default "5Gi" .Values.storage.frameworkSemantics.size }}
   accessModes:
     - ReadWriteOnce
   hostPath:
-    path: {{ default "/var/lib/eulercopilot" .Values.storage.frameworkSemantics.path }}
+    path: {{ default "/var/lib/eulercopilot/semantics" .Values.storage.frameworkSemantics.path }}
 
 ---
+# Web静态文件存储PV - 专门用于前后端共享静态文件
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: web-static-pv
+  namespace: {{ .Release.Namespace }}
+spec:
+  storageClassName: {{ default "local-path" .Values.globals.storageClass }}
+  capacity:
+    storage: {{ default "10Gi" .Values.storage.webAsset.size }}
+  accessModes:
+    - ReadWriteOnce
+  hostPath:
+    path: {{ default "/var/lib/eulercopilot/static" .Values.storage.webAsset.path }}
+
+---
+# 语义数据PVC
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
@@ -27,5 +45,21 @@ spec:
   resources:
     requests:
       storage: {{ default "5Gi" .Values.storage.frameworkSemantics.size }}
-    volumeName: framework-semantics
+  volumeName: framework-semantics
+
+---
+# Web静态文件PVC
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: web-static
+  namespace: {{ .Release.Namespace }}
+spec:
+  storageClassName: {{ default "local-path" .Values.globals.storageClass }}
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: {{ default "10Gi" .Values.storage.webAsset.size }}
+  volumeName: web-static-pv
 {{- end -}}
