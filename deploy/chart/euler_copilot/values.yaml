@@ -111,12 +111,14 @@ ports:
 storage:
   # 语义接口
   frameworkSemantics:
-    # 语义接口地址
+    # 语义接口存储路径，默认为/var/lib/eulercopilot/semantics
     path:
     # 语义接口存储大小，默认为5GB
     size:
   # 共享存储
   webAsset:
+    # 前后端共享存储路径，默认为/var/lib/eulercopilot/static
+    path:
     # 前后端共享存储大小，默认为10GB
     size:
 
