@@ -14,9 +14,7 @@ from apps.scheduler.executor.qa import QAExecutor
 from apps.scheduler.pool.pool import pool
 from apps.schemas.request_data import RequestData
 from apps.schemas.task import TaskData
-from apps.services.activity import Activity
 from apps.services.appcenter import AppCenterManager
-from apps.services.conversation import ConversationManager
 
 _logger = logging.getLogger(__name__)
 
@@ -32,36 +30,6 @@ class ExecutorMixin:
     async def get_top_flow(self) -> str:
         """获取Top1 Flow (由FlowMixin实现)"""
         ...  # noqa: PIE790
-
-    async def _determine_app_id(self) -> uuid.UUID | None:
-        """确定最终使用的 app_id"""
-        conversation = None
-
-        if self.task.metadata.conversationId:
-            conversation = await ConversationManager.get_conversation_by_conversation_id(
-                self.task.metadata.userId,
-                self.task.metadata.conversationId,
-            )
-
-        if conversation and conversation.appId:
-            final_app_id = conversation.appId
-            _logger.info("[Scheduler] 使用Conversation中的appId: %s", final_app_id)
-
-            if self.post_body.app and self.post_body.app.app_id and self.post_body.app.app_id != conversation.appId:
-                _logger.warning(
-                    "[Scheduler] post_body中的app_id(%s)与Conversation中的appId(%s)不符，忽略post_body中的app信息",
-                    self.post_body.app.app_id,
-                    conversation.appId,
-                )
-                self.post_body.app.app_id = conversation.appId
-        elif self.post_body.app and self.post_body.app.app_id:
-            final_app_id = self.post_body.app.app_id
-            _logger.info("[Scheduler] Conversation中无appId，使用post_body中的app_id: %s", final_app_id)
-        else:
-            final_app_id = None
-            _logger.info("[Scheduler] Conversation和post_body中均无appId，fallback到智能问答")
-
-        return final_app_id
 
     async def _create_executor_task(self, final_app_id: uuid.UUID | None) -> asyncio.Task | None:
         """根据 app_id 创建对应的执行器任务"""
@@ -87,13 +55,7 @@ class ExecutorMixin:
         return asyncio.create_task(self._run_agent())
 
     async def _handle_task_cancellation(self, main_task: asyncio.Task) -> None:
-        """
-        处理任务取消的逻辑
-
-        Args:
-            main_task: 需要取消的主任务
-
-        """
+        """处理任务取消的逻辑"""
         _logger.warning("[Scheduler] 用户取消执行，正在终止...")
         main_task.cancel()
         try:
@@ -114,26 +76,6 @@ class ExecutorMixin:
             _logger.info("[Scheduler] ExecutorStatus为 %s，保持不变", self.task.state.executorStatus)
         else:
             _logger.warning("[Scheduler] task.state为None，无法更新ExecutorStatus")
-
-    async def _monitor_activity(self, kill_event: asyncio.Event, user_id: str) -> None:
-        """监控用户活动状态，不活跃时终止工作流"""
-        try:
-            check_interval = 0.5
-
-            while not kill_event.is_set():
-                is_active = await Activity.is_active(user_id)
-
-                if not is_active:
-                    _logger.warning("[Scheduler] 用户 %s 不活跃，终止工作流", user_id)
-                    kill_event.set()
-                    break
-
-                await asyncio.sleep(check_interval)
-        except asyncio.CancelledError:
-            _logger.info("[Scheduler] 活动监控任务已取消")
-        except Exception:
-            _logger.exception("[Scheduler] 活动监控过程中发生错误")
-            kill_event.set()
 
     async def _run_qa(self) -> None:
         """运行QA执行器"""

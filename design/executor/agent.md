@@ -68,7 +68,7 @@ classDiagram
     class MCPPlanner {
         +get_flow_name() FlowName
         +create_next_step(history, tools) Step
-        +get_flow_excute_risk(tools) FlowRisk
+        +get_flow_excute_risk(tools: dict[str, MCPTools]) FlowRisk
         +get_tool_risk(tool, input_param) ToolRisk
         +is_param_error(...) IsParamError
         +change_err_message_to_description(...) str

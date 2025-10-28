@@ -11,18 +11,15 @@ from jinja2.sandbox import SandboxedEnvironment
 from pydantic import Field
 from pydantic.json_schema import SkipJsonSchema
 
-from apps.common.security import Security
 from apps.models import LanguageType, NodeInfo
 from apps.scheduler.call.core import CoreCall
 from apps.schemas.enum_var import CallOutputType
-from apps.schemas.record import RecordContent
 from apps.schemas.scheduler import (
     CallError,
     CallInfo,
     CallOutputChunk,
     CallVars,
 )
-from apps.services.record import RecordManager
 from apps.services.user_tag import UserTagManager
 
 from .prompt import SUGGEST_PROMPT
@@ -77,13 +74,8 @@ class Suggestion(CoreCall, input_model=SuggestionInput, output_model=SuggestionO
 
     async def _init(self, call_vars: CallVars) -> SuggestionInput:
         """初始化"""
-        if self.conversation_id is None:
-            self._history_questions = []
-        else:
-            self._history_questions = await self._get_history_questions(
-                call_vars.ids.user_id,
-                self.conversation_id,
-            )
+        # 从 ExecutorBackground 中获取历史问题
+        self._history_questions = call_vars.background.history_questions
         self._app_id = call_vars.ids.app_id
         self._flow_id = call_vars.ids.executor_id
         self._env = SandboxedEnvironment(
@@ -110,22 +102,6 @@ class Suggestion(CoreCall, input_model=SuggestionInput, output_model=SuggestionO
             user_id=call_vars.ids.user_id,
             history_questions=self._history_questions,
         )
-
-
-    async def _get_history_questions(self, user_id: str, conversation_id: uuid.UUID) -> list[str]:
-        """获取当前对话的历史问题"""
-        records = await RecordManager.query_record_by_conversation_id(
-            user_id,
-            conversation_id,
-            15,
-        )
-
-        history_questions = []
-        for record in records:
-            record_data = RecordContent.model_validate_json(Security.decrypt(record.content, record.key))
-            history_questions.append(record_data.question)
-        return history_questions
-
 
     async def _exec(self, input_data: dict[str, Any]) -> AsyncGenerator[CallOutputChunk, None]:
         """运行问题推荐"""

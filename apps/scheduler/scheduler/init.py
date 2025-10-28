@@ -9,9 +9,10 @@ from jinja2.sandbox import SandboxedEnvironment
 
 from apps.common.queue import MessageQueue
 from apps.llm import LLM
-from apps.models import Task, TaskRuntime, User
+from apps.models import Conversation, Task, TaskRuntime, User
 from apps.schemas.request_data import RequestData
 from apps.schemas.task import TaskData
+from apps.services.appcenter import AppCenterManager
 from apps.services.conversation import ConversationManager
 from apps.services.llm import LLMManager
 from apps.services.task import TaskManager
@@ -20,7 +21,7 @@ from apps.services.user import UserManager
 _logger = logging.getLogger(__name__)
 
 
-class InitializationMixin:
+class InitMixin:
     """处理Scheduler初始化相关的逻辑"""
 
     task: TaskData
@@ -65,7 +66,6 @@ class InitializationMixin:
 
         _logger.info("[Scheduler] 尝试从Conversation ID %s 恢复任务", conversation_id)
 
-        restored = False
         try:
             conversation = await ConversationManager.get_conversation_by_conversation_id(
                 user_id,
@@ -84,7 +84,7 @@ class InitializationMixin:
                         self.task.runtime.taskId = task_id
                         if self.task.state:
                             self.task.state.taskId = task_id
-                        restored = True
+                        return
             else:
                 _logger.warning(
                     "[Scheduler] Conversation %s 不存在或无权访问，创建新任务",
@@ -93,11 +93,10 @@ class InitializationMixin:
         except Exception:
             _logger.exception("[Scheduler] 从Conversation恢复任务失败，创建新任务")
 
-        if not restored:
-            _logger.info("[Scheduler] 无法恢复任务，创建新任务")
-            self._create_new_task(task_id, user_id, conversation_id)
+        _logger.info("[Scheduler] 无法恢复任务，创建新任务")
+        self._create_new_task(task_id, user_id, conversation_id)
 
-    async def _init_user(self, user_id: str) -> None:
+    async def _get_user(self, user_id: str) -> None:
         """初始化用户"""
         user = await UserManager.get_user(user_id)
         if not user:
@@ -115,3 +114,23 @@ class InitializationMixin:
             lstrip_blocks=True,
             extensions=["jinja2.ext.loopcontrols"],
         )
+
+    async def _create_new_conversation(
+        self, title: str, user_id: str, app_id: uuid.UUID | None = None,
+        *,
+        debug: bool = False,
+    ) -> Conversation:
+        """判断并创建新对话"""
+        if app_id and not await AppCenterManager.validate_user_app_access(user_id, app_id):
+            err = "Invalid app_id."
+            raise RuntimeError(err)
+        new_conv = await ConversationManager.add_conversation_by_user(
+            title=title,
+            user_id=user_id,
+            app_id=app_id,
+            debug=debug,
+        )
+        if not new_conv:
+            err = "Create new conversation failed."
+            raise RuntimeError(err)
+        return new_conv

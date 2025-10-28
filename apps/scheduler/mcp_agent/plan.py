@@ -14,7 +14,6 @@ from apps.scheduler.mcp_agent.prompt import (
     CHANGE_ERROR_MESSAGE_TO_DESCRIPTION,
     FINAL_ANSWER,
     GEN_STEP,
-    GENERATE_FLOW_EXCUTE_RISK,
     GENERATE_FLOW_NAME,
     GET_MISSING_PARAMS,
     IS_PARAM_ERROR,
@@ -24,7 +23,6 @@ from apps.scheduler.slot.slot import Slot
 from apps.schemas.llm import LLMChunk
 from apps.schemas.mcp import (
     FlowName,
-    FlowRisk,
     IsParamError,
     Step,
     ToolRisk,
@@ -84,25 +82,6 @@ class MCPPlanner(MCPBase):
         logger.info("[MCPPlanner] 创建下一步的执行步骤: %s", step)
         # 使用Step模型解析结果
         return Step.model_validate(step)
-
-    async def get_flow_excute_risk(self, tools: list[MCPTools]) -> FlowRisk:
-        """获取当前流程的风险评估结果"""
-        template = _env.from_string(GENERATE_FLOW_EXCUTE_RISK[self._language])
-        prompt = template.render(
-            goal=self._goal,
-            tools=tools,
-        )
-
-        # 组装OpenAI标准Function格式
-        function = {
-            "name": "evaluate_flow_execution_risk",
-            "description": "Evaluate the potential risks and safety concerns of executing the entire workflow",
-            "parameters": FlowRisk.model_json_schema(),
-        }
-
-        result = await self.get_json_result(prompt, function)
-        # 使用FlowRisk模型解析结果
-        return FlowRisk.model_validate(result)
 
     async def get_tool_risk(
         self,
@@ -206,7 +185,7 @@ class MCPPlanner(MCPBase):
         return await self.get_json_result(prompt, function)
 
     async def generate_answer(self, memory: str) -> AsyncGenerator[LLMChunk, None]:
-        """生成最终回答"""
+        """生成最终回答，返回LLMChunk"""
         template = _env.from_string(FINAL_ANSWER[self._language])
         prompt = template.render(
             memory=memory,
