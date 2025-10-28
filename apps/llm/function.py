@@ -6,6 +6,7 @@ import logging
 import re
 from textwrap import dedent
 from typing import Any
+import httpx
 
 from jinja2 import BaseLoader
 from jinja2.sandbox import SandboxedEnvironment
@@ -48,7 +49,7 @@ class FunctionLLM:
             self._params["timeout"] = 300
         if self._config.backend == "ollama":
             import ollama
-
+            
             if not self._config.api_key:
                 self._client = ollama.AsyncClient(host=self._config.endpoint)
             else:
@@ -64,11 +65,16 @@ class FunctionLLM:
 
             if not self._config.api_key:
                 self._client = openai.AsyncOpenAI(
-                    base_url=self._config.endpoint)
+                    base_url=self._config.endpoint,
+                    http_client=httpx.AsyncClient(
+                        verify=False)  # 关闭 openai 的 SSL 验证
+                )
             else:
                 self._client = openai.AsyncOpenAI(
                     base_url=self._config.endpoint,
                     api_key=self._config.api_key,
+                    http_client=httpx.AsyncClient(
+                        verify=False)  # 关闭 openai 的 SSL 验证
                 )
 
     async def _call_openai(

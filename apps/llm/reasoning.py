@@ -4,7 +4,7 @@
 import logging
 from collections.abc import AsyncGenerator
 from dataclasses import dataclass
-
+import httpx
 from openai import AsyncOpenAI
 from openai.types.chat import ChatCompletionChunk
 
@@ -111,12 +111,14 @@ class ReasoningLLM:
         if not self._config.key:
             self._client = AsyncOpenAI(
                 base_url=self._config.endpoint,
+                http_client=httpx.AsyncClient(verify=False)  # 关闭 SSL 验证
             )
             return
 
         self._client = AsyncOpenAI(
             api_key=self._config.key,
             base_url=self._config.endpoint,
+            http_client=httpx.AsyncClient(verify=False)  # 关闭 SSL 验证
         )
 
     @staticmethod
