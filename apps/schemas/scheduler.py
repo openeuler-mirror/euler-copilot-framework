@@ -35,6 +35,7 @@ class ExecutorBackground(BaseModel):
     num: int = Field(description="对话记录最大数量", default=0)
     conversation: list[dict[str, str]] = Field(description="对话记录", default=[])
     facts: list[str] = Field(description="当前Executor的背景信息", default=[])
+    history_questions: list[str] = Field(description="历史问题列表", default=[])
 
 
 class CallVars(BaseModel):

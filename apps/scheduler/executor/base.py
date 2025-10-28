@@ -46,26 +46,35 @@ class BaseExecutor(BaseModel, ABC):
             self.background = ExecutorBackground(
                 conversation=[],
                 facts=[],
+                history_questions=[],
                 num=n,
             )
             return
-        # 获取最后n+5条Record
+        # 获取最后n+10条Record
         records = await RecordManager.query_record_by_conversation_id(
-            self.task.metadata.userId, self.task.metadata.conversationId, n + 5,
+            self.task.metadata.userId, self.task.metadata.conversationId, n + 10,
         )
-        # 组装问答
+        # 组装问答、事实和历史问题
         context = []
         facts = []
-        for record in records:
+        history_questions = []
+        for i, record in enumerate(records):
             record_data = RecordContent.model_validate_json(Security.decrypt(record.content, record.key))
-            context.append({
-                "question": record_data.question,
-                "answer": record_data.answer,
-            })
-            facts.extend(record_data.facts)
+            # context 取最后 n 组
+            if i >= len(records) - n:
+                context.append({
+                    "question": record_data.question,
+                    "answer": record_data.answer,
+                })
+            # facts 取最后 n+5 组
+            if i >= len(records) - (n + 5):
+                facts.extend(record_data.facts)
+            # history_questions 取全部（n+10组）
+            history_questions.append(record_data.question)
         self.background = ExecutorBackground(
             conversation=context,
             facts=facts,
+            history_questions=history_questions,
             num=n,
         )
 

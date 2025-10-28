@@ -8,23 +8,23 @@ import uuid
 from apps.common.queue import MessageQueue
 from apps.schemas.request_data import RequestData
 
-from .conversation import ConversationMixin
 from .data import DataMixin
 from .executor import ExecutorMixin
 from .flow import FlowMixin
-from .init import InitializationMixin
-from .message import MessagingMixin
+from .init import InitMixin
+from .message import MessageMixin
+from .util import UtilMixin
 
 _logger = logging.getLogger(__name__)
 
 
 class Scheduler(
-    InitializationMixin,
+    InitMixin,
     ExecutorMixin,
     FlowMixin,
-    ConversationMixin,
     DataMixin,
-    MessagingMixin,
+    MessageMixin,
+    UtilMixin,
 ):
     """
     "调度器"，是最顶层的、控制Executor执行顺序和状态的逻辑。
@@ -32,12 +32,12 @@ class Scheduler(
     Scheduler包含一个"SchedulerContext"，作用为多个Executor的"聊天会话"
 
     所有属性都继承自各个Mixin类，主要包括：
-    - task: TaskData (来自InitializationMixin)
-    - llm: LLMConfig (来自InitializationMixin)
-    - queue: MessageQueue (来自InitializationMixin)
-    - post_body: RequestData (来自InitializationMixin)
-    - user: User (来自InitializationMixin)
-    - _env: SandboxedEnvironment (来自InitializationMixin)
+    - task: TaskData (来自InitMixin)
+    - llm: LLMConfig (来自InitMixin)
+    - queue: MessageQueue (来自InitMixin)
+    - post_body: RequestData (来自InitMixin)
+    - user: User (来自InitMixin)
+    - _env: SandboxedEnvironment (来自InitMixin)
     """
 
     async def init(
@@ -51,7 +51,7 @@ class Scheduler(
         self.queue = queue
         self.post_body = post_body
 
-        await self._init_user(user_id)
+        await self._get_user(user_id)
         await self._init_task(task_id, user_id)
         self._init_jinja2_env()
         self.llm = await self._get_scheduler_llm(post_body.llm_id)

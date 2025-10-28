@@ -12,7 +12,7 @@ from apps.schemas.task import TaskData
 _logger = logging.getLogger(__name__)
 
 
-class MessagingMixin:
+class MessageMixin:
     """处理消息推送相关的逻辑"""
 
     queue: MessageQueue

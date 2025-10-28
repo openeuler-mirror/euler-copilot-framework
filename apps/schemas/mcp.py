@@ -84,14 +84,6 @@ class FlowName(BaseModel):
 
     flow_name: str = Field(description="MCP 流程名称", default="")
 
-
-class FlowRisk(BaseModel):
-    """MCP 流程风险评估结果"""
-
-    risk: Risk = Field(description="风险类型", default=Risk.LOW)
-    reason: str = Field(description="风险原因", default="")
-
-
 class ToolRisk(BaseModel):
     """MCP工具风险评估结果"""
 
