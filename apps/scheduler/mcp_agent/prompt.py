@@ -1107,8 +1107,9 @@ GEN_STEP: dict[LanguageType, str] = {
     2.能够基于当前的计划和历史，完成阶段性的任务。
     3.不要选择不存在的工具。
     4.如果你认为当前已经达成了用户的目标，可以直接返回Final工具，表示计划执行结束。
-    5.tool_id中的工具ID必须是当前工具集合中存在的工具ID，而不是工具的名称。
-    6.工具在<tools> </tools> XML标签中给出,工具的id在<tools> </tools> 下的<id> </id> XML标签中给出。
+    5.若已尝试使用多个现有工具执行，但任务仍无任何进展，同样选择Final 工具，终止当前计划流程。
+    6.tool_id中的工具ID必须是当前工具集合中存在的工具ID，而不是工具的名称。
+    7.工具在<tools> </tools> XML标签中给出,工具的id在<tools> </tools> 下的<id> </id> XML标签中给出。
 
     # 样例 1
     # 目标
@@ -1189,10 +1190,13 @@ GEN_STEP: dict[LanguageType, str] = {
     Please generate a new step based on the user's goal, current plan, and history.
 
     # A good plan step should:
-    1. Use the most appropriate tool for the current step.
-    2. Complete the tasks at each stage based on the current plan and history.
-    3. Do not select a tool that does not exist.
-    4. If you believe the user's goal has been achieved, return to the Final tool to complete the plan execution.
+    1. Use the most appropriate tool to complete the current step.
+    2. Be able to complete phased tasks based on the current plan and history.
+    3. Do not choose non-existent tools.
+    4. If you believe that the user's goal has already been achieved, you can directly return the Final tool, indicating that the plan execution is complete.
+    5. If you have tried to use multiple existing tools to execute, but the task still makes no progress, also choose the Final tool to terminate the current plan process.
+    6. The tool_id's tool ID must be a tool ID that exists in the current tool set, not the name of the tool.
+    7. The tools are given in the <tools> </tools> XML tags, and the tool IDs are given in the <id> </id> XML tags under <tools> </tools>.
 
     # Example 1
     # Objective
