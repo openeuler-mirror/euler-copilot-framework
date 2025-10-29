@@ -56,18 +56,17 @@ models:
     # [必填] reranker接口类型：["guijiliudong", "bailian", "v1lm", "assecend"]
     type:
     # [必填] reranker URL（需要带上“/v1/rerank”后缀）  
-    endpoint: 
+    endpoint:
     # [必填] reranker 模型API Key
     key:
     # [必填] reranker 模型名称
     name:
     # [必填] reranker 模型icon URL
     icon:
-
 # 登录设置
 login:
   # [必填] 登录提供者类型：["authhub", "authelia"]
-  provider: authhub
+  provider:
   # AuthHub客户端ID设置，仅在provider为authhub时有效
   client:
     # [必填] 客户端ID
@@ -111,14 +110,16 @@ ports:
 storage:
   # 语义接口
   frameworkSemantics:
-    # 语义接口地址
-    path:
+    # 语义接口存储路径，默认为/var/lib/eulercopilot/semantics
+    path: /var/lib/eulercopilot/semantics
     # 语义接口存储大小，默认为5GB
-    size:
+    size: 5Gi
   # 共享存储
   webAsset:
+    # 前后端共享存储路径，默认为/var/lib/eulercopilot/static
+    path: /var/lib/eulercopilot/static
     # 前后端共享存储大小，默认为10GB
-    size:
+    size: 10Gi
 
 euler_copilot:
   # 配置文件工具

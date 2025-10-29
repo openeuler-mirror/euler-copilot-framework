@@ -556,7 +556,6 @@ check_auth_pods_status() {
 
     local timeout=300
     local start_time=$(date +%s)
-    local auth_service_lower=$(echo "$AUTH_SERVICE" | tr '[:upper:]' '[:lower:]')
 
     echo -e "${BLUE}开始监控${AUTH_SERVICE}服务Pod状态（总超时时间300秒）...${NC}" >&2
 
@@ -565,25 +564,25 @@ check_auth_pods_status() {
         local elapsed=$((current_time - start_time))
 
         if [ $elapsed -gt $timeout ]; then
-            echo -e "${YELLOW}警告：认证服务部署超时！请检查以下资源：${NC}" >&2
-            kubectl get pods -n euler-copilot -l "app.kubernetes.io/name=${auth_service_lower}" -o wide
+            echo -e "${YELLOW}警告：部署超时！请检查以下资源：${NC}" >&2
+            kubectl get pods -n euler-copilot -o wide
             echo -e "\n${YELLOW}建议检查：${NC}"
-            echo "1. 查看认证服务Pod的日志: kubectl logs -n euler-copilot -l app.kubernetes.io/name=${auth_service_lower}"
+            echo "1. 查看未就绪Pod的日志: kubectl logs -n euler-copilot <pod-name>"
             echo "2. 检查PVC状态: kubectl get pvc -n euler-copilot"
-            echo "3. 检查Service状态: kubectl get svc -n euler-copilot -l app.kubernetes.io/name=${auth_service_lower}"
+            echo "3. 检查Service状态: kubectl get svc -n euler-copilot"
             return 1
         fi
 
-        # 只检查认证服务相关的Pod
-        local not_running=$(kubectl get pods -n euler-copilot -l "app.kubernetes.io/name=${auth_service_lower}" -o jsonpath='{range .items[*]}{.metadata.name} {.status.phase} {.status.conditions[?(@.type=="Ready")].status}{"\n"}{end}' \
+        # 统一检查euler-copilot命名空间下所有Pod的状态
+        local not_running=$(kubectl get pods -n euler-copilot -o jsonpath='{range .items[*]}{.metadata.name} {.status.phase} {.status.conditions[?(@.type=="Ready")].status}{"\n"}{end}' \
             | awk '$2 != "Running" || $3 != "True" {print $1 " " $2}')
 
         if [ -z "$not_running" ]; then
-            echo -e "${GREEN}认证服务Pod已正常运行！${NC}" >&2
-            kubectl get pods -n euler-copilot -l "app.kubernetes.io/name=${auth_service_lower}" -o wide
+            echo -e "${GREEN}所有Pod已正常运行！${NC}" >&2
+            kubectl get pods -n euler-copilot -o wide
             return 0
         else
-            echo "等待认证服务Pod就绪（已等待 ${elapsed} 秒）..."
+            echo "等待Pod就绪（已等待 ${elapsed} 秒）..."
             echo "当前未就绪Pod："
             echo "$not_running" | awk '{print "  - " $1 " (" $2 ")"}'
             sleep 10

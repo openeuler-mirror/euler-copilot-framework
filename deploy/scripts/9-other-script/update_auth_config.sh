@@ -118,9 +118,6 @@ update_domain_config() {
     
     echo -e "${BLUE}==> 更新域名配置...${NC}"
     
-    # 备份原文件
-    cp "$VALUES_FILE" "$VALUES_FILE.backup.$(date +%Y%m%d_%H%M%S)"
-    
     # 使用更精确的sed更新配置（只匹配domain部分）
     case "$auth_service" in
         "authhub")
