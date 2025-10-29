@@ -14,6 +14,7 @@ from jinja2.sandbox import SandboxedEnvironment
 from pydantic import Field
 
 from apps.common.config import config
+from apps.llm import json_generator
 from apps.models import LanguageType
 from apps.scheduler.call.core import CoreCall
 from apps.schemas.enum_var import CallOutputType
@@ -25,7 +26,7 @@ from apps.schemas.scheduler import (
 )
 from apps.services.document import DocumentManager
 
-from .prompt import QUESTION_REWRITE
+from .prompt import QUESTION_REWRITE, QUESTION_REWRITE_FUNCTION
 from .schema import (
     DocItem,
     QuestionRewriteOutput,
@@ -155,7 +156,7 @@ class RAG(CoreCall, input_model=RAGInput, output_model=RAGOutput):
     async def _exec(self, input_data: dict[str, Any]) -> AsyncGenerator[CallOutputChunk, None]:
         """调用RAG工具"""
         data = RAGInput(**input_data)
-        # 使用Jinja2渲染问题重写模板，并用JsonGenerator解析结果
+        # 使用Jinja2渲染问题重写模板，并用json_generator解析结果
         try:
             env = SandboxedEnvironment(
                 loader=BaseLoader(),
@@ -166,11 +167,15 @@ class RAG(CoreCall, input_model=RAGInput, output_model=RAGOutput):
             tmpl = env.from_string(QUESTION_REWRITE[self._sys_vars.language])
             prompt = tmpl.render(question=data.query)
 
-            # 使用_json方法直接获取JSON结果
-            json_result = await self._json([
-                *self._sys_vars.background.conversation[-self.history_len:],
-                {"role": "user", "content": prompt},
-            ], schema=QuestionRewriteOutput.model_json_schema())
+            # 使用json_generator直接获取JSON结果
+            json_result = await json_generator.generate(
+                function=QUESTION_REWRITE_FUNCTION,
+                conversation=[
+                    *self._sys_vars.background.conversation[-self.history_len:],
+                    {"role": "user", "content": prompt},
+                ],
+                language=self._sys_vars.language,
+            )
             # 直接使用解析后的JSON结果
             data.query = QuestionRewriteOutput.model_validate(json_result).question
         except Exception:

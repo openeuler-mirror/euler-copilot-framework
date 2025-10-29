@@ -5,6 +5,7 @@ import logging
 from collections.abc import AsyncGenerator
 from typing import cast
 
+import httpx
 from openai import AsyncOpenAI, AsyncStream
 from openai.types.chat import (
     ChatCompletionChunk,
@@ -24,6 +25,7 @@ class OpenAIProvider(BaseProvider):
     """OpenAI大模型客户端"""
 
     _client: AsyncOpenAI
+    _http_client: httpx.AsyncClient
     input_tokens: int
     output_tokens: int
     _allow_chat: bool
@@ -54,16 +56,19 @@ class OpenAIProvider(BaseProvider):
     @override
     def _init_client(self) -> None:
         """初始化模型API客户端"""
+        self._http_client = httpx.AsyncClient(verify=False)  # noqa: S501
         if not self.config.apiKey:
             self._client = AsyncOpenAI(
                 base_url=self.config.baseUrl,
                 timeout=self._timeout,
+                http_client=self._http_client,
             )
         else:
             self._client = AsyncOpenAI(
                 base_url=self.config.baseUrl,
                 api_key=self.config.apiKey,
                 timeout=self._timeout,
+                http_client=self._http_client,
             )
 
     def _handle_usage_chunk(self, chunk: ChatCompletionChunk | None, messages: list[dict[str, str]]) -> None:

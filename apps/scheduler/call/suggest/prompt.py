@@ -1,191 +1,137 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2023-2025. All rights reserved.
-"""问题推荐工具的提示词"""
+"""问题推荐工具的提示词和Function Schema"""
 
 from textwrap import dedent
 
 from apps.models import LanguageType
 
+# Function Schema for question suggestion
+SUGGEST_FUNCTION_SCHEMA = {
+    "name": "generate_suggestions",
+    "description": "Generate recommended follow-up questions based on conversation context and user interests / "
+    "基于对话上下文和用户兴趣生成推荐的后续问题",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "predicted_questions": {
+                "type": "array",
+                "description": "List of predicted questions, each should be a complete interrogative or imperative "
+                "sentence / 预测的问题列表，每个问题应该是完整的疑问句或祈使句",
+                "items": {
+                    "type": "string",
+                    "description": "Single recommended question, not exceeding 30 words / 单个推荐问题，长度不超过30字",
+                },
+            },
+        },
+        "required": ["predicted_questions"],
+    },
+    "examples": [
+        {
+            "predicted_questions": [
+                "What is the best season to visit Hangzhou? / 杭州的最佳旅游季节是什么时候?",
+                "What are the opening hours and ticket information for Lingyin Temple? / "
+                "灵隐寺的开放时间和门票信息?",
+                "Which attractions in Hangzhou are suitable for family trips? / 杭州有哪些适合亲子游的景点?",
+            ],
+        },
+        {
+            "predicted_questions": [
+                "What are the characteristics of dictionaries and sets? / 字典和集合有什么特点?",
+                "How to handle exceptions in Python? / 如何在Python中处理异常?",
+                "How to use list comprehensions? / 列表推导式怎么使用?",
+            ],
+        },
+    ],
+}
+
 SUGGEST_PROMPT: dict[LanguageType, str] = {
     LanguageType.CHINESE: dedent(
         r"""
-            <instructions>
-                <instruction>
-                    根据先前的历史对话和提供的附加信息（用户倾向、问题列表、工具信息等）生成指定数量的预测问题。
-                    <question_list>中包含了用户已提出过的所有问题，请避免重复生成这些问题。
-                    用户倾向将在<domain>标签中给出，工具信息将在<tool_info>标签中给出。
+            请根据对话历史和用户兴趣，生成{% if target_num %}{{ target_num }}{% else %}3-5{% endif %}个\
+用户可能感兴趣的后续问题。
 
-                    生成预测问题时的要求：
-                        1. 以用户口吻生成预测问题，数量必须为指定的数量，必须为疑问句或祈使句，必须少于30字。
-                        2. 预测问题必须精简，不得发生重复，不得在问题中掺杂非必要信息，不得输出除问题以外的文字。
-                        3. 输出必须按照如下格式：
-
-                        ```json
-                        {
-                            "predicted_questions": [
-                                "预测问题1",
-                                "预测问题2",
-                                ...
-                            ]
-                        }
-                        ```
-                </instruction>
-
-                <example>
-                    <question_list>
-                        <question>简单介绍一下杭州</question>
-                        <question>杭州有哪些著名景点？</question>
-                        <question>杭州西湖景区的门票价格是多少？</question>
-                    </question_list>
-                    <target_num>3</target_num>
-                    <tool_info>
-                        <name>景点查询</name>
-                        <description>查询景点信息</description>
-                    </tool_info>
-                    <domain>["杭州", "旅游"]</domain>
-
-                    现在，进行问题生成：
-
-                    {
-                        "predicted_questions": [
-                            "杭州的天气怎么样？",
-                            "杭州有什么特色美食？"
-                        ]
-                    }
-                </example>
-            </instructions>
-
-            下面是实际的数据：
-
-            以下是问题列表，请参考其内容并避免重复生成：
             {% if history or generated %}
-                <question_list>
-                {% for question in history %}
-                    <question>{{ question }}</question>
-                {% endfor %}
-                {% for question in generated %}
-                    <question>{{ question }}</question>
-                {% endfor %}
-                </question_list>
-            {% else %}
-                (无已知问题)
+            **已讨论的问题：**
+            {% for question in history %}
+            - {{ question }}
+            {% endfor %}
+            {% for question in generated %}
+            - {{ question }}
+            {% endfor %}
             {% endif %}
 
-            {% if target_num %}
-            请生成{{ target_num }}个问题。
+            {% if tool %}
+            **可用工具：**{{ tool.name }}（{{ tool.description }}）
             {% endif %}
 
-            <tool_info>
-                {% if tool %}
-                    <name>{{ tool.name }}</name>
-                    <description>{{ tool.description }}</description>
-                {% else %}
-                    (无工具信息)
-                {% endif %}
-            </tool_info>
+            {% if preference %}
+            **用户兴趣：**{{ preference | join('、') }}
+            {% endif %}
 
-            <domain>
-                {% if preference %}
-                    {{ preference }}
-                {% else %}
-                    (无用户倾向)
-                {% endif %}
-            </domain>
+            **要求：**
+            - 以用户口吻提问，使用疑问句或祈使句
+            - 每个问题不超过30字，具体明确、富有探索性
+            - 避免与已讨论问题重复
+            - 问题应与可用工具和用户兴趣相关，能推进对话深度或拓展话题
 
-            现在，进行问题生成：
+            **参考示例：**
+
+            示例1 - 旅游场景：
+            当用户已讨论"杭州简介、杭州著名景点、西湖门票价格"，可用工具为"景点查询"，
+            用户兴趣为"杭州、旅游"时，可生成：
+            杭州的最佳旅游季节是什么时候？灵隐寺的开放时间和门票信息？
+            杭州有哪些适合亲子游的景点？
+
+            示例2 - 编程场景：
+            当用户已讨论"Python基础语法、列表和元组的区别"，可用工具为"代码搜索"，
+            用户兴趣为"Python编程、数据结构"时，可生成：
+            字典和集合有什么特点？如何在Python中处理异常？列表推导式怎么使用？
         """,
     ),
     LanguageType.ENGLISH: dedent(
         r"""
-            <instructions>
-                <instruction>
-                    Generate the specified number of predicted questions based on the previous historical
-                    dialogue and provided additional information (user preferences, question list,
-                    tool information, etc.).
-                    The <question_list> contains all the questions that the user has asked before,
-                    please avoid duplicating these questions when generating predictions.
-                    User preferences will be given in the <domain> tag, and tool information will be
-                    given in the <tool_info> tag.
+            Please generate {% if target_num %}{{ target_num }}{% else %}3-5{% endif %} follow-up questions \
+that the user might be interested in, based on conversation history and user interests.
 
-                    Requirements for generating predicted questions:
-                        1. Generate predicted questions in the user's voice, the quantity must be the specified
-                           number, must be interrogative or imperative sentences, and must be less than 30 words.
-                        2. Predicted questions must be concise, without duplication, without unnecessary
-                           information, and without text other than the questions.
-                        3. The output must be in the following format:
-
-                        ```json
-                        {
-                            "predicted_questions": [
-                                "Predicted question 1",
-                                "Predicted question 2",
-                                ...
-                            ]
-                        }
-                        ```
-                </instruction>
-
-                <example>
-                    <question_list>
-                        <question>Briefly introduce Hangzhou</question>
-                        <question>What are the famous attractions in Hangzhou?</question>
-                        <question>What is the ticket price for the West Lake Scenic Area in Hangzhou?</question>
-                    </question_list>
-                    <target_num>3</target_num>
-                    <tool_info>
-                        <name>Scenic Spot Search</name>
-                        <description>Search for scenic spot information</description>
-                    </tool_info>
-                    <domain>["Hangzhou", "Tourism"]</domain>
-
-                    Now, generate questions:
-
-                    {
-                        "predicted_questions": [
-                            "What's the weather like in Hangzhou?",
-                            "What are the local specialties in Hangzhou?"
-                        ]
-                    }
-                </example>
-            </instructions>
-
-            Here is the actual data:
-
-            The following is a list of questions, please refer to its content and avoid duplicate generation:
             {% if history or generated %}
-                <question_list>
-                {% for question in history %}
-                    <question>{{ question }}</question>
-                {% endfor %}
-                {% for question in generated %}
-                    <question>{{ question }}</question>
-                {% endfor %}
-                </question_list>
-            {% else %}
-                (No known questions)
+            **Questions already discussed:**
+            {% for question in history %}
+            - {{ question }}
+            {% endfor %}
+            {% for question in generated %}
+            - {{ question }}
+            {% endfor %}
             {% endif %}
 
-            {% if target_num %}
-            Please generate {{ target_num }} questions.
+            {% if tool %}
+            **Available tool:** {{ tool.name }} ({{ tool.description }})
             {% endif %}
 
-            <tool_info>
-                {% if tool %}
-                    <name>{{ tool.name }}</name>
-                    <description>{{ tool.description }}</description>
-                {% else %}
-                    (No tool information)
-                {% endif %}
-            </tool_info>
+            {% if preference %}
+            **User interests:** {{ preference | join(', ') }}
+            {% endif %}
 
-            <domain>
-                {% if preference %}
-                    {{ preference }}
-                {% else %}
-                    (No user preference)
-                {% endif %}
-            </domain>
+            **Requirements:**
+            - Use the user's voice with interrogative or imperative sentences
+            - Each question under 30 words, specific and exploratory
+            - Avoid repeating discussed questions
+            - Questions should relate to available tools and user interests, deepening or expanding the conversation
 
-            Now, generate questions:
+            **Reference examples:**
+
+            Example 1 - Tourism scenario:
+            When the user has discussed "Hangzhou introduction, famous attractions in Hangzhou,
+            West Lake ticket prices", available tool is "Scenic Spot Search", and user interests are
+            "Hangzhou, Tourism", you can generate:
+            What is the best season to visit Hangzhou?
+            What are the opening hours and ticket information for Lingyin Temple?
+            Which attractions in Hangzhou are suitable for family trips?
+
+            Example 2 - Programming scenario:
+            When the user has discussed "Python basics, difference between lists and tuples", available tool is
+            "Code Search", and user interests are "Python programming, Data structures", you can generate:
+            What are the characteristics of dictionaries and sets? How to handle exceptions in Python?
+            How to use list comprehensions?
         """,
     ),
 }

@@ -80,11 +80,11 @@ class MCPPlanner:
 
         # 使用全局json_generator实例解析结果
         plan = await json_generator.generate(
-            query=result,
             function=function_def,
             conversation=[
                 {"role": "user", "content": result},
             ],
+            language=self._language,
         )
         return MCPPlan.model_validate(plan)
 

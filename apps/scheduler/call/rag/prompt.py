@@ -6,79 +6,89 @@ from textwrap import dedent
 from apps.models import LanguageType
 
 QUESTION_REWRITE: dict[LanguageType, str] = {
-    LanguageType.CHINESE: dedent(r"""
-        <instructions>
-            <instruction>
-                根据用户当前的提问，推断用户的实际意图并补全用户的提问内容。要求：
-                    1. 请使用JSON格式输出，参考下面给出的样例；不要包含任何XML标签，不要包含任何解释说明；
-                    2. 若用户当前提问内容已足够完整，请直接输出用户的提问内容。
-                    3. 补全内容必须精准、恰当，不要编造任何内容。
-                    4. 请参考上下文理解用户的真实意图，确保补全后的问题与上下文保持一致。
-                    5. 请输出补全后的问题，不要输出其他内容。
-                    输出格式样例：
-                    ```json
-                        {
-                            "question": "补全后的问题"
-                        }
-                    ```
-            </instruction>
+    LanguageType.CHINESE: dedent(
+        r"""
+        你需要分析用户的当前提问，结合对话历史上下文，理解用户的真实意图并优化问题表述，使其更适合知识库检索。
 
-            <example>
-                <question>
-                    openEuler的优势有哪些？
-                </question>
-                <output>
-                    ```json
-                        {
-                            "question": "openEuler操作系统的优势和应用场景是什么？"
-                        }
-                    ```
-                </output>
-            </example>
-        </instructions>
+        ## 要求
+        - 参考对话历史理解用户的真实意图，补全省略的信息（如代词、缩略语等）
+        - 如果问题已经足够完整和明确，直接使用原问题，不要过度修改
+        - 优化后的问题应该更加精准、具体，便于知识库检索匹配
+        - 保持问题的核心语义不变，不要编造原问题中没有的信息
+        - 适当扩展相关的关键术语和概念，提高检索召回率
 
-        <question>
-            {{question}}
-        </question>
+        ## 示例
 
-        现在，请输出补全后的问题：
-        <output>
-    """).strip("\n"),
-    LanguageType.ENGLISH: dedent(r"""
-        <instructions>
-            <instruction>
-                Based on the user's current question, infer the user's actual intent and complete the user's question. \
-Requirements:
-                    1. Please output in JSON format, referring to the example provided below; do not include any XML \
-tags or any explanatory notes;
-                    2. If the user's current question is already complete enough, directly output the user's question.
-                    3. The completed content must be precise and appropriate; do not fabricate any content.
-                    4. Please refer to the context to understand the user's true intent, ensuring that the \
-completed question is consistent with the context.
-                    5. Output only the completed question; do not include any other content.
-                    Example output format:
-                    ```json
-                        {
-                            "question": "The completed question"
-                        }
-                    ```
-            </instruction>
+        **示例1：补全上下文中的指代关系**
+        - 对话历史：
+          - 用户: openEuler是什么？
+          - 助手: openEuler是一个开源操作系统。
+        - 当前问题：它的优势有哪些？
+        - 优化结果：openEuler操作系统的优势和特点是什么？
 
-            <example>
-                <question>
-                    What are the features of openEuler?
-                </question>
-                <output>
-                    ```json
-                        {
-                            "question": "What are the features and application scenarios of openEuler?"
-                        }
-                    ```
-                </output>
-            </example>
-        </instructions>
-        <question>
-            {{question}}
-        </question>
-    """).strip("\n"),
+        **示例2：扩展关键术语**
+        - 对话历史：无
+        - 当前问题：如何安装Docker？
+        - 优化结果：如何在Linux系统上安装和配置Docker容器引擎？
+
+        ## 用户当前问题
+        {{question}}
+        """,
+    ).strip(),
+    LanguageType.ENGLISH: dedent(
+        r"""
+        Analyze the user's current question in the context of the conversation history to understand their true \
+intent and optimize the phrasing for knowledge base retrieval.
+
+        ## Requirements
+        - Reference conversation history to understand true intent and complete omitted information (pronouns, \
+abbreviations, etc.)
+        - If the question is already complete and clear, use it as-is without over-modification
+        - The optimized question should be more precise and specific for better knowledge base matching
+        - Maintain the core semantics without fabricating information not present in the original question
+        - Appropriately expand related key terms and concepts to improve retrieval recall
+
+        ## Examples
+
+        **Example 1: Complete contextual references**
+        - Conversation history:
+          - User: What is openEuler?
+          - Assistant: openEuler is an open source operating system.
+        - Current question: What are its features?
+        - Optimized result: What are the features and advantages of the openEuler operating system?
+
+        **Example 2: Expand key terms**
+        - Conversation history: None
+        - Current question: How to install Docker?
+        - Optimized result: How to install and configure Docker container engine on Linux system?
+
+        ## User's Current Question
+        {{question}}
+        """,
+    ).strip(),
+}
+
+QUESTION_REWRITE_FUNCTION: dict[str, object] = {
+    "name": "rewrite_question",
+    "description": (
+        "基于上下文优化用户问题，使其更适合知识库检索 / "
+        "Optimize user question based on context for better knowledge base retrieval"
+    ),
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "question": {
+                "type": "string",
+                "description": (
+                    "优化后的问题。应该完整、明确、包含关键信息，便于知识库检索 / "
+                    "The optimized question that is complete, clear, and retrieval-friendly"
+                ),
+            },
+        },
+        "required": ["question"],
+    },
+    "examples": [
+        {"question": "openEuler操作系统的优势和特点是什么？"},
+        {"question": "How to install and configure Docker container engine on Linux system?"},
+    ],
 }

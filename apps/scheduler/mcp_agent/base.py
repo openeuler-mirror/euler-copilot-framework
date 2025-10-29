@@ -45,9 +45,13 @@ class MCPBase:
     async def get_json_result(self, result: str, function: dict[str, Any]) -> dict[str, Any]:
         """解析推理结果；function使用OpenAI标准Function格式"""
         return await json_generator.generate(
-            query="Please provide a JSON response based on the above information and schema.\n\n",
             function=function,
             conversation=[
                 {"role": "user", "content": result},
+                {
+                    "role": "user",
+                    "content": "Please provide a JSON response based on the above information and schema.",
+                },
             ],
+            language=self._language,
         )

@@ -47,7 +47,7 @@ class Slot(CoreCall, input_model=SlotInput, output_model=SlotOutput):
 
 
     async def _llm_slot_fill(self, remaining_schema: dict[str, Any]) -> tuple[str, dict[str, Any]]:
-        """使用JsonGenerator填充参数；若大模型解析度足够，则直接返回结果"""
+        """使用json_generator填充参数；若大模型解析度足够，则直接返回结果"""
         env = SandboxedEnvironment(
             loader=BaseLoader(),
             autoescape=False,
@@ -104,10 +104,12 @@ class Slot(CoreCall, input_model=SlotInput, output_model=SlotOutput):
             "description": f"Fill the missing parameters for {self.name}. {self.description}",
             "parameters": remaining_schema,
         }
+        # Append query as the last user message
+        conversation.append({"role": "user", "content": query})
         data = await json_generator.generate(
-            query=query,
             function=function,
             conversation=conversation,
+            language=self._sys_vars.language,
         )
         answer = json.dumps(data, ensure_ascii=False)
         return answer, data
@@ -118,7 +120,16 @@ class Slot(CoreCall, input_model=SlotInput, output_model=SlotOutput):
             {"role": "user", "content": self._question},
             {"role": "assistant", "content": answer},
         ]
-        return await self._json(messages=conversation, schema=remaining_schema)
+        function = {
+            "name": "fill_parameters",
+            "description": f"Fill the missing parameters for {self.name}. {self.description}",
+            "parameters": remaining_schema,
+        }
+        return await json_generator.generate(
+            function=function,
+            conversation=conversation,
+            language=self._sys_vars.language,
+        )
 
     @classmethod
     async def instance(cls, executor: "StepExecutor", node: NodeInfo | None, **kwargs: Any) -> Self:

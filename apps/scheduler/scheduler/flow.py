@@ -56,12 +56,13 @@ class FlowMixin:
             "parameters": schema,
         }
         result_str = await json_generator.generate(
-            query=self.post_body.question,
             function=function,
             conversation=[
                 {"role": "system", "content": "You are a helpful assistant."},
                 {"role": "user", "content": prompt},
+                {"role": "user", "content": self.post_body.question},
             ],
+            language=self.task.runtime.language,
         )
         result = TopFlow.model_validate(result_str)
         return result.choice

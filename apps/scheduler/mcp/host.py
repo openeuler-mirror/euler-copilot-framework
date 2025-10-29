@@ -115,11 +115,12 @@ class MCPHost:
 
         # 使用全局json_generator实例
         return await json_generator.generate(
-            query=llm_query,
             function=function_definition,
             conversation=[
                 {"role": "user", "content": await self.assemble_memory()},
+                {"role": "user", "content": llm_query},
             ],
+            language=self._language,
         )
 
 

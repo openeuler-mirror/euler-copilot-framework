@@ -59,10 +59,15 @@ class MCPHost(MCPBase):
             background_info=await self.assemble_memory(runtime, context),
         )
         _logger.info("[MCPHost] 填充工具参数: %s", prompt)
-        # 使用JsonGenerator解析结果
+        # 使用json_generator解析结果
+        function = {
+            "name": mcp_tool.toolName,
+            "description": mcp_tool.description,
+            "parameters": mcp_tool.inputSchema,
+        }
         return await self.get_json_result(
             prompt,
-            mcp_tool.inputSchema,
+            function,
         )
 
     async def fill_params(  # noqa: D102, PLR0913
@@ -96,9 +101,10 @@ class MCPHost(MCPBase):
         }
 
         return await json_generator.generate(
-            query=llm_query,
             function=function,
             conversation=[
                 {"role": "user", "content": prompt},
+                {"role": "user", "content": llm_query},
             ],
+            language=language,
         )
