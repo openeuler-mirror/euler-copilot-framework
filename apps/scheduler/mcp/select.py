@@ -56,11 +56,13 @@ class MCPSelector:
             mcp_ids=", ".join(mcp_ids),
         )
 
-        # 使用JsonGenerator生成JSON
+        # 使用json_generator生成JSON
         result = await json_generator.generate(
-            query=user_prompt,
             function=function,
-            conversation=[],
+            conversation=[
+                {"role": "user", "content": user_prompt},
+            ],
+            language=self._language,
         )
 
         try:

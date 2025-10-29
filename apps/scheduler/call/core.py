@@ -12,7 +12,6 @@ from typing import TYPE_CHECKING, Any, ClassVar, Self
 from pydantic import BaseModel, ConfigDict, Field
 from pydantic.json_schema import SkipJsonSchema
 
-from apps.llm import json_generator
 from apps.models import ExecutorHistory, LanguageType, NodeInfo
 from apps.schemas.enum_var import CallOutputType
 from apps.schemas.scheduler import (
@@ -189,7 +188,7 @@ class CoreCall(BaseModel):
     async def _llm(self, messages: list[dict[str, Any]], *, streaming: bool = False) -> AsyncGenerator[str, None]:
         """Call可直接使用的LLM非流式调用"""
         think_tag_opened = False
-        async for chunk in self._llm_obj.reasoning.call(messages, streaming=streaming):
+        async for chunk in self._llm_obj.call(messages, streaming=streaming):
             if chunk.reasoning_content:
                 if not think_tag_opened:
                     yield "<think>"
@@ -201,27 +200,3 @@ class CoreCall(BaseModel):
                     yield "</think>"
                     think_tag_opened = False
                 yield chunk.content
-
-
-    async def _json(self, messages: list[dict[str, Any]], function: dict[str, Any]) -> dict[str, Any]:
-        """Call可直接使用的JSON生成"""
-        # 从messages中提取最后一条用户消息作为query，其他作为conversation
-        query = ""
-        conversation = []
-
-        for i, msg in enumerate(messages):
-            role = msg.get("role")
-            # 跳过system消息
-            if role == "system":
-                continue
-            # 找到最后一条user消息作为query
-            if role == "user" and i == len(messages) - 1:
-                query = msg.get("content", "")
-            else:
-                conversation.append(msg)
-
-        return await json_generator.generate(
-            query=query,
-            function=function,
-            conversation=conversation if conversation else None,
-        )

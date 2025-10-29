@@ -6,11 +6,12 @@ import uuid
 from collections.abc import AsyncGenerator
 from typing import TYPE_CHECKING, Any, Self
 
-from jinja2 import BaseLoader
+from jinja2 import BaseLoader, Template
 from jinja2.sandbox import SandboxedEnvironment
 from pydantic import Field
 from pydantic.json_schema import SkipJsonSchema
 
+from apps.llm import json_generator
 from apps.models import LanguageType, NodeInfo
 from apps.scheduler.call.core import CoreCall
 from apps.schemas.enum_var import CallOutputType
@@ -22,7 +23,7 @@ from apps.schemas.scheduler import (
 )
 from apps.services.user_tag import UserTagManager
 
-from .prompt import SUGGEST_PROMPT
+from .prompt import SUGGEST_FUNCTION_SCHEMA, SUGGEST_PROMPT
 from .schema import (
     SingleFlowSuggestionConfig,
     SuggestGenResult,
@@ -74,7 +75,6 @@ class Suggestion(CoreCall, input_model=SuggestionInput, output_model=SuggestionO
 
     async def _init(self, call_vars: CallVars) -> SuggestionInput:
         """初始化"""
-        # 从 ExecutorBackground 中获取历史问题
         self._history_questions = call_vars.background.history_questions
         self._app_id = call_vars.ids.app_id
         self._flow_id = call_vars.ids.executor_id
@@ -86,7 +86,6 @@ class Suggestion(CoreCall, input_model=SuggestionInput, output_model=SuggestionO
         )
 
         self._avaliable_flows = {}
-        # 只有当_app_id不为None时才获取Flow信息
         from apps.services.flow import FlowManager  # noqa: PLC0415
 
         if self._app_id is not None:
@@ -107,22 +106,15 @@ class Suggestion(CoreCall, input_model=SuggestionInput, output_model=SuggestionO
         """运行问题推荐"""
         data = SuggestionInput(**input_data)
 
-        # 获取当前用户的画像
         user_domain_info = await UserTagManager.get_user_domain_by_user_and_topk(data.user_id, 5)
         user_domain = [tag.name for tag in user_domain_info]
-        # 初始化Prompt
         prompt_tpl = self._env.from_string(SUGGEST_PROMPT[self._sys_vars.language])
 
-        # 如果设置了configs，则按照configs生成问题
         if self.configs:
-            async for output_chunk in self._process_configs(
-                prompt_tpl,
-                user_domain,
-            ):
+            async for output_chunk in self._process_configs():
                 yield output_chunk
             return
 
-        # 如果_app_id为None，直接生成N个推荐问题
         if self._app_id is None:
             async for output_chunk in self._generate_general_questions(
                 prompt_tpl,
@@ -132,7 +124,6 @@ class Suggestion(CoreCall, input_model=SuggestionInput, output_model=SuggestionO
                 yield output_chunk
             return
 
-        # 如果_app_id不为None，获取App中所有Flow并为每个Flow生成问题
         async for output_chunk in self._generate_questions_for_all_flows(
             prompt_tpl,
             user_domain,
@@ -141,18 +132,13 @@ class Suggestion(CoreCall, input_model=SuggestionInput, output_model=SuggestionO
 
     async def _generate_questions_from_llm(
         self,
-        prompt_tpl: Any,
+        prompt_tpl: Template,
         tool_info: dict[str, Any] | None,
         user_domain: list[str],
         generated_questions: set[str] | None = None,
         target_num: int | None = None,
     ) -> SuggestGenResult:
         """通过LLM生成问题"""
-        # 合并历史问题和已生成问题为question_list
-        question_list = list(self._history_questions)
-        if generated_questions:
-            question_list.extend(list(generated_questions))
-
         prompt = prompt_tpl.render(
             history=self._history_questions,
             generated=list(generated_questions) if generated_questions else None,
@@ -165,23 +151,22 @@ class Suggestion(CoreCall, input_model=SuggestionInput, output_model=SuggestionO
             *self._sys_vars.background.conversation,
             {"role": "user", "content": prompt},
         ]
-        result = await self._json(
-            messages=messages,
-            schema=SuggestGenResult.model_json_schema(),
+        result = await json_generator.generate(
+            function=SUGGEST_FUNCTION_SCHEMA,
+            conversation=messages,
+            language=self._sys_vars.language,
         )
         return SuggestGenResult.model_validate(result)
 
     async def _generate_general_questions(
         self,
-        prompt_tpl: Any,
+        prompt_tpl: Template,
         user_domain: list[str],
         target_num: int,
     ) -> AsyncGenerator[CallOutputChunk, None]:
         """生成通用问题（无app_id时）"""
         pushed_questions = 0
         attempts = 0
-
-        # 用于跟踪已经生成过的问题，避免重复
         generated_questions = set()
 
         while pushed_questions < target_num and attempts < self.num:
@@ -194,18 +179,15 @@ class Suggestion(CoreCall, input_model=SuggestionInput, output_model=SuggestionO
                 target_num,
             )
 
-            # 过滤掉已经生成过的问题
             unique_questions = [
                 q for q in questions.predicted_questions
                 if q not in generated_questions
             ]
 
-            # 输出生成的问题，直到达到目标数量
             for question in unique_questions:
                 if pushed_questions >= target_num:
                     break
 
-                # 将问题添加到已生成集合中
                 generated_questions.add(question)
 
                 yield CallOutputChunk(
@@ -221,12 +203,11 @@ class Suggestion(CoreCall, input_model=SuggestionInput, output_model=SuggestionO
 
     async def _generate_questions_for_all_flows(
         self,
-        prompt_tpl: Any,
+        prompt_tpl: Template,
         user_domain: list[str],
     ) -> AsyncGenerator[CallOutputChunk, None]:
         """为App中所有Flow生成问题"""
         for flow_id, flow_info in self._avaliable_flows.items():
-            # 为每个Flow生成一个问题
             questions = await self._generate_questions_from_llm(
                 prompt_tpl,
                 {
@@ -235,10 +216,7 @@ class Suggestion(CoreCall, input_model=SuggestionInput, output_model=SuggestionO
                 },
                 user_domain,
             )
-            # 随机选择一个生成的问题
             question = questions.predicted_questions[random.randint(0, len(questions.predicted_questions) - 1)]  # noqa: S311
-
-            # 判断是否为当前Flow，设置isHighlight
             is_highlight = (flow_id == self._flow_id)
 
             yield CallOutputChunk(
@@ -254,12 +232,9 @@ class Suggestion(CoreCall, input_model=SuggestionInput, output_model=SuggestionO
 
     async def _process_configs(
         self,
-        prompt_tpl: Any,
-        user_domain: list[str],
     ) -> AsyncGenerator[CallOutputChunk, None]:
         """处理配置中的问题"""
         for config in self.configs:
-            # 如果flow_id为None，生成通用问题
             if config.flow_id is None:
                 yield CallOutputChunk(
                     type=CallOutputType.DATA,
@@ -268,18 +243,16 @@ class Suggestion(CoreCall, input_model=SuggestionInput, output_model=SuggestionO
                         flowName=None,
                         flowId=None,
                         flowDescription=None,
-                        isHighlight=False,  # 通用问题不设置高亮
+                        isHighlight=False,
                     ).model_dump(by_alias=True, exclude_none=True),
                 )
             else:
-                # 检查flow_id是否存在于可用Flow中
                 if config.flow_id not in self._avaliable_flows:
                     raise CallError(
                         message="配置的Flow ID不存在",
                         data={},
                     )
 
-                # 判断是否为当前Flow，设置isHighlight
                 is_highlight = (config.flow_id == self._flow_id)
 
                 yield CallOutputChunk(
