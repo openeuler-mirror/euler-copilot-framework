@@ -52,7 +52,7 @@ class TEIProvider(BaseProvider):
     async def embedding(self, text: list[str]) -> list[list[float]]:
         """访问TEI兼容的Embedding API，获得向量化数据"""
         text = self._validate_input(text)
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(verify=False) as client:  # noqa: S501
             result = []
             for single_text in text:
                 data = {

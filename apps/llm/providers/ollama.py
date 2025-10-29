@@ -47,6 +47,7 @@ class OllamaProvider(BaseProvider):
             self._client = AsyncClient(
                 host=self.config.baseUrl,
                 timeout=self._timeout,
+                verify=False,
             )
         else:
             self._client = AsyncClient(
@@ -55,6 +56,7 @@ class OllamaProvider(BaseProvider):
                     "Authorization": f"Bearer {self.config.apiKey}",
                 },
                 timeout=self._timeout,
+                verify=False,
             )
 
     def _process_usage_data(self, last_chunk: ChatResponse | None, messages: list[dict[str, str]]) -> None:
