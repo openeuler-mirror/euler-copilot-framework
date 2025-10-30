@@ -12,7 +12,7 @@ from mcp.types import TextContent
 
 from apps.llm import LLM, json_generator
 from apps.models import LanguageType, MCPTools
-from apps.scheduler.mcp.prompt import MEMORY_TEMPLATE
+from apps.scheduler.mcp.prompt import FILL_PARAMS_QUERY, MEMORY_TEMPLATE
 from apps.scheduler.pool.mcp.client import MCPClient
 from apps.scheduler.pool.mcp.pool import mcp_pool
 from apps.schemas.mcp import MCPContext, MCPPlanItem
@@ -56,14 +56,42 @@ class MCPHost:
             return None
 
 
-    async def assemble_memory(self) -> str:
-        """组装记忆"""
+    async def assemble_memory(self) -> list[dict[str, str]]:
+        """组装记忆，返回虚拟的用户与助手间的对话历史"""
         # 从host的context_list中获取context
         context_list = self._context_list
 
-        return self._env.from_string(MEMORY_TEMPLATE[self._language]).render(
-            context_list=context_list,
-        )
+        # 构建对话历史列表
+        conversation_history = []
+        template = self._env.from_string(MEMORY_TEMPLATE[self._language])
+
+        for index, ctx in enumerate(context_list, start=1):
+            # 生成user消息（工具调用）
+            user_message = template.render(
+                msg_type="user",
+                step_index=index,
+                step_description=ctx.step_description,
+                step_name=ctx.step_name,
+                input_data=ctx.input_data,
+            )
+            conversation_history.append({
+                "role": "user",
+                "content": user_message.strip(),
+            })
+
+            # 生成assistant消息（工具输出）
+            assistant_message = template.render(
+                msg_type="assistant",
+                step_index=index,
+                step_status=ctx.step_status,
+                output_data=ctx.output_data,
+            )
+            conversation_history.append({
+                "role": "assistant",
+                "content": assistant_message.strip(),
+            })
+
+        return conversation_history
 
 
     async def _save_memory(
@@ -102,24 +130,31 @@ class MCPHost:
 
     async def _fill_params(self, tool: MCPTools, query: str) -> dict[str, Any]:
         """填充工具参数"""
-        llm_query = rf"""
-            请使用参数生成工具，生成满足以下目标的工具参数：
+        # 使用Jinja2模板生成查询
+        template = self._env.from_string(FILL_PARAMS_QUERY[self._language])
+        llm_query = template.render(
+            instruction=query,
+            tool_name=tool.toolName,
+            tool_description=tool.description,
+        )
 
-            {query}
-        """
         function_definition = {
             "name": tool.toolName,
             "description": tool.description,
             "parameters": tool.inputSchema,
         }
 
+        # 获取历史对话记录并添加当前查询
+        memory_conversation = await self.assemble_memory()
+        conversation = [
+            *memory_conversation,
+            {"role": "user", "content": llm_query},
+        ]
+
         # 使用全局json_generator实例
         return await json_generator.generate(
             function=function_definition,
-            conversation=[
-                {"role": "user", "content": await self.assemble_memory()},
-                {"role": "user", "content": llm_query},
-            ],
+            conversation=conversation,
             language=self._language,
         )
 

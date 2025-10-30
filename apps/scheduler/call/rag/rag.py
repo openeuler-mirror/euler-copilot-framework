@@ -169,8 +169,9 @@ class RAG(CoreCall, input_model=RAGInput, output_model=RAGOutput):
 
             # 使用json_generator直接获取JSON结果
             json_result = await json_generator.generate(
-                function=QUESTION_REWRITE_FUNCTION,
+                function=QUESTION_REWRITE_FUNCTION[self._sys_vars.language],
                 conversation=[
+                    {"role": "system", "content": "You are a helpful assistant."},
                     *self._sys_vars.background.conversation[-self.history_len:],
                     {"role": "user", "content": prompt},
                 ],
