@@ -5,43 +5,76 @@ from textwrap import dedent
 
 from apps.models import LanguageType
 
-# Function Schema for question suggestion
-SUGGEST_FUNCTION_SCHEMA = {
-    "name": "generate_suggestions",
-    "description": "Generate recommended follow-up questions based on conversation context and user interests / "
-    "基于对话上下文和用户兴趣生成推荐的后续问题",
-    "parameters": {
-        "type": "object",
-        "properties": {
-            "predicted_questions": {
-                "type": "array",
-                "description": "List of predicted questions, each should be a complete interrogative or imperative "
-                "sentence / 预测的问题列表，每个问题应该是完整的疑问句或祈使句",
-                "items": {
-                    "type": "string",
-                    "description": "Single recommended question, not exceeding 30 words / 单个推荐问题，长度不超过30字",
+SUGGEST_FUNCTION: dict[LanguageType, dict] = {
+    LanguageType.CHINESE: {
+        "name": "generate_suggestions",
+        "description": "基于对话上下文和用户兴趣生成推荐的后续问题",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "predicted_questions": {
+                    "type": "array",
+                    "description": "预测的问题列表,每个问题应该是完整的疑问句或祈使句",
+                    "items": {
+                        "type": "string",
+                        "description": "单个推荐问题,长度不超过30字",
+                    },
                 },
             },
+            "required": ["predicted_questions"],
         },
-        "required": ["predicted_questions"],
+        "examples": [
+            {
+                "predicted_questions": [
+                    "杭州的最佳旅游季节是什么时候?",
+                    "灵隐寺的开放时间和门票信息?",
+                    "杭州有哪些适合亲子游的景点?",
+                ],
+            },
+            {
+                "predicted_questions": [
+                    "字典和集合有什么特点?",
+                    "如何在Python中处理异常?",
+                    "列表推导式怎么使用?",
+                ],
+            },
+        ],
     },
-    "examples": [
-        {
-            "predicted_questions": [
-                "What is the best season to visit Hangzhou? / 杭州的最佳旅游季节是什么时候?",
-                "What are the opening hours and ticket information for Lingyin Temple? / "
-                "灵隐寺的开放时间和门票信息?",
-                "Which attractions in Hangzhou are suitable for family trips? / 杭州有哪些适合亲子游的景点?",
-            ],
+    LanguageType.ENGLISH: {
+        "name": "generate_suggestions",
+        "description": "Generate recommended follow-up questions based on conversation context and user interests",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "predicted_questions": {
+                    "type": "array",
+                    "description": "List of predicted questions, each should be a complete interrogative or "
+                    "imperative sentence",
+                    "items": {
+                        "type": "string",
+                        "description": "Single recommended question, not exceeding 30 words",
+                    },
+                },
+            },
+            "required": ["predicted_questions"],
         },
-        {
-            "predicted_questions": [
-                "What are the characteristics of dictionaries and sets? / 字典和集合有什么特点?",
-                "How to handle exceptions in Python? / 如何在Python中处理异常?",
-                "How to use list comprehensions? / 列表推导式怎么使用?",
-            ],
-        },
-    ],
+        "examples": [
+            {
+                "predicted_questions": [
+                    "What is the best season to visit Hangzhou?",
+                    "What are the opening hours and ticket information for Lingyin Temple?",
+                    "Which attractions in Hangzhou are suitable for family trips?",
+                ],
+            },
+            {
+                "predicted_questions": [
+                    "What are the characteristics of dictionaries and sets?",
+                    "How to handle exceptions in Python?",
+                    "How to use list comprehensions?",
+                ],
+            },
+        ],
+    },
 }
 
 SUGGEST_PROMPT: dict[LanguageType, str] = {

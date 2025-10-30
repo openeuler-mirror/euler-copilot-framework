@@ -1,6 +1,7 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2023-2025. All rights reserved.
 """MCP 用户目标拆解与规划"""
 
+import copy
 import logging
 
 from jinja2 import BaseLoader
@@ -10,7 +11,7 @@ from apps.llm import LLM, json_generator
 from apps.models import LanguageType, MCPTools
 from apps.schemas.mcp import MCPPlan
 
-from .prompt import CREATE_PLAN, FINAL_ANSWER
+from .prompt import CREATE_MCP_PLAN_FUNCTION, CREATE_PLAN, FINAL_ANSWER
 
 _logger = logging.getLogger(__name__)
 
@@ -32,15 +33,6 @@ class MCPPlanner:
 
     async def create_plan(self, tool_list: list[MCPTools], max_steps: int = 6) -> MCPPlan:
         """规划下一步的执行流程，并输出"""
-        # 获取推理结果
-        result = await self._get_reasoning_plan(tool_list, max_steps)
-
-        # 解析为结构化数据
-        return await self._parse_plan_result(result, max_steps)
-
-
-    async def _get_reasoning_plan(self, tool_list: list[MCPTools], max_steps: int) -> str:
-        """获取推理大模型的结果"""
         # 格式化Prompt
         template = self._env.from_string(CREATE_PLAN[self._language])
         prompt = template.render(
@@ -49,40 +41,18 @@ class MCPPlanner:
             max_num=max_steps,
         )
 
-        # 调用推理大模型
-        message = [
-            {"role": "system", "content": "You are a helpful assistant."},
-            {"role": "user", "content": prompt},
-        ]
-        result = ""
-        async for chunk in self._llm.call(
-            message,
-            streaming=False,
-        ):
-            result += chunk.content or ""
-        return result
+        # 构造标准 OpenAI Function 格式，使用预定义的 schema 并替换最大条数
+        function_def = CREATE_MCP_PLAN_FUNCTION[self._language].copy()
+        # 深拷贝 parameters 以避免修改原始定义
+        function_def["parameters"] = copy.deepcopy(function_def["parameters"])
+        # 替换最大条数限制
+        function_def["parameters"]["properties"]["plans"]["maxItems"] = max_steps
 
-
-    async def _parse_plan_result(self, result: str, max_steps: int) -> MCPPlan:
-        """将推理结果解析为结构化数据"""
-        # 构造标准 OpenAI Function 格式
-        schema = MCPPlan.model_json_schema()
-        schema["properties"]["plans"]["maxItems"] = max_steps
-
-        function_def = {
-            "name": "parse_mcp_plan",
-            "description": (
-                "Parse the reasoning result into a structured MCP plan with multiple steps. "
-                "Each step should include a step ID, content description, tool name, and instruction."
-            ),
-            "parameters": schema,
-        }
-
-        # 使用全局json_generator实例解析结果
+        # 使用json_generator直接生成结构化plan
         plan = await json_generator.generate(
             function=function_def,
             conversation=[
-                {"role": "user", "content": result},
+                {"role": "user", "content": prompt},
             ],
             language=self._language,
         )

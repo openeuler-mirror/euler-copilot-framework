@@ -23,7 +23,7 @@ from apps.schemas.scheduler import (
 )
 from apps.services.user_tag import UserTagManager
 
-from .prompt import SUGGEST_FUNCTION_SCHEMA, SUGGEST_PROMPT
+from .prompt import SUGGEST_FUNCTION, SUGGEST_PROMPT
 from .schema import (
     SingleFlowSuggestionConfig,
     SuggestGenResult,
@@ -152,7 +152,7 @@ class Suggestion(CoreCall, input_model=SuggestionInput, output_model=SuggestionO
             {"role": "user", "content": prompt},
         ]
         result = await json_generator.generate(
-            function=SUGGEST_FUNCTION_SCHEMA,
+            function=SUGGEST_FUNCTION[self._sys_vars.language],
             conversation=messages,
             language=self._sys_vars.language,
         )

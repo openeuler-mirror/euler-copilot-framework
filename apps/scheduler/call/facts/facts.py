@@ -13,7 +13,7 @@ from apps.schemas.enum_var import CallOutputType
 from apps.schemas.scheduler import CallInfo, CallOutputChunk, CallVars
 from apps.services.user_tag import UserTagManager
 
-from .prompt import DOMAIN_PROMPT, FACTS_PROMPT
+from .prompt import DOMAIN_FUNCTION, DOMAIN_PROMPT, FACTS_FUNCTION, FACTS_PROMPT
 from .schema import (
     DomainGen,
     FactsGen,
@@ -80,17 +80,14 @@ class FactsCall(CoreCall, input_model=FactsInput, output_model=FactsOutput):
         # 组装conversation消息
         facts_prompt = FACTS_PROMPT[self._sys_vars.language]
         facts_conversation = [
+            {"role": "system", "content": "You are a helpful assistant."},
             *data.message,
             {"role": "user", "content": facts_prompt},
         ]
 
         # 提取事实信息
         facts_result = await json_generator.generate(
-            function={
-                "name": "extract_facts",
-                "description": "Extract facts from the conversation",
-                "parameters": FactsGen.model_json_schema(),
-            },
+            function=FACTS_FUNCTION[self._sys_vars.language],
             conversation=facts_conversation,
             language=self._sys_vars.language,
         )
@@ -99,17 +96,14 @@ class FactsCall(CoreCall, input_model=FactsInput, output_model=FactsOutput):
         # 组装conversation消息
         domain_prompt = DOMAIN_PROMPT[self._sys_vars.language]
         domain_conversation = [
+            {"role": "system", "content": "You are a helpful assistant."},
             *data.message,
             {"role": "user", "content": domain_prompt},
         ]
 
         # 更新用户画像
         domain_result = await json_generator.generate(
-            function={
-                "name": "extract_domain",
-                "description": "Extract domain keywords from the conversation",
-                "parameters": DomainGen.model_json_schema(),
-            },
+            function=DOMAIN_FUNCTION[self._sys_vars.language],
             conversation=domain_conversation,
             language=self._sys_vars.language,
         )
