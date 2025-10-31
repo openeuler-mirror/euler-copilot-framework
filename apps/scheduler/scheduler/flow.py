@@ -2,6 +2,7 @@
 """Flow相关的Mixin类"""
 
 import logging
+from copy import deepcopy
 
 from jinja2.sandbox import SandboxedEnvironment
 
@@ -11,7 +12,7 @@ from apps.schemas.request_data import RequestData
 from apps.schemas.scheduler import TopFlow
 from apps.schemas.task import TaskData
 
-from .prompt import FLOW_SELECT
+from .prompt import FLOW_SELECT, FLOW_SELECT_FUNCTION
 
 _logger = logging.getLogger(__name__)
 
@@ -48,19 +49,13 @@ class FlowMixin:
             question=self.post_body.question,
             choice_list=choices,
         )
-        schema = TopFlow.model_json_schema()
-        schema["properties"]["choice"]["enum"] = [choice["name"] for choice in choices]
-        function = {
-            "name": "select_flow",
-            "description": "Select the appropriate flow",
-            "parameters": schema,
-        }
+        function = deepcopy(FLOW_SELECT_FUNCTION)
+        function["parameters"]["properties"]["choice"]["enum"] = [choice["name"] for choice in choices]
         result_str = await json_generator.generate(
             function=function,
             conversation=[
                 {"role": "system", "content": "You are a helpful assistant."},
                 {"role": "user", "content": prompt},
-                {"role": "user", "content": self.post_body.question},
             ],
             language=self.task.runtime.language,
         )

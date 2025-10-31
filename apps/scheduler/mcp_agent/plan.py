@@ -3,20 +3,26 @@
 
 import logging
 from collections.abc import AsyncGenerator
+from copy import deepcopy
 from typing import Any
 
 from jinja2 import BaseLoader
 from jinja2.sandbox import SandboxedEnvironment
 
+from apps.llm import json_generator
 from apps.models import MCPTools
 from apps.scheduler.mcp_agent.base import MCPBase
 from apps.scheduler.mcp_agent.prompt import (
-    CHANGE_ERROR_MESSAGE_TO_DESCRIPTION,
+    CREATE_NEXT_STEP_FUNCTION,
+    EVALUATE_TOOL_RISK_FUNCTION,
     FINAL_ANSWER,
     GEN_STEP,
     GENERATE_FLOW_NAME,
+    GET_FLOW_NAME_FUNCTION,
     GET_MISSING_PARAMS,
+    GET_MISSING_PARAMS_FUNCTION,
     IS_PARAM_ERROR,
+    IS_PARAM_ERROR_FUNCTION,
     RISK_EVALUATE,
 )
 from apps.scheduler.slot.slot import Slot
@@ -45,14 +51,14 @@ class MCPPlanner(MCPBase):
         template = _env.from_string(GENERATE_FLOW_NAME[self._language])
         prompt = template.render(goal=self._goal)
 
-        # 组装OpenAI标准Function格式
-        function = {
-            "name": "get_flow_name",
-            "description": "Generate a descriptive name for the current workflow based on the user's goal",
-            "parameters": FlowName.model_json_schema(),
-        }
-
-        result = await self.get_json_result(prompt, function)
+        result = await json_generator.generate(
+            function=GET_FLOW_NAME_FUNCTION[self._language],
+            conversation=[
+                {"role": "system", "content": "You are a helpful assistant."},
+                {"role": "user", "content": prompt},
+            ],
+            language=self._language,
+        )
         return FlowName.model_validate(result)
 
     async def create_next_step(self, history: str, tools: list[MCPTools]) -> Step:
@@ -61,24 +67,18 @@ class MCPPlanner(MCPBase):
         template = _env.from_string(GEN_STEP[self._language])
         prompt = template.render(goal=self._goal, history=history, tools=tools)
 
-        # 解析为结构化数据
-        schema = Step.model_json_schema()
-        if "enum" not in schema["properties"]["tool_id"]:
-            schema["properties"]["tool_id"]["enum"] = []
-        for tool in tools:
-            schema["properties"]["tool_id"]["enum"].append(tool.id)
+        # 获取函数定义并动态设置tool_id的enum
+        function = deepcopy(CREATE_NEXT_STEP_FUNCTION[self._language])
+        function["parameters"]["properties"]["tool_id"]["enum"] = [tool.id for tool in tools]
 
-        # 组装OpenAI标准Function格式
-        function = {
-            "name": "create_next_step",
-            "description": (
-                "Create the next execution step in the workflow by selecting "
-                "an appropriate tool and defining its parameters"
-            ),
-            "parameters": schema,
-        }
-
-        step = await self.get_json_result(prompt, function)
+        step = await json_generator.generate(
+            function=function,
+            conversation=[
+                {"role": "system", "content": "You are a helpful assistant."},
+                {"role": "user", "content": prompt},
+            ],
+            language=self._language,
+        )
         logger.info("[MCPPlanner] 创建下一步的执行步骤: %s", step)
         # 使用Step模型解析结果
         return Step.model_validate(step)
@@ -99,17 +99,14 @@ class MCPPlanner(MCPBase):
             additional_info=additional_info,
         )
 
-        # 组装OpenAI标准Function格式
-        function = {
-            "name": "evaluate_tool_risk",
-            "description": (
-                "Evaluate the risk level and safety concerns of executing "
-                "a specific tool with given parameters"
-            ),
-            "parameters": ToolRisk.model_json_schema(),
-        }
-
-        risk = await self.get_json_result(prompt, function)
+        risk = await json_generator.generate(
+            function=EVALUATE_TOOL_RISK_FUNCTION[self._language],
+            conversation=[
+                {"role": "system", "content": "You are a helpful assistant."},
+                {"role": "user", "content": prompt},
+            ],
+            language=self._language,
+        )
 
         # 返回风险评估结果
         return ToolRisk.model_validate(risk)
@@ -134,30 +131,16 @@ class MCPPlanner(MCPBase):
             error_message=error_message,
         )
 
-        # 组装OpenAI标准Function格式
-        function = {
-            "name": "check_parameter_error",
-            "description": "Determine whether an error message indicates a parameter-related error",
-            "parameters": IsParamError.model_json_schema(),
-        }
-
-        is_param_error = await self.get_json_result(prompt, function)
+        is_param_error = await json_generator.generate(
+            function=IS_PARAM_ERROR_FUNCTION[self._language],
+            conversation=[
+                {"role": "system", "content": "You are a helpful assistant."},
+                {"role": "user", "content": prompt},
+            ],
+            language=self._language,
+        )
         # 使用IsParamError模型解析结果
         return IsParamError.model_validate(is_param_error)
-
-    async def change_err_message_to_description(
-        self, error_message: str, tool: MCPTools, input_params: dict[str, Any],
-    ) -> str:
-        """将错误信息转换为工具描述"""
-        template = _env.from_string(CHANGE_ERROR_MESSAGE_TO_DESCRIPTION[self._language])
-        prompt = template.render(
-            error_message=error_message,
-            tool_name=tool.toolName,
-            tool_description=tool.description,
-            input_schema=tool.inputSchema,
-            input_params=input_params,
-        )
-        return await self.get_reasoning_result(prompt)
 
     async def get_missing_param(
         self, tool: MCPTools, input_param: dict[str, Any], error_message: dict[str, Any],
@@ -174,15 +157,19 @@ class MCPPlanner(MCPBase):
             error_message=error_message,
         )
 
-        # 组装OpenAI标准Function格式
-        function = {
-            "name": "get_missing_parameters",
-            "description": "Extract and provide the missing or incorrect parameters based on error feedback",
-            "parameters": schema_with_null,
-        }
+        # 获取函数定义并设置parameters为schema_with_null
+        function = deepcopy(GET_MISSING_PARAMS_FUNCTION[self._language])
+        function["parameters"] = schema_with_null
 
         # 解析为结构化数据
-        return await self.get_json_result(prompt, function)
+        return await json_generator.generate(
+            function=function,
+            conversation=[
+                {"role": "system", "content": "You are a helpful assistant."},
+                {"role": "user", "content": prompt},
+            ],
+            language=self._language,
+        )
 
     async def generate_answer(self, memory: str) -> AsyncGenerator[LLMChunk, None]:
         """生成最终回答，返回LLMChunk"""

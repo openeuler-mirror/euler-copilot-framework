@@ -5,107 +5,73 @@ from apps.models import LanguageType
 
 FLOW_SELECT: dict[LanguageType, str] = {
     LanguageType.CHINESE: r"""
-        <instructions>
-            <instruction>
-                根据历史对话（包括工具调用结果）和用户问题，从给出的选项列表中，选出最符合要求的那一项。
-                在输出之前，请先思考，并使用“<think>”标签给出思考过程。
-                结果需要使用JSON格式输出，输出格式为：{{ "choice": "选项名称" }}
-            </instruction>
+        ## 任务说明
 
-            <example>
-                <input>
-                    <question>使用天气API，查询明天杭州的天气信息</question>
+        根据对话历史和用户查询,从可用选项中选择最匹配的一项。
 
-                    <options>
-                        <item>
-                            <name>API</name>
-                            <description>HTTP请求，获得返回的JSON数据</description>
-                        </item>
-                        <item>
-                            <name>SQL</name>
-                            <description>查询数据库，获得数据库表中的数据</description>
-                        </item>
-                    </options>
-                </input>
+        ## 示例
 
-                <reasoning>
-                    API 工具可以通过 API 来获取外部数据，而天气信息可能就存储在外部数据中，由于用户说明中明确 \
-提到了天气 API 的使用，因此应该优先使用 API 工具。SQL 工具用于从数据库中获取信息，考虑到天气数据的可变性和动态性\
-，不太可能存储在数据库中，因此 SQL 工具的优先级相对较低，最佳选择似乎是“API：请求特定 API，获取返回的 JSON 数据”。
-                </reasoning>
+        **用户查询:**
+        > 使用天气API,查询明天杭州的天气信息
 
-                <output>
-                    {{ "choice": "API" }}
-                </output>
-            </example>
-        </instructions>
+        **可用选项:**
+        - **API**:HTTP请求,获取返回的JSON数据
+        - **SQL**:查询数据库,获取数据库表中的数据
 
-        <input>
-            <question>
-                {{question}}
-            </question>
+        **回答:**
+        用户明确提到使用天气API,天气数据通常通过外部API获取而非数据库存储,因此选择 API 选项。
 
-            <options>
-                {{choice_list}}
-            </options>
-        </input>
+        ---
 
-        <reasoning>
-          让我们一步一步思考。
+        ## 当前任务
+
+        **用户查询:**
+        {{question}}
+
+        **可用选项:**
+        {{choice_list}}
     """,
     LanguageType.ENGLISH: r"""
-        <instructions>
-            <instruction>
-                Based on the historical dialogue (including tool call results) and user question, select the \
-most suitable option from the given option list.
-                        Before outputting, please think carefully and use the "<think>" tag to give the thinking \
-process.
-                The output needs to be in JSON format, the output format is: {{ "choice": "option name" }}
-            </instruction>
+        ## Task Description
 
-            <example>
-                <input>
-                    <question>Use the weather API to query the weather information of Hangzhou \
-tomorrow</question>
+        Based on conversation history and user query, select the most matching option from available choices.
 
-                    <options>
-                        <item>
-                            <name>API</name>
-                            <description>HTTP request, get the returned JSON data</description>
-                        </item>
-                        <item>
-                            <name>SQL</name>
-                            <description>Query the database, get the data in the database table</description>
-                        </item>
-                    </options>
-                </input>
+        ## Example
 
-                <reasoning>
-                    The API tool can get external data through API, and the weather information may be stored \
-in external data. Since the user clearly mentioned the use of weather API, it should be given priority to the API \
-tool. The SQL tool is used to get information from the database, considering the variability and dynamism of weather \
-data, it is unlikely to be stored in the database, so the priority of the SQL tool is relatively low, \
-The best choice seems to be "API: request a specific API, get the returned JSON data".
-                </reasoning>
+        **User Query:**
+        > Use the weather API to query the weather information of Hangzhou tomorrow
 
-                <output>
-                    {{ "choice": "API" }}
-                </output>
-            </example>
-        </instructions>
-        <input>
-                <question>
-                    {{question}}
-                </question>
+        **Available Options:**
+        - **API**: HTTP request, get the returned JSON data
+        - **SQL**: Query the database, get the data in the database table
 
-                <options>
-                    {{choice_list}}
-                </options>
-            </input>
+        **Answer:**
+        The user explicitly mentioned using weather API. Weather data is typically accessed via external APIs rather \
+than database storage, so the API option is selected.
 
-            <reasoning>
-                Let's think step by step.
-            </reasoning>
-        </input>
+        ---
+
+        ## Current Task
+
+        **User Query:**
+        {{question}}
+
+        **Available Options:**
+        {{choice_list}}
     """,
+}
+
+FLOW_SELECT_FUNCTION = {
+    "name": "select_flow",
+    "description": "Select the appropriate flow",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "choice": {
+                "type": "string",
+                "description": "最匹配用户输入的Flow的名称",
+            },
+        },
+        "required": ["choice"],
+    },
 }

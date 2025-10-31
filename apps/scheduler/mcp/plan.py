@@ -52,6 +52,7 @@ class MCPPlanner:
         plan = await json_generator.generate(
             function=function_def,
             conversation=[
+                {"role": "system", "content": "You are a helpful assistant."},
                 {"role": "user", "content": prompt},
             ],
             language=self._language,

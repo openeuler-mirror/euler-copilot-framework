@@ -100,7 +100,7 @@ class CoreCall(BaseModel):
             ids=CallIds(
                 task_id=executor.task.metadata.id,
                 executor_id=executor.task.state.executorId,
-                session_id=executor.task.runtime.sessionId,
+                auth_header=executor.task.runtime.sessionId,
                 user_id=executor.task.metadata.userId,
                 app_id=executor.task.state.appId,
                 conversation_id=executor.task.metadata.conversationId,

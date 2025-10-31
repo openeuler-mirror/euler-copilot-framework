@@ -44,7 +44,8 @@ async def document_upload(
 ) -> JSONResponse:
     """POST /document/{conversation_id}: 上传文档到指定对话"""
     result = await DocumentManager.storage_docs(request.state.user_id, conversation_id, documents)
-    await KnowledgeBaseService.send_file_to_rag(request.state.session_id, result)
+    auth_header = getattr(request.session, "session_id", None) or request.state.personal_token
+    await KnowledgeBaseService.send_file_to_rag(auth_header, result)
 
     # 返回所有Framework已知的文档
     succeed_document: list[BaseDocumentItem] = [
@@ -107,13 +108,13 @@ async def _process_used_documents(conversation_id: uuid.UUID) -> list[Conversati
 
 async def _process_unused_documents(
     conversation_id: uuid.UUID,
-    session_id: str,
+    auth_header: str,
 ) -> list[ConversationDocumentItem]:
     """处理未使用的文档列表"""
     result = []
     unused_docs = await DocumentManager.get_unused_docs(conversation_id)
     doc_status = await KnowledgeBaseService.get_doc_status_from_rag(
-        session_id, [item.id for item in unused_docs],
+        auth_header, [item.id for item in unused_docs],
     )
 
     for current_doc in unused_docs:
@@ -172,7 +173,8 @@ async def get_document_list(
         result.extend(await _process_used_documents(conversation_id))
 
     if unused:
-        result.extend(await _process_unused_documents(conversation_id, request.state.session_id))
+        auth_header = getattr(request.session, "session_id", None) or request.state.personal_token
+        result.extend(await _process_unused_documents(conversation_id, auth_header))
 
     # 对外展示的时候用id，不用alias
     return JSONResponse(
@@ -202,7 +204,8 @@ async def delete_single_document(
             ).model_dump(exclude_none=True, by_alias=False),
         )
     # 在RAG侧删除
-    result = await KnowledgeBaseService.delete_doc_from_rag(request.state.session_id, [document_id])
+    auth_header = getattr(request.session, "session_id", None) or request.state.personal_token
+    result = await KnowledgeBaseService.delete_doc_from_rag(auth_header, [document_id])
     if not result:
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

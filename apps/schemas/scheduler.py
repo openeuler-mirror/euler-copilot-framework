@@ -23,7 +23,7 @@ class CallIds(BaseModel):
 
     task_id: uuid.UUID = Field(description="任务ID")
     executor_id: str = Field(description="Flow ID")
-    session_id: str | None = Field(description="当前用户的Session ID")
+    auth_header: str | None = Field(description="当前用户的Authorization Header")
     app_id: uuid.UUID | None = Field(description="当前应用的ID")
     user_id: str = Field(description="当前用户的用户ID")
     conversation_id: uuid.UUID | None = Field(description="当前对话的ID")

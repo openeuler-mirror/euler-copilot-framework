@@ -70,8 +70,8 @@ class RAG(CoreCall, input_model=RAGInput, output_model=RAGOutput):
 
     async def _init(self, call_vars: CallVars) -> RAGInput:
         """初始化RAG工具"""
-        if not call_vars.ids.session_id:
-            err = "[RAG] 未设置Session ID"
+        if not call_vars.ids.auth_header:
+            err = "[RAG] 未设置Auth Header"
             _logger.error(err)
             raise CallError(message=err, data={})
 
@@ -94,7 +94,7 @@ class RAG(CoreCall, input_model=RAGInput, output_model=RAGOutput):
         url = config.rag.rag_service.rstrip("/") + "/chunk/search"
         headers = {
             "Content-Type": "application/json",
-            "Authorization": f"Bearer {self._sys_vars.ids.session_id}",
+            "Authorization": f"Bearer {self._sys_vars.ids.auth_header}",
         }
 
         doc_chunk_list = []

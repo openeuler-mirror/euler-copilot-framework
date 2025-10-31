@@ -2,9 +2,8 @@
 """MCP基类"""
 
 import logging
-from typing import Any
 
-from apps.llm import LLM, json_generator
+from apps.llm import LLM
 from apps.models import LanguageType
 from apps.schemas.task import TaskData
 
@@ -41,17 +40,3 @@ class MCPBase:
             result += chunk.content or ""
 
         return result
-
-    async def get_json_result(self, result: str, function: dict[str, Any]) -> dict[str, Any]:
-        """解析推理结果；function使用OpenAI标准Function格式"""
-        return await json_generator.generate(
-            function=function,
-            conversation=[
-                {"role": "user", "content": result},
-                {
-                    "role": "user",
-                    "content": "Please provide a JSON response based on the above information and schema.",
-                },
-            ],
-            language=self._language,
-        )

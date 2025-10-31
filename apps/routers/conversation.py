@@ -137,9 +137,10 @@ async def delete_conversation(
             conversation_id,
         )
         # 删除对话对应的文件
+        auth_header = getattr(request.session, "session_id", None) or request.state.personal_token
         await DocumentManager.delete_document_by_conversation_id(
-            request.state.user_id,
             conversation_id,
+            auth_header,
         )
         deleted_conversation.append(conversation_id)
 

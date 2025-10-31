@@ -218,7 +218,8 @@ sequenceDiagram
 
         CM-->>R: 删除完成
 
-        R->>DM: delete_document_by_conversation_id(user_id, id)
+        R->>R: auth_header = request.session.session_id || request.state.personal_token
+        R->>DM: delete_document_by_conversation_id(id, auth_header)
         DM-->>R: 文档删除完成
     end
 

@@ -65,9 +65,13 @@ class MCPHost(MCPBase):
             "description": mcp_tool.description,
             "parameters": mcp_tool.inputSchema,
         }
-        return await self.get_json_result(
-            prompt,
-            function,
+        return await json_generator.generate(
+            function=function,
+            conversation=[
+                {"role": "system", "content": "You are a helpful assistant."},
+                {"role": "user", "content": prompt},
+            ],
+            language=self._language,
         )
 
     async def fill_params(  # noqa: D102, PLR0913

@@ -1,8 +1,11 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2023-2025. All rights reserved.
 """选择MCP Server及其工具"""
 
+import copy
 import logging
 
+from jinja2 import BaseLoader
+from jinja2.sandbox import SandboxedEnvironment
 from sqlalchemy import select
 
 from apps.common.postgres import postgres
@@ -11,7 +14,7 @@ from apps.models import LanguageType, MCPTools
 from apps.schemas.mcp import MCPSelectResult
 from apps.services.mcp_service import MCPServiceManager
 
-from .prompt import MCP_FUNCTION_SELECT
+from .prompt import MCP_FUNCTION_SELECT, SELECT_MCP_FUNCTION
 
 logger = logging.getLogger(__name__)
 
@@ -23,6 +26,12 @@ class MCPSelector:
         """初始化MCP选择器"""
         self._llm = llm
         self._language = language
+        self._env = SandboxedEnvironment(
+            loader=BaseLoader,
+            autoescape=True,
+            trim_blocks=True,
+            lstrip_blocks=True,
+        )
 
     async def _call_reasoning(self, prompt: str) -> str:
         """调用大模型进行推理"""
@@ -39,27 +48,21 @@ class MCPSelector:
 
     async def _call_function_mcp(self, reasoning_result: str, mcp_ids: list[str]) -> MCPSelectResult:
         """调用结构化输出小模型提取JSON"""
-        schema = MCPSelectResult.model_json_schema()
-        # schema中加入选项
-        schema["properties"]["mcp_id"]["enum"] = mcp_ids
+        function = copy.deepcopy(SELECT_MCP_FUNCTION[self._language])
+        function["parameters"]["properties"]["mcp_id"]["enum"] = mcp_ids
 
-        # 组装OpenAI FunctionCall格式的dict
-        function = {
-            "name": "select_mcp",
-            "description": "Select the most appropriate MCP server based on the reasoning result",
-            "parameters": schema,
-        }
-
-        # 构建优化的提示词
-        user_prompt = MCP_FUNCTION_SELECT[self._language].format(
+        # 使用jinja2格式化模板
+        template = self._env.from_string(MCP_FUNCTION_SELECT[self._language])
+        user_prompt = template.render(
             reasoning_result=reasoning_result,
-            mcp_ids=", ".join(mcp_ids),
+            mcp_ids=mcp_ids,
         )
 
         # 使用json_generator生成JSON
         result = await json_generator.generate(
             function=function,
             conversation=[
+                {"role": "system", "content": "You are a helpful assistant."},
                 {"role": "user", "content": user_prompt},
             ],
             language=self._language,

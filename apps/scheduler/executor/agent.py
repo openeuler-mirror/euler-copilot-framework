@@ -345,12 +345,8 @@ class MCPAgentExecutor(BaseExecutor):
             self._current_input,
             state.errorMessage,
         )
-        error_msg_str = self._get_error_message_str(state.errorMessage)
-        error_message = await self._planner.change_err_message_to_description(
-            error_message=error_msg_str,
-            tool=current_tool,
-            input_params=self._current_input,
-        )
+        # TODO
+        error_msg = self._get_error_message_str(state.errorMessage)
 
         # 先更新状态
         state.executorStatus = ExecutorStatus.WAITING
@@ -358,13 +354,13 @@ class MCPAgentExecutor(BaseExecutor):
         self.task.state = state
 
         await self._push_message(
-            EventType.STEP_WAITING_FOR_PARAM, data={"message": error_message, "params": params_with_null},
+            EventType.STEP_WAITING_FOR_PARAM, data={"message": error_msg, "params": params_with_null},
         )
         self.task.context.append(
             self._create_executor_history(
                 step_status=state.stepStatus,
                 extra_data={
-                    "message": error_message,
+                    "message": error_msg,
                     "params": params_with_null,
                 },
             ),
