@@ -16,8 +16,6 @@ from apps.constants import OIDC_ACCESS_TOKEN_EXPIRE_TIME
 from apps.models import Session, SessionType
 from apps.schemas.config import OIDCConfig
 
-from .session import SessionManager
-
 logger = logging.getLogger(__name__)
 
 
@@ -27,12 +25,11 @@ class TokenManager:
     @staticmethod
     async def get_plugin_token(
         plugin_id: uuid.UUID,
-        session_id: str,
+        user_id: str,
         access_token_url: str,
         expire_time: int,
     ) -> str:
         """获取插件Token"""
-        user_id = await SessionManager.get_user(session_id=session_id)
         if not user_id:
             err = "用户不存在！"
             raise ValueError(err)
@@ -56,7 +53,6 @@ class TokenManager:
 
             token = await TokenManager.generate_plugin_token(
                 plugin_id,
-                session_id,
                 user_id,
                 access_token_url,
                 expire_time,
@@ -88,7 +84,6 @@ class TokenManager:
     @staticmethod
     async def generate_plugin_token(
         plugin_name: uuid.UUID,
-        session_id: str,
         user_id: str,
         access_token_url: str,
         expire_time: int,
@@ -125,7 +120,6 @@ class TokenManager:
                 ).one_or_none()
 
             if not refresh_token or not refresh_token.token:
-                await SessionManager.delete_session(session_id)
                 err = "Refresh token均过期，需要重新登录"
                 raise RuntimeError(err)
 

@@ -26,11 +26,11 @@ class KnowledgeBaseService:
     """知识库服务"""
 
     @staticmethod
-    async def send_file_to_rag(session_id: str, docs: list[Document]) -> list[str]:
+    async def send_file_to_rag(auth_header: str, docs: list[Document]) -> list[str]:
         """上传文件给RAG，进行处理和向量化"""
         headers = {
             "Content-Type": "application/json",
-            "Authorization": f"Bearer {session_id}",
+            "Authorization": f"Bearer {auth_header}",
         }
         rag_docs = [RAGFileParseReqItem(
             id=str(doc.id),
@@ -51,11 +51,11 @@ class KnowledgeBaseService:
             return resp_data["result"]
 
     @staticmethod
-    async def delete_doc_from_rag(session_id: str, doc_ids: list[str]) -> list[str]:
+    async def delete_doc_from_rag(auth_header: str, doc_ids: list[str]) -> list[str]:
         """删除文件"""
         headers = {
             "Content-Type": "application/json",
-            "Authorization": f"Bearer {session_id}",
+            "Authorization": f"Bearer {auth_header}",
         }
         delete_data = {"ids": doc_ids}
         async with httpx.AsyncClient() as client:
@@ -66,11 +66,11 @@ class KnowledgeBaseService:
             return resp_data["result"]
 
     @staticmethod
-    async def get_doc_status_from_rag(session_id: str, doc_ids: list[uuid.UUID]) -> list[RAGFileStatusRspItem]:
+    async def get_doc_status_from_rag(auth_header: str, doc_ids: list[uuid.UUID]) -> list[RAGFileStatusRspItem]:
         """获取文件状态"""
         headers = {
             "Content-Type": "application/json",
-            "Authorization": f"Bearer {session_id}",
+            "Authorization": f"Bearer {auth_header}",
         }
         post_data = {"ids": doc_ids}
         async with httpx.AsyncClient() as client:

@@ -46,11 +46,10 @@ async def verify_session(request: HTTPConnection) -> None:
         return
 
     # 作为Session ID校验
-    session_id = token
-    request.state.session_id = session_id
-    user_id = await SessionManager.get_user(session_id)
+    request.state.session_id = token
+    user_id = await SessionManager.get_user(token)
     if not user_id:
-        logger.warning("Session ID鉴权失败：无效的session_id=%s", session_id)
+        logger.warning("Session ID鉴权失败：无效的session_id=%s", token)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Session ID 鉴权失败",
@@ -89,6 +88,7 @@ async def verify_personal_token(request: HTTPConnection) -> None:
         # 验证是否为合法的Personal Token
         user_id = await PersonalTokenManager.get_user_by_personal_token(token)
         if user_id is not None:
+            request.state.personal_token = token
             request.state.user_id = user_id
         else:
             # Personal Token无效，抛出401

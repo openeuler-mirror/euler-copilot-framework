@@ -27,7 +27,7 @@ from apps.services.token import TokenManager
 
 from .schema import APIInput, APIOutput
 
-logger = logging.getLogger(__name__)
+_logger = logging.getLogger(__name__)
 SUCCESS_HTTP_CODES = [
     status.HTTP_200_OK,
     status.HTTP_201_CREATED,
@@ -75,7 +75,7 @@ class API(CoreCall, input_model=APIInput, output_model=APIOutput):
     async def _init(self, call_vars: CallVars) -> APIInput:
         """初始化API调用工具"""
         self._service_id = None
-        self._session_id = call_vars.ids.session_id
+        self._user_id = call_vars.ids.user_id
         self._auth = None
 
         if not self.node:
@@ -172,11 +172,6 @@ class API(CoreCall, input_model=APIInput, output_model=APIOutput):
 
     async def _apply_auth(self) -> tuple[dict[str, str], dict[str, str], dict[str, str]]:
         """应用认证信息到请求参数中"""
-        if not self._session_id:
-            err = "[API] 未设置Session ID"
-            logger.error(err)
-            raise CallError(message=err, data={})
-
         # self._auth可能是None或ServiceApiAuth类型
         # ServiceApiAuth类型包含header、cookie、query和oidc属性
         req_header = {}
@@ -198,9 +193,14 @@ class API(CoreCall, input_model=APIInput, output_model=APIOutput):
                     req_params[item.name] = item.value
             # 如果oidc配置存在
             if self._service_id and self._auth.oidc:
+                if not self._user_id:
+                    err = "[API] 未设置User ID"
+                    _logger.error(err)
+                    raise CallError(message=err, data={})
+
                 token = await TokenManager.get_plugin_token(
                     self._service_id,
-                    self._session_id,
+                    self._user_id,
                     await oidc_provider.get_access_token_url(),
                     30,
                 )
@@ -211,14 +211,14 @@ class API(CoreCall, input_model=APIInput, output_model=APIOutput):
     async def _call_api(self, final_data: APIInput) -> APIOutput:
         """实际调用API，并处理返回值"""
         # 获取必要参数
-        logger.info("[API] 调用接口 %s，请求数据为 %s", self.url, final_data)
+        _logger.info("[API] 调用接口 %s，请求数据为 %s", self.url, final_data)
 
         files = {}  # httpx需要使用字典格式的files参数
         response = await self._make_api_call(final_data, files)
 
         if response.status_code not in SUCCESS_HTTP_CODES:
             text = f"API发生错误：API返回状态码{response.status_code}, 原因为{response.reason_phrase}。"
-            logger.error(text)
+            _logger.error(text)
             raise CallError(
                 message=text,
                 data={"api_response_data": response.text},
@@ -227,7 +227,7 @@ class API(CoreCall, input_model=APIInput, output_model=APIOutput):
         response_status = response.status_code
         response_data = response.text
 
-        logger.info("[API] 调用接口 %s，结果为 %s", self.url, response_data)
+        _logger.info("[API] 调用接口 %s，结果为 %s", self.url, response_data)
 
         # 如果没有返回结果
         if not response_data:

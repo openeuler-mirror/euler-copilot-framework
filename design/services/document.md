@@ -510,7 +510,7 @@ sequenceDiagram
     API->>Auth: verify_session()
     Auth-->>API: ✓ user_id
     API->>Auth: verify_personal_token()
-    Auth-->>API: ✓ session_id
+    Auth-->>API: ✓ personal_token
 
     API->>DM: storage_docs(user_id, conv_id, files)
 
@@ -524,7 +524,8 @@ sequenceDiagram
 
     DM-->>API: 返回文档列表
 
-    API->>RAG: send_file_to_rag(session_id, docs)
+    API->>API: auth_header = request.session.session_id || request.state.personal_token
+    API->>RAG: send_file_to_rag(auth_header, docs)
     RAG-->>API: ✓ 接收成功
 
     API->>User: 200 OK + 文档列表
@@ -569,7 +570,8 @@ sequenceDiagram
         DB-->>DM: 文档详情
         DM-->>API: 未使用文档列表
 
-        API->>RAG: get_doc_status_from_rag(session_id, doc_ids)
+        API->>API: auth_header = request.session.session_id || request.state.personal_token
+        API->>RAG: get_doc_status_from_rag(auth_header, doc_ids)
         RAG-->>API: 文档处理状态列表
 
         loop 每个未使用文档
@@ -620,7 +622,8 @@ sequenceDiagram
         MinIO-->>DM: ✓
         DM-->>API: 删除成功
 
-        API->>RAG: delete_doc_from_rag(session_id, [doc_id])
+        API->>API: auth_header = request.session.session_id || request.state.personal_token
+        API->>RAG: delete_doc_from_rag(auth_header, [doc_id])
         RAG-->>API: 删除结果
 
         alt RAG删除失败
@@ -793,19 +796,24 @@ erDiagram
 
 ### 9.1 与 RAG 系统集成
 
+**认证方式**:
+
+所有 RAG 系统调用使用 `auth_header` 参数进行认证。
+`auth_header` 的值优先使用 `request.session.session_id`，若不存在则使用 `request.state.personal_token`。
+
 **文档上传后发送到 RAG**:
 
-调用 KnowledgeBaseService.send_file_to_rag 方法，
+调用 `KnowledgeBaseService.send_file_to_rag(auth_header, docs)` 方法，
 将文档发送到 RAG 系统进行异步处理（解析、向量化、索引）。
 
 **查询文档处理状态**:
 
-调用 KnowledgeBaseService.get_doc_status_from_rag 方法，
+调用 `KnowledgeBaseService.get_doc_status_from_rag(auth_header, doc_ids)` 方法，
 获取文档在 RAG 系统中的处理状态。
 
 **从 RAG 删除文档**:
 
-调用 KnowledgeBaseService.delete_doc_from_rag 方法，
+调用 `KnowledgeBaseService.delete_doc_from_rag(auth_header, doc_ids)` 方法，
 从 RAG 系统中删除文档的索引数据。
 
 ### 9.2 RAG 状态映射

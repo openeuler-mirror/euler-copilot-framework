@@ -21,7 +21,6 @@ from apps.models import (
 )
 
 from .knowledge_service import KnowledgeBaseService
-from .session import SessionManager
 
 logger = logging.getLogger(__name__)
 
@@ -213,7 +212,9 @@ class DocumentManager:
 
 
     @staticmethod
-    async def delete_document_by_conversation_id(user_id: str, conversation_id: uuid.UUID) -> list[str]:
+    async def delete_document_by_conversation_id(
+        conversation_id: uuid.UUID, auth_header: str,
+    ) -> list[str]:
         """通过ConversationID删除文件"""
         doc_ids = []
 
@@ -227,11 +228,7 @@ class DocumentManager:
                 await session.delete(doc)
             await session.commit()
 
-        session_id = await SessionManager.get_session_by_user(user_id)
-        if not session_id:
-            logger.error("[DocumentManager] Session不存在: %s", user_id)
-            return []
-        await KnowledgeBaseService.delete_doc_from_rag(session_id, doc_ids)
+        await KnowledgeBaseService.delete_doc_from_rag(auth_header, doc_ids)
         return doc_ids
 
 

@@ -62,7 +62,7 @@ async def chat_generator(post_body: RequestData, user_id: str, session_id: str) 
 
         # 获取最终答案
         task = scheduler.task
-        if task.state.executorStatus == ExecutorStatus.ERROR:
+        if task.state and task.state.executorStatus == ExecutorStatus.ERROR:
             _logger.error("[Chat] 生成答案失败")
             yield "data: [ERROR]\n\n"
             await Activity.remove_active(user_id)
