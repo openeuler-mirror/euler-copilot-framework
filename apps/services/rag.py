@@ -249,7 +249,7 @@ Please generate a detailed, well-structured, and clearly formatted answer based 
                 tokensLimit=max_tokens,
             )
             try:
-                async with httpx.AsyncClient(timeout=30) as client:
+                async with httpx.AsyncClient(timeout=300) as client:
                     data_json = tmp_data.model_dump(
                         exclude_none=True, by_alias=True)
                     response = await client.post(url, headers=headers, json=data_json)
@@ -260,7 +260,7 @@ Please generate a detailed, well-structured, and clearly formatted answer based 
                 logger.error(f"[RAG] 获取文档分片失败: {e}")
         if data.kb_ids:
             try:
-                async with httpx.AsyncClient(timeout=30) as client:
+                async with httpx.AsyncClient(timeout=300) as client:
                     data_json = data.model_dump(
                         exclude_none=True, by_alias=True)
                     response = await client.post(url, headers=headers, json=data_json)
