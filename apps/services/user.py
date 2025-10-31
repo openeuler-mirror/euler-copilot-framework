@@ -195,6 +195,8 @@ class UserManager:
             preferences_update["preferences.rerankerPreference"] = data.reranker_preference.model_dump(by_alias=True)
         if data.chain_of_thought_preference is not None:
             preferences_update["preferences.chainOfThoughtPreference"] = data.chain_of_thought_preference
+        if data.auto_execute_preference is not None:
+            preferences_update["preferences.autoExecutePreference"] = data.auto_execute_preference
         
         if preferences_update:
             update_dict = {"$set": preferences_update}
@@ -227,6 +229,9 @@ class UserManager:
                 migration_needed = True
             if "chain_of_thought_preference" in preferences_data:
                 preferences_data["chainOfThoughtPreference"] = preferences_data.pop("chain_of_thought_preference")
+                migration_needed = True
+            if "auto_execute_preference" in preferences_data:
+                preferences_data["autoExecutePreference"] = preferences_data.pop("auto_execute_preference")
                 migration_needed = True
             
             # 如果进行了迁移，更新数据库

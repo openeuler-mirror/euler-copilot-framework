@@ -166,6 +166,12 @@ async def init_task(post_body: RequestData, user_sub: str, session_id: str) -> T
         task.runtime.question = post_body.question
         task.ids.group_id = post_body.group_id
         task.state.app_id = post_body.app.app_id if post_body.app else ""
+        
+        # 🔑 新增：如果请求中包含模型ID，使用该模型
+        if post_body.llm_id:
+            logger.info(f"[Chat] 使用请求中指定的模型: {post_body.llm_id}")
+            # 这里可能需要根据实际的Task结构来设置模型信息
+            # task.llm_id = post_body.llm_id  # 根据实际Task结构调整
     else:
         if not post_body.task_id:
             err = "[Chat] task_id 不可为空！"

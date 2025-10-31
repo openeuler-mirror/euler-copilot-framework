@@ -12,7 +12,7 @@ class MCPBase:
     """MCP基类"""
 
     @staticmethod
-    async def get_resoning_result(prompt: str, resoning_llm: ReasoningLLM = ReasoningLLM()) -> str:
+    async def get_resoning_result(prompt: str, resoning_llm: ReasoningLLM = ReasoningLLM(), enable_thinking: bool = False) -> str:
         """获取推理结果"""
         # 调用推理大模型
         message = [
@@ -25,6 +25,7 @@ class MCPBase:
             streaming=False,
             temperature=0.07,
             result_only=False,
+            enable_thinking=enable_thinking,
         ):
             result += chunk
 

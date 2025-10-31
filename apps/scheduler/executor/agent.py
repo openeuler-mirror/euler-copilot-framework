@@ -59,6 +59,20 @@ class MCPAgentExecutor(BaseExecutor):
         exclude=True,
     )
     app_owner: str = Field(default="", description="应用所有者")
+    auto_execute: bool | None = Field(default=None, description="是否自动执行（来自请求）")
+
+    async def get_auto_execute(self) -> bool:
+        """
+        获取自动执行设置
+        优先级：请求中的设置 > 用户全局设置
+        """
+        # 如果请求中明确指定了，使用请求中的设置
+        if self.auto_execute is not None:
+            return self.auto_execute
+        
+        # 否则使用用户的全局设置
+        user_info = await UserManager.get_userinfo_by_user_sub(self.task.ids.user_sub)
+        return user_info.auto_execute
 
     async def update_tokens(self) -> None:
         """更新令牌数"""
@@ -85,8 +99,12 @@ class MCPAgentExecutor(BaseExecutor):
                 logger.warning("[MCPAgentExecutor] MCP服务 %s 未被应用所有者 %s 激活，跳过",
                                mcp_service.name, self.app_owner)
                 continue
+            # 尝试初始化MCP，只有成功才添加到列表
+            client = await self.mcp_pool._init_mcp(mcp_id, self.app_owner)
+            if client is None:
+                logger.warning("[MCPAgentExecutor] MCP服务 %s 初始化失败，跳过", mcp_service.name)
+                continue
             self.mcp_list.append(mcp_service)
-            await self.mcp_pool._init_mcp(mcp_id, self.app_owner)
             for tool in mcp_service.tools:
                 self.tools[tool.id] = tool
             self.tool_list.extend(mcp_service.tools)
@@ -147,7 +165,7 @@ class MCPAgentExecutor(BaseExecutor):
             # 获取第一个输入参数
             mcp_tool = self.tools[self.task.state.tool_id]
             self.task.state.current_input = await MCPHost._get_first_input_params(
-                mcp_tool, self.task.runtime.question, self.task.state.step_description, self.task
+                mcp_tool, self.task.runtime.question, self.task.state.step_description, self.task, self.resoning_llm, self.enable_thinking
             )
         else:
             # 获取后续输入参数
@@ -219,6 +237,12 @@ class MCPAgentExecutor(BaseExecutor):
                 result_exchange = False
             else:
                 mcp_client = (await self.mcp_pool.get(mcp_tool.mcp_id, self.app_owner))
+                if mcp_client is None:
+                    error_msg = f"无法获取MCP服务 {mcp_tool.mcp_id} 的客户端，可能服务未正确初始化或已断开"
+                    logger.error("[MCPAgentExecutor] %s", error_msg)
+                    self.task.state.step_status = StepStatus.ERROR
+                    self.task.state.error_message = error_msg
+                    return
                 output_params = await mcp_client.call_tool(mcp_tool.name, self.task.state.current_input)
         except anyio.ClosedResourceError:
             logger.exception(
@@ -279,6 +303,7 @@ class MCPAgentExecutor(BaseExecutor):
             self.task.state.error_message,
             self.resoning_llm,
             self.task.language,
+            self.enable_thinking,
         )
         await self.update_tokens()
         error_message = await MCPPlanner.change_err_message_to_description(
@@ -287,6 +312,7 @@ class MCPAgentExecutor(BaseExecutor):
             input_params=self.task.state.current_input,
             reasoning_llm=self.resoning_llm,
             language=self.task.language,
+            enable_thinking=self.enable_thinking,
         )
         await self.push_message(
             EventType.STEP_WAITING_FOR_PARAM, data={
@@ -325,7 +351,7 @@ class MCPAgentExecutor(BaseExecutor):
             step = None
             for i in range(max_retry):
                 try:
-                    step = await MCPPlanner.create_next_step(self.task.runtime.question, history, self.tool_list, language=self.task.language)
+                    step = await MCPPlanner.create_next_step(self.task.runtime.question, history, self.tool_list, self.resoning_llm, self.task.language, self.enable_thinking)
                     if step.tool_id in self.tools.keys():
                         break
                 except Exception as e:
@@ -387,8 +413,8 @@ class MCPAgentExecutor(BaseExecutor):
                 data={}
             )
             await self.get_tool_input_param(is_first=True)
-            user_info = await UserManager.get_userinfo_by_user_sub(self.task.ids.user_sub)
-            if not user_info.auto_execute:
+            auto_execute = await self.get_auto_execute()
+            if not auto_execute:
                 # 等待用户确认
                 await self.confirm_before_step()
                 return
@@ -429,8 +455,8 @@ class MCPAgentExecutor(BaseExecutor):
             if self.task.state.retry_times >= 3:
                 await self.error_handle_after_step()
             else:
-                user_info = await UserManager.get_userinfo_by_user_sub(self.task.ids.user_sub)
-                if user_info.auto_execute:
+                auto_execute = await self.get_auto_execute()
+                if auto_execute:
                     await self.push_message(
                         EventType.STEP_ERROR,
                         data={
@@ -469,7 +495,9 @@ class MCPAgentExecutor(BaseExecutor):
                         mcp_tool,
                         self.task.state.step_description,
                         self.task.state.current_input,
-                        language=self.task.language,
+                        self.resoning_llm,
+                        self.task.language,
+                        self.enable_thinking,
                     )
                     if is_param_error.is_param_error:
                         # 如果是参数错误，生成参数补充
@@ -538,8 +566,8 @@ class MCPAgentExecutor(BaseExecutor):
                 flow_risk = await MCPPlanner.get_flow_excute_risk(
                     self.task.runtime.question, self.tool_list, self.resoning_llm, self.task.language
                 )
-                user_info = await UserManager.get_userinfo_by_user_sub(self.task.ids.user_sub)
-                if user_info.auto_execute:
+                auto_execute = await self.get_auto_execute()
+                if auto_execute:
                     data = flow_risk.model_dump(
                         exclude_none=True, by_alias=True)
                 await TaskManager.save_task(self.task.id, self.task)

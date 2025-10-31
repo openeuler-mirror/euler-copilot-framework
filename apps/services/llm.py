@@ -11,6 +11,8 @@ from apps.schemas.request_data import (
 )
 from apps.schemas.response_data import LLMProvider, LLMProviderInfo
 from apps.templates.generate_llm_operator_config import llm_provider_dict
+from apps.llm.model_registry import model_registry
+from apps.llm.adapters import get_provider_from_endpoint
 
 logger = logging.getLogger(__name__)
 
@@ -86,40 +88,64 @@ class LLMManager:
         return LLM.model_validate(result)
 
     @staticmethod
-    async def list_llm(user_sub: str, llm_id: str | None) -> list[LLMProviderInfo]:
+    async def list_llm(user_sub: str, llm_id: str | None, model_type: str | None = None) -> list[LLMProviderInfo]:
         """
         获取大模型列表
 
         :param user_sub: 用户ID
         :param llm_id: 大模型ID
+        :param model_type: 模型类型，可选值：'chat', 'image', 'video', 'speech', 'embedding', 'reranker'
         :return: 大模型列表
         """
         mongo = MongoDB()
         llm_collection = mongo.get_collection("llm")
 
-        query = {"user_sub": user_sub}
+        # 构建查询条件：包含用户模型和系统模型
+        base_query = {"$or": [{"user_sub": user_sub}, {"user_sub": ""}]}
         if llm_id:
-            query["llm_id"] = llm_id
-        result = await llm_collection.find(query).sort({"created_at": 1}).to_list(length=None)
+            base_query["llm_id"] = llm_id
+        if model_type:
+            base_query["type"] = model_type
+        
+        result = await llm_collection.find(base_query).sort({"created_at": 1}).to_list(length=None)
 
-        llm_item = LLMProviderInfo(
-            llmId="empty",
-            icon=llm_provider_dict["ollama"]["icon"],
-            openaiBaseUrl=Config().get_config().llm.endpoint,
-            openaiApiKey=Config().get_config().llm.key,
-            modelName=Config().get_config().llm.model,
-            maxTokens=Config().get_config().llm.max_tokens,
-            isEditable=False,
-        )
-        llm_list = [llm_item]
+        llm_list = []
+        
+        # 只有查询chat类型或者没有指定类型时，才检查并创建默认模型
+        if not model_type or model_type == 'chat':
+            # 检查是否已存在系统默认chat模型
+            config = Config().get_config()
+            existing_default = await llm_collection.find_one({
+                "user_sub": "",
+                "type": "chat",
+                "model_name": config.llm.model
+            })
+            
+            if not existing_default:
+                # 如果不存在，创建系统默认chat模型
+                await LLMManager.init_system_chat_model()
+                # 重新查询以包含新创建的模型
+                result = await llm_collection.find(base_query).sort({"created_at": 1}).to_list(length=None)
+
         for llm in result:
             llm_item = LLMProviderInfo(
-                llmId=llm["_id"],
+                llmId=str(llm["_id"]),  # 转换ObjectId为字符串
                 icon=llm["icon"],
                 openaiBaseUrl=llm["openai_base_url"],
                 openaiApiKey=llm["openai_api_key"],
                 modelName=llm["model_name"],
                 maxTokens=llm["max_tokens"],
+                isEditable=bool(llm.get("user_sub")),  # 系统模型（user_sub=""）不可编辑
+                type=llm.get("type", "chat"),
+                # 模型能力字段
+                provider=llm.get("provider", ""),
+                supportsThinking=llm.get("supports_thinking", False),
+                canToggleThinking=llm.get("can_toggle_thinking", False),
+                supportsFunctionCalling=llm.get("supports_function_calling", True),
+                supportsJsonMode=llm.get("supports_json_mode", True),
+                supportsStructuredOutput=llm.get("supports_structured_output", False),
+                maxTokensParam=llm.get("max_tokens_param", "max_tokens"),
+                notes=llm.get("notes", ""),
             )
             llm_list.append(llm_item)
         return llm_list
@@ -127,14 +153,31 @@ class LLMManager:
     @staticmethod
     async def update_llm(user_sub: str, llm_id: str | None, req: UpdateLLMReq) -> str:
         """
-        创建大模型
+        创建或更新大模型，自动推断模型能力
 
         :param user_sub: 用户ID
+        :param llm_id: 大模型ID，为None时创建新模型
         :param req: 创建大模型请求体
-        :return: 大模型对象
+        :return: 大模型ID
         """
         mongo = MongoDB()
         llm_collection = mongo.get_collection("llm")
+
+        # 推断模型能力
+        provider = req.provider or get_provider_from_endpoint(req.openai_base_url)
+        model_info = model_registry.get_model_info(provider, req.model_name)
+        
+        # 使用请求中的能力信息，如果没有则从model_registry获取，最后使用默认值
+        capabilities = {
+            "provider": provider,
+            "supports_thinking": req.supports_thinking if req.supports_thinking is not None else (model_info.supports_thinking if model_info else False),
+            "can_toggle_thinking": req.can_toggle_thinking if req.can_toggle_thinking is not None else (model_info.can_toggle_thinking if model_info else False),
+            "supports_function_calling": req.supports_function_calling if req.supports_function_calling is not None else (model_info.supports_function_calling if model_info else True),
+            "supports_json_mode": req.supports_json_mode if req.supports_json_mode is not None else (model_info.supports_json_mode if model_info else True),
+            "supports_structured_output": req.supports_structured_output if req.supports_structured_output is not None else (model_info.supports_structured_output if model_info else False),
+            "max_tokens_param": req.max_tokens_param or (model_info.max_tokens_param if model_info else "max_tokens"),
+            "notes": req.notes or (model_info.notes if model_info else ""),
+        }
 
         if llm_id:
             llm_dict = await llm_collection.find_one({"_id": llm_id, "user_sub": user_sub})
@@ -142,16 +185,27 @@ class LLMManager:
                 err = f"[LLMManager] LLM {llm_id} 不存在"
                 logger.error(err)
                 raise ValueError(err)
+            
+            # 检查是否为系统级别模型（不允许编辑）
+            if not llm_dict.get("user_sub"):
+                err = f"[LLMManager] 系统级别模型 {llm_id} 不允许编辑"
+                logger.error(err)
+                raise ValueError(err)
+                
             llm = LLM(
                 _id=llm_id,
                 user_sub=user_sub,
-                icon=llm_dict["icon"],
+                icon=req.icon if req.icon else llm_dict["icon"],
                 openai_base_url=req.openai_base_url,
                 openai_api_key=req.openai_api_key,
                 model_name=req.model_name,
                 max_tokens=req.max_tokens,
+                type=req.type,
+                **capabilities
             )
-            await llm_collection.update_one({"_id": llm_id}, {"$set": llm.model_dump(by_alias=True)})
+            # 排除_id字段以避免MongoDB的不可变_id字段错误
+            update_data = llm.model_dump(by_alias=True, exclude={"_id"})
+            await llm_collection.update_one({"_id": llm_id}, {"$set": update_data})
         else:
             llm = LLM(
                 user_sub=user_sub,
@@ -160,8 +214,12 @@ class LLMManager:
                 openai_api_key=req.openai_api_key,
                 model_name=req.model_name,
                 max_tokens=req.max_tokens,
+                type=req.type,
+                **capabilities
             )
-            await llm_collection.insert_one(llm.model_dump(by_alias=True))
+            # 排除_id字段让MongoDB自动生成_id，避免冲突
+            insert_data = llm.model_dump(by_alias=True, exclude={"_id"})
+            await llm_collection.insert_one(insert_data)
         return llm.id
 
     @staticmethod
@@ -173,8 +231,8 @@ class LLMManager:
         :param llm_id: 大模型ID
         :return: 大模型ID
         """
-        if llm_id == "empty":
-            err = "[LLMManager] 不能删除默认大模型"
+        if not llm_id:
+            err = "[LLMManager] 不能删除系统默认大模型"
             logger.error(err)
             raise ValueError(err)
 
@@ -182,22 +240,52 @@ class LLMManager:
         llm_collection = mongo.get_collection("llm")
         conv_collection = mongo.get_collection("conversation")
 
-        conv_dict = await conv_collection.find_one({"llm.llm_id": llm_id, "user_sub": user_sub})
-        if conv_dict:
-            await conv_collection.update_many(
-                {"_id": conv_dict["_id"], "user_sub": user_sub},
-                {"$set": {"llm": {
-                    "llm_id": "empty",
-                    "icon": llm_provider_dict["ollama"]["icon"],
-                    "model_name": Config().get_config().llm.model,
-                }}},
-            )
-
-        llm_config = await llm_collection.find_one({"_id": llm_id, "user_sub": user_sub})
+        llm_config = await llm_collection.find_one({"_id": llm_id})
         if not llm_config:
             err = f"[LLMManager] LLM {llm_id} 不存在"
             logger.error(err)
             raise ValueError(err)
+        
+        # 检查是否为系统级别模型（不允许删除）
+        if not llm_config.get("user_sub"):
+            err = f"[LLMManager] 系统级别模型 {llm_id} 不允许删除"
+            logger.error(err)
+            raise ValueError(err)
+        
+        # 检查是否为当前用户的模型
+        if llm_config.get("user_sub") != user_sub:
+            err = f"[LLMManager] 无权限删除模型 {llm_id}"
+            logger.error(err)
+            raise ValueError(err)
+
+        conv_dict = await conv_collection.find_one({"llm.llm_id": llm_id, "user_sub": user_sub})
+        if conv_dict:
+            # 获取系统默认模型信息
+            config = Config().get_config()
+            system_llm = await llm_collection.find_one({
+                "user_sub": "",
+                "type": "chat",
+                "model_name": config.llm.model
+            })
+            
+            if not system_llm:
+                # 如果系统模型不存在，创建它
+                await LLMManager.init_system_chat_model()
+                system_llm = await llm_collection.find_one({
+                    "user_sub": "",
+                    "type": "chat", 
+                    "model_name": config.llm.model
+                })
+            
+            await conv_collection.update_many(
+                {"_id": conv_dict["_id"], "user_sub": user_sub},
+                {"$set": {"llm": {
+                    "llm_id": str(system_llm["_id"]),
+                    "icon": system_llm["icon"],
+                    "model_name": system_llm["model_name"],
+                }}},
+            )
+
         await llm_collection.delete_one({"_id": llm_id, "user_sub": user_sub})
         return llm_id
 
@@ -212,22 +300,47 @@ class LLMManager:
         conv_collection = mongo.get_collection("conversation")
         llm_collection = mongo.get_collection("llm")
 
-        if llm_id != "empty":
-            llm_dict = await llm_collection.find_one({"_id": llm_id, "user_sub": user_sub})
+        # 如果llm_id为空，则使用系统默认chat模型
+        if not llm_id:
+            # 查找系统默认chat模型
+            config = Config().get_config()
+            system_llm = await llm_collection.find_one({
+                "user_sub": "",
+                "type": "chat",
+                "model_name": config.llm.model
+            })
+            
+            if not system_llm:
+                # 如果系统模型不存在，创建它
+                await LLMManager.init_system_chat_model()
+                system_llm = await llm_collection.find_one({
+                    "user_sub": "",
+                    "type": "chat", 
+                    "model_name": config.llm.model
+                })
+            
+            llm_dict = {
+                "llm_id": str(system_llm["_id"]),
+                "model_name": system_llm["model_name"],
+                "icon": system_llm["icon"],
+            }
+            llm_id = str(system_llm["_id"])  # 更新llm_id为实际的UUID
+        else:
+            # 查找用户模型或系统模型
+            llm_dict = await llm_collection.find_one({
+                "$and": [
+                    {"_id": llm_id},
+                    {"$or": [{"user_sub": user_sub}, {"user_sub": ""}]}
+                ]
+            })
             if not llm_dict:
                 err = f"[LLMManager] LLM {llm_id} 不存在"
                 logger.error(err)
                 raise ValueError(err)
             llm_dict = {
-                "llm_id": llm_dict["_id"],
+                "llm_id": str(llm_dict["_id"]),
                 "model_name": llm_dict["model_name"],
                 "icon": llm_dict["icon"],
-            }
-        else:
-            llm_dict = {
-                "llm_id": "empty",
-                "model_name": Config().get_config().llm.model,
-                "icon": llm_provider_dict["ollama"]["icon"],
             }
         conv_dict = await conv_collection.find_one({"_id": conversation_id, "user_sub": user_sub})
         if not conv_dict:
@@ -245,3 +358,252 @@ class LLMManager:
             {"$set": {"llm": llm_item.model_dump(by_alias=True)}},
         )
         return conversation_id
+
+    @staticmethod
+    async def list_embedding_models(user_sub: str = "") -> list[LLMProviderInfo]:
+        """
+        获取embedding模型列表
+        
+        :param user_sub: 用户ID，为空时返回系统级别的模型
+        :return: embedding模型列表
+        """
+        mongo = MongoDB()
+        llm_collection = mongo.get_collection("llm")
+        
+        query = {"type": "embedding", "user_sub": user_sub}
+        
+        result = await llm_collection.find(query).sort({"created_at": 1}).to_list(length=None)
+        
+        llm_list = []
+        for llm in result:
+            llm_item = LLMProviderInfo(
+                llmId=str(llm["_id"]),  # 转换ObjectId为字符串
+                icon=llm["icon"],
+                openaiBaseUrl=llm["openai_base_url"],
+                openaiApiKey=llm["openai_api_key"],
+                modelName=llm["model_name"],
+                maxTokens=llm["max_tokens"],
+                isEditable=bool(llm.get("user_sub")),  # 有user_sub的是用户创建的，可编辑
+                type="embedding",
+            )
+            llm_list.append(llm_item)
+        return llm_list
+
+    @staticmethod
+    async def list_all_embedding_models(user_sub: str) -> list[LLMProviderInfo]:
+        """
+        获取用户可访问的所有embedding模型列表（包括系统模型和用户模型）
+        
+        :param user_sub: 用户ID
+        :return: embedding模型列表
+        """
+        mongo = MongoDB()
+        llm_collection = mongo.get_collection("llm")
+        
+        # 使用$or查询同时获取系统模型和用户模型
+        query = {
+            "type": "embedding",
+            "$or": [{"user_sub": ""}, {"user_sub": user_sub}]
+        }
+        
+        result = await llm_collection.find(query).sort({"created_at": 1}).to_list(length=None)
+        
+        llm_list = []
+        for llm in result:
+            llm_item = LLMProviderInfo(
+                llmId=str(llm["_id"]),  # 转换ObjectId为字符串
+                icon=llm["icon"],
+                openaiBaseUrl=llm["openai_base_url"],
+                openaiApiKey=llm["openai_api_key"],
+                modelName=llm["model_name"],
+                maxTokens=llm["max_tokens"],
+                isEditable=bool(llm.get("user_sub")),  # 系统模型（user_sub=""）不可编辑
+                type="embedding",
+            )
+            llm_list.append(llm_item)
+        return llm_list
+
+    @staticmethod
+    async def list_reranker_models(user_sub: str = "") -> list[LLMProviderInfo]:
+        """
+        获取reranker模型列表
+        
+        :param user_sub: 用户ID，为空时返回系统级别的模型
+        :return: reranker模型列表
+        """
+        mongo = MongoDB()
+        llm_collection = mongo.get_collection("llm")
+        
+        query = {"type": "reranker", "user_sub": user_sub}
+        
+        result = await llm_collection.find(query).sort({"created_at": 1}).to_list(length=None)
+        
+        llm_list = []
+        for llm in result:
+            llm_item = LLMProviderInfo(
+                llmId=str(llm["_id"]),  # 转换ObjectId为字符串
+                icon=llm["icon"],
+                openaiBaseUrl=llm["openai_base_url"],
+                openaiApiKey=llm["openai_api_key"],
+                modelName=llm["model_name"],
+                maxTokens=llm["max_tokens"],
+                isEditable=bool(llm.get("user_sub")),  # 有user_sub的是用户创建的，可编辑
+                type="reranker",
+            )
+            llm_list.append(llm_item)
+        return llm_list
+
+    @staticmethod
+    async def list_all_reranker_models(user_sub: str) -> list[LLMProviderInfo]:
+        """
+        获取用户可访问的所有reranker模型列表（包括系统模型和用户模型）
+        
+        :param user_sub: 用户ID
+        :return: reranker模型列表
+        """
+        mongo = MongoDB()
+        llm_collection = mongo.get_collection("llm")
+        
+        # 使用$or查询同时获取系统模型和用户模型
+        query = {
+            "type": "reranker",
+            "$or": [{"user_sub": ""}, {"user_sub": user_sub}]
+        }
+        
+        result = await llm_collection.find(query).sort({"created_at": 1}).to_list(length=None)
+        
+        llm_list = []
+        for llm in result:
+            llm_item = LLMProviderInfo(
+                llmId=str(llm["_id"]),  # 转换ObjectId为字符串
+                icon=llm["icon"],
+                openaiBaseUrl=llm["openai_base_url"],
+                openaiApiKey=llm["openai_api_key"],
+                modelName=llm["model_name"],
+                maxTokens=llm["max_tokens"],
+                isEditable=bool(llm.get("user_sub")),  # 系统模型（user_sub=""）不可编辑
+                type="reranker",
+            )
+            llm_list.append(llm_item)
+        return llm_list
+
+    @staticmethod
+    async def init_system_chat_model():
+        """初始化系统级别的chat模型"""
+        config = Config().get_config()
+        mongo = MongoDB()
+        llm_collection = mongo.get_collection("llm")
+        
+        # 推断chat模型能力
+        provider = get_provider_from_endpoint(config.llm.endpoint) or config.llm.provider
+        model_info = model_registry.get_model_info(provider, config.llm.model)
+        
+        # 根据provider获取图标
+        provider_icon = llm_provider_dict.get(provider, {}).get("icon", "")
+        
+        # 创建系统chat模型
+        chat_llm = LLM(
+            user_sub="",  # 系统级别模型
+            title="System Chat Model",
+            icon=provider_icon,
+            openai_api_key=config.llm.key,
+            openai_base_url=config.llm.endpoint,
+            model_name=config.llm.model,
+            max_tokens=config.llm.max_tokens or (model_info.max_tokens_param if model_info else 8192),
+            type="chat",
+            provider=provider,
+            supports_thinking=model_info.supports_thinking if model_info else False,
+            can_toggle_thinking=model_info.can_toggle_thinking if model_info else False,
+            supports_function_calling=model_info.supports_function_calling if model_info else False,
+            supports_json_mode=model_info.supports_json_mode if model_info else False,
+            supports_structured_output=model_info.supports_structured_output if model_info else False,
+            max_tokens_param=model_info.max_tokens_param if model_info else None,
+            notes=model_info.notes if model_info else "",
+        )
+        
+        # 排除_id字段让MongoDB自动生成_id，避免冲突
+        insert_data = chat_llm.model_dump(exclude={"_id"})
+        await llm_collection.insert_one(insert_data)
+        logger.info(f"已初始化系统chat模型: {config.llm.model}")
+
+    @staticmethod
+    async def _init_system_model(model_type: str, model_config, title: str):
+        """
+        初始化系统模型的通用方法
+        
+        :param model_type: 模型类型 ('embedding' 或 'reranker')
+        :param model_config: 模型配置对象
+        :param title: 模型标题
+        """
+        mongo = MongoDB()
+        llm_collection = mongo.get_collection("llm")
+        
+        # 推断模型能力
+        provider = get_provider_from_endpoint(model_config.endpoint) or model_config.provider
+        model_info = model_registry.get_model_info(provider, model_config.model)
+        
+        # 根据provider获取图标，如果没有则使用配置文件中的图标
+        provider_icon = llm_provider_dict.get(provider, {}).get("icon", getattr(model_config, 'icon', ''))
+        
+        # 创建系统模型
+        system_llm = LLM(
+            user_sub="",  # 系统级别模型
+            title=title,
+            icon=provider_icon,
+            openai_base_url=model_config.endpoint,
+            openai_api_key=model_config.api_key,
+            model_name=model_config.model,
+            max_tokens=None,
+            type=model_type,
+            provider=provider,
+            supports_thinking=model_info.supports_thinking if model_info else False,
+            can_toggle_thinking=model_info.can_toggle_thinking if model_info else False,
+            supports_function_calling=model_info.supports_function_calling if model_info else True,
+            supports_json_mode=model_info.supports_json_mode if model_info else True,
+            supports_structured_output=model_info.supports_structured_output if model_info else False,
+            max_tokens_param=model_info.max_tokens_param if model_info else "max_tokens",
+            notes=model_info.notes if model_info else "",
+        )
+        
+        # 使用upsert模式：如果model_name已存在就更新，否则插入
+        filter_query = {
+            "user_sub": "",
+            "type": model_type,
+            "model_name": model_config.model
+        }
+        
+        # 排除id和_id字段以避免MongoDB的不可变_id字段错误
+        model_data = system_llm.model_dump(by_alias=True, exclude={"id", "_id"})
+        
+        # 使用update_one替代replace_one，更安全
+        result = await llm_collection.update_one(
+            filter_query,
+            {"$set": model_data},
+            upsert=True
+        )
+        
+        if result.upserted_id:
+            logger.info(f"[LLMManager] 创建系统{model_type}模型: {model_config.model}")
+        else:
+            logger.info(f"[LLMManager] 更新系统{model_type}模型: {model_config.model}")
+
+    @staticmethod
+    async def init_system_models():
+        """
+        初始化系统模型（从配置文件读取embedding和reranker配置并插入数据库）
+        """
+        config = Config().get_config()
+        
+        # 初始化embedding模型
+        await LLMManager._init_system_model(
+            "embedding", 
+            config.embedding, 
+            "System Embedding Model"
+        )
+        
+        # 初始化reranker模型
+        await LLMManager._init_system_model(
+            "reranker", 
+            config.reranker, 
+            "System Reranker Model"
+        )

@@ -57,6 +57,7 @@ class MCPHost(MCPBase):
         current_goal: str,
         task: Task,
         resoning_llm: ReasoningLLM = ReasoningLLM(),
+        enable_thinking: bool = False,
     ) -> dict[str, Any]:
         """填充工具参数"""
         # 更清晰的输入·指令，这样可以调用generate
@@ -68,7 +69,7 @@ class MCPHost(MCPBase):
             input_schema=mcp_tool.input_schema,
             background_info=await MCPHost.assemble_memory(task),
         )
-        result = await MCPHost.get_resoning_result(prompt, resoning_llm)
+        result = await MCPHost.get_resoning_result(prompt, resoning_llm, enable_thinking)
         # 使用JsonGenerator解析结果
         result = await MCPHost._parse_result(
             result,

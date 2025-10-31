@@ -10,6 +10,7 @@ from apps.common.config import Config
 from apps.constants import NEW_CHAT
 from apps.schemas.preferences import UserPreferences
 from apps.templates.generate_llm_operator_config import llm_provider_dict
+from typing import Literal
 
 
 class Blacklist(BaseModel):
@@ -77,6 +78,8 @@ class LLM(BaseModel):
     Collection: llm
     """
 
+    model_config = {"protected_namespaces": ()}
+
     id: str = Field(default_factory=lambda: str(uuid.uuid4()), alias="_id")
     user_sub: str = Field(default="", description="用户ID")
     title: str = Field(default=NEW_CHAT)
@@ -85,13 +88,27 @@ class LLM(BaseModel):
     openai_api_key: str = Field(default=Config().get_config().llm.key)
     model_name: str = Field(default=Config().get_config().llm.model)
     max_tokens: int | None = Field(default=Config().get_config().llm.max_tokens)
+    type: Literal['chat', 'image', 'video', 'speech', 'embedding', 'reranker'] = Field(default='chat', description="模型类型")
+    
+    # 模型能力字段
+    provider: str = Field(default="", description="模型提供商")
+    supports_thinking: bool = Field(default=False, description="是否支持思维链")
+    can_toggle_thinking: bool = Field(default=False, description="是否支持开关思维链（仅当supports_thinking=True时有效）")
+    supports_function_calling: bool = Field(default=True, description="是否支持函数调用")
+    supports_json_mode: bool = Field(default=True, description="是否支持JSON模式")
+    supports_structured_output: bool = Field(default=False, description="是否支持结构化输出")
+    max_tokens_param: str = Field(default="max_tokens", description="最大token参数名")
+    notes: str = Field(default="", description="备注信息")
+    
     created_at: float = Field(default_factory=lambda: round(datetime.now(tz=UTC).timestamp(), 3))
 
 
 class LLMItem(BaseModel):
     """大模型信息"""
 
-    llm_id: str = Field(default="empty")
+    model_config = {"protected_namespaces": ()}
+
+    llm_id: str = Field(default="")
     model_name: str = Field(default=Config().get_config().llm.model)
     icon: str = Field(default=llm_provider_dict["ollama"]["icon"])
 

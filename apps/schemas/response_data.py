@@ -99,8 +99,10 @@ class GetBlacklistQuestionRsp(ResponseData):
 class LLMIteam(BaseModel):
     """GET /api/conversation Result数据结构"""
 
+    model_config = {"protected_namespaces": ()}
+
     icon: str = Field(default=llm_provider_dict["ollama"]["icon"])
-    llm_id: str = Field(alias="llmId", default="empty")
+    llm_id: str = Field(alias="llmId", default="")
     model_name: str = Field(alias="modelName", default=Config().get_config().llm.model)
 
 
@@ -636,6 +638,8 @@ class ListLLMProviderRsp(ResponseData):
 class LLMProviderInfo(BaseModel):
     """LLM数据结构"""
 
+    model_config = {"protected_namespaces": ()}
+
     llm_id: str = Field(alias="llmId", description="LLM ID")
     icon: str = Field(default="", description="LLM图标", max_length=25536)
     openai_base_url: str = Field(
@@ -651,6 +655,17 @@ class LLMProviderInfo(BaseModel):
     model_name: str = Field(description="模型名称", alias="modelName")
     max_tokens: int | None = Field(default=None, description="最大token数", alias="maxTokens")
     is_editable: bool = Field(default=True, description="是否可编辑", alias="isEditable")
+    type: str = Field(default="chat", description="模型类型")
+
+    # 模型能力字段
+    provider: str = Field(default="", description="模型提供商")
+    supports_thinking: bool = Field(default=False, description="是否支持思维链", alias="supportsThinking")
+    can_toggle_thinking: bool = Field(default=False, description="是否支持开关思维链", alias="canToggleThinking")
+    supports_function_calling: bool = Field(default=True, description="是否支持函数调用", alias="supportsFunctionCalling")
+    supports_json_mode: bool = Field(default=True, description="是否支持JSON模式", alias="supportsJsonMode")
+    supports_structured_output: bool = Field(default=False, description="是否支持结构化输出", alias="supportsStructuredOutput")
+    max_tokens_param: str = Field(default="max_tokens", description="最大token参数名", alias="maxTokensParam")
+    notes: str = Field(default="", description="备注信息")
 
 
 class ListLLMRsp(ResponseData):

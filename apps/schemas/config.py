@@ -77,21 +77,19 @@ class LoginConfig(BaseModel):
 class EmbeddingConfig(BaseModel):
     """Embedding配置"""
 
-    type: str = Field(description="Embedding接口类型", default="openai")
+    provider: str = Field(description="Embedding提供商")
     endpoint: str = Field(description="Embedding模型地址")
     api_key: str = Field(description="Embedding模型API Key")
     model: str = Field(description="Embedding模型名称")
-    icon: str = Field(description="Embedding模型图标")
 
 
 class RerankerConfig(BaseModel):
     """Reranker配置"""
 
-    type: str = Field(description="Reranker接口类型", default="")
+    provider: str = Field(description="Reranker提供商")
     endpoint: str = Field(description="Reranker模型地址")
     api_key: str = Field(description="Reranker模型API Key")
     model: str = Field(description="Reranker模型名称")
-    icon: str = Field(description="Reranker模型图标")
 
 
 class RAGConfig(BaseModel):
@@ -142,6 +140,7 @@ class RedisConfig(BaseModel):
 class LLMConfig(BaseModel):
     """LLM配置"""
 
+    provider: str = Field(description="LLM提供商")
     key: str = Field(description="LLM API密钥")
     endpoint: str = Field(description="LLM API URL地址")
     model: str = Field(description="LLM API 模型名")

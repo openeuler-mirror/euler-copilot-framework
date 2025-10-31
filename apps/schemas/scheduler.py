@@ -50,6 +50,7 @@ class ExecutorBackground(BaseModel):
 
     conversation: list[dict[str, str]] = Field(description="对话记录")
     facts: list[str] = Field(description="当前Executor的背景信息")
+    enable_thinking: bool = Field(description="是否启用思维链", default=False)
 
 
 class CallError(Exception):

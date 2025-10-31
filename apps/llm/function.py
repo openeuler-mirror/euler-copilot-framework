@@ -15,6 +15,7 @@ from jsonschema import validate
 from apps.common.config import Config
 from apps.constants import JSON_GEN_MAX_TRIAL, REASONING_END_TOKEN
 from apps.llm.prompt import JSON_GEN_BASIC
+from apps.llm.adapters import AdapterFactory, get_provider_from_endpoint
 
 # 导入异常处理相关模块
 import openai
@@ -45,10 +46,14 @@ class FunctionLLM:
             logger.error(err_msg)
             raise ValueError(err_msg)
 
+        # 初始化适配器
+        self._provider = get_provider_from_endpoint(self._config.endpoint)
+        self._adapter = AdapterFactory.create_adapter(self._provider, self._config.model)
+        
         self._params = {
             "model": self._config.model,
             "messages": [],
-            "extra_body": {"enable_thinking": False}
+            "extra_body": {}
         }
         if self._config.backend != "ollama":
             self._params["timeout"] = 300
@@ -131,9 +136,12 @@ class FunctionLLM:
                 },
             ]
 
+        # 使用适配器调整参数，对于JSON生成任务禁用thinking以避免解析问题
+        adapted_params = self._adapter.adapt_create_params(self._params, enable_thinking=False)
+        
         try:
             # type: ignore[arg-type]
-            response = await self._client.chat.completions.create(**self._params)
+            response = await self._client.chat.completions.create(**adapted_params)
         except AuthenticationError as e:
             logger.error("[FunctionCall] API认证失败: %s", e)
             raise ValueError(f"API认证失败，请检查API密钥: {e}")

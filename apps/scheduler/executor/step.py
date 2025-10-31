@@ -135,6 +135,10 @@ class StepExecutor(BaseExecutor):
                 # 移除input_parameters，避免重复
                 params.pop("input_parameters", None)
 
+        # 对于LLM调用，注入enable_thinking参数
+        if self._call_id == "LLM" and hasattr(self.background, 'enable_thinking'):
+            params['enable_thinking'] = self.background.enable_thinking
+
         try:
             self.obj = await call_cls.instance(self, self.node, **params)
         except Exception:

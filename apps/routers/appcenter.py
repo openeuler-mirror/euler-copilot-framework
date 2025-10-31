@@ -232,8 +232,33 @@ async def get_application(
                 name=mcp_collection.name,
                 description=mcp_collection.description,
             ))
-    if app_data.llm_id == "empty":
-        llm_item = LLMIteam()
+    if not app_data.llm_id:
+        # 获取系统默认模型
+        from apps.common.mongo import MongoDB
+        from apps.common.config import Config
+        mongo = MongoDB()
+        llm_collection = mongo.get_collection("llm")
+        config = Config().get_config()
+        
+        system_llm = await llm_collection.find_one({
+            "user_sub": "",
+            "type": "chat",
+            "model_name": config.llm.model
+        })
+        
+        if not system_llm:
+            await LLMManager.init_system_chat_model()
+            system_llm = await llm_collection.find_one({
+                "user_sub": "",
+                "type": "chat", 
+                "model_name": config.llm.model
+            })
+        
+        llm_item = LLMIteam(
+            llmId=str(system_llm["_id"]),
+            modelName=system_llm["model_name"],
+            icon=system_llm["icon"]
+        )
     else:
         llm_collection = await LLMManager.get_llm_by_id(app_data.llm_id)
         llm_item = LLMIteam(

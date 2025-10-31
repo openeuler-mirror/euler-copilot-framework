@@ -55,9 +55,14 @@ spec:
               value: "Asia/Shanghai"
             - name: CONFIG
               value: "/app/config/config.toml"
+            - name: MODELS_CONFIG
+              value: "/app/config/models.conf"
           volumeMounts:
             - mountPath: /app/config
               name: framework-shared
+            - mountPath: /app/config/models.conf
+              name: framework-config
+              subPath: models.conf
             - mountPath: /tmp
               name: framework-tmp-volume
             - mountPath: /app/static

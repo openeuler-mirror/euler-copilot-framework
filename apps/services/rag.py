@@ -361,6 +361,7 @@ Please generate a detailed, well-structured, and clearly formatted answer based 
         """获取RAG服务的结果"""
         reasion_llm = ReasoningLLM(
             LLMConfig(
+                provider=llm.provider,
                 endpoint=llm.openai_base_url,
                 key=llm.openai_api_key,
                 model=llm.model_name,

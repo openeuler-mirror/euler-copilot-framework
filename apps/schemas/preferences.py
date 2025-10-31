@@ -7,7 +7,7 @@ from pydantic import BaseModel, Field
 class ReasoningModelPreference(BaseModel):
     """推理模型偏好设置"""
     
-    model_config = {"populate_by_name": True}
+    model_config = {"populate_by_name": True, "protected_namespaces": ()}
     
     llm_id: str = Field(alias="llmId", description="模型ID")
     icon: str = Field(default="", description="模型图标")
@@ -21,7 +21,7 @@ class ReasoningModelPreference(BaseModel):
 class EmbeddingModelPreference(BaseModel):
     """嵌入模型偏好设置"""
     
-    model_config = {"populate_by_name": True}
+    model_config = {"populate_by_name": True, "protected_namespaces": ()}
     
     llm_id: str = Field(alias="llmId", description="模型ID")
     model_name: str = Field(alias="modelName", description="模型名称")
@@ -34,7 +34,7 @@ class EmbeddingModelPreference(BaseModel):
 class RerankerModelPreference(BaseModel):
     """重排序模型偏好设置"""
     
-    model_config = {"populate_by_name": True}
+    model_config = {"populate_by_name": True, "protected_namespaces": ()}
     
     llm_id: str = Field(alias="llmId", description="模型ID")
     model_name: str = Field(alias="modelName", description="模型名称")
@@ -49,7 +49,7 @@ class RerankerModelPreference(BaseModel):
 class UserPreferences(BaseModel):
     """用户偏好设置"""
     
-    model_config = {"populate_by_name": True}
+    model_config = {"populate_by_name": True, "protected_namespaces": ()}
 
     reasoning_model_preference: ReasoningModelPreference | None = Field(
         default=None, 
@@ -70,4 +70,9 @@ class UserPreferences(BaseModel):
         default=True, 
         description="思维链偏好", 
         alias="chainOfThoughtPreference"
+    )
+    auto_execute_preference: bool = Field(
+        default=False,
+        description="自动执行偏好",
+        alias="autoExecutePreference"
     )

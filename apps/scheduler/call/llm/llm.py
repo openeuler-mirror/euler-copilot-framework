@@ -34,6 +34,7 @@ class LLM(CoreCall, input_model=LLMInput, output_model=LLMOutput):
     # 大模型参数
     temperature: float = Field(description="大模型温度（随机化程度）", default=0.7)
     enable_context: bool = Field(description="是否启用上下文", default=True)
+    enable_thinking: bool = Field(description="是否启用思维链", default=False)
     step_history_size: int = Field(
         description="上下文信息中包含的步骤历史数量", default=3, ge=1, le=10)
     system_prompt: str = Field(
@@ -116,7 +117,7 @@ class LLM(CoreCall, input_model=LLMInput, output_model=LLMOutput):
         data = LLMInput(**input_data)
         try:
             llm = ReasoningLLM()
-            async for chunk in llm.call(messages=data.message, enable_thinking=True):
+            async for chunk in llm.call(messages=data.message, enable_thinking=self.enable_thinking):
                 if not chunk:
                     continue
                 yield CallOutputChunk(type=CallOutputType.TEXT, content=chunk)
