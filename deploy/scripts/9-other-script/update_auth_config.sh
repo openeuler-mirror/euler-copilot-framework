@@ -162,45 +162,59 @@ update_authelia_oidc_config() {
 }
 
 # 验证配置
+# 验证配置
 validate_config() {
     echo -e "${BLUE}==> 验证配置...${NC}"
     
     local errors=0
+    local warnings=0
     
-    # 检查必要的配置项
-    if ! grep -q "euler_copilot: http" "$VALUES_FILE"; then
-        echo -e "${RED}错误：euler_copilot域名未配置${NC}"
-        errors=$((errors + 1))
+    # 检查euler_copilot域名配置 - 改为警告而不是错误
+    if ! grep -q "euler_copilot:" "$VALUES_FILE" || grep -q "euler_copilot: \"\"" "$VALUES_FILE" || grep -q "euler_copilot: http://127.0.0.1" "$VALUES_FILE"; then
+        echo -e "${YELLOW}警告：euler_copilot域名未配置或使用默认值，将在部署EulerCopilot时自动配置${NC}"
+        warnings=$((warnings + 1))
     fi
     
     # 检查登录提供者配置
     local provider
-    provider=$(grep "provider:" "$VALUES_FILE" | head -1 | sed 's/.*provider: *//' | tr -d '"')
+    provider=$(grep "provider:" "$VALUES_FILE" | head -1 | sed 's/.*provider: *//' | tr -d ' "')
     
-    case "$provider" in
-        "authhub")
-            if grep -q "authhub:$" "$VALUES_FILE"; then
-                echo -e "${YELLOW}警告：使用authhub但未配置authhub域名，将使用自动构建的地址${NC}"
-            fi
-            ;;
-        "authelia")
-            if grep -q "authelia:$" "$VALUES_FILE"; then
-                echo -e "${YELLOW}警告：使用authelia但未配置authelia域名，将使用自动构建的地址${NC}"
-            fi
-            if grep -q "client_secret: your-client-secret-here" "$VALUES_FILE"; then
-                echo -e "${RED}错误：Authelia客户端密钥未更新${NC}"
+    if [[ -z "$provider" ]]; then
+        echo -e "${YELLOW}警告：登录提供者未配置，将在部署EulerCopilot时自动设置${NC}"
+        warnings=$((warnings + 1))
+    else
+        case "$provider" in
+            "authhub")
+                if ! grep -q "authhub:" "$VALUES_FILE" || grep -q "authhub: \"\"" "$VALUES_FILE"; then
+                    echo -e "${YELLOW}警告：使用authhub但未配置authhub域名，将使用自动构建的地址${NC}"
+                    warnings=$((warnings + 1))
+                fi
+                ;;
+            "authelia")
+                if ! grep -q "authelia:" "$VALUES_FILE" || grep -q "authelia: \"\"" "$VALUES_FILE"; then
+                    echo -e "${YELLOW}警告：使用authelia但未配置authelia域名，将使用自动构建的地址${NC}"
+                    warnings=$((warnings + 1))
+                fi
+                if grep -q "client_secret: your-client-secret-here" "$VALUES_FILE"; then
+                    echo -e "${YELLOW}警告：Authelia客户端密钥未更新，将在部署时自动生成${NC}"
+                    warnings=$((warnings + 1))
+                fi
+                ;;
+            *)
+                echo -e "${RED}错误：未知的登录提供者: $provider${NC}"
                 errors=$((errors + 1))
-            fi
-            ;;
-        *)
-            echo -e "${RED}错误：未知的登录提供者: $provider${NC}"
-            errors=$((errors + 1))
-            ;;
-    esac
+                ;;
+        esac
+    fi
     
     if [[ $errors -eq 0 ]]; then
-        echo -e "${GREEN}配置验证通过${NC}"
-        return 0
+        if [[ $warnings -eq 0 ]]; then
+            echo -e "${GREEN}配置验证通过${NC}"
+            return 0
+        else
+            echo -e "${YELLOW}配置验证完成，发现 $warnings 个警告（不影响基础部署）${NC}"
+            return 0
+        fi
     else
         echo -e "${RED}发现 $errors 个配置错误${NC}"
         return 1
