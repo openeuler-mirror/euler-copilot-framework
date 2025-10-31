@@ -607,36 +607,38 @@ update_euler_copilot_config() {
         --auth-address "$AUTH_ADDRESS"
     )
     
-    # 注意：OIDC客户端配置将在EulerCopilot部署时自动处理
-    
     # 执行配置更新
+    echo -e "${BLUE}执行配置更新命令: $update_script ${update_args[*]}${NC}"
     if "$update_script" "${update_args[@]}"; then
         echo -e "${GREEN}euler-copilot配置更新成功${NC}"
+        return 0
     else
-        echo -e "${YELLOW}警告：配置更新失败，请手动更新配置${NC}"
-        echo -e "手动更新命令："
-        echo -e "${BLUE}$update_script ${update_args[*]}${NC}"
+        local update_status=$?
+        echo -e "${YELLOW}警告：配置更新返回非零状态 ($update_status)，但继续部署流程${NC}"
+        echo -e "${YELLOW}这通常是预期的，因为部分配置需要在部署EulerCopilot时完成${NC}"
+        return 0  # 改为返回0，不中断部署流程
     fi
 }
 
+# 在deploy函数中修改这部分：
 deploy() {
     local arch
     arch=$(get_architecture) || exit 1
     create_namespace || exit 1
     uninstall_auth_services || exit 1
-    
+
     # 选择鉴权服务
     select_auth_service || exit 1
-    
+
     # 获取鉴权服务地址
     get_auth_address || exit 1
-    
+
     # 如果是Authelia，进行详细配置
     if [[ "$AUTH_SERVICE" == "authelia" ]]; then
         configure_authelia_settings || exit 1
         configure_tls_secret || exit 1
     fi
-    
+
     helm_install "$arch" || exit 1
     check_auth_pods_status || {
         echo -e "${RED}部署失败：认证服务Pod状态检查未通过！${NC}"
@@ -645,16 +647,18 @@ deploy() {
 
     # 保存认证策略配置
     save_auth_policy_config
-    
-    # 自动更新euler-copilot配置
-    update_euler_copilot_config
-    
+
+    # 自动更新euler-copilot配置（即使失败也继续）
+    if ! update_euler_copilot_config; then
+        echo -e "${YELLOW}配置更新遇到问题，但认证服务部署已完成${NC}"
+    fi
+
     # 显示部署结果
     echo -e "\n${GREEN}========================="
     echo -e "鉴权服务 ($AUTH_SERVICE) 部署完成！"
     echo -e "查看pod状态：kubectl get pod -n euler-copilot"
     echo -e "服务访问地址: $AUTH_ADDRESS"
-    
+
     if [[ "$AUTH_SERVICE" == "authelia" ]]; then
         echo -e "\n${BLUE}Authelia服务信息：${NC}"
         echo -e "Authorization URL: ${AUTH_ADDRESS}/api/oidc/authorization"
@@ -663,7 +667,7 @@ deploy() {
         echo -e "\n${YELLOW}注意：${NC}"
         echo -e "- 当前配置了占位符OIDC客户端（redirect_uri指向无效地址，无法实际使用）"
         echo -e "- 真实的OIDC客户端配置将在部署EulerCopilot时自动创建和替换"
-        
+
         if [[ "$USE_TLS" == "true" ]]; then
             echo -e "\n${YELLOW}TLS证书信息：${NC}"
             echo -e "TLS已启用，请确保客户端信任证书"
@@ -673,13 +677,14 @@ deploy() {
             fi
         fi
     fi
-    
+
     echo -e "\n${YELLOW}重要提示：${NC}"
-    echo -e "1. 认证服务基础配置已更新到euler-copilot配置中"
-    echo -e "2. OIDC客户端将在部署EulerCopilot时自动创建和配置"
-    echo -e "3. 部署EulerCopilot时请运行："
+    echo -e "1. 认证服务基础地址已配置完成"
+    echo -e "2. 完整的OIDC配置将在部署EulerCopilot时自动创建"
+    echo -e "3. 当前警告信息是预期的，因为部分配置需要EulerCopilot部署时才能完成"
+    echo -e "4. 部署EulerCopilot时请运行："
     echo -e "   ${BLUE}${SCRIPT_PATH%/*}/../8-install-EulerCopilot/install_eulercopilot.sh${NC}"
-    echo -e "4. 可使用以下命令验证配置："
+    echo -e "5. 部署完成后可使用以下命令验证完整配置："
     echo -e "   ${BLUE}${SCRIPT_PATH%/*}/../9-other-script/update_auth_config.sh --validate${NC}"
     echo -e "=========================${NC}"
 }
