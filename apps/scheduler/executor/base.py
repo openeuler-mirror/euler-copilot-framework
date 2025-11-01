@@ -45,11 +45,17 @@ class BaseExecutor(BaseModel, ABC):
         :param data: 消息数据，如果是FLOW_START事件且data为None，则自动构建FlowStartContent
         """        
         if event_type == EventType.TEXT_ADD.value and isinstance(data, str):
+            # 处理空字符串的情况，避免TextAddContent验证失败
+            if not data:
+                data = " "  # 使用一个空格作为占位符
             data = TextAddContent(text=data).model_dump(exclude_none=True, by_alias=True)
 
         if data is None:
             data = {}
         elif isinstance(data, str):
+            # 处理空字符串的情况，避免TextAddContent验证失败
+            if not data:
+                data = " "  # 使用一个空格作为占位符
             data = TextAddContent(text=data).model_dump(exclude_none=True, by_alias=True)
 
         logger.info(f"[BaseExecutor] 调用msg_queue.push_output - event_type: {event_type}")

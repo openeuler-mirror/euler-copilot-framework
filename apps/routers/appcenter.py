@@ -281,6 +281,7 @@ async def get_application(
                 links=app_data.links,
                 recommendedQuestions=app_data.first_questions,
                 dialogRounds=app_data.history_len,
+                enableThinking=app_data.enable_thinking,
                 permission=AppPermissionData(
                     visibility=app_data.permission.type,
                     authorizedUsers=app_data.permission.users,

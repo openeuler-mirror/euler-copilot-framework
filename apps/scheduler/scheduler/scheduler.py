@@ -228,6 +228,7 @@ class Scheduler:
         if not app_metadata:
             logger.error("[Scheduler] 未找到Agent应用")
             return
+        logger.info(f"[Scheduler] 应用配置的模型ID: {app_metadata.llm_id}, 启用思维链: {app_metadata.enable_thinking if hasattr(app_metadata, 'enable_thinking') else 'N/A'}")
         if not app_metadata.llm_id or app_metadata.llm_id == "empty":
             # 获取系统默认模型
             llm_collection = MongoDB().get_collection("llm")
@@ -265,11 +266,17 @@ class Scheduler:
         )
         if background.conversation and self.task.state.flow_status == FlowStatus.INIT:
             try:
-                question_obj = QuestionRewrite()
+                # 使用应用配置的模型进行问题改写
+                llm_id_for_rewrite = app_metadata.llm_id if hasattr(app_metadata, 'llm_id') and app_metadata.llm_id != "empty" else None
+                enable_thinking_for_rewrite = app_metadata.enable_thinking if hasattr(app_metadata, 'enable_thinking') else False
+                
+                question_obj = QuestionRewrite(
+                    llm_id=llm_id_for_rewrite,
+                    enable_thinking=enable_thinking_for_rewrite,
+                )
                 post_body.question = await question_obj.generate(
                     history=background.conversation,
                     question=post_body.question,
-                    llm=reasion_llm,
                     language=post_body.language,
                 )
             except Exception:
@@ -312,7 +319,8 @@ class Scheduler:
                 msg_queue=queue,
                 question=post_body.question,
                 post_body_app=app_info,
-                enable_thinking=post_body.enable_thinking,
+                enable_thinking=app_metadata.enable_thinking if hasattr(app_metadata, 'enable_thinking') else False,
+                llm_id=app_metadata.llm_id if hasattr(app_metadata, 'llm_id') and app_metadata.llm_id != "empty" else None,
                 background=background,
             )
 

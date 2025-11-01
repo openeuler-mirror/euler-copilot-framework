@@ -64,6 +64,7 @@ class FlowExecutor(BaseExecutor):
     question: str = Field(description="用户输入")
     post_body_app: RequestDataApp = Field(description="请求体中的app信息")
     enable_thinking: bool = Field(description="是否启用思维链", default=False)
+    llm_id: str | None = Field(description="应用配置的模型ID", default=None)
     current_step: StepQueueItem | None = Field(
         description="当前执行的步骤",
         default=None
@@ -225,10 +226,18 @@ class FlowExecutor(BaseExecutor):
 
         # 头插开始前的系统步骤，并执行
         for step in FIXED_STEPS_BEFORE_START:
+            # 为系统步骤添加应用配置的模型信息
+            step_data = step.get(self.task.language, step[LanguageType.CHINESE])
+            # 将llm_id和enable_thinking添加到step的params中
+            step_data_with_params = step_data.model_copy()
+            step_data_with_params.params = {
+                "llm_id": self.llm_id,
+                "enable_thinking": self.enable_thinking,
+            }
             self.step_queue.append(
                 StepQueueItem(
                     step_id=str(uuid.uuid4()),
-                    step=step.get(self.task.language, step[LanguageType.CHINESE]),
+                    step=step_data_with_params,
                     enable_filling=False,
                     to_user=False,
                 )
@@ -313,10 +322,18 @@ class FlowExecutor(BaseExecutor):
 
         # 尾插运行结束后的系统步骤
         for step in FIXED_STEPS_AFTER_END:
+            # 为系统步骤添加应用配置的模型信息
+            step_data = step.get(self.task.language, step[LanguageType.CHINESE])
+            # 将llm_id和enable_thinking添加到step的params中
+            step_data_with_params = step_data.model_copy()
+            step_data_with_params.params = {
+                "llm_id": self.llm_id,
+                "enable_thinking": self.enable_thinking,
+            }
             self.step_queue.append(
                 StepQueueItem(
                     step_id=str(uuid.uuid4()),
-                    step=step.get(self.task.language, step[LanguageType.CHINESE]),
+                    step=step_data_with_params,
                 )
             )
         await self._step_process()

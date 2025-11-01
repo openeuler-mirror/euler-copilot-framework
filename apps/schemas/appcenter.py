@@ -63,7 +63,7 @@ class AppData(BaseModel):
         default=[], alias="recommendedQuestions", description="推荐问题", max_length=3)
     history_len: int = Field(3, alias="dialogRounds", ge=1, le=10, description="对话轮次（1～10）")
     llm: str = Field(default="", description="大模型ID")
-    enable_thinking: bool = Field(default=True, alias="enableThinking", description="是否启用思维链")
+    enable_thinking: bool = Field(default=False, alias="enableThinking", description="是否启用思维链")
     permission: AppPermissionData = Field(
         default_factory=lambda: AppPermissionData(authorizedUsers=None), description="权限配置")
     workflows: list[AppFlowInfo] = Field(default=[], description="工作流信息列表")

@@ -180,12 +180,25 @@ class ExecutorSummary(CorePattern):
         self,
         system_prompt: dict[LanguageType, str] | None = None,
         user_prompt: dict[LanguageType, str] | None = None,
+        llm_id: str | None = None,
+        enable_thinking: bool = False,
     ) -> None:
-        """初始化Background模式"""
+        """初始化Background模式
+        
+        :param system_prompt: 系统提示词
+        :param user_prompt: 用户提示词
+        :param llm_id: 大模型ID，如果为None则使用系统默认模型
+        :param enable_thinking: 是否启用思维链
+        """
         super().__init__(system_prompt, user_prompt)
+        self.llm_id = llm_id
+        self.enable_thinking = enable_thinking
 
     async def generate(self, **kwargs) -> str:  # noqa: ANN003
         """进行初始背景生成"""
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.info(f"[ExecutorSummary] 初始化参数 - llm_id: {self.llm_id}, enable_thinking: {self.enable_thinking}")
         background: ExecutorBackground = kwargs["background"]
         conversation_str = convert_context_to_prompt(background.conversation)
         facts_str = facts_to_prompt(background.facts)
@@ -203,8 +216,38 @@ class ExecutorSummary(CorePattern):
         ]
 
         result = ""
-        llm = ReasoningLLM()
-        async for chunk in llm.call(messages, streaming=False, temperature=0.7):
+        
+        # 根据llm_id获取模型配置
+        llm_config = None
+        if self.llm_id:
+            from apps.services.llm import LLMManager
+            from apps.llm.adapters import get_provider_from_endpoint
+            from apps.schemas.config import LLMConfig
+            
+            llm_info = await LLMManager.get_llm_by_id(self.llm_id)
+            logger.info(f"[ExecutorSummary] 根据llm_id获取模型信息: {llm_info.model_name if llm_info else 'None'}")
+            if llm_info:
+                # 获取provider，如果没有则从endpoint推断
+                provider = llm_info.provider or get_provider_from_endpoint(llm_info.openai_base_url)
+                
+                llm_config = LLMConfig(
+                    provider=provider,
+                    endpoint=llm_info.openai_base_url,
+                    key=llm_info.openai_api_key,
+                    model=llm_info.model_name,
+                    max_tokens=llm_info.max_tokens,
+                    temperature=0.7,
+                )
+        
+        # 初始化LLM客户端
+        llm = ReasoningLLM(llm_config) if llm_config else ReasoningLLM()
+        
+        async for chunk in llm.call(
+            messages, 
+            streaming=False, 
+            temperature=0.7,
+            enable_thinking=self.enable_thinking
+        ):
             result += chunk
         self.input_tokens = llm.input_tokens
         self.output_tokens = llm.output_tokens

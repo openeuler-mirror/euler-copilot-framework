@@ -213,3 +213,20 @@ async def get_reranker_config(
             result=result,
         ).model_dump(exclude_none=True, by_alias=True),
     )
+
+
+@router.get("/capabilities", response_model=ResponseData)
+async def get_llm_capabilities(
+    user_sub: Annotated[str, Depends(get_user)],
+    llm_id: Annotated[str, Query(description="大模型ID", alias="llmId")]
+) -> JSONResponse:
+    """获取指定模型支持的参数配置项"""
+    capabilities = await LLMManager.get_model_capabilities(user_sub, llm_id)
+    return JSONResponse(
+        status_code=status.HTTP_200_OK,
+        content=ResponseData(
+            code=status.HTTP_200_OK,
+            message="success",
+            result=capabilities,
+        ).model_dump(exclude_none=True, by_alias=True),
+    )
