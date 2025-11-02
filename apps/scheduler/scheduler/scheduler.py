@@ -74,29 +74,37 @@ class Scheduler:
     async def get_llm_use_in_chat_with_rag(self) -> LLM:
         """获取RAG大模型"""
         try:
-            # 获取当前会话使用的大模型
-            llm_id = await LLMManager.get_llm_id_by_conversation_id(
-                self.task.ids.user_sub, self.task.ids.conversation_id,
-            )
+            # 🔑 优先使用请求中指定的模型ID
+            llm_id = None
+            if self.post_body.llm_id:
+                llm_id = self.post_body.llm_id
+                logger.info(f"[Scheduler] 使用请求中指定的模型ID: {llm_id}")
+            else:
+                # 如果请求中没有指定，则从对话记录中获取
+                llm_id = await LLMManager.get_llm_id_by_conversation_id(
+                    self.task.ids.user_sub, self.task.ids.conversation_id,
+                )
+                logger.info(f"[Scheduler] 使用对话记录中的模型ID: {llm_id}")
+            
             if not llm_id:
                 logger.error("[Scheduler] 获取大模型ID失败")
                 return None
-            if llm_id == "empty":
-                llm = LLM(
-                    _id="empty",
-                    user_sub=self.task.ids.user_sub,
-                    openai_base_url=Config().get_config().llm.endpoint,
-                    openai_api_key=Config().get_config().llm.key,
-                    model_name=Config().get_config().llm.model,
-                    max_tokens=Config().get_config().llm.max_tokens,
-                )
-                return llm
-            else:
+            
+            # 首先尝试通过用户ID和LLM ID查找
+            try:
                 llm = await LLMManager.get_llm_by_user_sub_and_id(self.task.ids.user_sub, llm_id)
-                if not llm:
-                    logger.error("[Scheduler] 获取大模型失败")
-                    return None
-                return llm
+            except ValueError:
+                # 如果用户级别的LLM不存在，尝试查找系统级别的LLM
+                logger.info(f"[Scheduler] 用户级别LLM {llm_id} 不存在，尝试查找系统级别LLM")
+                try:
+                    llm = await LLMManager.get_llm_by_id(llm_id)
+                except ValueError:
+                    logger.error(f"[Scheduler] 系统级别LLM {llm_id} 也不存在")
+                    llm = None
+            if not llm:
+                logger.error("[Scheduler] 获取大模型失败")
+                return None
+            return llm
         except Exception:
             logger.exception("[Scheduler] 获取大模型失败")
             return None
@@ -172,6 +180,7 @@ class Scheduler:
             executor_background = ExecutorBackground(
                 conversation=context,
                 facts=facts,
+                enable_thinking=self.post_body.enable_thinking,
             )
 
             # 启动监控任务和主任务
@@ -219,15 +228,26 @@ class Scheduler:
         if not app_metadata:
             logger.error("[Scheduler] 未找到Agent应用")
             return
-        if app_metadata.llm_id == "empty":
-            llm = LLM(
-                _id="empty",
-                user_sub=self.task.ids.user_sub,
-                openai_base_url=Config().get_config().llm.endpoint,
-                openai_api_key=Config().get_config().llm.key,
-                model_name=Config().get_config().llm.model,
-                max_tokens=Config().get_config().llm.max_tokens,
-            )
+        if not app_metadata.llm_id or app_metadata.llm_id == "empty":
+            # 获取系统默认模型
+            llm_collection = MongoDB().get_collection("llm")
+            config = Config().get_config()
+            
+            system_llm = await llm_collection.find_one({
+                "user_sub": "",
+                "type": "chat",
+                "model_name": config.llm.model
+            })
+            
+            if not system_llm:
+                await LLMManager.init_system_chat_model()
+                system_llm = await llm_collection.find_one({
+                    "user_sub": "",
+                    "type": "chat", 
+                    "model_name": config.llm.model
+                })
+            
+            llm = LLM.model_validate(system_llm)
         else:
             llm = await LLMManager.get_llm_by_id(app_metadata.llm_id)
         if not llm:
@@ -236,6 +256,7 @@ class Scheduler:
             return
         reasion_llm = ReasoningLLM(
             LLMConfig(
+                provider=llm.provider,
                 endpoint=llm.openai_base_url,
                 key=llm.openai_api_key,
                 model=llm.model_name,
@@ -291,6 +312,7 @@ class Scheduler:
                 msg_queue=queue,
                 question=post_body.question,
                 post_body_app=app_info,
+                enable_thinking=post_body.enable_thinking,
                 background=background,
             )
 
@@ -311,7 +333,10 @@ class Scheduler:
                 servers_id=servers_id,
                 background=background,
                 agent_id=app_info.app_id,
-                params=post_body.params
+                params=post_body.params,
+                enable_thinking=app_metadata.enable_thinking,
+                resoning_llm=reasion_llm,
+                auto_execute=post_body.auto_execute
             )
             # 开始运行
             logger.info("[Scheduler] 运行Executor")

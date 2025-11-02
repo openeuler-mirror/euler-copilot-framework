@@ -11,6 +11,12 @@ llm_provider_dict={
         "description":"百川大模型平台",
         "icon":"",
     },
+    "siliconflow":{
+        "provider":"siliconflow",
+        "url":"https://api.siliconflow.cn/v1",
+        "description":"硅基流动",
+        "icon":"",
+    },
     "modelscope":{
         "provider":"modelscope",
         "url":None,
@@ -45,6 +51,12 @@ llm_provider_dict={
         "provider":"vllm",
         "url":None,
         "description":"基于VLLM部署的本地大模型服务",
+        "icon":"",
+    },
+    "mindie":{
+        "provider":"mindie",
+        "url":None,
+        "description":"基于MindIE部署的本地大模型服务",
         "icon":"",
     },
     "wenxin":{

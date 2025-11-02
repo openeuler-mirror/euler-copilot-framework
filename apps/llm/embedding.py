@@ -78,13 +78,12 @@ class Embedding:
         :return: 文本对应的向量（顺序与text一致，也为List）
         """
         try:
-            if Config().get_config().embedding.type == "openai":
-                return await cls._get_openai_embedding(text)
-            if Config().get_config().embedding.type == "mindie":
+            _provider = Config().get_config().embedding.provider
+            if _provider == "mindie":
                 return await cls._get_tei_embedding(text)
+            else:
+                return await cls._get_openai_embedding(text)
 
-            err = f"不支持的Embedding API类型: {Config().get_config().embedding.type}"
-            raise ValueError(err)
         except Exception as e:
             err = f"获取Embedding失败: {e}"
             logger.error(err)

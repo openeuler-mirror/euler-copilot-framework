@@ -1,0 +1,14 @@
+<svg height="1em" style="flex:none;line-height:1" viewBox="0 0 24 24" width="1em" xmlns="http://www.w3.org/2000/svg">
+  <title>Mindie</title>
+  <defs>
+    <linearGradient id="mindie-gradient" x1="0%" x2="100%" y1="0%" y2="100%">
+      <stop offset="0%" stop-color="#4F46E5" stop-opacity="1"></stop>
+      <stop offset="100%" stop-color="#7C3AED" stop-opacity="1"></stop>
+    </linearGradient>
+  </defs>
+  <g>
+    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z" fill="url(#mindie-gradient)"/>
+    <path d="M8 8h2v8H8zm3 0h2v8h-2zm3 0h2v8h-2z" fill="url(#mindie-gradient)" opacity="0.8"/>
+    <circle cx="12" cy="7" r="1.5" fill="url(#mindie-gradient)"/>
+  </g>
+</svg>

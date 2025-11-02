@@ -150,7 +150,7 @@ class AppMetadata(MetadataBase):
     published: bool = Field(description="是否发布", default=False)
     links: list[AppLink] = Field(description="相关链接", default=[])
     first_questions: list[str] = Field(description="首次提问", default=[])
-    llm_id: str = Field(description="大模型ID", default="empty")
+    llm_id: str = Field(description="大模型ID", default="")
     history_len: int = Field(description="对话轮次", default=3, le=10)
     permission: Permission | None = Field(description="应用权限配置", default=None)
     flows: list[AppFlow] = Field(description="Flow列表", default=[])

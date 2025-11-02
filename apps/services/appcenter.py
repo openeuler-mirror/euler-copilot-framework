@@ -503,13 +503,41 @@ class AppCenterManager:
         # 处理llm_id字段
         if data is not None and hasattr(data, "llm"):
             # 创建应用场景，验证传入的 llm_id 状态 (create_app)
-            metadata.llm_id = data.llm if data.llm else "empty"
+            metadata.llm_id = data.llm if data.llm else ""
         elif app_data is not None and hasattr(app_data, "llm_id"):
             # 更新应用发布状态场景，使用 app_data 中的 llm_id (update_app_publish_status)
-            metadata.llm_id = app_data.llm_id if app_data.llm_id else "empty"
+            metadata.llm_id = app_data.llm_id if app_data.llm_id else ""
         else:
-            # 在预期的条件下，如果在 data 或 app_data 中找不到 llm_id，则默认回退为 "empty"。
-            metadata.llm_id = "empty"
+            # 在预期的条件下，如果在 data 或 app_data 中找不到 llm_id，则默认回退为空字符串。
+            metadata.llm_id = ""
+        
+        # 处理enable_thinking字段
+        if data is not None and hasattr(data, "enable_thinking"):
+            # 创建或更新应用场景，使用传入的 enable_thinking 状态
+            metadata.enable_thinking = data.enable_thinking
+        elif app_data is not None and hasattr(app_data, "enable_thinking"):
+            # 更新应用发布状态场景，使用 app_data 中的 enable_thinking
+            metadata.enable_thinking = app_data.enable_thinking
+        else:
+            # 默认值：根据LLM是否支持开关思维链来决定
+            # 只有当LLM同时支持思维链(supports_thinking)和开关思维链(can_toggle_thinking)时，才默认启用
+            default_enable_thinking = False
+            if metadata.llm_id:
+                try:
+                    from apps.common.mongo import MongoDB
+                    mongo = MongoDB()
+                    llm_collection = mongo.get_collection("llm")
+                    llm_doc = await llm_collection.find_one({"_id": metadata.llm_id})
+                    if llm_doc:
+                        supports_thinking = llm_doc.get("supports_thinking", False)
+                        can_toggle_thinking = llm_doc.get("can_toggle_thinking", False)
+                        # 只有同时支持思维链和开关思维链时，才默认启用
+                        if supports_thinking and can_toggle_thinking:
+                            default_enable_thinking = True
+                except Exception as e:
+                    logger.warning(f"[AppCenter] 获取LLM思维链能力失败: {e}")
+            metadata.enable_thinking = default_enable_thinking
+        
         # Agent 应用的发布状态逻辑
         if published is not None:  # 从 update_app_publish_status 调用，'published' 参数已提供
             metadata.published = published

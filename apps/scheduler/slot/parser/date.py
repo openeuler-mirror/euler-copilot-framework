@@ -1,12 +1,22 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2023-2025. All rights reserved.
 """日期解析器"""
 
+import io
 import logging
+import sys
 from datetime import datetime
 from typing import Any
 
 import pytz
-from jionlp import parse_time
+
+# 临时屏蔽 jionlp 的广告输出
+_old_stdout = sys.stdout
+sys.stdout = io.StringIO()
+try:
+    from jionlp import parse_time
+finally:
+    sys.stdout = _old_stdout
+
 from jsonschema import TypeChecker
 
 from apps.schemas.enum_var import SlotType

@@ -13,6 +13,7 @@ from apps.services.knowledge import KnowledgeBaseManager
 from apps.services.llm import LLMManager
 from apps.services.task import TaskManager
 from apps.templates.generate_llm_operator_config import llm_provider_dict
+from apps.llm.adapters import get_provider_from_endpoint
 
 logger = logging.getLogger(__name__)
 
@@ -44,20 +45,53 @@ class ConversationManager:
             user_sub: str, app_id: str, llm_id: str, kb_ids: list[str],
             *, debug: bool) -> Conversation | None:
         """通过用户ID新建对话"""
-        if llm_id == "empty":
+        if not llm_id:
+            # 获取系统默认模型的UUID
+            from apps.services.llm import LLMManager
+            mongo = MongoDB()
+            llm_collection = mongo.get_collection("llm")
+            config = Config().get_config()
+            
+            # 查找系统默认chat模型
+            system_llm = await llm_collection.find_one({
+                "user_sub": "",
+                "type": "chat",
+                "model_name": config.llm.model
+            })
+            
+            if not system_llm:
+                # 如果系统模型不存在，创建它
+                await LLMManager.init_system_chat_model()
+                system_llm = await llm_collection.find_one({
+                    "user_sub": "",
+                    "type": "chat", 
+                    "model_name": config.llm.model
+                })
+            
             llm_item = LLMItem(
-                llm_id="empty",
-                model_name=Config().get_config().llm.model,
-                icon=llm_provider_dict["ollama"]["icon"],
+                llm_id=str(system_llm["_id"]),
+                model_name=system_llm["model_name"],
+                icon=system_llm["icon"],
             )
         else:
-            llm = await LLMManager.get_llm_by_user_sub_and_id(user_sub, llm_id)
+            # 首先尝试通过用户ID和LLM ID查找
+            try:
+                llm = await LLMManager.get_llm_by_user_sub_and_id(user_sub, llm_id)
+            except ValueError:
+                # 如果用户级别的LLM不存在，尝试查找系统级别的LLM
+                logger.info(f"[ConversationManager] 用户级别LLM {llm_id} 不存在，尝试查找系统级别LLM")
+                try:
+                    llm = await LLMManager.get_llm_by_id(llm_id)
+                except ValueError:
+                    logger.error(f"[ConversationManager] 系统级别LLM {llm_id} 也不存在")
+                    llm = None
             if llm is None:
                 logger.error("[ConversationManager] 获取大模型失败")
                 return None
             llm_item = LLMItem(
                 llm_id=llm.id,
                 model_name=llm.model_name,
+                icon=llm.icon,
             )
         kb_item_list = []
         try:

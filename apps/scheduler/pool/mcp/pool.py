@@ -82,5 +82,11 @@ class MCPPool(metaclass=SingletonMeta):
 
     async def stop(self, mcp_id: str, user_sub: str) -> None:
         """停止MCP客户端"""
+        if user_sub not in self.pool:
+            logger.warning("[MCPPool] 用户 %s 不在池中，无法停止", user_sub)
+            return
+        if mcp_id not in self.pool[user_sub]:
+            logger.warning("[MCPPool] MCP %s 不在用户 %s 的池中，无法停止", mcp_id, user_sub)
+            return
         await self.pool[user_sub][mcp_id].stop()
         del self.pool[user_sub][mcp_id]

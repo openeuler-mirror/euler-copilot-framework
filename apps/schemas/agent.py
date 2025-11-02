@@ -18,6 +18,7 @@ class AgentAppMetadata(MetadataBase):
     published: bool = Field(description="是否发布", default=False)
     history_len: int = Field(description="对话轮次", default=3, le=10)
     mcp_service: list[str] = Field(default=[], description="MCP服务id列表")
-    llm_id: str = Field(default="empty", description="大模型ID")
+    llm_id: str = Field(default="", description="大模型ID")
+    enable_thinking: bool = Field(default=True, description="是否启用思维链（仅对支持的模型有效）")
     permission: Permission | None = Field(description="应用权限配置", default=None)
     version: str = Field(description="元数据版本")

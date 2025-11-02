@@ -229,6 +229,36 @@ async def clear_user_activity() -> None:
     await activity_collection.delete_many({})
     logging.info("清除所有用户活跃状态完成")
 
+async def init_model_registry() -> None:
+    """初始化模型注册表"""
+    import os
+    from pathlib import Path
+    from apps.llm.model_registry import model_registry
+    
+    models_config_file = os.getenv("MODELS_CONFIG")
+    if models_config_file is None:
+        logger.info(f"[init_model_registry] 配置文件不存在，使用默认模型配置")
+        return
+    
+    config_path = Path(models_config_file)
+    if config_path.exists():
+        try:
+            model_registry.load_from_file(str(config_path))
+            logger.info(f"[init_model_registry] 成功从 {config_path} 加载模型配置")
+        except Exception as e:
+            logger.warning(f"[init_model_registry] 加载模型配置失败: {e}，使用默认配置")
+    else:
+        logger.info(f"[init_model_registry] 配置文件 {config_path} 不存在，使用默认模型配置")
+
+async def init_system_models() -> None:
+    """初始化系统模型"""
+    try:
+        from apps.services.llm import LLMManager
+        await LLMManager.init_system_models()
+        logger.info("[init_system_models] 系统模型初始化完成")
+    except Exception as e:
+        logger.error(f"[init_system_models] 系统模型初始化失败: {e}")
+
 async def init_resources() -> None:
     """初始化必要资源"""
     
@@ -236,6 +266,10 @@ async def init_resources() -> None:
     await LanceDB().init()
     await Pool.init()
     TokenCalculator()
+    
+    # 初始化模型注册表和系统模型
+    await init_model_registry()
+    await init_system_models()
     
     if Config().get_config().no_auth.enable:
         await add_no_auth_user()

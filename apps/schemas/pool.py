@@ -115,5 +115,8 @@ class AppPool(BaseData):
     hashes: dict[str, str] = Field(description="关联文件的hash值", default={})
     mcp_service: list[str] = Field(default=[], description="MCP服务id列表")
     llm_id: str = Field(
-        default="empty", description="应用使用的大模型ID（如果有的话）"
+        default="", description="应用使用的大模型ID（如果有的话）"
+    )
+    enable_thinking: bool = Field(
+        default=True, description="是否启用思维链（仅对支持的模型有效）"
     )

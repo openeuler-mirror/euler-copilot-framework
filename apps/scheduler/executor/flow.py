@@ -63,6 +63,7 @@ class FlowExecutor(BaseExecutor):
     flow_id: str = Field(description="Flow ID")
     question: str = Field(description="用户输入")
     post_body_app: RequestDataApp = Field(description="请求体中的app信息")
+    enable_thinking: bool = Field(description="是否启用思维链", default=False)
     current_step: StepQueueItem | None = Field(
         description="当前执行的步骤",
         default=None

@@ -1,7 +1,7 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2023-2025. All rights reserved.
 """FastAPI 请求体"""
 
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
@@ -49,6 +49,9 @@ class RequestData(BaseModel):
     debug: bool = Field(default=False, description="是否调试")
     task_id: str | None = Field(default=None, alias="taskId", description="任务ID")
     params: FlowParams | bool | None = Field(default=None, description="流执行过程中的参数补充", alias="params")
+    llm_id: str | None = Field(default=None, alias="llmId", description="选中的大模型ID")
+    enable_thinking: bool = Field(default=False, alias="enableThinking", description="是否启用思维链")
+    auto_execute: bool | None = Field(default=None, alias="autoExecute", description="是否自动执行（会话级设置，优先于用户全局设置）")
 
 
 class QuestionBlacklistRequest(BaseModel):
@@ -170,11 +173,24 @@ class PutFlowReq(BaseModel):
 class UpdateLLMReq(BaseModel):
     """更新大模型请求体"""
 
+    model_config = {"protected_namespaces": ()}
+
     icon: str = Field(description="图标", default="")
     openai_base_url: str = Field(default="", description="OpenAI API Base URL", alias="openaiBaseUrl")
     openai_api_key: str = Field(default="", description="OpenAI API Key", alias="openaiApiKey")
     model_name: str = Field(default="", description="模型名称", alias="modelName")
     max_tokens: int = Field(default=8192, description="最大token数", alias="maxTokens")
+    type: Literal['chat', 'image', 'video', 'speech', 'embedding', 'reranker'] = Field(default='chat', description="模型类型")
+    
+    # 可选的能力字段，如果不提供则自动从model_registry推断
+    provider: str | None = Field(default=None, description="模型提供商")
+    supports_thinking: bool | None = Field(default=None, description="是否支持思维链")
+    can_toggle_thinking: bool | None = Field(default=None, description="是否支持开关思维链")
+    supports_function_calling: bool | None = Field(default=None, description="是否支持函数调用")
+    supports_json_mode: bool | None = Field(default=None, description="是否支持JSON模式")
+    supports_structured_output: bool | None = Field(default=None, description="是否支持结构化输出")
+    max_tokens_param: str | None = Field(default=None, description="最大token参数名")
+    notes: str | None = Field(default=None, description="备注信息")
 
 
 class DeleteLLMReq(BaseModel):
@@ -217,4 +233,9 @@ class UserPreferencesRequest(BaseModel):
         default=None,
         description="思维链偏好",
         alias="chainOfThoughtPreference"
+    )
+    auto_execute_preference: bool | None = Field(
+        default=None,
+        description="自动执行偏好",
+        alias="autoExecutePreference"
     )

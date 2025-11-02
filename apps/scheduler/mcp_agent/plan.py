@@ -71,14 +71,15 @@ class MCPPlanner(MCPBase):
     async def _get_reasoning_evaluation(
             goal, tool_list: list[MCPTool],
             resoning_llm: ReasoningLLM = ReasoningLLM(),
-            language: LanguageType = LanguageType.CHINESE,) -> str:
+            language: LanguageType = LanguageType.CHINESE,
+            enable_thinking: bool = False,) -> str:
         """获取推理大模型的评估结果"""
         template = _env.from_string(EVALUATE_GOAL[language])
         prompt = template.render(
             goal=goal,
             tools=tool_list,
         )
-        return await MCPPlanner.get_resoning_result(prompt, resoning_llm)
+        return await MCPPlanner.get_resoning_result(prompt, resoning_llm, enable_thinking)
 
     @staticmethod
     async def _parse_evaluation_result(result: str) -> GoalEvaluationResult:
@@ -105,11 +106,12 @@ class MCPPlanner(MCPBase):
         user_goal: str,
         resoning_llm: ReasoningLLM = ReasoningLLM(),
         language: LanguageType = LanguageType.CHINESE,
+        enable_thinking: bool = False,
     ) -> str:
         """获取推理大模型的流程名称"""
         template = _env.from_string(GENERATE_FLOW_NAME[language])
         prompt = template.render(goal=user_goal)
-        return await MCPPlanner.get_resoning_result(prompt, resoning_llm)
+        return await MCPPlanner.get_resoning_result(prompt, resoning_llm, enable_thinking)
 
     @staticmethod
     async def get_flow_excute_risk(
@@ -130,6 +132,7 @@ class MCPPlanner(MCPBase):
         tools: list[MCPTool],
         resoning_llm: ReasoningLLM = ReasoningLLM(),
         language: LanguageType = LanguageType.CHINESE,
+        enable_thinking: bool = False,
     ) -> str:
         """获取推理大模型的流程风险"""
         template = _env.from_string(GENERATE_FLOW_EXCUTE_RISK[language])
@@ -137,7 +140,7 @@ class MCPPlanner(MCPBase):
             goal=user_goal,
             tools=tools,
         )
-        return await MCPPlanner.get_resoning_result(prompt, resoning_llm)
+        return await MCPPlanner.get_resoning_result(prompt, resoning_llm, enable_thinking)
 
     @staticmethod
     async def get_replan_start_step_index(
@@ -238,12 +241,13 @@ class MCPPlanner(MCPBase):
         tools: list[MCPTool],
         reasoning_llm: ReasoningLLM = ReasoningLLM(),
         language: LanguageType = LanguageType.CHINESE,
+        enable_thinking: bool = False,
     ) -> Step:
         """创建下一步的执行步骤"""
         # 获取推理结果
         template = _env.from_string(GEN_STEP[language])
         prompt = template.render(goal=goal, history=history, tools=tools)
-        result = await MCPPlanner.get_resoning_result(prompt, reasoning_llm)
+        result = await MCPPlanner.get_resoning_result(prompt, reasoning_llm, enable_thinking)
 
         # 解析为结构化数据
         schema = Step.model_json_schema()
@@ -391,6 +395,7 @@ class MCPPlanner(MCPBase):
         input_params: dict[str, Any],
         reasoning_llm: ReasoningLLM = ReasoningLLM(),
         language: LanguageType = LanguageType.CHINESE,
+        enable_thinking: bool = False,
     ) -> IsParamError:
         """判断错误信息是否是参数错误"""
         tmplate = _env.from_string(IS_PARAM_ERROR[language])
@@ -403,7 +408,7 @@ class MCPPlanner(MCPBase):
             input_params=input_params,
             error_message=error_message,
         )
-        result = await MCPPlanner.get_resoning_result(prompt, reasoning_llm)
+        result = await MCPPlanner.get_resoning_result(prompt, reasoning_llm, enable_thinking)
         # 解析为结构化数据
         schema = IsParamError.model_json_schema()
         is_param_error = await MCPPlanner._parse_result(result, schema)
@@ -417,6 +422,7 @@ class MCPPlanner(MCPBase):
         input_params: dict[str, Any],
         reasoning_llm: ReasoningLLM = ReasoningLLM(),
         language: LanguageType = LanguageType.CHINESE,
+        enable_thinking: bool = False,
     ) -> str:
         """将错误信息转换为工具描述"""
         template = _env.from_string(
@@ -428,7 +434,7 @@ class MCPPlanner(MCPBase):
             input_schema=tool.input_schema,
             input_params=input_params,
         )
-        result = await MCPPlanner.get_resoning_result(prompt, reasoning_llm)
+        result = await MCPPlanner.get_resoning_result(prompt, reasoning_llm, enable_thinking)
         return result
 
     @staticmethod
@@ -438,6 +444,7 @@ class MCPPlanner(MCPBase):
         error_message: str,
         reasoning_llm: ReasoningLLM = ReasoningLLM(),
         language: LanguageType = LanguageType.CHINESE,
+        enable_thinking: bool = False,
     ) -> list[str]:
         """获取缺失的参数"""
         slot = Slot(schema=tool.input_schema)
@@ -450,7 +457,7 @@ class MCPPlanner(MCPBase):
             schema=schema_with_null,
             error_message=error_message,
         )
-        result = await MCPPlanner.get_resoning_result(prompt, reasoning_llm)
+        result = await MCPPlanner.get_resoning_result(prompt, reasoning_llm, enable_thinking)
         # 解析为结构化数据
         input_param_with_null = await MCPPlanner._parse_result(result, schema_with_null)
         return input_param_with_null

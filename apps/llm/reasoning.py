@@ -11,6 +11,7 @@ from openai.types.chat import ChatCompletionChunk
 from apps.common.config import Config
 from apps.constants import REASONING_BEGIN_TOKEN, REASONING_END_TOKEN
 from apps.llm.token import TokenCalculator
+from apps.llm.adapters import AdapterFactory, get_provider_from_endpoint
 from apps.schemas.config import LLMConfig
 
 logger = logging.getLogger(__name__)
@@ -29,6 +30,7 @@ class ReasoningContent:
         """处理第一个chunk"""
         reason = ""
         text = ""
+        content = chunk.choices[0].delta.content or ""
 
         if (
             hasattr(chunk.choices[0].delta, "reasoning_content")
@@ -40,12 +42,26 @@ class ReasoningContent:
             self.reasoning_type = "args"
             self.is_reasoning = True
         else:
+            # 检查内容是否包含思维链开始标记
             for token in REASONING_BEGIN_TOKEN:
-                if token == (chunk.choices[0].delta.content or ""):
-                    reason = "<think>"
+                if token in content:
                     self.reasoning_type = "tokens"
                     self.is_reasoning = True
+                    # 分离思维链内容和普通文本
+                    if content.startswith(token):
+                        # 内容以<think>开始
+                        reason_content = content[len(token):]
+                        reason = "<think>" + reason_content
+                    else:
+                        # <think>在内容中间，分离前后部分
+                        parts = content.split(token, 1)
+                        text = parts[0]  # <think>之前的内容作为普通文本
+                        reason = "<think>" + (parts[1] if len(parts) > 1 else "")
                     break
+            
+            # 如果没有检测到思维链标记，将内容作为普通文本
+            if not self.is_reasoning:
+                text = content
 
         self.is_first_chunk = False
         return reason, text
@@ -75,18 +91,32 @@ class ReasoningContent:
                 # 如果当前内容不是推理内容标签，将其作为文本返回
                 text = content.lstrip("</think>")
         elif self.reasoning_type == "tokens":
+            # 检查内容是否包含结束标记
+            end_token_found = False
             for token in REASONING_END_TOKEN:
-                if token == content:
+                if token in content:
                     # 遇到结束标记，推理结束
                     self.is_reasoning = False
-                    reason = "</think>"
+                    end_token_found = True
+                    # 分离思维链内容和普通文本
+                    if content.endswith(token):
+                        # 内容以</think>结束
+                        reason_content = content[:-len(token)]
+                        reason = reason_content + "</think>"
+                    else:
+                        # </think>在内容中间，分离前后部分
+                        parts = content.split(token, 1)
+                        reason = parts[0] + "</think>"
+                        text = parts[1] if len(parts) > 1 else ""  # </think>之后的内容作为普通文本
                     break
-            if self.is_reasoning:
-                # 仍在推理中，将内容作为推理内容
-                reason = content
-            else:
-                # 推理已结束，将内容作为文本
-                text = content
+            
+            if not end_token_found:
+                if self.is_reasoning:
+                    # 仍在推理中，将内容作为推理内容
+                    reason = content
+                else:
+                    # 推理已结束，将内容作为文本
+                    text = content
 
         return reason, text
 
@@ -105,6 +135,10 @@ class ReasoningLLM:
         else:
             self._config: LLMConfig = llm_config
             self._init_client()
+        
+        # 初始化适配器
+        self._provider = get_provider_from_endpoint(self._config.endpoint)
+        self._adapter = AdapterFactory.create_adapter(self._provider, self._config.model)
 
     def _init_client(self) -> None:
         """初始化OpenAI客户端"""
@@ -144,24 +178,43 @@ class ReasoningLLM:
         """创建流式响应"""
         if model is None:
             model = self._config.model
-        if not enable_thinking:
-            if len(messages):
-                if messages[-1]["role"] == "user":
-                    if not messages[-1]["content"].endswith("/no_think"):
-                        messages[-1]["content"] += "/no_think"
+        
+        # 处理思维链控制
+        messages_copy = [msg.copy() for msg in messages]
+        
+        # 如果不支持原生thinking，使用prompt方式控制
+        if self._adapter.should_use_prompt_thinking(enable_thinking):
+            # 启用思维链但模型不支持原生thinking，不添加/no_think
+            pass
+        elif not enable_thinking:
+            # 不启用思维链，添加/no_think指令
+            if len(messages_copy):
+                if messages_copy[-1]["role"] == "user":
+                    if not messages_copy[-1]["content"].endswith("/no_think"):
+                        messages_copy[-1]["content"] += "/no_think"
                 else:
-                    messages.append(
+                    messages_copy.append(
                         {"role": "user", "content": "/no_think"})
-        return await self._client.chat.completions.create(
-            model=model,
-            messages=messages,  # type: ignore[]
-            max_completion_tokens=max_tokens or self._config.max_tokens,
-            temperature=temperature or self._config.temperature,
-            stream=True,
-            stream_options={"include_usage": True},
-            timeout=300,
-            extra_body={"enable_thinking": enable_thinking}
-        )  # type: ignore[]
+        
+        # 构建基础参数
+        base_params = {
+            "model": model,
+            "messages": messages_copy,  # type: ignore[]
+            "max_completion_tokens": max_tokens or self._config.max_tokens,
+            "temperature": temperature or self._config.temperature,
+            "stream": True,
+            "stream_options": {"include_usage": True},
+            "timeout": 300,
+            "extra_body": {"enable_thinking": enable_thinking}
+        }
+        
+        # 使用适配器调整参数
+        adapted_params = self._adapter.adapt_create_params(base_params, enable_thinking)
+        
+        logger.info(f"[{self._provider}] 调用参数: model={model}, enable_thinking={enable_thinking}, "
+                   f"supports_native_thinking={self._adapter.capabilities.supports_enable_thinking}")
+        
+        return await self._client.chat.completions.create(**adapted_params)  # type: ignore[]
 
     async def call(  # noqa: C901, PLR0912, PLR0913
         self,
