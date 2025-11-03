@@ -193,6 +193,10 @@ class UserManager:
             preferences_update["preferences.embeddingModelPreference"] = data.embedding_model_preference.model_dump(by_alias=True)
         if data.reranker_preference is not None:
             preferences_update["preferences.rerankerPreference"] = data.reranker_preference.model_dump(by_alias=True)
+        if data.function_call_model_preference is not None:
+            preferences_update["preferences.functionCallModelPreference"] = data.function_call_model_preference.model_dump(by_alias=True)
+        if data.search_method_preference is not None:
+            preferences_update["preferences.searchMethodPreference"] = data.search_method_preference
         if data.chain_of_thought_preference is not None:
             preferences_update["preferences.chainOfThoughtPreference"] = data.chain_of_thought_preference
         if data.auto_execute_preference is not None:
@@ -226,6 +230,12 @@ class UserManager:
                 migration_needed = True
             if "reranker_preference" in preferences_data:
                 preferences_data["rerankerPreference"] = preferences_data.pop("reranker_preference")
+                migration_needed = True
+            if "function_call_model_preference" in preferences_data:
+                preferences_data["functionCallModelPreference"] = preferences_data.pop("function_call_model_preference")
+                migration_needed = True
+            if "search_method_preference" in preferences_data:
+                preferences_data["searchMethodPreference"] = preferences_data.pop("search_method_preference")
                 migration_needed = True
             if "chain_of_thought_preference" in preferences_data:
                 preferences_data["chainOfThoughtPreference"] = preferences_data.pop("chain_of_thought_preference")

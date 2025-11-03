@@ -30,6 +30,12 @@ class LLM(CoreCall, input_model=LLMInput, output_model=LLMOutput):
     """大模型调用工具"""
 
     to_user: bool = Field(default=True)
+    controlled_output: bool = Field(default=True)
+    
+    # 输出参数配置
+    output_parameters: dict[str, Any] = Field(description="输出参数配置", default={
+        "reply": {"type": "string", "description": "大模型的回复内容"},
+    })
 
     # 模型配置
     llmId: str = Field(description="大模型ID", default="")
@@ -134,6 +140,7 @@ class LLM(CoreCall, input_model=LLMInput, output_model=LLMOutput):
     ) -> AsyncGenerator[CallOutputChunk, None]:
         """运行LLM Call"""
         data = LLMInput(**input_data)
+        full_reply = ""  # 用于累积完整回复
         try:
             # 根据llmId获取模型配置
             llm_config = None
@@ -182,8 +189,15 @@ class LLM(CoreCall, input_model=LLMInput, output_model=LLMOutput):
             async for chunk in llm.call(**call_params):
                 if not chunk:
                     continue
+                full_reply += chunk
                 yield CallOutputChunk(type=CallOutputType.TEXT, content=chunk)
             self.tokens.input_tokens = llm.input_tokens
             self.tokens.output_tokens = llm.output_tokens
+            
+            # 最后输出一个DATA chunk，包含完整的输出数据，用于保存到变量池
+            yield CallOutputChunk(
+                type=CallOutputType.DATA,
+                content=LLMOutput(reply=full_reply).model_dump(by_alias=True, exclude_none=True)
+            )
         except Exception as e:
             raise CallError(message=f"大模型调用失败：{e!s}", data={}) from e

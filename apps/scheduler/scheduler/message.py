@@ -67,6 +67,7 @@ async def push_rag_message(
     history: list[dict[str, str]],
     doc_ids: list[str],
     rag_data: RAGQueryReq,
+    enable_thinking: bool = False,
 ) -> None:
     """推送RAG消息"""
     full_answer = ""
@@ -74,7 +75,7 @@ async def push_rag_message(
     
     try:
         async for chunk in RAG.chat_with_llm_base_on_rag(
-            user_sub, llm, history, doc_ids, rag_data, task.language
+            user_sub, llm, history, doc_ids, rag_data, task.language, enable_thinking
         ):
             try:
                 task, content_obj = await _push_rag_chunk(task, queue, chunk)

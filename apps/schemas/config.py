@@ -153,6 +153,7 @@ class FunctionCallConfig(BaseModel):
     """Function Call配置"""
 
     backend: str = Field(description="Function Call 后端")
+    provider: str | None = Field(default=None, description="Function Call 提供商")
     model: str = Field(description="Function Call 模型名")
     endpoint: str = Field(description="Function Call API URL地址")
     api_key: str = Field(description="Function Call API密钥")

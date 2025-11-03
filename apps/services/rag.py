@@ -357,8 +357,10 @@ Please generate a detailed, well-structured, and clearly formatted answer based 
         doc_ids: list[str],
         data: RAGQueryReq,
         language: LanguageType = LanguageType.CHINESE,
+        enable_thinking: bool = False,
     ) -> AsyncGenerator[str, None]:
         """获取RAG服务的结果"""
+        # 用于最终回答的LLM（使用用户选择的对话模型）
         reasion_llm = ReasoningLLM(
             LLMConfig(
                 provider=llm.provider,
@@ -368,11 +370,29 @@ Please generate a detailed, well-structured, and clearly formatted answer based 
                 max_tokens=llm.max_tokens,
             )
         )
+        
+        # 用于问题改写的LLM
         if history:
             try:
-                question_obj = QuestionRewrite()
+                # 获取function call场景使用的模型ID用于问题改写
+                # 在RAG场景中，将对话模型ID作为应用配置模型传递（最高优先级）
+                # 降级顺序：对话模型 -> 用户偏好的function call模型 -> 系统默认function call模型 -> 系统默认chat模型
+                from apps.services.llm import LLMManager
+                function_call_model_id = await LLMManager.get_function_call_model_id(
+                    user_sub,
+                    app_llm_id=llm.id  # 传递对话模型ID作为应用配置（最高优先级）
+                )
+                
+                # 如果没有找到函数调用模型，使用对话模型作为降级方案
+                if not function_call_model_id:
+                    logger.warning("[RAG] 未找到函数调用模型，使用对话模型进行问题改写")
+                    function_call_model_id = llm.id
+                else:
+                    logger.info(f"[RAG] 问题改写使用模型: {function_call_model_id}")
+                
+                question_obj = QuestionRewrite(llm_id=function_call_model_id, enable_thinking=False)
                 data.query = await question_obj.generate(
-                    history=history, question=data.query, llm=reasion_llm, language=language
+                    history=history, question=data.query, language=language
                 )
             except Exception:
                 logger.exception("[RAG] 问题重写失败")
@@ -427,7 +447,7 @@ Please generate a detailed, well-structured, and clearly formatted answer based 
             temperature=0.7,
             result_only=False,
             model=llm.model_name,
-            enable_thinking=True
+            enable_thinking=enable_thinking
         ):
             chunk = buffer + chunk
             # 防止脚注被截断
