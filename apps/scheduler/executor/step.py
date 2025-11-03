@@ -478,6 +478,9 @@ class StepExecutor(BaseExecutor):
 
         # 更新history
         if isinstance(content, str):
+            # 处理空字符串的情况，避免TextAddContent验证失败
+            if not content:
+                content = " "  # 使用一个空格作为占位符
             output_data = TextAddContent(text=content).model_dump(exclude_none=True, by_alias=True)
         else:
             output_data = content

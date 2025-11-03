@@ -34,6 +34,24 @@ _env = SandboxedEnvironment(
 class QuestionRewrite(CorePattern):
     """问题补全与重写"""
 
+    def __init__(
+        self,
+        system_prompt: dict[LanguageType, str] | None = None,
+        user_prompt: dict[LanguageType, str] | None = None,
+        llm_id: str | None = None,
+        enable_thinking: bool = False,
+    ) -> None:
+        """初始化问题改写模式
+        
+        :param system_prompt: 系统提示词
+        :param user_prompt: 用户提示词
+        :param llm_id: 大模型ID，如果为None则使用系统默认模型
+        :param enable_thinking: 是否启用思维链
+        """
+        super().__init__(system_prompt, user_prompt)
+        self.llm_id = llm_id
+        self.enable_thinking = enable_thinking
+
     def get_default_prompt(self) -> dict[LanguageType, str]:
         system_prompt = {
             LanguageType.CHINESE: dedent(r"""
@@ -167,10 +185,32 @@ class QuestionRewrite(CorePattern):
         """问题补全与重写"""
         history = kwargs.get("history", [])
         question = kwargs["question"]
-        llm = kwargs.get("llm", None)
         language = kwargs.get("language", LanguageType.CHINESE)
+        
+        # 根据llm_id获取模型配置并创建LLM实例
+        llm = None
+        if self.llm_id:
+            from apps.services.llm import LLMManager
+            from apps.llm.adapters import get_provider_from_endpoint
+            from apps.schemas.config import LLMConfig
+            
+            llm_info = await LLMManager.get_llm_by_id(self.llm_id)
+            if llm_info:
+                provider = llm_info.provider or get_provider_from_endpoint(llm_info.openai_base_url)
+                
+                llm_config = LLMConfig(
+                    provider=provider,
+                    endpoint=llm_info.openai_base_url,
+                    key=llm_info.openai_api_key,
+                    model=llm_info.model_name,
+                    max_tokens=llm_info.max_tokens,
+                    temperature=0.7,
+                )
+                llm = ReasoningLLM(llm_config)
+        
         if not llm:
             llm = ReasoningLLM()
+            
         leave_tokens = llm._config.max_tokens
         leave_tokens -= TokenCalculator().calculate_token_length(
             messages=[{"role": "system", "content": _env.from_string(self.system_prompt[language]).render(
@@ -197,7 +237,7 @@ class QuestionRewrite(CorePattern):
         messages = [{"role": "system", "content": _env.from_string(self.system_prompt[language]).render(
             history=qa, question=question)}, {"role": "user", "content": _env.from_string(self.user_prompt[language]).render()}]
         result = ""
-        async for chunk in llm.call(messages, streaming=False):
+        async for chunk in llm.call(messages, streaming=False, enable_thinking=self.enable_thinking):
             result += chunk
         self.input_tokens = llm.input_tokens
         self.output_tokens = llm.output_tokens

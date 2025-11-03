@@ -119,17 +119,26 @@ class BaseVariablePool(ABC):
         # 🔑 新增：对于文件类型变量，在更新前清理旧文件资源
         old_file_ids = await self._get_file_ids_from_variable(variable)
         
-        # 更新值
-        if value is not None:
-            variable.value = value
-        
-        # 更新类型
-        if var_type is not None:
-            variable.metadata.var_type = var_type
-        
-        # 更新描述
-        if description is not None:
-            variable.metadata.description = description
+        # 🔑 重要：如果类型改变，需要重新创建变量对象
+        if var_type is not None and var_type != variable.metadata.var_type:
+            from .variables import create_variable
+            # 创建新的元数据
+            old_metadata = variable.metadata
+            old_metadata.var_type = var_type
+            if description is not None:
+                old_metadata.description = description
+            
+            # 创建新类型的变量对象
+            variable = create_variable(old_metadata, value)
+            
+            # 更新到字典中
+            self._variables[name] = variable
+        else:
+            # 类型未改变，正常更新
+            if description is not None:
+                variable.metadata.description = description
+            if value is not None:
+                variable.value = value
         
         # 🔑 新增：清理被替换的文件
         if value is not None:
@@ -139,7 +148,6 @@ class BaseVariablePool(ABC):
         # 持久化到数据库
         await self._persist_variable(variable)
         
-        logger.info(f"已更新变量: {name} 从池 {self.pool_id}, 值为{value}")
         return variable
     
     async def delete_variable(self, name: str) -> bool:
@@ -164,7 +172,6 @@ class BaseVariablePool(ABC):
         # 从数据库删除
         await self._delete_variable_from_db(variable)
         
-        logger.info(f"已删除变量: {name} 从池 {self.pool_id}")
         return True
     
     async def _cleanup_file_resources_if_needed(self, variable: BaseVariable) -> None:
@@ -198,7 +205,6 @@ class BaseVariablePool(ABC):
                     if user_id:
                         from apps.services.document import DocumentManager
                         await DocumentManager.delete_document(user_id, actual_cleanup_ids)
-                        logger.info(f"已清理变量 {variable.name} 关联的 {len(actual_cleanup_ids)} 个文件")
                         
                         if protected_file_ids:
                             logger.info(f"保护了变量 {variable.name} 中 {len(protected_file_ids)} 个已绑定历史记录的文件")
@@ -379,7 +385,6 @@ class BaseVariablePool(ABC):
                     if user_id:
                         from apps.services.document import DocumentManager
                         await DocumentManager.delete_document(user_id, actual_cleanup_ids)
-                        logger.info(f"已清理变量 {variable.name} 被替换的 {len(actual_cleanup_ids)} 个文件")
                         
                         if protected_file_ids:
                             logger.info(f"保护了变量 {variable.name} 中 {len(protected_file_ids)} 个已绑定历史记录的文件")
@@ -702,13 +707,34 @@ class FlowVariablePool(BaseVariablePool):
             if not force_system_update and getattr(variable.metadata, 'is_system', False):
                 raise PermissionError(f"系统变量 {name} 不允许直接修改")
             
-            # 更新变量
-            if value is not None:
-                variable.value = value
-            if var_type is not None:
-                variable.metadata.var_type = var_type
-            if description is not None:
-                variable.metadata.description = description
+            # 🔑 重要：如果类型改变，需要重新创建变量对象
+            if var_type is not None and var_type != variable.metadata.var_type:
+                from .variables import create_variable
+                # 创建新的元数据
+                old_metadata = variable.metadata
+                old_metadata.var_type = var_type
+                if description is not None:
+                    old_metadata.description = description
+                
+                # 创建新类型的变量对象
+                variable = create_variable(old_metadata, value)
+                
+                # 更新时间戳
+                from datetime import datetime, UTC
+                variable.metadata.updated_at = datetime.now(UTC)
+                
+                # 更新到字典中
+                self._system_templates[name] = variable
+            else:
+                # 类型未改变，正常更新
+                if description is not None:
+                    variable.metadata.description = description
+                if value is not None:
+                    variable.value = value
+                
+                # 更新时间戳
+                from datetime import datetime, UTC
+                variable.metadata.updated_at = datetime.now(UTC)
             
             # 持久化
             await self._persist_variable(variable)
@@ -718,13 +744,34 @@ class FlowVariablePool(BaseVariablePool):
         elif name in self._conversation_templates:
             variable = self._conversation_templates[name]
             
-            # 更新变量
-            if value is not None:
-                variable.value = value
-            if var_type is not None:
-                variable.metadata.var_type = var_type
-            if description is not None:
-                variable.metadata.description = description
+            # 🔑 重要：如果类型改变，需要重新创建变量对象
+            if var_type is not None and var_type != variable.metadata.var_type:
+                from .variables import create_variable
+                # 创建新的元数据
+                old_metadata = variable.metadata
+                old_metadata.var_type = var_type
+                if description is not None:
+                    old_metadata.description = description
+                
+                # 创建新类型的变量对象
+                variable = create_variable(old_metadata, value)
+                
+                # 更新时间戳
+                from datetime import datetime, UTC
+                variable.metadata.updated_at = datetime.now(UTC)
+                
+                # 更新到字典中
+                self._conversation_templates[name] = variable
+            else:
+                # 类型未改变，正常更新
+                if description is not None:
+                    variable.metadata.description = description
+                if value is not None:
+                    variable.value = value
+                
+                # 更新时间戳
+                from datetime import datetime, UTC
+                variable.metadata.updated_at = datetime.now(UTC)
             
             # 持久化
             await self._persist_variable(variable)

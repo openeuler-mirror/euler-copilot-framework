@@ -469,6 +469,28 @@ class AppCenterManager:
         else:  # 对应 create_app (app_data is None, published 参数为 None)
             metadata.published = False
 
+        # 处理llm_id字段 - 工作流应用也可以配置模型用于理解上下文、问题改写和记忆存储
+        if data is not None and hasattr(data, "llm"):
+            # 创建或更新应用场景，使用传入的 llm
+            metadata.llm_id = data.llm if data.llm else ""
+        elif app_data is not None and hasattr(app_data, "llm_id"):
+            # 更新应用发布状态场景，使用 app_data 中的 llm_id
+            metadata.llm_id = app_data.llm_id if app_data.llm_id else ""
+        else:
+            # 默认为空字符串，使用系统默认模型
+            metadata.llm_id = ""
+
+        # 处理enable_thinking字段 - 工作流应用的思维链配置
+        if data is not None and hasattr(data, "enable_thinking"):
+            # 创建或更新应用场景，使用传入的 enable_thinking 状态
+            metadata.enable_thinking = data.enable_thinking
+        elif app_data is not None and hasattr(app_data, "enable_thinking"):
+            # 更新应用发布状态场景，使用 app_data 中的 enable_thinking
+            metadata.enable_thinking = app_data.enable_thinking
+        else:
+            # 默认值：工作流应用默认关闭思维链（因为会影响性能）
+            metadata.enable_thinking = False
+
         return metadata
 
     @staticmethod

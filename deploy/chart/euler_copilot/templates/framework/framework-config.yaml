@@ -11,6 +11,8 @@ data:
 {{- else }}
 {{ tpl (.Files.Get "configs/framework/config.toml") . | indent 4 }}
 {{- end }}
+  providers.conf: |-
+{{ .Files.Get "configs/framework/providers.conf" | indent 4 }}
   models.conf: |-
 {{ .Files.Get "configs/framework/models.conf" | indent 4 }}
   copy-config.yaml: |-

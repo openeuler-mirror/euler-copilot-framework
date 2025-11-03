@@ -607,3 +607,69 @@ class LLMManager:
             config.reranker, 
             "System Reranker Model"
         )
+
+    @staticmethod
+    async def get_model_capabilities(user_sub: str, llm_id: str) -> dict:
+        """
+        获取指定模型支持的参数配置项
+        
+        :param user_sub: 用户ID
+        :param llm_id: 模型ID
+        :return: 模型能力配置字典
+        """
+        from apps.llm.model_types import ModelType
+        
+        # 获取模型信息（支持系统模型和用户模型）
+        mongo = MongoDB()
+        llm_collection = mongo.get_collection("llm")
+        
+        # 查询用户可访问的模型（包括系统模型和自己的模型）
+        result = await llm_collection.find_one({
+            "_id": llm_id,
+            "$or": [{"user_sub": user_sub}, {"user_sub": ""}]
+        })
+        
+        if not result:
+            err = f"[LLMManager] LLM {llm_id} 不存在或无权限访问"
+            logger.error(err)
+            raise ValueError(err)
+        
+        llm = LLM.model_validate(result)
+        
+        # 从注册表获取模型能力
+        provider = llm.provider or get_provider_from_endpoint(llm.openai_base_url)
+        capabilities = model_registry.get_model_capabilities(provider, llm.model_name, ModelType.CHAT)
+        
+        # 构建参数配置项响应
+        result_dict = {
+            "provider": provider,
+            "modelName": llm.model_name,
+            "modelType": "chat",
+            
+            # 基础参数支持
+            "supportsTemperature": capabilities.supports_temperature if capabilities else True,
+            "supportsTopP": capabilities.supports_top_p if capabilities else True,
+            "supportsTopK": capabilities.supports_top_k if capabilities else False,
+            "supportsFrequencyPenalty": capabilities.supports_frequency_penalty if capabilities else False,
+            "supportsPresencePenalty": capabilities.supports_presence_penalty if capabilities else False,
+            "supportsMinP": capabilities.supports_min_p if capabilities else False,
+            
+            # 高级功能
+            "supportsThinking": capabilities.supports_thinking if capabilities else False,
+            "canToggleThinking": capabilities.can_toggle_thinking if capabilities else False,
+            "supportsEnableSearch": capabilities.supports_enable_search if capabilities else False,
+            "supportsFunctionCalling": capabilities.supports_function_calling if capabilities else True,
+            "supportsJsonMode": capabilities.supports_json_mode if capabilities else True,
+            "supportsStructuredOutput": capabilities.supports_structured_output if capabilities else False,
+            
+            # 上下文支持（所有chat模型都支持）
+            "supportsContext": True,
+            
+            # 参数名称
+            "maxTokensParam": capabilities.max_tokens_param if capabilities else "max_tokens",
+            
+            # 备注信息
+            "notes": llm.notes or ""
+        }
+        
+        return result_dict

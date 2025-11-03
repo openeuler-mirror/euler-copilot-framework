@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Any, Self, ClassVar
 
 from jinja2 import BaseLoader
 from jinja2.sandbox import SandboxedEnvironment
-from pydantic import Field
+from pydantic import BaseModel, Field
 
 from apps.scheduler.call.core import CoreCall
 from apps.scheduler.call.facts.prompt import DOMAIN_PROMPT, FACTS_PROMPT
@@ -29,6 +29,8 @@ if TYPE_CHECKING:
 class FactsCall(CoreCall, input_model=FactsInput, output_model=FactsOutput):
     """提取事实工具"""
     answer: str = Field(description="用户输入")
+    llm_id: str | None = Field(default=None, description="大模型ID，如果为None则使用系统默认模型")
+    enable_thinking: bool = Field(default=False, description="是否启用思维链")
     i18n_info: ClassVar[dict[str, dict]] = {
         LanguageType.CHINESE: {
             "name": "提取事实",
@@ -45,11 +47,17 @@ class FactsCall(CoreCall, input_model=FactsInput, output_model=FactsOutput):
     @classmethod
     async def instance(cls, executor: "StepExecutor", node: NodePool | None, **kwargs: Any) -> Self:
         """初始化工具"""
+        # 提取 llm_id 和 enable_thinking，避免重复传递
+        llm_id = kwargs.pop("llm_id", None)
+        enable_thinking = kwargs.pop("enable_thinking", False)
+        
         obj = cls(
             answer=executor.task.runtime.answer,
             name=executor.step.step.name,
             description=executor.step.step.description,
             node=node,
+            llm_id=llm_id,
+            enable_thinking=enable_thinking,
             **kwargs,
         )
 
@@ -88,10 +96,15 @@ class FactsCall(CoreCall, input_model=FactsInput, output_model=FactsOutput):
         facts_tpl = env.from_string(FACTS_PROMPT[language])
         facts_prompt = facts_tpl.render(conversation=data.message)
         try:
-            facts_obj: FactsGen = await self._json([
-                {"role": "system", "content": "You are a helpful assistant."},
-                {"role": "user", "content": facts_prompt},
-            ], FactsGen) # type: ignore[arg-type]
+            facts_obj: FactsGen = await self._json_with_config(
+                [
+                    {"role": "system", "content": "You are a helpful assistant."},
+                    {"role": "user", "content": facts_prompt},
+                ], 
+                FactsGen,
+                llm_id=self.llm_id,
+                enable_thinking=self.enable_thinking,
+            ) # type: ignore[arg-type]
         except Exception as e:
             # 如果 LLM 返回格式不正确，使用默认空列表
             logging.warning(f"[FactsCall] 事实提取失败，使用默认值: {e}")
@@ -101,10 +114,15 @@ class FactsCall(CoreCall, input_model=FactsInput, output_model=FactsOutput):
         domain_tpl = env.from_string(DOMAIN_PROMPT[language])
         domain_prompt = domain_tpl.render(conversation=data.message)
         try:
-            domain_list: DomainGen = await self._json([
-                {"role": "system", "content": "You are a helpful assistant."},
-                {"role": "user", "content": domain_prompt},
-            ], DomainGen) # type: ignore[arg-type]
+            domain_list: DomainGen = await self._json_with_config(
+                [
+                    {"role": "system", "content": "You are a helpful assistant."},
+                    {"role": "user", "content": domain_prompt},
+                ], 
+                DomainGen,
+                llm_id=self.llm_id,
+                enable_thinking=self.enable_thinking,
+            ) # type: ignore[arg-type]
         except Exception as e:
             # 如果 LLM 返回格式不正确，使用默认空列表
             logging.warning(f"[FactsCall] 域名提取失败，使用默认值: {e}")
@@ -120,6 +138,45 @@ class FactsCall(CoreCall, input_model=FactsInput, output_model=FactsOutput):
                 domain=domain_list.keywords,
             ).model_dump(by_alias=True, exclude_none=True),
         )
+    
+    async def _json_with_config(
+        self, 
+        messages: list[dict[str, Any]], 
+        schema: type[BaseModel],
+        llm_id: str | None = None,
+        enable_thinking: bool = False,
+    ) -> BaseModel:
+        """使用配置的模型进行JSON生成"""
+        from apps.llm.function import FunctionLLM
+        
+        # 根据llm_id获取模型配置
+        llm_config = None
+        if llm_id:
+            from apps.services.llm import LLMManager
+            from apps.llm.adapters import get_provider_from_endpoint
+            from apps.schemas.config import LLMConfig
+            
+            llm_info = await LLMManager.get_llm_by_id(llm_id)
+            if llm_info:
+                provider = llm_info.provider or get_provider_from_endpoint(llm_info.openai_base_url)
+                
+                llm_config = LLMConfig(
+                    provider=provider,
+                    endpoint=llm_info.openai_base_url,
+                    key=llm_info.openai_api_key,
+                    model=llm_info.model_name,
+                    max_tokens=llm_info.max_tokens,
+                    temperature=0.7,
+                )
+        
+        # 初始化Function LLM
+        json_gen = FunctionLLM(llm_config) if llm_config else FunctionLLM()
+        result = await json_gen.call(
+            messages=messages, 
+            schema=schema.model_json_schema(),
+            enable_thinking=enable_thinking,
+        )
+        return schema.model_validate(result)
 
 
     async def exec(

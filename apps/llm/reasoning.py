@@ -173,7 +173,12 @@ class ReasoningLLM:
         max_tokens: int | None,
         temperature: float | None,
         model: str | None = None,
-        enable_thinking: bool = False
+        enable_thinking: bool = False,
+        frequency_penalty: float | None = None,
+        presence_penalty: float | None = None,
+        min_p: float | None = None,
+        top_k: int | None = None,
+        top_p: float | None = None,
     ) -> AsyncGenerator[ChatCompletionChunk, None]:
         """创建流式响应"""
         if model is None:
@@ -205,14 +210,42 @@ class ReasoningLLM:
             "stream": True,
             "stream_options": {"include_usage": True},
             "timeout": 300,
-            "extra_body": {"enable_thinking": enable_thinking}
         }
+        
+        # 初始化 extra_body
+        extra_body_params = {}
+        
+        # enable_thinking 始终放在 extra_body 中
+        extra_body_params["enable_thinking"] = enable_thinking
+        
+        # 添加扩展参数到 extra_body（这些参数不被标准 OpenAI SDK 支持）
+        if frequency_penalty is not None:
+            extra_body_params["frequency_penalty"] = frequency_penalty
+        if presence_penalty is not None:
+            extra_body_params["presence_penalty"] = presence_penalty
+        if min_p is not None:
+            extra_body_params["min_p"] = min_p
+        if top_k is not None:
+            extra_body_params["top_k"] = top_k
+        if top_p is not None:
+            # top_p 是标准参数，但某些 provider 可能需要特殊处理
+            base_params["top_p"] = top_p
+        
+        # 只有当有扩展参数时才添加 extra_body
+        if extra_body_params:
+            base_params["extra_body"] = extra_body_params
         
         # 使用适配器调整参数
         adapted_params = self._adapter.adapt_create_params(base_params, enable_thinking)
         
         logger.info(f"[{self._provider}] 调用参数: model={model}, enable_thinking={enable_thinking}, "
                    f"supports_native_thinking={self._adapter.capabilities.supports_enable_thinking}")
+        
+        # 打印完整请求体（排除messages内容以避免日志过长）
+        log_params = adapted_params.copy()
+        if 'messages' in log_params:
+            log_params['messages'] = f"<{len(log_params['messages'])} messages>"
+        logger.info(f"[{self._provider}] 请求体: {log_params}")
         
         return await self._client.chat.completions.create(**adapted_params)  # type: ignore[]
 
@@ -225,7 +258,12 @@ class ReasoningLLM:
         streaming: bool = True,
         result_only: bool = True,
         model: str | None = None,
-        enable_thinking: bool = False
+        enable_thinking: bool = False,
+        frequency_penalty: float | None = None,
+        presence_penalty: float | None = None,
+        min_p: float | None = None,
+        top_k: int | None = None,
+        top_p: float | None = None,
     ) -> AsyncGenerator[str, None]:
         """调用大模型，分为流式和非流式两种"""
         # 检查max_tokens和temperature
@@ -236,7 +274,18 @@ class ReasoningLLM:
         if model is None:
             model = self._config.model
         msg_list = self._validate_messages(messages)
-        stream = await self._create_stream(msg_list, max_tokens, temperature, model, enable_thinking)
+        stream = await self._create_stream(
+            msg_list, 
+            max_tokens, 
+            temperature, 
+            model, 
+            enable_thinking,
+            frequency_penalty,
+            presence_penalty,
+            min_p,
+            top_k,
+            top_p,
+        )
         reasoning = ReasoningContent()
         reasoning_content = ""
         result = ""
@@ -273,6 +322,12 @@ class ReasoningLLM:
             yield result
 
         logger.info("[Reasoning] 推理内容: %s\n\n%s", reasoning_content, result)
+        
+        # 如果streaming模式下没有返回任何text，至少返回一个空格
+        # 避免下游处理空字符串时出错
+        if streaming and not result:
+            logger.warning("[Reasoning] 模型没有返回任何文本内容，返回占位符")
+            yield " "
 
         # 更新token统计
         if self.input_tokens == 0 or self.output_tokens == 0:

@@ -554,16 +554,19 @@ async def update_variable(
         )
         
     except ValueError as e:
+        logger.error(f"更新变量失败(ValueError): {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=str(e)
         )
     except PermissionError as e:
+        logger.error(f"更新变量失败(PermissionError): {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail=str(e)
         )
     except Exception as e:
+        logger.error(f"更新变量失败(Exception): {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"更新变量失败: {str(e)}"
