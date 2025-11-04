@@ -623,10 +623,15 @@ class ActiveMCPServiceRsp(ResponseData):
 class LLMProvider(BaseModel):
     """LLM提供商数据结构"""
 
+    model_config = {"populate_by_name": True}
+
     provider: str = Field(description="LLM提供商")
     description: str = Field(description="LLM提供商描述")
     url: str | None = Field(default=None, description="LLM提供商URL")
     icon: str = Field(description="LLM提供商图标")
+    alias_zh: str = Field(default="", description="中文名称", alias="aliasZh")
+    alias_en: str = Field(default="", description="英文名称", alias="aliasEn")
+    type: str = Field(default="public", description="类型：public(公网) 或 private(私有)")
 
 
 class ListLLMProviderRsp(ResponseData):
@@ -655,8 +660,8 @@ class LLMProviderInfo(BaseModel):
     model_name: str = Field(description="模型名称", alias="modelName")
     max_tokens: int | None = Field(default=None, description="最大token数", alias="maxTokens")
     is_editable: bool = Field(default=True, description="是否可编辑", alias="isEditable")
-    type: str = Field(default="chat", description="模型类型")
-
+    type: list[str] = Field(default=['chat'], description="模型类型列表")
+    
     # 模型能力字段
     provider: str = Field(default="", description="模型提供商")
     supports_thinking: bool = Field(default=False, description="是否支持思维链", alias="supportsThinking")

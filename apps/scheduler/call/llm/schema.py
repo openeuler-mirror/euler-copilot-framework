@@ -14,3 +14,5 @@ class LLMInput(DataBase):
 
 class LLMOutput(DataBase):
     """定义LLM工具调用的输出"""
+
+    reply: str = Field(description="定义LLM工具调用的输出")

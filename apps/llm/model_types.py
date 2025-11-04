@@ -11,6 +11,7 @@ class ModelType(str, Enum):
     CHAT = "chat"  # 文本对话
     EMBEDDING = "embedding"  # 嵌入
     RERANK = "rerank"  # 重排序
+    FUNCTION_CALL = "function_call"  # 函数调用
     AUDIO = "audio"  # 语音（预留）
     IMAGE = "image"  # 图像（预留）
     VIDEO = "video"  # 视频（预留）

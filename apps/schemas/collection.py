@@ -88,7 +88,7 @@ class LLM(BaseModel):
     openai_api_key: str = Field(default=Config().get_config().llm.key)
     model_name: str = Field(default=Config().get_config().llm.model)
     max_tokens: int | None = Field(default=Config().get_config().llm.max_tokens)
-    type: Literal['chat', 'image', 'video', 'speech', 'embedding', 'reranker'] = Field(default='chat', description="模型类型")
+    type: list[str] | str = Field(default=['chat'], description="模型类型，支持单个类型或多个类型")
     
     # 模型能力字段
     provider: str = Field(default="", description="模型提供商")
@@ -101,6 +101,19 @@ class LLM(BaseModel):
     notes: str = Field(default="", description="备注信息")
     
     created_at: float = Field(default_factory=lambda: round(datetime.now(tz=UTC).timestamp(), 3))
+    
+    def normalize_type(self) -> list[str]:
+        """标准化type字段为列表格式"""
+        if isinstance(self.type, str):
+            return [self.type]
+        return self.type
+    
+    def model_dump(self, **kwargs):
+        """重写model_dump方法，确保type字段存储为列表"""
+        data = super().model_dump(**kwargs)
+        if 'type' in data and isinstance(data['type'], str):
+            data['type'] = [data['type']]
+        return data
 
 
 class LLMItem(BaseModel):

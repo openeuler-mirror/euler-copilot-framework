@@ -52,6 +52,13 @@ MCP_SUMMARY: dict[str, dict[LanguageType, str]] = {
 class MCP(CoreCall, input_model=MCPInput, output_model=MCPOutput):
     """MCP工具"""
 
+    controlled_output: bool = Field(default=True)
+    
+    # 输出参数配置
+    output_parameters: dict[str, Any] = Field(description="输出参数配置", default={
+        "message": {"type": "string", "description": "MCP Server的自然语言输出"},
+    })
+    
     mcp_list: list[str] = Field(description="MCP Server ID列表", max_length=5, min_length=1)
     max_steps: int = Field(description="最大步骤数", default=20)
     text_output: bool = Field(description="是否将结果以文本形式返回", default=True)
@@ -177,13 +184,19 @@ class MCP(CoreCall, input_model=MCPInput, output_model=MCPOutput):
         planner = MCPPlanner(self._call_vars.question, language)
         answer = await planner.generate_answer(self._plan, await self._host.assemble_memory())
 
-        # 输出结果
+        # 输出文本结果
         yield self._create_output(
             MCP_SUMMARY["END"][language].format(answer=answer),
             MCPMessageType.FINISH_END,
             data=MCPOutput(
                 message=answer,
             ).model_dump(),
+        )
+        
+        # 额外输出一个纯DATA chunk用于保存到变量池
+        yield CallOutputChunk(
+            type=CallOutputType.DATA,
+            content=MCPOutput(message=answer).model_dump(by_alias=True, exclude_none=True)
         )
 
     def _create_output(

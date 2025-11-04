@@ -93,10 +93,14 @@ class FlowManager:
                 try:
                     # TODO: 由于现在没有动态表单，所以暂时使用Slot的create_empty_slot方法
                     # 对于循环节点，输出参数已经是扁平化格式，不需要再次处理
-                    if node_pool_record["call_id"] == "Loop":
+                    if node_pool_record["call_id"] in ["Loop"]:
                         output_parameters = output_schema
                     else:
                         output_parameters = Slot(output_schema).extract_type_desc_from_schema()
+                        # 如果输出参数是对象类型，直接使用 items 字段，去除顶层包装
+                        # 这样 {type: 'object', items: {reply: {...}}} 会变成 {reply: {...}}
+                        if isinstance(output_parameters, dict) and output_parameters.get("type") == "object" and "items" in output_parameters:
+                            output_parameters = output_parameters["items"]
                         
                     parameters = {
                         "input_parameters": Slot(params_schema).create_empty_slot(),
@@ -318,6 +322,10 @@ class FlowManager:
                         processed_output_parameters = output_parameters
                     else:
                         processed_output_parameters = Slot(output_parameters).extract_type_desc_from_schema()
+                        # 如果输出参数是对象类型，直接使用 items 字段，去除顶层包装
+                        # 这样 {type: 'object', items: {reply: {...}}} 会变成 {reply: {...}}
+                        if isinstance(processed_output_parameters, dict) and processed_output_parameters.get("type") == "object" and "items" in processed_output_parameters:
+                            processed_output_parameters = processed_output_parameters["items"]
                     
                     parameters = {
                         "input_parameters": input_parameters,

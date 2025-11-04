@@ -34,6 +34,9 @@ class LLMManager:
                 url=provider["url"],
                 description=provider["description"],
                 icon=provider["icon"],
+                alias_zh=provider.get("alias_zh", ""),
+                alias_en=provider.get("alias_en", ""),
+                type=provider.get("type", "public"),
             )
             provider_list.append(item)
         return provider_list
@@ -62,12 +65,32 @@ class LLMManager:
         :param llm_id: 大模型ID
         :return: 大模型对象
         """
+        from bson import ObjectId
+        
         llm_collection = MongoDB().get_collection("llm")
-        result = await llm_collection.find_one({"_id": llm_id})
+        
+        # 尝试同时使用字符串和ObjectId查询，以兼容不同的存储格式
+        result = None
+        try:
+            # 首先尝试作为字符串查询
+            result = await llm_collection.find_one({"_id": llm_id})
+            
+            # 如果字符串查询失败，尝试转换为ObjectId查询
+            if not result and ObjectId.is_valid(llm_id):
+                result = await llm_collection.find_one({"_id": ObjectId(llm_id)})
+                
+        except Exception as e:
+            logger.warning(f"[LLMManager] 查询LLM时发生错误: {e}")
+        
         if not result:
             err = f"[LLMManager] LLM {llm_id} 不存在"
             logger.error(err)
             raise ValueError(err)
+        
+        # 将ObjectId转换为字符串，以兼容LLM模型的验证
+        if isinstance(result.get("_id"), ObjectId):
+            result["_id"] = str(result["_id"])
+            
         return LLM.model_validate(result)
 
     @staticmethod
@@ -79,12 +102,32 @@ class LLMManager:
         :param llm_id: 大模型ID
         :return: 大模型对象
         """
+        from bson import ObjectId
+        
         llm_collection = MongoDB().get_collection("llm")
-        result = await llm_collection.find_one({"_id": llm_id, "user_sub": user_sub})
+        
+        # 尝试同时使用字符串和ObjectId查询，以兼容不同的存储格式
+        result = None
+        try:
+            # 首先尝试作为字符串查询
+            result = await llm_collection.find_one({"_id": llm_id, "user_sub": user_sub})
+            
+            # 如果字符串查询失败，尝试转换为ObjectId查询
+            if not result and ObjectId.is_valid(llm_id):
+                result = await llm_collection.find_one({"_id": ObjectId(llm_id), "user_sub": user_sub})
+                
+        except Exception as e:
+            logger.warning(f"[LLMManager] 查询LLM时发生错误: {e}")
+        
         if not result:
             err = f"[LLMManager] LLM {llm_id} 不存在"
             logger.error(err)
             raise ValueError(err)
+        
+        # 将ObjectId转换为字符串，以兼容LLM模型的验证
+        if isinstance(result.get("_id"), ObjectId):
+            result["_id"] = str(result["_id"])
+            
         return LLM.model_validate(result)
 
     @staticmethod
@@ -94,7 +137,7 @@ class LLMManager:
 
         :param user_sub: 用户ID
         :param llm_id: 大模型ID
-        :param model_type: 模型类型，可选值：'chat', 'image', 'video', 'speech', 'embedding', 'reranker'
+        :param model_type: 模型类型，可选值：'chat', 'image', 'video', 'speech', 'embedding', 'reranker', 'function_call'
         :return: 大模型列表
         """
         mongo = MongoDB()
@@ -105,6 +148,7 @@ class LLMManager:
         if llm_id:
             base_query["llm_id"] = llm_id
         if model_type:
+            # 支持type字段既可以是字符串也可以是数组
             base_query["type"] = model_type
         
         result = await llm_collection.find(base_query).sort({"created_at": 1}).to_list(length=None)
@@ -128,6 +172,11 @@ class LLMManager:
                 result = await llm_collection.find(base_query).sort({"created_at": 1}).to_list(length=None)
 
         for llm in result:
+            # 标准化type字段为列表格式
+            llm_type = llm.get("type", "chat")
+            if isinstance(llm_type, str):
+                llm_type = [llm_type]
+            
             llm_item = LLMProviderInfo(
                 llmId=str(llm["_id"]),  # 转换ObjectId为字符串
                 icon=llm["icon"],
@@ -136,7 +185,7 @@ class LLMManager:
                 modelName=llm["model_name"],
                 maxTokens=llm["max_tokens"],
                 isEditable=bool(llm.get("user_sub")),  # 系统模型（user_sub=""）不可编辑
-                type=llm.get("type", "chat"),
+                type=llm_type,  # 始终返回列表格式
                 # 模型能力字段
                 provider=llm.get("provider", ""),
                 supportsThinking=llm.get("supports_thinking", False),
@@ -166,6 +215,11 @@ class LLMManager:
         # 推断模型能力
         provider = req.provider or get_provider_from_endpoint(req.openai_base_url)
         model_info = model_registry.get_model_info(provider, req.model_name)
+        
+        # 标准化type字段为列表格式
+        model_type = req.type
+        if isinstance(model_type, str):
+            model_type = [model_type]
         
         # 使用请求中的能力信息，如果没有则从model_registry获取，最后使用默认值
         capabilities = {
@@ -200,7 +254,7 @@ class LLMManager:
                 openai_api_key=req.openai_api_key,
                 model_name=req.model_name,
                 max_tokens=req.max_tokens,
-                type=req.type,
+                type=model_type,  # 使用标准化后的列表格式
                 **capabilities
             )
             # 排除_id字段以避免MongoDB的不可变_id字段错误
@@ -214,7 +268,7 @@ class LLMManager:
                 openai_api_key=req.openai_api_key,
                 model_name=req.model_name,
                 max_tokens=req.max_tokens,
-                type=req.type,
+                type=model_type,  # 使用标准化后的列表格式
                 **capabilities
             )
             # 排除_id字段让MongoDB自动生成_id，避免冲突
@@ -376,6 +430,11 @@ class LLMManager:
         
         llm_list = []
         for llm in result:
+            # 标准化type字段为列表格式
+            llm_type = llm.get("type", "embedding")
+            if isinstance(llm_type, str):
+                llm_type = [llm_type]
+            
             llm_item = LLMProviderInfo(
                 llmId=str(llm["_id"]),  # 转换ObjectId为字符串
                 icon=llm["icon"],
@@ -384,7 +443,7 @@ class LLMManager:
                 modelName=llm["model_name"],
                 maxTokens=llm["max_tokens"],
                 isEditable=bool(llm.get("user_sub")),  # 有user_sub的是用户创建的，可编辑
-                type="embedding",
+                type=llm_type,
             )
             llm_list.append(llm_item)
         return llm_list
@@ -410,6 +469,11 @@ class LLMManager:
         
         llm_list = []
         for llm in result:
+            # 标准化type字段为列表格式
+            llm_type = llm.get("type", "embedding")
+            if isinstance(llm_type, str):
+                llm_type = [llm_type]
+            
             llm_item = LLMProviderInfo(
                 llmId=str(llm["_id"]),  # 转换ObjectId为字符串
                 icon=llm["icon"],
@@ -418,7 +482,7 @@ class LLMManager:
                 modelName=llm["model_name"],
                 maxTokens=llm["max_tokens"],
                 isEditable=bool(llm.get("user_sub")),  # 系统模型（user_sub=""）不可编辑
-                type="embedding",
+                type=llm_type,
             )
             llm_list.append(llm_item)
         return llm_list
@@ -440,6 +504,11 @@ class LLMManager:
         
         llm_list = []
         for llm in result:
+            # 标准化type字段为列表格式
+            llm_type = llm.get("type", "reranker")
+            if isinstance(llm_type, str):
+                llm_type = [llm_type]
+            
             llm_item = LLMProviderInfo(
                 llmId=str(llm["_id"]),  # 转换ObjectId为字符串
                 icon=llm["icon"],
@@ -448,7 +517,7 @@ class LLMManager:
                 modelName=llm["model_name"],
                 maxTokens=llm["max_tokens"],
                 isEditable=bool(llm.get("user_sub")),  # 有user_sub的是用户创建的，可编辑
-                type="reranker",
+                type=llm_type,
             )
             llm_list.append(llm_item)
         return llm_list
@@ -474,6 +543,11 @@ class LLMManager:
         
         llm_list = []
         for llm in result:
+            # 标准化type字段为列表格式
+            llm_type = llm.get("type", "reranker")
+            if isinstance(llm_type, str):
+                llm_type = [llm_type]
+            
             llm_item = LLMProviderInfo(
                 llmId=str(llm["_id"]),  # 转换ObjectId为字符串
                 icon=llm["icon"],
@@ -482,7 +556,7 @@ class LLMManager:
                 modelName=llm["model_name"],
                 maxTokens=llm["max_tokens"],
                 isEditable=bool(llm.get("user_sub")),  # 系统模型（user_sub=""）不可编辑
-                type="reranker",
+                type=llm_type,
             )
             llm_list.append(llm_item)
         return llm_list
@@ -495,7 +569,8 @@ class LLMManager:
         llm_collection = mongo.get_collection("llm")
         
         # 推断chat模型能力
-        provider = get_provider_from_endpoint(config.llm.endpoint) or config.llm.provider
+        # 优先使用配置文件中明确指定的provider，如果没有则从endpoint推断
+        provider = getattr(config.llm, 'provider', '') or get_provider_from_endpoint(config.llm.endpoint)
         model_info = model_registry.get_model_info(provider, config.llm.model)
         
         # 根据provider获取图标
@@ -510,7 +585,7 @@ class LLMManager:
             openai_base_url=config.llm.endpoint,
             model_name=config.llm.model,
             max_tokens=config.llm.max_tokens or (model_info.max_tokens_param if model_info else 8192),
-            type="chat",
+            type=['chat'],  # 使用列表格式
             provider=provider,
             supports_thinking=model_info.supports_thinking if model_info else False,
             can_toggle_thinking=model_info.can_toggle_thinking if model_info else False,
@@ -531,7 +606,7 @@ class LLMManager:
         """
         初始化系统模型的通用方法
         
-        :param model_type: 模型类型 ('embedding' 或 'reranker')
+        :param model_type: 模型类型 ('embedding', 'reranker', 'function_call')
         :param model_config: 模型配置对象
         :param title: 模型标题
         """
@@ -539,7 +614,8 @@ class LLMManager:
         llm_collection = mongo.get_collection("llm")
         
         # 推断模型能力
-        provider = get_provider_from_endpoint(model_config.endpoint) or model_config.provider
+        # 优先使用配置文件中明确指定的provider，如果没有则从endpoint推断
+        provider = getattr(model_config, 'provider', '') or getattr(model_config, 'backend', '') or get_provider_from_endpoint(model_config.endpoint)
         model_info = model_registry.get_model_info(provider, model_config.model)
         
         # 根据provider获取图标，如果没有则使用配置文件中的图标
@@ -551,10 +627,10 @@ class LLMManager:
             title=title,
             icon=provider_icon,
             openai_base_url=model_config.endpoint,
-            openai_api_key=model_config.api_key,
+            openai_api_key=getattr(model_config, 'api_key', ''),
             model_name=model_config.model,
-            max_tokens=None,
-            type=model_type,
+            max_tokens=getattr(model_config, 'max_tokens', None),
+            type=[model_type],  # 使用列表格式
             provider=provider,
             supports_thinking=model_info.supports_thinking if model_info else False,
             can_toggle_thinking=model_info.can_toggle_thinking if model_info else False,
@@ -568,7 +644,6 @@ class LLMManager:
         # 使用upsert模式：如果model_name已存在就更新，否则插入
         filter_query = {
             "user_sub": "",
-            "type": model_type,
             "model_name": model_config.model
         }
         
@@ -588,11 +663,127 @@ class LLMManager:
             logger.info(f"[LLMManager] 更新系统{model_type}模型: {model_config.model}")
 
     @staticmethod
+    async def get_function_call_model_id(user_sub: str, app_llm_id: str | None = None) -> str | None:
+        """
+        获取function call场景使用的模型ID
+        
+        优先级顺序（从高到低）：
+        1. 应用配置的模型 (app_llm_id) - 最高优先级
+        2. 用户偏好的 function call 模型
+        3. 系统默认的 function call 模型
+        4. 系统默认的 chat 模型
+        
+        :param user_sub: 用户ID
+        :param app_llm_id: 应用配置的模型ID（可选）
+        :return: function call模型ID或chat模型ID，如果都不存在则返回None
+        """
+        try:
+            mongo = MongoDB()
+            llm_collection = mongo.get_collection("llm")
+            
+            # 🔑 第一优先级：应用配置的模型（最高优先级）
+            if app_llm_id:
+                logger.info(f"[LLMManager] 使用应用配置的模型用于函数调用: {app_llm_id}")
+                return app_llm_id
+            
+            # 第二优先级：获取用户偏好的function call模型
+            from apps.services.user import UserManager
+            user_preferences = await UserManager.get_user_preferences_by_user_sub(user_sub)
+            
+            # 如果用户配置了function call模型偏好，检查该模型是否真正支持函数调用
+            if user_preferences.function_call_model_preference:
+                llm_id = user_preferences.function_call_model_preference.llm_id
+                # 检查该模型是否支持函数调用
+                llm_data = await llm_collection.find_one({"_id": llm_id})
+                if llm_data:
+                    supports_fc = llm_data.get("supports_function_calling", True)
+                    if supports_fc:
+                        logger.info(f"[LLMManager] 使用用户偏好的function call模型: {llm_id}")
+                        return llm_id
+                    else:
+                        logger.warning(f"[LLMManager] 用户偏好的模型 {llm_id} 不支持函数调用，将使用其他模型")
+            
+            # 第三优先级：获取系统默认的function call模型
+            # 注意：type字段可能是数组或字符串，需要同时支持两种格式
+            system_function_call_model = await llm_collection.find_one({
+                "user_sub": "",
+                "$or": [
+                    {"type": "function_call"},  # 兼容字符串格式
+                    {"type": {"$in": ["function_call"]}}  # 兼容数组格式
+                ],
+                "supports_function_calling": True  # 确保支持函数调用
+            })
+            
+            if system_function_call_model:
+                llm_id = str(system_function_call_model["_id"])
+                logger.info(f"[LLMManager] 使用系统默认的function call模型: {llm_id}")
+                return llm_id
+            
+            # 第四优先级：如果没有专门的function call模型，尝试找支持函数调用的chat模型
+            logger.warning("[LLMManager] 未找到专门的function call模型，寻找支持函数调用的chat模型")
+            system_chat_with_fc = await llm_collection.find_one({
+                "user_sub": "",
+                "$or": [
+                    {"type": "chat"},  # 兼容字符串格式
+                    {"type": {"$in": ["chat"]}}  # 兼容数组格式
+                ],
+                "supports_function_calling": True
+            })
+            
+            if system_chat_with_fc:
+                llm_id = str(system_chat_with_fc["_id"])
+                logger.info(f"[LLMManager] 使用支持函数调用的chat模型: {llm_id}")
+                return llm_id
+            
+            # 最后降级：使用系统默认的chat模型
+            logger.warning("[LLMManager] 未找到支持函数调用的模型，降级使用系统默认的chat模型")
+            config = Config().get_config()
+            system_chat_model = await llm_collection.find_one({
+                "user_sub": "",
+                "$or": [
+                    {"type": "chat"},  # 兼容字符串格式
+                    {"type": {"$in": ["chat"]}}  # 兼容数组格式
+                ],
+                "model_name": config.llm.model
+            })
+            
+            if not system_chat_model:
+                # 如果系统chat模型不存在，创建它
+                await LLMManager.init_system_chat_model()
+                system_chat_model = await llm_collection.find_one({
+                    "user_sub": "",
+                    "$or": [
+                        {"type": "chat"},  # 兼容字符串格式
+                        {"type": {"$in": ["chat"]}}  # 兼容数组格式
+                    ],
+                    "model_name": config.llm.model
+                })
+            
+            if system_chat_model:
+                llm_id = str(system_chat_model["_id"])
+                logger.info(f"[LLMManager] 降级使用系统默认的chat模型: {llm_id}")
+                return llm_id
+            
+            logger.error("[LLMManager] 未找到任何可用的模型")
+            return None
+            
+        except Exception as e:
+            logger.error(f"[LLMManager] 获取模型失败: {e}")
+            return None
+
+    @staticmethod
     async def init_system_models():
         """
-        初始化系统模型（从配置文件读取embedding和reranker配置并插入数据库）
+        初始化系统模型（从配置文件读取embedding、reranker和function_call配置并插入数据库）
+        在初始化之前，先清理所有系统模型
         """
         config = Config().get_config()
+        mongo = MongoDB()
+        llm_collection = mongo.get_collection("llm")
+        
+        # 清理所有系统模型（user_sub为空的模型）
+        delete_result = await llm_collection.delete_many({"user_sub": ""})
+        logger.info(f"[LLMManager] 清理了 {delete_result.deleted_count} 个旧系统模型")
         
         # 初始化embedding模型
         await LLMManager._init_system_model(
@@ -606,6 +797,13 @@ class LLMManager:
             "reranker", 
             config.reranker, 
             "System Reranker Model"
+        )
+        
+        # 初始化function_call模型
+        await LLMManager._init_system_model(
+            "function_call",
+            config.function_call,
+            "System Function Call Model"
         )
 
     @staticmethod
@@ -623,16 +821,35 @@ class LLMManager:
         mongo = MongoDB()
         llm_collection = mongo.get_collection("llm")
         
-        # 查询用户可访问的模型（包括系统模型和自己的模型）
-        result = await llm_collection.find_one({
-            "_id": llm_id,
-            "$or": [{"user_sub": user_sub}, {"user_sub": ""}]
-        })
+        # 尝试将llm_id转换为ObjectId（如果适用）
+        from bson import ObjectId
+        from bson.errors import InvalidId
+        
+        # 先尝试作为字符串查询，如果失败再尝试ObjectId
+        try:
+            # 首先尝试作为字符串ID查询（UUID格式）
+            result = await llm_collection.find_one({
+                "_id": llm_id,
+                "$or": [{"user_sub": user_sub}, {"user_sub": ""}]
+            })
+            
+            # 如果没找到且llm_id可以转换为ObjectId，则尝试作为ObjectId查询
+            if not result and ObjectId.is_valid(llm_id):
+                result = await llm_collection.find_one({
+                    "_id": ObjectId(llm_id),
+                    "$or": [{"user_sub": user_sub}, {"user_sub": ""}]
+                })
+        except InvalidId:
+            result = None
         
         if not result:
             err = f"[LLMManager] LLM {llm_id} 不存在或无权限访问"
             logger.error(err)
             raise ValueError(err)
+        
+        # 将ObjectId转换为字符串，以兼容LLM模型的验证
+        if isinstance(result.get("_id"), ObjectId):
+            result["_id"] = str(result["_id"])
         
         llm = LLM.model_validate(result)
         

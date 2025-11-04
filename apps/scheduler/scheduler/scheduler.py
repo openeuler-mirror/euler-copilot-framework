@@ -155,7 +155,7 @@ class Scheduler:
 
             # 启动监控任务和主任务
             main_task = asyncio.create_task(push_rag_message(
-                self.task, self.queue, self.task.ids.user_sub, llm, history, doc_ids, rag_data))
+                self.task, self.queue, self.task.ids.user_sub, llm, history, doc_ids, rag_data, self.post_body.enable_thinking))
 
         else:
             # 查找对应的App元数据
@@ -266,10 +266,21 @@ class Scheduler:
         )
         if background.conversation and self.task.state.flow_status == FlowStatus.INIT:
             try:
-                # 使用应用配置的模型进行问题改写
-                llm_id_for_rewrite = app_metadata.llm_id if hasattr(app_metadata, 'llm_id') and app_metadata.llm_id != "empty" else None
+                # 使用function call模型进行问题改写
+                # 降级顺序：应用配置模型 -> 用户偏好的function call模型 -> 系统默认function call模型 -> 系统默认chat模型
+                app_llm_id = app_metadata.llm_id if hasattr(app_metadata, 'llm_id') and app_metadata.llm_id != "empty" else None
+                llm_id_for_rewrite = await LLMManager.get_function_call_model_id(
+                    self.task.ids.user_sub,
+                    app_llm_id=app_llm_id  # 传递应用配置的模型ID（最高优先级）
+                )
+                # 如果仍然没有找到模型（极端情况），则使用应用配置的模型作为最后降级方案
+                if not llm_id_for_rewrite:
+                    llm_id_for_rewrite = app_llm_id
+                    logger.warning("[Scheduler] 未找到任何系统模型，使用应用配置的模型进行问题改写")
+                
                 enable_thinking_for_rewrite = app_metadata.enable_thinking if hasattr(app_metadata, 'enable_thinking') else False
                 
+                logger.info(f"[Scheduler] 问题改写使用模型ID: {llm_id_for_rewrite}")
                 question_obj = QuestionRewrite(
                     llm_id=llm_id_for_rewrite,
                     enable_thinking=enable_thinking_for_rewrite,

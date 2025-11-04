@@ -11,7 +11,12 @@ from apps.schemas.enum_var import CommentType, LanguageType
 from apps.schemas.flow_topology import FlowItem
 from apps.schemas.mcp import MCPType
 from apps.schemas.message import FlowParams
-from apps.schemas.preferences import ReasoningModelPreference, EmbeddingModelPreference, RerankerModelPreference
+from apps.schemas.preferences import (
+    ReasoningModelPreference, 
+    EmbeddingModelPreference, 
+    RerankerModelPreference,
+    FunctionCallModelPreference
+)
 
 
 class RequestDataApp(BaseModel):
@@ -180,7 +185,7 @@ class UpdateLLMReq(BaseModel):
     openai_api_key: str = Field(default="", description="OpenAI API Key", alias="openaiApiKey")
     model_name: str = Field(default="", description="模型名称", alias="modelName")
     max_tokens: int = Field(default=8192, description="最大token数", alias="maxTokens")
-    type: Literal['chat', 'image', 'video', 'speech', 'embedding', 'reranker'] = Field(default='chat', description="模型类型")
+    type: list[str] | str = Field(default=['chat'], description="模型类型，支持单个类型或多个类型")
     
     # 可选的能力字段，如果不提供则自动从model_registry推断
     provider: str | None = Field(default=None, description="模型提供商")
@@ -228,6 +233,16 @@ class UserPreferencesRequest(BaseModel):
         default=None, 
         description="重排序模型偏好", 
         alias="rerankerPreference"
+    )
+    function_call_model_preference: FunctionCallModelPreference | None = Field(
+        default=None,
+        description="函数调用模型偏好",
+        alias="functionCallModelPreference"
+    )
+    search_method_preference: str | None = Field(
+        default=None,
+        description="检索方法偏好",
+        alias="searchMethodPreference"
     )
     chain_of_thought_preference: bool | None = Field(
         default=None,

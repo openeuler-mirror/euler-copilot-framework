@@ -46,6 +46,20 @@ class RerankerModelPreference(BaseModel):
     name: str | None = Field(default=None, description="算法名称")
 
 
+class FunctionCallModelPreference(BaseModel):
+    """函数调用模型偏好设置"""
+    
+    model_config = {"populate_by_name": True, "protected_namespaces": ()}
+    
+    llm_id: str = Field(alias="llmId", description="模型ID")
+    icon: str = Field(default="", description="模型图标")
+    openai_base_url: str = Field(alias="openaiBaseUrl", description="OpenAI API基础URL")
+    openai_api_key: str = Field(alias="openaiApiKey", description="OpenAI API密钥")
+    model_name: str = Field(alias="modelName", description="模型名称")
+    max_tokens: int = Field(alias="maxTokens", description="最大token数")
+    is_editable: bool | None = Field(alias="isEditable", default=None, description="是否可编辑")
+
+
 class UserPreferences(BaseModel):
     """用户偏好设置"""
     
@@ -65,6 +79,16 @@ class UserPreferences(BaseModel):
         default=None, 
         description="重排序模型偏好", 
         alias="rerankerPreference"
+    )
+    function_call_model_preference: FunctionCallModelPreference | None = Field(
+        default=None,
+        description="函数调用模型偏好",
+        alias="functionCallModelPreference"
+    )
+    search_method_preference: str | None = Field(
+        default=None,
+        description="检索方法偏好",
+        alias="searchMethodPreference"
     )
     chain_of_thought_preference: bool = Field(
         default=True, 

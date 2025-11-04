@@ -28,7 +28,7 @@ logger = logging.getLogger(__name__)
 class FunctionLLM:
     """用于FunctionCall的模型"""
 
-    def __init__(self) -> None:
+    def __init__(self, llm_config=None) -> None:
         """
         初始化用于FunctionCall的模型
 
@@ -38,9 +38,29 @@ class FunctionLLM:
         - function_call
         - json_mode
         - structured_output
+        
+        :param llm_config: 可选的LLM配置，如果不提供则使用配置文件中的function_call配置
         """
-        # 暂存config；这里可以替代为从其他位置获取
-        self._config = Config().get_config().function_call
+        # 使用传入的配置或从配置文件获取
+        if llm_config:
+            self._config = llm_config
+            # 如果没有backend字段，根据模型特性推断
+            if not hasattr(self._config, 'backend'):
+                # 默认使用json_mode，这对大多数模型都适用
+                class ConfigWithBackend:
+                    def __init__(self, base_config):
+                        self.model = base_config.model
+                        self.endpoint = base_config.endpoint
+                        self.api_key = getattr(base_config, 'key', getattr(base_config, 'api_key', ''))
+                        self.max_tokens = getattr(base_config, 'max_tokens', 8192)
+                        self.temperature = getattr(base_config, 'temperature', 0.7)
+                        self.backend = "json_mode"  # 默认使用json_mode
+                
+                self._config = ConfigWithBackend(llm_config)
+        else:
+            # 暂存config；这里可以替代为从其他位置获取
+            self._config = Config().get_config().function_call
+            
         if not self._config.model:
             err_msg = "[FunctionCall] 未设置FuntionCall所用模型！"
             logger.error(err_msg)
@@ -88,6 +108,7 @@ class FunctionLLM:
         schema: dict[str, Any],
         max_tokens: int | None = None,
         temperature: float | None = None,
+        enable_thinking: bool = False,
     ) -> str:
         """
         调用openai模型生成JSON
@@ -96,6 +117,7 @@ class FunctionLLM:
         :param dict[str, Any] schema: 输出JSON Schema
         :param int | None max_tokens: 最大Token长度
         :param float | None temperature: 大模型温度
+        :param bool enable_thinking: 是否启用思维链
         :return: 生成的JSON
         :rtype: str
         """
@@ -105,7 +127,16 @@ class FunctionLLM:
             "temperature": temperature,
         })
 
-        if self._config.backend == "vllm":
+        # 🔑 特殊处理：如果provider是siliconflow，强制使用json_mode
+        if self._provider == "siliconflow":
+            logger.info("[FunctionCall] 检测到SiliconFlow provider，启用JSON模式")
+            # 确保系统消息中包含JSON输出提示
+            if messages and messages[0]["role"] == "system":
+                if "JSON" not in messages[0]["content"]:
+                    messages[0]["content"] += "\nYou are a helpful assistant designed to output JSON."
+            self._params["response_format"] = {"type": "json_object"}
+            
+        elif self._config.backend == "vllm":
             self._params["extra_body"] = {"guided_json": schema}
 
         elif self._config.backend == "json_mode":

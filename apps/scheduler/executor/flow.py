@@ -224,14 +224,28 @@ class FlowExecutor(BaseExecutor):
             step=self.flow.steps[self.task.state.step_id],  # type: ignore[arg-type]
         )
 
+        # 🔑 获取function call场景使用的模型ID用于系统步骤（理解上下文、记忆存储）
+        # 降级顺序：应用配置模型 -> 用户偏好的function call模型 -> 系统默认function call模型 -> 系统默认chat模型
+        from apps.services.llm import LLMManager
+        function_call_model_id = await LLMManager.get_function_call_model_id(
+            self.task.ids.user_sub,
+            app_llm_id=self.llm_id  # 传递应用配置的模型ID（最高优先级）
+        )
+        # 如果仍然没有找到模型（极端情况），使用应用配置的模型
+        if not function_call_model_id:
+            function_call_model_id = self.llm_id
+            logger.warning("[FlowExecutor] 未找到任何模型，使用应用配置的模型用于系统步骤")
+        else:
+            logger.info(f"[FlowExecutor] 系统步骤（理解上下文、记忆存储）使用模型: {function_call_model_id}")
+        
         # 头插开始前的系统步骤，并执行
         for step in FIXED_STEPS_BEFORE_START:
-            # 为系统步骤添加应用配置的模型信息
+            # 为系统步骤添加function call模型信息
             step_data = step.get(self.task.language, step[LanguageType.CHINESE])
             # 将llm_id和enable_thinking添加到step的params中
             step_data_with_params = step_data.model_copy()
             step_data_with_params.params = {
-                "llm_id": self.llm_id,
+                "llm_id": function_call_model_id,  # 使用function call模型
                 "enable_thinking": self.enable_thinking,
             }
             self.step_queue.append(
@@ -322,12 +336,12 @@ class FlowExecutor(BaseExecutor):
 
         # 尾插运行结束后的系统步骤
         for step in FIXED_STEPS_AFTER_END:
-            # 为系统步骤添加应用配置的模型信息
+            # 为系统步骤添加function call模型信息
             step_data = step.get(self.task.language, step[LanguageType.CHINESE])
             # 将llm_id和enable_thinking添加到step的params中
             step_data_with_params = step_data.model_copy()
             step_data_with_params.params = {
-                "llm_id": self.llm_id,
+                "llm_id": function_call_model_id,  # 使用function call模型
                 "enable_thinking": self.enable_thinking,
             }
             self.step_queue.append(

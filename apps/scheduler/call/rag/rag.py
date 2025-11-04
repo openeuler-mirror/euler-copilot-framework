@@ -27,6 +27,14 @@ logger = logging.getLogger(__name__)
 class RAG(CoreCall, input_model=RAGInput, output_model=RAGOutput):
     """RAG工具：查询知识库"""
 
+    controlled_output: bool = Field(default=True)
+    
+    # 输出参数配置
+    output_parameters: dict[str, Any] = Field(description="输出参数配置", default={
+        "question": {"type": "string", "description": "查询问题"},
+        "corpus": {"type": "array", "description": "知识库的语料列表"},
+    })
+    
     knowledge_base_ids: list[str] = Field(description="知识库的id列表", default=[])
     top_k: int = Field(description="返回的分片数量", default=5)
     document_ids: list[str] | None = Field(description="文档id列表", default=None)
