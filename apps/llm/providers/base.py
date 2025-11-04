@@ -51,10 +51,11 @@ class BaseProvider:
     async def chat(
         self, messages: list[dict[str, str]],
         *, include_thinking: bool = False,
+        streaming: bool = True,
         tools: list[LLMFunctions] | None = None,
     ) -> AsyncGenerator[LLMChunk, None]:
         """聊天"""
-        raise NotImplementedError
+        yield LLMChunk(content="")
 
 
     async def embedding(self, text: list[str]) -> list[list[float]]:

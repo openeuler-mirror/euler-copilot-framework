@@ -2,29 +2,27 @@
 """Executor基类"""
 
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 from pydantic import BaseModel, ConfigDict
 
+from apps.common.queue import MessageQueue
 from apps.common.security import Security
+from apps.llm import LLM
 from apps.schemas.enum_var import EventType
 from apps.schemas.message import TextAddContent
 from apps.schemas.record import RecordContent
 from apps.schemas.scheduler import ExecutorBackground
+from apps.schemas.task import TaskData
 from apps.services.record import RecordManager
-
-if TYPE_CHECKING:
-    from apps.common.queue import MessageQueue
-    from apps.llm import LLM
-    from apps.schemas.task import TaskData
 
 
 class BaseExecutor(BaseModel, ABC):
     """Executor基类"""
 
-    task: "TaskData"
-    msg_queue: "MessageQueue"
-    llm: "LLM"
+    task: TaskData
+    msg_queue: MessageQueue
+    llm: LLM
 
     question: str
 

@@ -77,53 +77,25 @@ class OllamaProvider(BaseProvider):
                 "content": "<think>" + self.full_thinking + "</think>" + self.full_answer,
             }])
 
-    @override
-    async def chat(
-        self, messages: list[dict[str, str]],
-        *, include_thinking: bool = False,
-        tools: list[LLMFunctions] | None = None,
-    ) -> AsyncGenerator[LLMChunk, None]:
-        # 检查能力
-        if not self._allow_chat:
-            err = "[OllamaProvider] 当前模型不支持Chat"
-            _logger.error(err)
-            raise RuntimeError(err)
-
-        # 初始化Token计数
-        self.input_tokens = 0
-        self.output_tokens = 0
-
-        # 检查消息
-        messages = self._validate_messages(messages)
-
-        # 流式返回响应
-        last_chunk = None
-        chat_kwargs = {
-            "model": self.config.modelName,
-            "messages": messages,
-            "options": {
-                "temperature": self.config.temperature,
-                "num_predict": self.config.maxToken,
+    def _build_tools_param(self, tools: list[LLMFunctions]) -> list[dict[str, Any]]:
+        """构建工具参数"""
+        return [{
+            "type": "function",
+            "function": {
+                "name": tool.name,
+                "description": tool.description,
+                "parameters": tool.param_schema,
             },
-            "stream": True,
-            **self.config.extraConfig,
-        }
+        } for tool in tools]
 
-        # 如果提供了tools，则传入以启用function-calling模式
-        if tools:
-            functions = []
-            for tool in tools:
-                functions += [{
-                    "type": "function",
-                    "function": {
-                        "name": tool.name,
-                        "description": tool.description,
-                        "parameters": tool.param_schema,
-                    },
-                }]
-            chat_kwargs["tools"] = functions
-
-        async for chunk in await self._client.chat(**chat_kwargs):
+    async def _handle_streaming_response(
+        self, response: AsyncGenerator[ChatResponse, None],
+        messages: list[dict[str, str]],
+        tools: list[LLMFunctions] | None,
+    ) -> AsyncGenerator[LLMChunk, None]:
+        """处理流式响应"""
+        last_chunk = None
+        async for chunk in response:
             last_chunk = chunk
             if chunk.message.thinking:
                 self.full_thinking += chunk.message.thinking
@@ -144,6 +116,85 @@ class OllamaProvider(BaseProvider):
 
         # 使用最后一个chunk的usage数据
         self._process_usage_data(last_chunk, messages)
+
+    async def _handle_non_streaming_response(
+        self, response: ChatResponse,
+        messages: list[dict[str, str]],
+    ) -> AsyncGenerator[LLMChunk, None]:
+        """处理非流式响应"""
+        if response.message.thinking:
+            self.full_thinking = response.message.thinking
+        if response.message.content:
+            self.full_answer = response.message.content
+
+        # 处理usage数据
+        self._process_usage_data(response if response.done else None, messages)
+
+        # 一次性返回完整结果
+        yield LLMChunk(
+            content=self.full_answer,
+            reasoning_content=self.full_thinking,
+        )
+
+    def _build_chat_kwargs(
+        self, messages: list[dict[str, str]],
+        *,
+        streaming: bool,
+        tools: list[LLMFunctions] | None,
+    ) -> dict[str, Any]:
+        """构建chat请求参数"""
+        chat_kwargs = {
+            "model": self.config.modelName,
+            "messages": messages,
+            "options": {
+                "temperature": self.config.temperature,
+                "num_predict": self.config.maxToken,
+            },
+            "stream": streaming,
+            **self.config.extraConfig,
+        }
+
+        # 如果提供了tools，则传入以启用function-calling模式
+        if tools:
+            chat_kwargs["tools"] = self._build_tools_param(tools)
+
+        return chat_kwargs
+
+    @override
+    async def chat(
+        self, messages: list[dict[str, str]],
+        tools: list[LLMFunctions] | None = None,
+        *, include_thinking: bool = False,
+        streaming: bool = True,
+    ) -> AsyncGenerator[LLMChunk, None]:
+        # 检查能力
+        if not self._allow_chat:
+            err = "[OllamaProvider] 当前模型不支持Chat"
+            _logger.error(err)
+            raise RuntimeError(err)
+
+        # 初始化Token计数和累积内容
+        self.input_tokens = 0
+        self.output_tokens = 0
+        self.full_thinking = ""
+        self.full_answer = ""
+
+        # 检查消息
+        messages = self._validate_messages(messages)
+
+        # 构建chat请求参数
+        chat_kwargs = self._build_chat_kwargs(messages, streaming=streaming, tools=tools)
+
+        # 发送请求
+        response = await self._client.chat(**chat_kwargs)
+
+        # 根据streaming模式处理响应
+        if streaming:
+            async for chunk in self._handle_streaming_response(response, messages, tools):
+                yield chunk
+        else:
+            async for chunk in self._handle_non_streaming_response(response, messages):
+                yield chunk
 
     def _seq_to_list(self, seq: Sequence[Any]) -> list[Any]:
         """将Sequence转换为list"""
@@ -168,5 +219,3 @@ class OllamaProvider(BaseProvider):
             input=text,
         )
         return self._seq_to_list(result.embeddings)
-
-

@@ -40,8 +40,9 @@ class InitMixin:
             raise ValueError(err)
         return LLM(reasoning_llm)
 
-    def _create_new_task(self, task_id: uuid.UUID, user_id: str, conversation_id: uuid.UUID | None) -> None:
+    def _create_new_task(self, user_id: str, conversation_id: uuid.UUID | None, auth_header: str) -> None:
         """创建新的TaskData"""
+        task_id = uuid.uuid4()
         self.task = TaskData(
             metadata=Task(
                 id=task_id,
@@ -50,18 +51,19 @@ class InitMixin:
             ),
             runtime=TaskRuntime(
                 taskId=task_id,
+                authHeader=auth_header,
             ),
             state=None,
             context=[],
         )
 
-    async def _init_task(self, task_id: uuid.UUID, user_id: str) -> None:
+    async def _init_task(self, user_id: str, auth_header: str) -> None:
         """初始化Task"""
         conversation_id = self.post_body.conversation_id
 
         if not conversation_id:
             _logger.info("[Scheduler] 无Conversation ID，直接创建新任务")
-            self._create_new_task(task_id, user_id, None)
+            self._create_new_task(user_id, None, auth_header)
             return
 
         _logger.info("[Scheduler] 尝试从Conversation ID %s 恢复任务", conversation_id)
@@ -80,10 +82,8 @@ class InitMixin:
                     task_data = await TaskManager.get_task_data_by_task_id(last_task.id)
                     if task_data:
                         self.task = task_data
-                        self.task.metadata.id = task_id
-                        self.task.runtime.taskId = task_id
-                        if self.task.state:
-                            self.task.state.taskId = task_id
+                        # 恢复任务时保留原有的 task_id，但更新 authHeader
+                        self.task.runtime.authHeader = auth_header
                         return
             else:
                 _logger.warning(
@@ -94,7 +94,7 @@ class InitMixin:
             _logger.exception("[Scheduler] 从Conversation恢复任务失败，创建新任务")
 
         _logger.info("[Scheduler] 无法恢复任务，创建新任务")
-        self._create_new_task(task_id, user_id, conversation_id)
+        self._create_new_task(user_id, conversation_id, auth_header)
 
     async def _get_user(self, user_id: str) -> None:
         """初始化用户"""

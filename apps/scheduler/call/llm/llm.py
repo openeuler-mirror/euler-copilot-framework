@@ -4,7 +4,7 @@
 import logging
 from collections.abc import AsyncGenerator
 from datetime import datetime
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import pytz
 from jinja2 import BaseLoader
@@ -23,6 +23,9 @@ from apps.schemas.scheduler import (
 
 from .prompt import LLM_CONTEXT_PROMPT, LLM_DEFAULT_PROMPT
 from .schema import LLMInput, LLMOutput
+
+if TYPE_CHECKING:
+    from apps.models.task import ExecutorHistory
 
 logger = logging.getLogger(__name__)
 
@@ -68,7 +71,7 @@ class LLM(CoreCall, input_model=LLMInput, output_model=LLMOutput):
         )
 
         # 上下文信息
-        step_history = []
+        step_history: list[ExecutorHistory] = []
         for ids in call_vars.step_order[-self.step_history_size:]:
             step_history += [call_vars.step_data[ids]]
 

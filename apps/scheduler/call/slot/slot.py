@@ -20,6 +20,7 @@ from .prompt import SLOT_GEN_PROMPT, SLOT_HISTORY_TEMPLATE, SLOT_SUMMARY_TEMPLAT
 from .schema import SlotInput, SlotOutput
 
 if TYPE_CHECKING:
+    from apps.models.task import ExecutorHistory
     from apps.scheduler.executor.step import StepExecutor
 
 
@@ -148,7 +149,7 @@ class Slot(CoreCall, input_model=SlotInput, output_model=SlotOutput):
 
     async def _init(self, call_vars: CallVars) -> SlotInput:
         """初始化"""
-        self._flow_history = []
+        self._flow_history: list[ExecutorHistory] = []
         self._question = call_vars.question
         for key in call_vars.step_order[:-self.step_num]:
             self._flow_history += [call_vars.step_data[key]]

@@ -29,26 +29,28 @@ router = APIRouter(
     ],
 )
 
-async def chat_generator(post_body: RequestData, user_id: str, session_id: str) -> AsyncGenerator[str, None]:
+async def chat_generator(post_body: RequestData, user_id: str, auth_header: str) -> AsyncGenerator[str, None]:
     """进行实际问答，并从MQ中获取消息"""
     try:
-        await Activity.set_active(user_id)
-
         # 敏感词检查
         if await words_check.check(post_body.question) != 1:
             yield "data: [SENSITIVE]\n\n"
             _logger.info("[Chat] 问题包含敏感词！")
-            await Activity.remove_active(user_id)
             return
 
         # 创建queue；由Scheduler进行关闭
         queue = MessageQueue()
         await queue.init()
 
-        # 在单独Task中运行Scheduler，拉齐queue.get的时机
+        # 1. 先初始化 Scheduler（确保初始化成功）
         scheduler = Scheduler()
-        await scheduler.init(queue, post_body, user_id)
-        _logger.info(f"[Chat] 用户是否活跃: {await Activity.is_active(user_id)}")
+        await scheduler.init(queue, post_body, user_id, auth_header)
+
+        # 2. Scheduler初始化成功后，再设置用户处于活动状态
+        await Activity.set_active(user_id)
+        _logger.info(f"[Chat] 用户是否活跃: {await Activity.can_active(user_id)}")
+
+        # 3. 最后判断并运行 Executor
         scheduler_task = asyncio.create_task(scheduler.run())
 
         # 处理每一条消息
@@ -95,7 +97,7 @@ async def chat_generator(post_body: RequestData, user_id: str, session_id: str) 
 @router.post("/chat")
 async def chat(request: Request, post_body: RequestData) -> StreamingResponse:
     """LLM流式对话接口"""
-    session_id = request.state.session_id
+    auth_header = request.headers.get("Authorization", "").replace("Bearer ", "")
     user_id = request.state.user_id
     # 问题黑名单检测
     if (post_body.question is not None) and (
@@ -105,7 +107,7 @@ async def chat(request: Request, post_body: RequestData) -> StreamingResponse:
         await UserBlacklistManager.change_blacklisted_users(user_id, -10)
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="question is blacklisted")
 
-    res = chat_generator(post_body, user_id, session_id)
+    res = chat_generator(post_body, user_id, auth_header)
     return StreamingResponse(
         content=res,
         media_type="text/event-stream",

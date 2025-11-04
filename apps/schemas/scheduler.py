@@ -43,8 +43,8 @@ class CallVars(BaseModel):
 
     thinking: str = Field(description="上下文信息")
     question: str = Field(description="改写后的用户输入")
-    step_data: dict[str, ExecutorHistory] = Field(description="Executor中历史工具的结构化数据", default={})
-    step_order: list[str] = Field(description="Executor中历史工具的顺序", default=[])
+    step_data: dict[uuid.UUID, ExecutorHistory] = Field(description="Executor中历史工具的结构化数据", default={})
+    step_order: list[uuid.UUID] = Field(description="Executor中历史工具的顺序", default=[])
     background: ExecutorBackground = Field(description="Executor的背景信息")
     ids: CallIds = Field(description="Call的ID")
     language: LanguageType = Field(description="语言", default=LanguageType.CHINESE)

@@ -42,17 +42,17 @@ class Scheduler(
 
     async def init(
             self,
-            task_id: uuid.UUID,
             queue: MessageQueue,
             post_body: RequestData,
             user_id: str,
+            auth_header: str,
     ) -> None:
         """初始化"""
         self.queue = queue
         self.post_body = post_body
 
         await self._get_user(user_id)
-        await self._init_task(task_id, user_id)
+        await self._init_task(user_id, auth_header)
         self._init_jinja2_env()
         self.llm = await self._get_scheduler_llm(post_body.llm_id)
 

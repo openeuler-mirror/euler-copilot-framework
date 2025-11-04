@@ -57,8 +57,8 @@ class TextAddContent(BaseModel):
 class MessageBase(HeartbeatData):
     """基础消息事件结构"""
 
-    id: uuid.UUID = Field(min_length=36, max_length=36)
-    conversation_id: uuid.UUID | None = Field(min_length=36, max_length=36, alias="conversationId", default=None)
+    id: uuid.UUID
+    conversation_id: uuid.UUID | None = Field(alias="conversationId", default=None)
     flow: MessageExecutor | None = None
     content: Any | None = Field(default=None, description="消息内容")
     metadata: MessageMetadata

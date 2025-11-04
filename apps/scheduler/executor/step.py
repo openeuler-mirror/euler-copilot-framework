@@ -6,11 +6,11 @@ import logging
 import uuid
 from collections.abc import AsyncGenerator
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 from pydantic import ConfigDict
 
-from apps.models import ExecutorHistory, StepStatus, StepType
+from apps.models import ExecutorHistory, ExecutorStatus, StepStatus
 from apps.scheduler.call.core import CoreCall
 from apps.scheduler.call.empty import Empty
 from apps.scheduler.call.facts.facts import FactsCall
@@ -24,12 +24,10 @@ from apps.schemas.enum_var import (
 )
 from apps.schemas.message import TextAddContent
 from apps.schemas.scheduler import CallError, CallOutputChunk, ExecutorBackground
+from apps.schemas.task import StepQueueItem
 from apps.services.node import NodeManager
 
 from .base import BaseExecutor
-
-if TYPE_CHECKING:
-    from apps.schemas.task import StepQueueItem
 
 logger = logging.getLogger(__name__)
 
@@ -37,8 +35,8 @@ logger = logging.getLogger(__name__)
 class StepExecutor(BaseExecutor):
     """工作流中步骤相关函数"""
 
-    step: "StepQueueItem"
-    background: "ExecutorBackground"
+    step: StepQueueItem
+    background: ExecutorBackground
 
     model_config = ConfigDict(
         arbitrary_types_allowed=True,
@@ -91,7 +89,7 @@ class StepExecutor(BaseExecutor):
 
         # State写入ID和运行状态
         self.task.state.stepId = self.step.step_id
-        self.task.state.stepType = str(StepType(self.step.step.type))
+        self.task.state.stepType = self.step.step.type
         self.task.state.stepName = self.step.step.name
 
         # 获取并验证Call类
@@ -235,6 +233,7 @@ class StepExecutor(BaseExecutor):
         except Exception as e:
             logger.exception("[StepExecutor] 运行步骤失败，进行异常处理步骤")
             self.task.state.stepStatus = StepStatus.ERROR
+            self.task.state.executorStatus = ExecutorStatus.ERROR
             await self._push_message(EventType.STEP_OUTPUT.value, {})
             if isinstance(e, CallError):
                 self.task.state.errorMessage = {

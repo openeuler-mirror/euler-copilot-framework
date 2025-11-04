@@ -312,8 +312,8 @@ classDiagram
         +language: LanguageType
         +ids: CallIds
         +question: str
-        +step_data: dict[str, ExecutorHistory]
-        +step_order: list[str]
+        +step_data: dict[UUID, ExecutorHistory]
+        +step_order: list[UUID]
         +background: ExecutorBackground
         +thinking: str
     }
@@ -565,8 +565,8 @@ CallVars是CoreCall中最重要的数据结构，包含了执行Call所需的所
 | `language` | LanguageType | ✅ | 当前使用的语言类型（中文/英文） |
 | `ids` | CallIds | ✅ | 包含任务ID、执行器ID、会话ID等标识信息 |
 | `question` | str | ✅ | 改写或原始的用户问题 |
-| `step_data` | dict[str, ExecutorHistory] | ✅ | 步骤执行历史的字典，键为步骤ID |
-| `step_order` | list[str] | ✅ | 步骤执行的顺序列表 |
+| `step_data` | dict[UUID, ExecutorHistory] | ✅ | 步骤执行历史的字典，键为步骤ID |
+| `step_order` | list[UUID] | ✅ | 步骤执行的顺序列表 |
 | `background` | ExecutorBackground | ✅ | 执行器的背景信息，包含对话历史和事实 |
 | `thinking` | str | ✅ | AI的推理思考过程文本 |
 

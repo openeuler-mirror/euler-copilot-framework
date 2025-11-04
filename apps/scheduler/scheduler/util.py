@@ -55,9 +55,9 @@ class UtilMixin:
             check_interval = 0.5
 
             while not kill_event.is_set():
-                is_active = await Activity.is_active(user_id)
+                can_active = await Activity.can_active(user_id)
 
-                if not is_active:
+                if not can_active:
                     _logger.warning("[Scheduler] 用户 %s 不活跃，终止工作流", user_id)
                     kill_event.set()
                     break

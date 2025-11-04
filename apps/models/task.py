@@ -98,10 +98,10 @@ class TaskRuntime(Base):
     """时间"""
     fullTime: Mapped[float] = mapped_column(Float, default=0.0, nullable=False)  # noqa: N815
     """完整时间成本"""
-    sessionId: Mapped[str | None] = mapped_column(  # noqa: N815
-        String(255), ForeignKey("framework_session.id"), nullable=True, default=None,
+    authHeader: Mapped[str | None] = mapped_column(  # noqa: N815
+        String(255), nullable=True, default=None,
     )
-    """会话ID"""
+    """认证头"""
     userInput: Mapped[str] = mapped_column(Text, nullable=False, default="")  # noqa: N815
     """用户输入"""
     fullAnswer: Mapped[str] = mapped_column(Text, nullable=False, default="")  # noqa: N815

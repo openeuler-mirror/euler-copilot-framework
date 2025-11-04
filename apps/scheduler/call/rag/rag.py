@@ -136,19 +136,25 @@ class RAG(CoreCall, input_model=RAGInput, output_model=RAGOutput):
         """获取文档信息，支持临时文档和知识库文档"""
         doc_chunk_list: list[DocItem] = []
 
-        # 处理临时文档
+        # 处理临时文档：若docIds为空，则不请求
         if doc_ids:
             tmp_data = deepcopy(data)
             tmp_data.kbIds = [uuid.UUID("00000000-0000-0000-0000-000000000000")]
             tmp_data.docIds = doc_ids
+            _logger.info("[RAG] 获取临时文档: %s", tmp_data.docIds)
             doc_chunk_list.extend(await self._fetch_doc_chunks(tmp_data))
+        else:
+            _logger.info("[RAG] docIds为空，跳过临时文档请求")
 
-        # 处理知识库ID的情况
+        # 处理知识库：若kbIds为空，则不请求
         if data.kbIds:
             kb_data = deepcopy(data)
             # 知识库查询时不使用docIds，只使用kbIds
             kb_data.docIds = None
+            _logger.info("[RAG] 获取知识库文档: %s", kb_data.kbIds)
             doc_chunk_list.extend(await self._fetch_doc_chunks(kb_data))
+        else:
+            _logger.info("[RAG] kbIds为空，跳过知识库请求")
 
         return doc_chunk_list
 

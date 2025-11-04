@@ -45,27 +45,14 @@ class LLM:
         streaming: bool = True,
         tools: list[LLMFunctions] | None = None,
     ) -> AsyncGenerator[LLMChunk, None]:
-        """调用大模型，分为流式和非流式两种"""
-        if streaming:
-            async for chunk in await self._provider.chat(
-                messages,
-                include_thinking=include_thinking,
-                tools=tools,
-            ):
-                yield chunk
-        else:
-            # 非流式模式下，需要收集所有内容
-            async for _ in await self._provider.chat(
-                messages,
-                include_thinking=include_thinking,
-                tools=tools,
-            ):
-                continue
-            # 直接yield最终结果
-            yield LLMChunk(
-                content=self._provider.full_answer,
-                reasoning_content=self._provider.full_thinking,
-            )
+        """调用大模型，统一处理流式和非流式"""
+        async for chunk in self._provider.chat(
+            messages,
+            include_thinking=include_thinking,
+            streaming=streaming,
+            tools=tools,
+        ):
+            yield chunk
 
     @property
     def input_tokens(self) -> int:
