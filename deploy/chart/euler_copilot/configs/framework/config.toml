@@ -52,18 +52,16 @@ half_key3 = '${halfKey3}'
 jwt_key = '${jwtKey}'
 
 [embedding]
-type = '{{ default "openai" .Values.models.embedding.type }}'
+provider = '{{ default "openai" .Values.models.embedding.provider }}'
 endpoint = '{{ .Values.models.embedding.endpoint }}'
 api_key = '{{ .Values.models.embedding.key }}'
 model = '{{ default "bge-m3" .Values.models.embedding.name }}'
-icon = '{{ .Values.models.embedding.icon }}'
 
 [reranker]
-type = '{{ .Values.models.reranker.type }}'
+provider = '{{ .Values.models.reranker.provider }}'
 endpoint = '{{ .Values.models.reranker.endpoint }}'
 api_key = '{{ .Values.models.reranker.key }}'
 model = '{{ default "BAAI/bge-reranker-v2-m3" .Values.models.reranker.name }}'
-icon = '{{ .Values.models.reranker.icon }}'
 
 [rag]
 rag_service = 'http://rag-service.{{ .Release.Namespace }}.svc.cluster.local:9988'
@@ -93,6 +91,7 @@ secret_key = '${minio-password}'
 secure = false
 
 [llm]
+provider = '{{ .Values.models.answer.provider }}'
 endpoint = '{{ .Values.models.answer.endpoint }}'
 key = '{{ .Values.models.answer.key }}'
 model = '{{ .Values.models.answer.name }}'
