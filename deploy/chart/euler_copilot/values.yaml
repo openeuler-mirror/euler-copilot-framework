@@ -12,6 +12,8 @@ globals:
 models:
   # 用于问答的大模型；需要为OpenAI兼容接口
   answer:
+    # 可用的框架类型：["vllm", "sglang", "ollama", "openai"]
+    provider: 
     # [必填] 接口URL（请根据 API 提供商文档确定是否需要带上“v1”后缀）
     endpoint:
     # [必填] 接口API Key；默认置空
@@ -42,27 +44,24 @@ models:
   embedding:
     # 推理框架类型，默认为openai
     # [必填] Embedding接口类型：["openai", "mindie"]
-    type:
+    provider:
     # [必填] Embedding URL（需要带上“v1”后缀）
     endpoint:
     # [必填] Embedding 模型API Key
     key:
     # [必填] Embedding 模型名称
     name:
-    # [必填] Embedding 模型icon URL
-    icon:
   # 用于对rag检索结果重排的模型，支持硅基流动 百炼 vllm asscend等模型供应方提供的api
   reranker:
     # [必填] reranker接口类型：["guijiliudong", "bailian", "v1lm", "assecend"]
-    type:
+    provider:
     # [必填] reranker URL（需要带上“/v1/rerank”后缀）  
     endpoint:
     # [必填] reranker 模型API Key
     key:
     # [必填] reranker 模型名称
     name:
-    # [必填] reranker 模型icon URL
-    icon:
+
 # 登录设置
 login:
   # [必填] 登录提供者类型：["authhub", "authelia"]
