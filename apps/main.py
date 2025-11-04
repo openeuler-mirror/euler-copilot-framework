@@ -33,6 +33,7 @@ from .routers import (
     user,
 )
 from .scheduler.pool.pool import pool
+from .services.settings import SettingsManager
 
 
 @asynccontextmanager
@@ -41,6 +42,8 @@ async def lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
     # 启动时初始化资源
     await postgres.init()
     await pool.init()
+    # 初始化全局LLM设置
+    await SettingsManager.init_global_llm_settings()
     yield
     # 关闭时释放资源
     await postgres.close()

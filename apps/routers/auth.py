@@ -48,9 +48,9 @@ async def oidc_login(request: Request, code: str) -> HTMLResponse:
         token = await oidc_provider.get_oidc_token(code)
         user_info = await oidc_provider.get_oidc_user(token["access_token"])
 
-        user_sub: str | None = user_info.get("user_sub", None)
-        if user_sub:
-            await oidc_provider.set_token(user_sub, token["access_token"], token["refresh_token"])
+        user_id: str | None = user_info.get("user_sub", None)
+        if user_id:
+            await oidc_provider.set_token(user_id, token["access_token"], token["refresh_token"])
     except Exception as e:
         _logger.exception("User login failed")
         status_code = status.HTTP_400_BAD_REQUEST if "auth error" in str(e) else status.HTTP_403_FORBIDDEN
@@ -68,7 +68,7 @@ async def oidc_login(request: Request, code: str) -> HTMLResponse:
         )
     user_host = request.client.host
     # 获取用户sub
-    if not user_sub:
+    if not user_id:
         _logger.error("OIDC no user_sub associated.")
         return _templates.TemplateResponse(
             "login_failed.html.j2",
@@ -76,9 +76,10 @@ async def oidc_login(request: Request, code: str) -> HTMLResponse:
             status_code=status.HTTP_403_FORBIDDEN,
         )
     # 创建或更新用户登录信息
-    await UserManager.create_or_update_on_login(user_sub)
+    user_name: str | None = user_info.get("user_name", None)
+    await UserManager.create_or_update_on_login(user_id, user_name)
     # 创建会话
-    current_session = await SessionManager.create_session(user_sub, user_host)
+    current_session = await SessionManager.create_session(user_id, user_host)
     return _templates.TemplateResponse(
         "login_success.html.j2",
         {"request": request, "current_session": current_session},
@@ -97,7 +98,7 @@ async def logout(request: Request) -> JSONResponse:
                 result={},
             ).model_dump(exclude_none=True, by_alias=True),
         )
-    await TokenManager.delete_plugin_token(request.state.user_sub)
+    await TokenManager.delete_plugin_token(request.state.user_id)
 
     if hasattr(request.state, "session_id"):
         await SessionManager.delete_session(request.state.session_id)
@@ -145,7 +146,7 @@ async def oidc_logout(token: Annotated[str, Body()]) -> JSONResponse:
 }, response_model=PostPersonalTokenRsp)
 async def change_personal_token(request: Request) -> JSONResponse:
     """POST /auth/key: 重置用户的API密钥"""
-    new_api_key: str | None = await PersonalTokenManager.update_personal_token(request.state.user_sub)
+    new_api_key: str | None = await PersonalTokenManager.update_personal_token(request.state.user_id)
     if not new_api_key:
         return JSONResponse(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, content=ResponseData(
             code=status.HTTP_500_INTERNAL_SERVER_ERROR,

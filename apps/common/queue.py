@@ -18,6 +18,8 @@ from apps.schemas.message import (
 )
 from apps.schemas.task import TaskData
 
+from .encoder import UUIDEncoder
+
 logger = logging.getLogger(__name__)
 
 
@@ -76,7 +78,9 @@ class MessageQueue:
             content=data,
         )
 
-        await self._queue.put(json.dumps(message.model_dump(by_alias=True, exclude_none=True), ensure_ascii=False))
+        await self._queue.put(
+            json.dumps(message.model_dump(by_alias=True, exclude_none=True), ensure_ascii=False, cls=UUIDEncoder),
+        )
 
     async def get(self) -> AsyncGenerator[str, None]:
         """从Queue中获取消息；变为async generator"""
@@ -98,7 +102,7 @@ class MessageQueue:
     async def _heartbeat(self) -> None:
         """组装用于向用户（前端/Shell端）输出的心跳"""
         heartbeat_template = HeartbeatData()
-        heartbeat_msg = json.dumps(heartbeat_template.model_dump(by_alias=True), ensure_ascii=False)
+        heartbeat_msg = json.dumps(heartbeat_template.model_dump(by_alias=True), ensure_ascii=False, cls=UUIDEncoder)
 
         while True:
             # 如果关闭，则停止心跳

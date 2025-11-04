@@ -15,12 +15,12 @@ class Activity:
     """活动控制：全局并发限制，同时最多有 n 个任务在执行（与用户无关）"""
 
     @staticmethod
-    async def is_active(user_id: str) -> bool:
+    async def can_active(user_id: str) -> bool:
         """
         判断系统是否达到全局并发上限
 
         :param user_id: 用户实体ID（兼容现有接口签名）
-        :return: 达到并发上限返回 True，否则 False
+        :return: 达到并发上限返回 False，否则 True
         """
         time = datetime.now(tz=UTC)
 
@@ -32,11 +32,11 @@ class Activity:
                 SessionActivity.timestamp <= time,
             ))).one()
             if count >= SLIDE_WINDOW_QUESTION_COUNT:
-                return True
+                return False
 
             # 全局并发检查：当前活跃任务数量是否达到上限
             current_active = (await session.scalars(select(func.count(SessionActivity.id)))).one()
-            return current_active >= MAX_CONCURRENT_TASKS
+            return current_active < MAX_CONCURRENT_TASKS
 
     @staticmethod
     async def set_active(user_id: str) -> None:

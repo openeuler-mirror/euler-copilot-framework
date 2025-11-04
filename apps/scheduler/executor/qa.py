@@ -5,7 +5,7 @@ import logging
 import uuid
 from datetime import UTC, datetime
 
-from apps.models import ExecutorCheckpoint, ExecutorStatus, StepStatus
+from apps.models import ExecutorCheckpoint, ExecutorStatus, StepStatus, StepType
 from apps.models.task import LanguageType
 from apps.scheduler.call.rag.schema import DocItem, RAGOutput
 from apps.schemas.document import DocumentInfo
@@ -23,13 +23,13 @@ _RAG_STEP_LIST = [
             name="RAG检索",
             description="从知识库中检索相关文档",
             node="RAG",
-            type="RAG",
+            type=StepType.RAG.value,
         ),
         LanguageType.ENGLISH: Step(
             name="RAG retrieval",
             description="Retrieve relevant documents from the knowledge base",
             node="RAG",
-            type="RAG",
+            type=StepType.RAG.value,
         ),
     },
     {
@@ -37,13 +37,13 @@ _RAG_STEP_LIST = [
             name="LLM问答",
             description="基于检索到的文档生成答案",
             node="LLM",
-            type="LLM",
+            type=StepType.LLM.value,
         ),
         LanguageType.ENGLISH: Step(
             name="LLM answer",
             description="Generate answer based on the retrieved documents",
             node="LLM",
-            type="LLM",
+            type=StepType.LLM.value,
         ),
     },
     {
@@ -51,13 +51,13 @@ _RAG_STEP_LIST = [
             name="问题推荐",
             description="根据对话答案，推荐相关问题",
             node="Suggestion",
-            type="Suggestion",
+            type=StepType.SUGGEST.value,
         ),
         LanguageType.ENGLISH: Step(
             name="Question Suggestion",
             description="Display the suggested next question under the answer",
             node="Suggestion",
-            type="Suggestion",
+            type=StepType.SUGGEST.value,
         ),
     },
     {
@@ -151,6 +151,7 @@ class QAExecutor(BaseExecutor):
 
         if self.task.state and self.task.state.stepStatus == StepStatus.ERROR:
             _logger.error("[QAExecutor] RAG检索步骤失败")
+            self.task.state.executorStatus = ExecutorStatus.ERROR
             return False
 
         rag_output_data = None
@@ -199,6 +200,7 @@ class QAExecutor(BaseExecutor):
 
         if self.task.state and self.task.state.stepStatus == StepStatus.ERROR:
             _logger.error("[QAExecutor] LLM问答步骤失败")
+            self.task.state.executorStatus = ExecutorStatus.ERROR
             return False
 
         _logger.info("[QAExecutor] LLM问答步骤完成")
@@ -225,6 +227,7 @@ class QAExecutor(BaseExecutor):
 
         if self.task.state and self.task.state.stepStatus == StepStatus.ERROR:
             _logger.error("[QAExecutor] 问题推荐步骤失败")
+            self.task.state.executorStatus = ExecutorStatus.ERROR
             return False
 
         _logger.info("[QAExecutor] 开始执行记忆存储步骤")
@@ -246,6 +249,7 @@ class QAExecutor(BaseExecutor):
 
         if self.task.state and self.task.state.stepStatus == StepStatus.ERROR:
             _logger.error("[QAExecutor] 记忆存储步骤失败")
+            self.task.state.executorStatus = ExecutorStatus.ERROR
             return False
 
         return True

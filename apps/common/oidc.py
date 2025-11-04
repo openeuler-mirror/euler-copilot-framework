@@ -32,17 +32,17 @@ class OIDCProvider:
             raise NotImplementedError(err)
 
     @staticmethod
-    async def set_token(user_sub: str, access_token: str, refresh_token: str) -> None:
+    async def set_token(user_id: str, access_token: str, refresh_token: str) -> None:
         """设置MongoDB中的OIDC Token到sessions集合"""
         async with postgres.session() as session:
             await session.merge(Session(
-                userSub=user_sub,
+                userId=user_id,
                 sessionType=SessionType.ACCESS_TOKEN,
                 token=access_token,
                 validUntil=datetime.now(UTC) + timedelta(minutes=OIDC_ACCESS_TOKEN_EXPIRE_TIME),
             ))
             await session.merge(Session(
-                userSub=user_sub,
+                userId=user_id,
                 sessionType=SessionType.REFRESH_TOKEN,
                 token=refresh_token,
                 validUntil=datetime.now(UTC) + timedelta(minutes=OIDC_REFRESH_TOKEN_EXPIRE_TIME),

@@ -13,10 +13,9 @@ JSON_GEN: dict[LanguageType, str] = {
 
             <instructions>
                 - 你可以访问能够帮助收集信息的工具
-                - 逐步使用工具，每次使用都基于之前的结果
+                - 逐步使用工具，每次使用都基于之前的结果{% if use_xml_format %}
                 - 用户的查询在 <query></query> 标签中提供
-                {% if previous_trial %}- 查看 <previous_trial></previous_trial> 信息以避免重复错误{% endif %}
-                {% if use_xml_format %}- 使用 XML 样式的标签格式化工具调用，其中工具名称是根标签，每个参数是嵌套标签
+                - 使用 XML 样式的标签格式化工具调用，其中工具名称是根标签，每个参数是嵌套标签
                 - 使用架构中指定的确切工具名称和参数名称
                 - 基本格式结构：
                   <工具名称>
@@ -27,7 +26,9 @@ JSON_GEN: dict[LanguageType, str] = {
                   * 数字：<limit>10</limit>
                   * 布尔值：<enabled>true</enabled>
                   * 数组（重复标签）：<tag>项目1</tag><tag>项目2</tag>
-                  * 对象（嵌套标签）：<config><key>值</key></config>{% endif %}
+                  * 对象（嵌套标签）：<config><key>值</key></config>{% else %}
+                - 必须使用提供的工具来回答查询
+                - 工具调用必须遵循工具架构中定义的JSON格式{% endif %}
             </instructions>
             {% if use_xml_format %}
 
@@ -36,72 +37,57 @@ JSON_GEN: dict[LanguageType, str] = {
                     杭州的天气怎么样？
                 </query>
 
-                <tools>
-                    <descriptions>
-                        get_weather: 获取指定城市的当前天气信息
-                    </descriptions>
-                    <schemas>
-                        {
-                          "name": "get_weather",
-                          "description": "获取指定城市的当前天气信息",
-                          "parameters": {
-                            "type": "object",
-                            "properties": {
-                              "city": {
-                                "type": "string",
-                                "description": "要查询天气的城市名称"
+                <functions>
+                    <item>
+                        <name>get_weather</name>
+                        <description>获取指定城市的当前天气信息</description>
+                        <parameters>
+                            {
+                              "type": "object",
+                              "properties": {
+                                "city": {
+                                  "type": "string",
+                                  "description": "要查询天气的城市名称"
+                                },
+                                "unit": {
+                                  "type": "string",
+                                  "enum": ["celsius", "fahrenheit"],
+                                  "description": "温度单位"
+                                }
                               },
-                              "unit": {
-                                "type": "string",
-                                "enum": ["celsius", "fahrenheit"],
-                                "description": "温度单位"
-                              },
-                              "include_forecast": {
-                                "type": "boolean",
-                                "description": "是否包含预报数据"
-                              }
-                            },
-                            "required": ["city"]
-                          }
-                        }
-                    </schemas>
-                </tools>
+                              "required": ["city"]
+                            }
+                        </parameters>
+                    </item>
+                </functions>
 
                 助手响应：
                 <get_weather>
                 <city>杭州</city>
                 <unit>celsius</unit>
-                <include_forecast>false</include_forecast>
                 </get_weather>
             </example>
-            {% endif %}
 
             <query>
                 {{ query }}
             </query>
-            {% if previous_trial %}
 
-            <previous_trial>
-                <description>
-                    你之前的工具调用有不正确的参数。
-                </description>
-                <arguments>
-                    {{ previous_trial }}
-                </arguments>
-                <error_info>
-                    {{ err_info }}
-                </error_info>
-            </previous_trial>
-            {% endif %}
+            <functions>{% for func in functions %}
+                <item>
+                    <name>{{ func.name }}</name>
+                    <description>{{ func.description }}</description>
+                    <parameters>{{ func.parameters | tojson(indent=2) }}</parameters>
+                </item>{% endfor %}
+            </functions>{% else %}
 
-            <tools>
-                <descriptions>
-                    {{ tool_descriptions }}
-                </descriptions>
-                <schemas>
-                    {{ tool_schemas }}
-                </schemas>
-            </tools>
+            ## 可用工具
+            {% for func in functions %}
+            - **{{ func.name }}**: {{ func.description }}
+            {% endfor %}
+
+            请根据用户查询选择合适的工具来回答问题。你必须使用上述工具之一来处理查询。
+
+            **用户查询**: {{ query }}{% endif %}
         """,
     ),
     LanguageType.ENGLISH: dedent(
@@ -111,11 +97,9 @@ JSON_GEN: dict[LanguageType, str] = {
 
             <instructions>
                 - You have access to tools that can help gather information
-                - Use tools step-by-step, with each use informed by previous results
+                - Use tools step-by-step, with each use informed by previous results{% if use_xml_format %}
                 - The user's query is provided in the <query></query> tags
-                {% if previous_trial %}- Review the <previous_trial></previous_trial> information to avoid \
-repeating mistakes{% endif %}
-                {% if use_xml_format %}- Format tool calls using XML-style tags where the tool name is the root tag \
+                - Format tool calls using XML-style tags where the tool name is the root tag \
 and each parameter is a nested tag
                 - Use the exact tool name and parameter names as specified in the schema
                 - Basic format structure:
@@ -127,7 +111,9 @@ and each parameter is a nested tag
                   * Number: <limit>10</limit>
                   * Boolean: <enabled>true</enabled>
                   * Array (repeat tags): <tag>item1</tag><tag>item2</tag>
-                  * Object (nest tags): <config><key>value</key></config>{% endif %}
+                  * Object (nest tags): <config><key>value</key></config>{% else %}
+                - You must use the provided tools to answer the query
+                - Tool calls must follow the JSON format defined in the tool schemas{% endif %}
             </instructions>
             {% if use_xml_format %}
 
@@ -136,72 +122,58 @@ and each parameter is a nested tag
                     What is the weather like in Hangzhou?
                 </query>
 
-                <tools>
-                    <descriptions>
-                        get_weather: Get current weather information for a specified city
-                    </descriptions>
-                    <schemas>
-                        {
-                          "name": "get_weather",
-                          "description": "Get current weather information for a specified city",
-                          "parameters": {
-                            "type": "object",
-                            "properties": {
-                              "city": {
-                                "type": "string",
-                                "description": "The city name to query weather for"
+                <functions>
+                    <item>
+                        <name>get_weather</name>
+                        <description>Get current weather information for a specified city</description>
+                        <parameters>
+                            {
+                              "type": "object",
+                              "properties": {
+                                "city": {
+                                  "type": "string",
+                                  "description": "The city name to query weather for"
+                                },
+                                "unit": {
+                                  "type": "string",
+                                  "enum": ["celsius", "fahrenheit"],
+                                  "description": "Temperature unit"
+                                }
                               },
-                              "unit": {
-                                "type": "string",
-                                "enum": ["celsius", "fahrenheit"],
-                                "description": "Temperature unit"
-                              },
-                              "include_forecast": {
-                                "type": "boolean",
-                                "description": "Whether to include forecast data"
-                              }
-                            },
-                            "required": ["city"]
-                          }
-                        }
-                    </schemas>
-                </tools>
+                              "required": ["city"]
+                            }
+                        </parameters>
+                    </item>
+                </functions>
 
                 Assistant response:
                 <get_weather>
                 <city>Hangzhou</city>
                 <unit>celsius</unit>
-                <include_forecast>false</include_forecast>
                 </get_weather>
             </example>
-            {% endif %}
 
             <query>
                 {{ query }}
             </query>
-            {% if previous_trial %}
 
-            <previous_trial>
-                <description>
-                    Your previous tool call had incorrect arguments.
-                </description>
-                <arguments>
-                    {{ previous_trial }}
-                </arguments>
-                <error_info>
-                    {{ err_info }}
-                </error_info>
-            </previous_trial>
-            {% endif %}
+            <functions>{% for func in functions %}
+                <item>
+                    <name>{{ func.name }}</name>
+                    <description>{{ func.description }}</description>
+                    <parameters>{{ func.parameters | tojson(indent=2) }}</parameters>
+                </item>{% endfor %}
+            </functions>{% else %}
 
-            <tools>
-                <descriptions>
-                    {{ tool_descriptions }}
-                </descriptions>
-                <schemas>
-                    {{ tool_schemas }}
-                </schemas>
-            </tools>
+            ## Available Tools
+            {% for func in functions %}
+            - **{{ func.name }}**: {{ func.description }}
+            {% endfor %}
+
+            Please select the appropriate tool(s) from above to answer the user's query.
+            You must use one of the tools listed above to process the query.
+
+            **User Query**: {{ query }}{% endif %}
         """,
     ),
 }

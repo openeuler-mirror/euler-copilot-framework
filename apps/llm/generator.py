@@ -21,6 +21,16 @@ _logger = logging.getLogger(__name__)
 
 JSON_GEN_MAX_TRIAL = 3
 
+
+class JsonValidationError(Exception):
+    """JSON验证失败异常，携带生成的结果"""
+
+    def __init__(self, message: str, result: dict[str, Any]) -> None:
+        """初始化异常"""
+        super().__init__(message)
+        self.result = result
+
+
 class JsonGenerator:
     """综合Json生成器（全局单例）"""
 
@@ -56,7 +66,7 @@ class JsonGenerator:
 
     def _build_messages(
         self,
-        function: dict[str, Any],
+        functions: list[dict[str, Any]],
         conversation: list[dict[str, str]],
         language: LanguageType = LanguageType.CHINESE,
     ) -> list[dict[str, str]]:
@@ -70,9 +80,8 @@ class JsonGenerator:
         template = self._env.from_string(JSON_GEN[language])
         prompt = template.render(
             query=query,
-            conversation=conversation[:-1],
-            schema=function["parameters"],
             use_xml_format=False,
+            functions=functions,
         )
 
         messages = [*conversation[:-1], {"role": "user", "content": prompt}]
@@ -117,7 +126,7 @@ class JsonGenerator:
     async def _single_trial(
         self,
         function: dict[str, Any],
-        context: list[dict[str, str]],
+        conversation: list[dict[str, str]],
         language: LanguageType = LanguageType.CHINESE,
     ) -> dict[str, Any]:
         """单次尝试，包含校验逻辑；function使用OpenAI标准Function格式"""
@@ -131,10 +140,10 @@ class JsonGenerator:
         # 执行生成
         if self._support_function_call:
             # 如果支持FunctionCall
-            result = await self._call_with_function(function, context, language)
+            result = await self._call_with_function(function, conversation, language)
         else:
             # 如果不支持FunctionCall
-            result = await self._call_without_function(function, context, language)
+            result = await self._call_without_function(function, conversation, language)
 
         # 校验结果
         try:
@@ -144,11 +153,9 @@ class JsonGenerator:
             err_info = err_info.split("\n\n")[0]
             _logger.info("[JSONGenerator] 验证失败：%s", err_info)
 
-            context.append({
-                "role": "assistant",
-                "content": f"Attempted to use tool but validation failed: {err_info}",
-            })
-            raise
+            # 创建带结果的验证异常
+            validation_error = JsonValidationError(err_info, result)
+            raise validation_error from err
         else:
             return result
 
@@ -163,7 +170,7 @@ class JsonGenerator:
             err = "[JSONGenerator] 未初始化，请先调用init()方法"
             raise RuntimeError(err)
 
-        messages = self._build_messages(function, conversation, language)
+        messages = self._build_messages([function], conversation, language)
 
         tool = LLMFunctions(
             name=function["name"],
@@ -172,7 +179,7 @@ class JsonGenerator:
         )
 
         tool_call_result = {}
-        async for chunk in self._llm.call(messages, include_thinking=False, streaming=True, tools=[tool]):
+        async for chunk in self._llm.call(messages, include_thinking=False, streaming=False, tools=[tool]):
             if chunk.tool_call:
                 tool_call_result.update(chunk.tool_call)
 
@@ -193,11 +200,11 @@ class JsonGenerator:
             err = "[JSONGenerator] 未初始化，请先调用init()方法"
             raise RuntimeError(err)
 
-        messages = self._build_messages(function, conversation, language)
+        messages = self._build_messages([function], conversation, language)
 
         # 使用LLM的call方法获取响应
         full_response = ""
-        async for chunk in self._llm.call(messages, include_thinking=False, streaming=True):
+        async for chunk in self._llm.call(messages, include_thinking=False, streaming=False):
             if chunk.content:
                 full_response += chunk.content
 
@@ -225,32 +232,50 @@ class JsonGenerator:
         schema = function["parameters"]
         Draft7Validator.check_schema(schema)
 
-        # 构建上下文
-        context = [
-            {
-                "role": "system",
-                "content": "You are a helpful assistant that can use tools to help answer user queries.",
-            },
-        ]
-        if conversation:
-            context.extend(conversation)
-
         count = 0
-        original_context = context.copy()
+
+        retry_conversation = conversation.copy() if conversation else []
         while count < JSON_GEN_MAX_TRIAL:
             count += 1
             try:
                 # 如果_single_trial没有抛出异常，直接返回结果，不进行重试
-                return await self._single_trial(function, context, language)
-            except Exception:
+                return await self._single_trial(function, retry_conversation, language)
+            except JsonValidationError as e:
                 _logger.exception(
                     "[JSONGenerator] 第 %d/%d 次尝试失败",
                     count,
                     JSON_GEN_MAX_TRIAL,
                 )
                 if count < JSON_GEN_MAX_TRIAL:
+                    # 将错误信息添加到retry_conversation中，模拟完整的对话流程
+                    err_info = str(e)
+                    err_info = err_info.split("\n\n")[0]
+
+                    # 模拟assistant调用了函数但失败，包含实际获得的参数
+                    function_name = function["name"]
+                    result_json = json.dumps(e.result, ensure_ascii=False)
+                    retry_conversation.append({
+                        "role": "assistant",
+                        "content": f"I called function {function_name} with parameters: {result_json}",
+                    })
+
+                    # 模拟user要求重新调用函数并给出错误原因
+                    retry_conversation.append({
+                        "role": "user",
+                        "content": (
+                            f"The previous function call failed with validation error: {err_info}. "
+                            "Please try again and ensure the output strictly follows the required schema."
+                        ),
+                    })
                     continue
-                context = original_context
+            except Exception:
+                _logger.exception(
+                    "[JSONGenerator] 第 %d/%d 次尝试失败（非验证错误）",
+                    count,
+                    JSON_GEN_MAX_TRIAL,
+                )
+                if count < JSON_GEN_MAX_TRIAL:
+                    continue
         return {}
 
 

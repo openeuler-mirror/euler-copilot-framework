@@ -8,6 +8,7 @@ from typing import cast
 import httpx
 from openai import AsyncOpenAI, AsyncStream
 from openai.types.chat import (
+    ChatCompletion,
     ChatCompletionChunk,
     ChatCompletionMessageParam,
 )
@@ -92,11 +93,159 @@ class OpenAIProvider(BaseProvider):
                 "content": "<think>" + self.full_thinking + "</think>" + self.full_answer,
             }])
 
+    def _handle_usage_response(self, response: ChatCompletion, messages: list[dict[str, str]]) -> None:
+        """处理非流式响应的usage信息"""
+        if hasattr(response, "usage") and response.usage:
+            self.input_tokens = response.usage.prompt_tokens
+            self.output_tokens = response.usage.completion_tokens
+        else:
+            # 回退到本地估算
+            self.input_tokens = token_calculator.calculate_token_length(messages)
+            self.output_tokens = token_calculator.calculate_token_length([{
+                "role": "assistant",
+                "content": "<think>" + self.full_thinking + "</think>" + self.full_answer,
+            }])
+
+    def _build_request_kwargs(
+        self,
+        messages: list[dict[str, str]],
+        *,
+        streaming: bool,
+    ) -> dict:
+        """构建请求参数"""
+        request_kwargs = {
+            "model": self.config.modelName,
+            "messages": self._convert_messages(messages),
+            "max_tokens": self.config.maxToken,
+            "temperature": self.config.temperature,
+            "stream": streaming,
+            **self.config.extraConfig,
+        }
+
+        # 流式模式下添加usage统计选项
+        if streaming:
+            request_kwargs["stream_options"] = {"include_usage": True}
+
+        return request_kwargs
+
+    def _add_tools_to_request(
+        self,
+        request_kwargs: dict,
+        tools: list[LLMFunctions],
+    ) -> None:
+        """将工具添加到请求参数中"""
+        functions = [
+            {
+                "type": "function",
+                "function": {
+                    "name": tool.name,
+                    "description": tool.description,
+                    "parameters": tool.param_schema,
+                },
+            }
+            for tool in tools
+        ]
+        request_kwargs["tools"] = functions
+
+    async def _process_streaming_chunk(
+        self,
+        chunk: ChatCompletionChunk,
+        *,
+        include_thinking: bool,
+    ) -> AsyncGenerator[LLMChunk, None]:
+        """处理单个流式响应chunk"""
+        if not hasattr(chunk, "choices") or not chunk.choices:
+            return
+
+        delta = chunk.choices[0].delta
+
+        # 处理reasoning_content
+        if (
+            hasattr(delta, "reasoning_content") and
+            getattr(delta, "reasoning_content", None) and
+            include_thinking
+        ):
+            reasoning_content = getattr(delta, "reasoning_content", "")
+            self.full_thinking += reasoning_content
+            yield LLMChunk(reasoning_content=reasoning_content)
+
+        # 处理content
+        if hasattr(delta, "content") and delta.content:
+            self.full_answer += delta.content
+            yield LLMChunk(content=delta.content)
+
+    async def _handle_streaming_response(
+        self,
+        request_kwargs: dict,
+        messages: list[dict[str, str]],
+        *,
+        include_thinking: bool,
+    ) -> AsyncGenerator[LLMChunk, None]:
+        """处理流式响应"""
+        stream: AsyncStream[ChatCompletionChunk] = await self._client.chat.completions.create(**request_kwargs)
+        last_chunk = None
+
+        async for chunk in stream:
+            last_chunk = chunk
+            async for llm_chunk in self._process_streaming_chunk(
+                chunk,
+                include_thinking=include_thinking,
+            ):
+                yield llm_chunk
+
+        # 处理最后一个Chunk的usage
+        self._handle_usage_chunk(last_chunk, messages)
+
+    async def _handle_non_streaming_response(
+        self,
+        request_kwargs: dict,
+        messages: list[dict[str, str]],
+        tools: list[LLMFunctions] | None,
+        *,
+        include_thinking: bool,
+    ) -> AsyncGenerator[LLMChunk, None]:
+        """处理非流式响应"""
+        response: ChatCompletion = await self._client.chat.completions.create(**request_kwargs)
+
+        tool_call_dict = {}
+        if response.choices:
+            message = response.choices[0].message
+
+            # 处理reasoning_content
+            if (
+                hasattr(message, "reasoning_content") and
+                getattr(message, "reasoning_content", None) and
+                include_thinking
+            ):
+                self.full_thinking = getattr(message, "reasoning_content", "")
+
+            # 处理content
+            if hasattr(message, "content") and message.content:
+                self.full_answer = message.content
+
+            # 处理工具调用
+            if tools and hasattr(message, "tool_calls") and message.tool_calls:
+                for tool_call in message.tool_calls:
+                    if tool_call.type == "function" and hasattr(tool_call, "function"):
+                        func = tool_call.function
+                        tool_call_dict[func.name] = func.arguments
+
+        # 处理usage数据
+        self._handle_usage_response(response, messages)
+
+        # 一次性返回完整结果
+        yield LLMChunk(
+            content=self.full_answer,
+            reasoning_content=self.full_thinking,
+            tool_call=tool_call_dict if tool_call_dict else None,
+        )
+
     @override
-    async def chat(  # noqa: C901
+    async def chat(
         self, messages: list[dict[str, str]],
-        *, include_thinking: bool = False,
         tools: list[LLMFunctions] | None = None,
+        *, include_thinking: bool = False,
+        streaming: bool = True,
     ) -> AsyncGenerator[LLMChunk, None]:
         """聊天"""
         # 检查能力
@@ -105,73 +254,38 @@ class OpenAIProvider(BaseProvider):
             _logger.error(err)
             raise RuntimeError(err)
 
-        # 初始化Token计数
+        # 初始化Token计数和累积内容
         self.input_tokens = 0
         self.output_tokens = 0
+        self.full_thinking = ""
+        self.full_answer = ""
 
         # 检查消息
         messages = self._validate_messages(messages)
 
-        request_kwargs = {
-            "model": self.config.modelName,
-            "messages": self._convert_messages(messages),
-            "max_tokens": self.config.maxToken,
-            "temperature": self.config.temperature,
-            "stream": True,
-            "stream_options": {"include_usage": True},
-            **self.config.extraConfig,
-        }
+        # 构建请求参数
+        request_kwargs = self._build_request_kwargs(messages, streaming=streaming)
 
         # 如果提供了tools，则启用function-calling模式
         if tools:
-            functions = []
-            for tool in tools:
-                functions += [{
-                    "type": "function",
-                    "function": {
-                        "name": tool.name,
-                        "description": tool.description,
-                        "parameters": tool.param_schema,
-                    },
-                }]
-            request_kwargs["tools"] = functions
+            self._add_tools_to_request(request_kwargs, tools)
 
-        stream: AsyncStream[ChatCompletionChunk] = await self._client.chat.completions.create(**request_kwargs)
-        # 流式返回响应
-        last_chunk = None
-        async for chunk in stream:
-            last_chunk = chunk
-            if hasattr(chunk, "choices") and chunk.choices:
-                delta = chunk.choices[0].delta
-                if (
-                    hasattr(delta, "reasoning_content") and
-                    getattr(delta, "reasoning_content", None) and
-                    include_thinking
-                ):
-                    reasoning_content = getattr(delta, "reasoning_content", "")
-                    self.full_thinking += reasoning_content
-                    yield LLMChunk(reasoning_content=reasoning_content)
-
-                if (
-                    hasattr(chunk.choices[0].delta, "content") and
-                    chunk.choices[0].delta.content
-                ):
-                    self.full_answer += chunk.choices[0].delta.content
-                    yield LLMChunk(content=chunk.choices[0].delta.content)
-
-                # 在chat中统一处理工具调用分块（当提供了tools时）
-                if tools and hasattr(delta, "tool_calls") and delta.tool_calls:
-                    tool_call_dict = {}
-                    for tool_call in delta.tool_calls:
-                        if hasattr(tool_call, "function") and tool_call.function:
-                            tool_call_dict.update({
-                                tool_call.function.name: tool_call.function.arguments,
-                            })
-                    if tool_call_dict:
-                        yield LLMChunk(tool_call=tool_call_dict)
-
-        # 处理最后一个Chunk的usage（仅在最后一个chunk会出现）
-        self._handle_usage_chunk(last_chunk, messages)
+        # 根据模式选择处理方式
+        if streaming:
+            async for chunk in self._handle_streaming_response(
+                request_kwargs,
+                messages,
+                include_thinking=include_thinking,
+            ):
+                yield chunk
+        else:
+            async for chunk in self._handle_non_streaming_response(
+                request_kwargs,
+                messages,
+                tools,
+                include_thinking=include_thinking,
+            ):
+                yield chunk
 
     @override
     async def embedding(self, text: list[str]) -> list[list[float]]:
