@@ -88,10 +88,9 @@ oi --logs
 ​修改工具执行确认为自动确认 ，点击设置
 
 ![调优设置](./pictures/调优设置.PNG)
-
 ![调优设置2](./pictures/调优设置2.PNG)
 
-​点击mcp工具授权，可以切换手动确认或自动确认	
+ ​点击mcp工具授权，可以切换手动确认或自动确认	
 
 ![调优设置3](./pictures/调优设置3.PNG)
 
@@ -136,7 +135,6 @@ oi
 
 ![](./pictures/使用案例2.PNG)
 
-
 智能体根据工具调用结果输出分析报告
 
 ![使用案例3](./pictures/使用案例3.PNG)
@@ -168,6 +166,7 @@ oi
 ```bash
 oi
 ```
+
 ![xshell_start](./pictures/xshell_start.png)
 
 #### 智能体选择
@@ -191,7 +190,6 @@ oi
 ### 3.1 自定义mcp
 
 准备mcp服务，基于mcp协议开发，支持sse格式调用
-
 
 首先准备一个json文件，格式如下，需要配置**url**为自定义mcp的访问端口，/sse为标准路由，修改**name、overview、description**，其他内容为默认即可。
 
@@ -315,7 +313,7 @@ oi-manager --a comb /tmp/comb_config.json
 
 ​euler-copilot-tune项目（[README.md · openEuler/A-Tune - 码云 - 开源中国](https://gitee.com/openeuler/A-Tune/blob/euler-copilot-tune/README.md)）适配了mcp协议，支持oi调用。
 
-​采用oi --init方式轻量安装openEuler-Intelligence时，euler-copilot-tune会作为默认的mcp服务安装到服务器上，mcp服务以systemctl管理，服务名称为：tune-mcpserver。如果需要使用**最新版本的euler-copilot-tune**，可以源码下载安装，命令如下：
+​采用oi --init方式轻量安装openEuler-Intelligence时，euler-copilot-tune会作为默认的mcp服务安装到服务器上，mcp服务以systemctl管理，服务名称为：tune-mcp_server。如果需要使用**最新版本的euler-copilot-tune**，可以源码下载安装，命令如下：
 
 ~~~bash
 git clone https://gitee.com/openeuler/A-Tune.git -b euler-copilot-tune
@@ -326,7 +324,6 @@ python3 setup.py install
 ~~~
 
 ![调优更新1](./pictures/调优更新1.PNG)
-
 ![调优更新2](./pictures/调优更新2.PNG)	
 
 ​euler-copilot-tune mcp服务归属于OE-通算调优助手。调优主要分为**采集服务数据，分析性能瓶颈，推荐优化参数，开始调优**四个步骤，自然语言交互时围绕这四个步骤按顺序依次提问执行。
@@ -335,7 +332,7 @@ python3 setup.py install
 
 ​需要一台被调优机器及服务（如Nginx、Mysql等），可以参考euler-copilot-tune的使用案例准备环境：[README.md · openEuler/A-Tune - 码云 - 开源中国](https://gitee.com/openeuler/A-Tune/blob/euler-copilot-tune/README.md#应用示例)
 
-​修改/etc/euler-copilot-tune/config/目录下的配置文件**.env.yaml**和**app_config.yaml**，修改内容参考：[README.md · openEuler/A-Tune - Gitee.com](https://gitee.com/openeuler/A-Tune/blob/euler-copilot-tune/README.md#配置文件准备)，修改完成后重启 （**systemctl restart tune-mcpserver**） 服务
+​修改/etc/euler-copilot-tune/config/目录下的配置文件**.env.yaml**和**app_config.yaml**，修改内容参考：[README.md · openEuler/A-Tune - Gitee.com](https://gitee.com/openeuler/A-Tune/blob/euler-copilot-tune/README.md#配置文件准备)，修改完成后重启 （**systemctl restart tune-mcp_server**） 服务
 
 ![调优配置文件](./pictures/调优配置文件.PNG)
 
