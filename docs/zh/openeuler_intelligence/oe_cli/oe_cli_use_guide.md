@@ -108,7 +108,6 @@ oi --logs
 - **Tab**: 在命令输入框和输出区域之间切换焦点
 - **Esc**: 退出应用程序
 
-
 ### 补充：操作的细节，包括oi --logs日志等，参考shell的[readme](https://gitee.com/openeuler/euler-copilot-shell/blob/master/README.md)
 
 ## 2. 平台演示
@@ -338,7 +337,7 @@ python3 setup.py install
 
 ​修改oi-runtime mcp读取默认时间
 
-~~~
+~~~sh
 vi /etc/euler-copilot-framework/config.toml
 
 #添加如下配置 单位秒
@@ -359,11 +358,15 @@ systemctl restart oi-runtime
 
 ![调优的使用2](./pictures/调优的使用2.PNG)
 
-​点击确认后tune-mcpserver会进行数据采集，可以通过journalctl -xe -u tune-mcpserver --all -f 来查看运行日志
+​点击确认后tune-mcpserver会进行数据采集，可以通过如下命令来查看运行日志
+
+```sh
+journalctl -xe -u tune-mcpserver --all -f 
+```
 
 ![调优的使用3](./pictures/调优的使用3.PNG)
 
-执行完Collecter后，会依次执行数据分析工具，参数推荐工具，性能调优开始工具
+执行完Collector后，会依次执行数据分析工具，参数推荐工具，性能调优开始工具
 
 ![调优的使用4](./pictures/调优的使用4.PNG)
 
@@ -371,4 +374,8 @@ systemctl restart oi-runtime
 
 ![调优的使用6](./pictures/调优的使用6.PNG)
 
-执行完成之后使用 journalctl -xe -u tune-mcpserver --all -f 查看调优运行结果
+执行完成之后使用如下命令查看调优运行结果
+
+```sh
+journalctl -xe -u tune-mcpserver --all -f 
+```
