@@ -2,11 +2,10 @@
 
 ## 引言
 
-一个基于 Python Textual 构建的智能终端应用程序，提供 AI 驱动的命令行交互体验。支持多种 LLM 后端，集成 MCP 协议，提供现代化的 TUI 界面。
+OE-CLI 是 openEuler Intelligence 的命令行客户端，提供 AI 驱动的命令行交互体验。支持多种 LLM 后端，集成 MCP 协议，提供现代化的 TUI 界面。
 
 ### 核心特性
 
-- **多后端支持**: 支持 OpenAI API 大模型和 openEuler Intelligence 后端
 - **智能终端界面**: 基于 Textual 的现代化 TUI 界面
 - **流式响应**: 实时显示 AI 回复内容
 - **部署助手**: 内置 openEuler Intelligence 自动部署功能
@@ -52,11 +51,15 @@ oi
 - **English (en_US)** - 默认语言
 - **简体中文 (zh_CN)**
 
-```sh
-# 切换到中文
-oi --locale zh_CN
+切换至简体中文
 
-# 切换到英文
+```sh
+oi --locale zh_CN
+```
+
+切换至英文
+
+```sh
 oi --locale en_US
 ```
 
@@ -64,8 +67,8 @@ oi --locale en_US
 
 #### 设置初始化智能体
 
+设置智能体命令
 ```sh
-# 设置智能体
 oi --agent
 ```
 
@@ -96,7 +99,7 @@ oi --logs
 
 ​此处也可以配置oi-runtime地址，默认是本机8002端口
 
-​点击后端：openEuler-Intelligence 可以切换到大模型配置界面进行配置。
+​点击后端：openEuler Intelligence 可以切换到大模型配置界面进行配置。
 
 ![调优设置4](./pictures/调优设置4.PNG)
 
@@ -190,10 +193,11 @@ oi
 
 准备mcp服务，基于mcp协议开发，支持sse格式调用
 
-首先准备一个json文件，格式如下，需要配置**url**为自定义mcp的访问端口，/sse为标准路由，修改**name、overview、description**，其他内容为默认即可。
+首先准备一个json文件，格式如下，需要配置**url**为自定义mcp的访问端口，/sse为标准路由，修改**name、overview、description**，其他内容为默认即可。如下json为openEuler Intelligence对应的mcp服务配置文件：
+
+**说明**：init 多次调用会删除之前注册的mcp 服务，重新注册
 
 ~~~json
-#如下json为openeuler-Intelligence对应的mcp服务配置文件
 {
     "name": "systrace_mcp_server",
     "overview": "systrace 运维 mcp 服务",
@@ -210,8 +214,8 @@ oi
         "url": "http://127.0.0.1:12145/sse"
     }
 }
-#说明：init 多次调用会删除之前注册的mcp 服务，重新注册
 ~~~
+
 
 ​准备好json文件之后，**命令行执行**下面的命令，注意json文件传入**全路径**，如/tmp/config.json
 
@@ -221,14 +225,15 @@ oi-manager --a init /tmp/config.json
 
 ### 3.2 创建agent
 
-​mcp创建完毕之后，**命令行执行**如下命令，此处json文件是步骤3.2创建的，执行完init命令之后json文件中会自动添加serviceId字段用来标识在openeuler-intelligence中创建的mcp服务，create创建的是单个mcp服务对应一个agent智能体。
+​mcp创建完毕之后，**命令行执行**如下命令，此处json文件是步骤3.2创建的，执行完init命令之后json文件中会自动添加serviceId字段用来标识在openEuler Intelligence中创建的mcp服务，create创建的是单个mcp服务对应一个agent智能体。
 
 ~~~bash
 oi-manager --a create /tmp/config.json
 ~~~
 
+config.json 同上，是调用init之后，会在原始json里面添加serviceId字段标识mcp服务
+
 ~~~json
-#config.json 同上，是调用init之后，会在原始json里面添加serviceId字段标识mcp服务
 {
     "name": "systrace_mcp_server",
     "overview": "systrace 运维 mcp 服务",
@@ -310,7 +315,7 @@ oi-manager --a comb /tmp/comb_config.json
 
 ## 4. 使用案例 euler-copilot-tune 调优的使用
 
-​euler-copilot-tune项目（[README.md · openEuler/A-Tune - 码云 - 开源中国](https://gitee.com/openeuler/A-Tune/blob/euler-copilot-tune/README.md)）适配了mcp协议，支持oi调用。
+​euler-copilot-tune项目（[README](https://gitee.com/openeuler/A-Tune/blob/euler-copilot-tune/README.md)）适配了mcp协议，支持oi调用。
 
 ​采用oi --init方式轻量安装openEuler-Intelligence时，euler-copilot-tune会作为默认的mcp服务安装到服务器上，mcp服务以systemctl管理，服务名称为：tune-mcp_server。如果需要使用**最新版本的euler-copilot-tune**，可以源码下载安装，命令如下：
 
@@ -329,9 +334,9 @@ python3 setup.py install
 
 ### 使用前准备
 
-​需要一台被调优机器及服务（如Nginx、Mysql等），可以参考euler-copilot-tune的使用案例准备环境：[README.md · openEuler/A-Tune - 码云 - 开源中国](https://gitee.com/openeuler/A-Tune/blob/euler-copilot-tune/README.md#应用示例)
+​需要一台被调优机器及服务（如Nginx、Mysql等），可以参考euler-copilot-tune的使用案例准备环境：[README](https://gitee.com/openeuler/A-Tune/blob/euler-copilot-tune/README.md#应用示例)
 
-​修改/etc/euler-copilot-tune/config/目录下的配置文件**.env.yaml**和**app_config.yaml**，修改内容参考：[README.md · openEuler/A-Tune - Gitee.com](https://gitee.com/openeuler/A-Tune/blob/euler-copilot-tune/README.md#配置文件准备)，修改完成后重启 （**systemctl restart tune-mcp_server**） 服务
+​修改/etc/euler-copilot-tune/config/目录下的配置文件**.env.yaml**和**app_config.yaml**，修改内容参考：[README](https://gitee.com/openeuler/A-Tune/blob/euler-copilot-tune/README.md#配置文件准备)，修改完成后重启 （**systemctl restart tune-mcp_server**） 服务
 
 ![调优配置文件](./pictures/调优配置文件.PNG)
 
@@ -379,3 +384,5 @@ journalctl -xe -u tune-mcpserver --all -f
 ```sh
 journalctl -xe -u tune-mcpserver --all -f 
 ```
+
+![性能调优日志](./pictures/性能调优日志.png)
