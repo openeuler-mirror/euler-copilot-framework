@@ -3,7 +3,6 @@
 
 import asyncio
 import logging
-import uuid
 
 from apps.common.queue import MessageQueue
 from apps.schemas.request_data import RequestData

@@ -4,6 +4,8 @@
 from collections.abc import AsyncGenerator
 from typing import TYPE_CHECKING, Any, Self
 
+from jinja2.loaders import BaseLoader
+from jinja2.sandbox import SandboxedEnvironment
 from pydantic import Field
 
 from apps.llm import json_generator
@@ -11,6 +13,7 @@ from apps.models import LanguageType, NodeInfo
 from apps.scheduler.call.core import CoreCall
 from apps.schemas.enum_var import CallOutputType
 from apps.schemas.scheduler import CallInfo, CallOutputChunk, CallVars
+from apps.services.tag import TagManager
 from apps.services.user_tag import UserTagManager
 
 from .prompt import DOMAIN_FUNCTION, DOMAIN_PROMPT, FACTS_FUNCTION, FACTS_PROMPT
@@ -93,8 +96,19 @@ class FactsCall(CoreCall, input_model=FactsInput, output_model=FactsOutput):
         )
         facts_obj = FactsGen.model_validate(facts_result)
 
+        # 获取所有标签
+        all_tags = await TagManager.get_all_tag()
+        tag_names = [tag.name for tag in all_tags]
+
+        # 使用jinja2渲染DOMAIN_PROMPT
+        jinja_env = SandboxedEnvironment(
+            loader=BaseLoader(),
+            autoescape=False,
+        )
+        domain_prompt_template = jinja_env.from_string(DOMAIN_PROMPT[self._sys_vars.language])
+        domain_prompt = domain_prompt_template.render(available_keywords=tag_names)
+
         # 组装conversation消息
-        domain_prompt = DOMAIN_PROMPT[self._sys_vars.language]
         domain_conversation = [
             {"role": "system", "content": "You are a helpful assistant."},
             *data.message,
@@ -110,7 +124,12 @@ class FactsCall(CoreCall, input_model=FactsInput, output_model=FactsOutput):
         domain_list = DomainGen.model_validate(domain_result)
 
         for domain in domain_list.keywords:
-            await UserTagManager.update_user_domain_by_user_and_domain_name(data.user_id, domain)
+            # 先检查标签是否存在
+            tag = await TagManager.get_tag_by_name(domain)
+            if tag:
+                # 标签存在，更新用户标签
+                await UserTagManager.update_user_domain_by_user_and_domain_name(data.user_id, domain)
+            # 标签不存在，跳过处理
 
         yield CallOutputChunk(
             type=CallOutputType.DATA,

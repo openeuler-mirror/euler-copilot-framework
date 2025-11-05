@@ -30,7 +30,17 @@ class ProcessHandler:
         """子进程目标函数"""
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
-        loop.run_until_complete(target(*args, **kwargs))
+        try:
+            loop.run_until_complete(target(*args, **kwargs))
+        finally:
+            # 等待所有pending tasks完成
+            pending = asyncio.all_tasks(loop)
+            for task in pending:
+                task.cancel()
+            if pending:
+                loop.run_until_complete(asyncio.gather(*pending, return_exceptions=True))
+            loop.run_until_complete(loop.shutdown_asyncgens())
+            loop.close()
 
     @staticmethod
     def get_all_task_ids() -> list[str]:
