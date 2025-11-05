@@ -10,7 +10,7 @@ import asyncer
 from anyio import Path
 from sqlalchemy import and_, delete, select, update
 
-from apps.common.postgres import postgres
+from apps.common.postgres import Postgres, postgres
 from apps.common.process_handler import ProcessHandler
 from apps.constants import MCP_PATH
 from apps.llm.embedding import embedding
@@ -80,6 +80,10 @@ class MCPLoader:
         :param MCPServerConfig config: MCP配置
         :return: 无
         """
+        # 直接初始化PostgreSQL实例，不使用单例
+        pg = Postgres()
+        await pg.init()
+
         mcp_id = next(iter(item.mcpServers.keys()))
         mcp_config = item.mcpServers[mcp_id]
 
@@ -96,7 +100,7 @@ class MCPLoader:
 
                 if mcp_config is None:
                     logger.error("[MCPLoader] MCP模板安装失败: %s", mcp_id)
-                    await MCPLoader.update_template_status(mcp_id, MCPInstallStatus.FAILED)
+                    await MCPLoader.update_template_status(mcp_id, MCPInstallStatus.FAILED, pg)
                     return
 
                 item.mcpServers[mcp_id] = mcp_config
@@ -111,13 +115,15 @@ class MCPLoader:
                 logger.info("[Installer] SSE/StreamableHTTP方式的MCP模板，无需安装: %s", mcp_id)
                 item.mcpServers[mcp_id].autoInstall = False
 
-            await MCPLoader._insert_template_tool(mcp_id, item)
-            await MCPLoader.update_template_status(mcp_id, MCPInstallStatus.READY)
+            await MCPLoader._insert_template_tool(mcp_id, item, pg)
+            await MCPLoader.update_template_status(mcp_id, MCPInstallStatus.READY, pg)
             logger.info("[Installer] MCP模板安装成功: %s", mcp_id)
         except Exception:
             logger.exception("[MCPLoader] MCP模板安装失败: %s", mcp_id)
-            await MCPLoader.update_template_status(mcp_id, MCPInstallStatus.FAILED)
+            await MCPLoader.update_template_status(mcp_id, MCPInstallStatus.FAILED, pg)
             raise
+        finally:
+            await pg.close()
 
 
     @staticmethod
@@ -166,7 +172,7 @@ class MCPLoader:
         await Path.mkdir(template_path, parents=True, exist_ok=True)
 
         # 安装MCP模板
-        if not ProcessHandler.add_task(mcp_id, MCPLoader._install_template_task, mcp_id, config):
+        if not ProcessHandler.add_task(mcp_id, MCPLoader._install_template_task, config):
             err = f"安装任务无法执行，请稍后重试: {mcp_id}"
             logger.error(err)
             raise RuntimeError(err)
@@ -309,19 +315,20 @@ class MCPLoader:
 
 
     @staticmethod
-    async def _insert_template_tool(mcp_id: str, config: MCPServerConfig) -> None:
+    async def _insert_template_tool(mcp_id: str, config: MCPServerConfig, pg: Postgres = postgres) -> None:
         """
         插入单个MCP Server工具信息到数据库
 
         :param str mcp_id: MCP模板ID
         :param MCPServerSSEConfig | MCPServerStdioConfig config: MCP配置
+        :param Postgres pg: PostgreSQL实例，默认为全局单例postgres
         :return: 无
         """
         # 获取工具列表
         tool_list = await MCPLoader._get_template_tool(mcp_id, config)
 
         # 基本信息插入数据库
-        async with postgres.session() as session:
+        async with pg.session() as session:
             # 删除旧的工具
             await session.execute(delete(MCPTools).where(MCPTools.mcpId == mcp_id))
             # 插入新的工具
@@ -571,20 +578,22 @@ class MCPLoader:
 
 
     @staticmethod
-    async def update_template_status(mcp_id: str, status: MCPInstallStatus) -> None:
+    async def update_template_status(mcp_id: str, status: MCPInstallStatus, pg: Postgres = postgres) -> None:
         """
         更新数据库中MCP模板状态
 
         :param str mcp_id: MCP模板ID
         :param MCPInstallStatus status: MCP模板状态
+        :param Postgres pg: PostgreSQL实例，默认为全局单例postgres
         :return: 无
         """
-        async with postgres.session() as session:
+        async with pg.session() as session:
             mcp_data = (await session.scalars(select(MCPInfo).where(MCPInfo.id == mcp_id))).one_or_none()
             if mcp_data:
                 logger.info("[MCPLoader] 更新MCP模板状态: %s -> %s", mcp_id, status)
                 mcp_data.status = status
                 await session.merge(mcp_data)
+                await session.commit()
 
 
     @staticmethod

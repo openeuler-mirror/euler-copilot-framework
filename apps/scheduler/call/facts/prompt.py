@@ -10,61 +10,73 @@ DOMAIN_PROMPT: dict[LanguageType, str] = {
     LanguageType.CHINESE: dedent(
         r"""
             # 任务说明
-            根据对话历史，提取推荐系统所需的关键词标签。这些标签将用于内容推荐、用户画像构建和个性化服务。
+            根据对话历史，从下面的"备选提示词列表"中选择最合适的标签。这些标签将用于内容推荐、用户画像构建和个性化服务。
 
-            ## 提取要求
+            ## 备选提示词列表
+            {{ available_keywords }}
 
-            1. **关键词类型**：可以是实体名词（人名、地名、组织名）、技术术语、产品名称、时间范围、领域概念等
-            2. **话题相关性**：至少提取一个与对话主题直接相关的关键词
-            3. **质量标准**：
-               - 标签应精准且简洁，每个标签不超过10个字
-               - 避免重复或高度相似的标签
-               - 优先提取具有区分度的关键词
-               - 提取3-8个关键词为宜
-            4. **输出格式**：返回JSON对象，包含keywords字段，值为字符串数组
+            ## 选择要求
+
+            1. **精准匹配**：只能从备选提示词列表中选择，不要自创新标签
+            2. **话题相关性**：选择与对话主题直接相关的标签
+            3. **数量控制**：选择3-8个最相关的标签
+            4. **质量标准**：
+               - 避免选择重复或高度相似的标签
+               - 优先选择具有区分度的标签
+               - 按相关性从高到低排序
+            5. **输出格式**：返回JSON对象，包含keywords字段，值为字符串数组
 
             ## 示例
+
+            假设备选提示词列表包含：
+            ["北京", "上海", "天气", "气温", "Python", "Java", "装饰器", "设计模式", "餐厅", "美食"]
 
             **示例1：天气查询**
             - 用户："北京天气如何？"
             - 助手："北京今天晴。"
-            - 提取结果：["北京", "天气"]
+            - 选择结果：["北京", "天气", "气温"]
 
-            **示例2：技术讨论**
-            - 用户："介绍一下Python的装饰器"
-            - 助手："Python装饰器是一种设计模式。"
-            - 提取结果：["Python", "装饰器", "设计模式"]
+            **示例2：如果对话内容与备选列表无关**
+            - 用户："今天心情不错"
+            - 助手："很高兴听到这个消息。"
+            - 选择结果：[]（如果备选列表中没有相关标签，返回空数组）
         """,
     ),
     LanguageType.ENGLISH: dedent(
         r"""
             # Task Description
-            Extract keyword tags for the recommendation system based on conversation history. These tags will be used \
-for content recommendation, user profiling, and personalized services.
+            Based on conversation history, select the most appropriate tags from the "Available Keywords List" below. \
+These tags will be used for content recommendation, user profiling, and personalized services.
 
-            ## Extraction Requirements
+            ## Available Keywords List
+            {available_keywords}
 
-            1. **Keyword Types**: Can be entity nouns (names, locations, organizations), technical terms, \
-product names, time ranges, domain concepts, etc.
-            2. **Topic Relevance**: Extract at least one keyword directly related to the conversation topic
-            3. **Quality Standards**:
-               - Tags should be precise and concise, each tag not exceeding 10 characters
-               - Avoid duplicate or highly similar tags
-               - Prioritize extracting distinctive keywords
-               - Extract 3-8 keywords as appropriate
-            4. **Output Format**: Return JSON object containing keywords field with string array value
+            ## Selection Requirements
+
+            1. **Exact Match**: Only select from the available keywords list, do not create new tags
+            2. **Topic Relevance**: Select tags directly related to the conversation topic
+            3. **Quantity Control**: Select 3-8 most relevant tags
+            4. **Quality Standards**:
+               - Avoid selecting duplicate or highly similar tags
+               - Prioritize selecting distinctive tags
+               - Sort by relevance from high to low
+            5. **Output Format**: Return JSON object containing keywords field with string array value
 
             ## Examples
+
+            Assume the available keywords list contains:
+            ["Beijing", "Shanghai", "weather", "temperature", "Python", "Java", "decorator", "design pattern", \
+"restaurant", "food"]
 
             **Example 1: Weather Query**
             - User: "What's the weather like in Beijing?"
             - Assistant: "Beijing is sunny today."
-            - Extraction result: ["Beijing", "weather"]
+            - Selection result: ["Beijing", "weather", "temperature"]
 
-            **Example 2: Technical Discussion**
-            - User: "Tell me about Python decorators"
-            - Assistant: "Python decorators are a design pattern."
-            - Extraction result: ["Python", "decorator", "design pattern"]
+            **Example 2: If conversation content is unrelated to the available list**
+            - User: "I'm feeling good today"
+            - Assistant: "Glad to hear that."
+            - Selection result: [] (return empty array if no relevant tags in the available list)
         """,
     ),
 }

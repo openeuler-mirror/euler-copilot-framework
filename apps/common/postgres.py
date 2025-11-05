@@ -60,7 +60,7 @@ class Postgres:
         try:
             yield session
         except Exception:
-            logger.exception("[Postgres] 会话错误")
+            logger.warning("[Postgres] 会话错误，可能为SQL执行失败")
             # 发生异常时回滚
             await session.rollback()
             raise
