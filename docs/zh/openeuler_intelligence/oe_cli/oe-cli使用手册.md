@@ -17,7 +17,7 @@
 
 打开 oe-cli，ctrl + c 中断，ctrl + q 退出，ctrl + s 打开设置，ctrl + t 选择智能体，支持鼠标选择。
 
-```bash
+```sh
 oi
 ```
 
@@ -118,7 +118,7 @@ oi --logs
 
 #### 打开 oe-cli
 
-```bash
+```sh
 oi
 ```
 
@@ -158,6 +158,7 @@ oi
 ![agent_using](./pictures/agent_using.png)
 
 ### 设置
+
 ![vscode智能助手设置页面](./pictures/vscode_settings.png)
 
 ### 2.4 使用Xshell
@@ -194,7 +195,7 @@ oi
 
 首先准备一个json文件，格式如下，需要配置**url**为自定义mcp的访问端口，/sse为标准路由，修改**name、overview、description**，其他内容为默认即可。
 
-~~~
+~~~json
 #如下json为openeuler-Intelligence对应的mcp服务配置文件
 {
     "name": "systrace_mcp_server",
@@ -223,14 +224,13 @@ oi-manager --a init /tmp/config.json
 
 ### 3.2 创建agent
 
-
-​mcp创建完毕之后，**命令行执行**如下命令，此处json文件是步骤3.2创建的，执行完init命令之后json文件中会自动添加serivceId字段用来标识在openeuler-intelligence中创建的mcp服务，create创建的是单个mcp服务对应一个agent智能体。
+​mcp创建完毕之后，**命令行执行**如下命令，此处json文件是步骤3.2创建的，执行完init命令之后json文件中会自动添加serviceId字段用来标识在openeuler-intelligence中创建的mcp服务，create创建的是单个mcp服务对应一个agent智能体。
 
 ~~~bash
 oi-manager --a create /tmp/config.json
 ~~~
 
-~~~
+~~~json
 #config.json 同上，是调用init之后，会在原始json里面添加serviceId字段标识mcp服务
 {
     "name": "systrace_mcp_server",
@@ -251,19 +251,17 @@ oi-manager --a create /tmp/config.json
 }
 ~~~
 
-
-
 ### 3.3 创建多对一的agent应用
 
 ​如果需要创建多个mcp对应一个agent智能体应用，可以在命令行执行如下命令：
 
-~~~bash
+~~~sh
 oi-manager --a comb /tmp/comb_config.json
 ~~~
 
 ​需要注意此处的json文件不是步骤3.2创建的，需要重新创建一个json文件，具体内容如下：
 
-~~~
+~~~json
 {
   "appType": "agent", #应用类型，不需要修改
   "icon": "", #图标
@@ -290,10 +288,9 @@ oi-manager --a comb /tmp/comb_config.json
 
 ​说明：此处主要修改name、description、mcpService，mcpService列表里面的id是步骤3.2执行完成后在json文件中自动生成的，需要将多少个mcp配置成一个agent智能体，就配置多少个id。
 
-​	**执行结果日志**
+​**执行结果日志**
 
-~~~
-
+~~~sh
 [root@localhost deploy]# oi-manager --a init /root/mcp_config/perf_mcp/config.json 
 2025-08-15 09:49:54,874 - mcp_manager - INFO - 成功加载配置文件: /root/mcp_config/perf_mcp/config.json
 2025-08-15 09:49:54,874 - mcp_manager - INFO - 删除MCP服务: dJsLV4
@@ -313,8 +310,6 @@ oi-manager --a comb /tmp/comb_config.json
 2025-08-15 09:50:15,149 - mcp_manager - INFO - Agent创建流程完成
 2025-08-15 09:50:15,149 - mcp_manager - INFO - 操作执行成功
 ~~~
-
-
 
 ## 4. 使用案例 euler-copilot-tune 调优的使用
 
@@ -356,8 +351,6 @@ sse_client_read_timeout = 360000
 #重启oi-runtime
 systemctl restart oi-runtime
 ~~~
-
-
 
 ### 使用
 
