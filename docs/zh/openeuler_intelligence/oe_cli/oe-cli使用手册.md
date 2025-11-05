@@ -70,6 +70,7 @@ oi --agent
 ```
 
 #### 设置日志级别并验证
+
 ```sh
 oi --log-level INFO
 ```
@@ -127,12 +128,9 @@ oi
 
 ![默认智能体截图](./pictures/默认智能体截图.PNG)
 
-
 ![image-20250918100635136](./pictures/image-20250918100635136.png)
 
-
 ![](./pictures/使用案例1.PNG)
-
 
 根据具体情况依次执行 MCP 工具
 
@@ -142,7 +140,6 @@ oi
 智能体根据工具调用结果输出分析报告
 
 ![使用案例3](./pictures/使用案例3.PNG)
-
 
 ### 2.2 使用vscode
 
@@ -154,9 +151,10 @@ oi
 
 使用方法参上面，以下主要为演示部分页面：
 
-
 ![vscode智能助手选择](./pictures/select_agent_vscode.png)
+
 #### 智能体的使用
+
 ![agent_using](./pictures/agent_using.png)
 
 ### 设置
@@ -189,7 +187,7 @@ oi
 
 ## 3.进阶功能
 
-#### 3.1 自定义mcp
+### 3.1 自定义mcp
 
 准备mcp服务，基于mcp协议开发，支持sse格式调用
 
@@ -223,7 +221,7 @@ oi
 oi-manager --a init /tmp/config.json
 ~~~
 
-#### 3.2 创建agent
+### 3.2 创建agent
 
 
 ​mcp创建完毕之后，**命令行执行**如下命令，此处json文件是步骤3.2创建的，执行完init命令之后json文件中会自动添加serivceId字段用来标识在openeuler-intelligence中创建的mcp服务，create创建的是单个mcp服务对应一个agent智能体。
@@ -255,7 +253,7 @@ oi-manager --a create /tmp/config.json
 
 
 
-#### 3.3 创建多对一的agent应用
+### 3.3 创建多对一的agent应用
 
 ​如果需要创建多个mcp对应一个agent智能体应用，可以在命令行执行如下命令：
 
@@ -292,7 +290,7 @@ oi-manager --a comb /tmp/comb_config.json
 
 ​说明：此处主要修改name、description、mcpService，mcpService列表里面的id是步骤3.2执行完成后在json文件中自动生成的，需要将多少个mcp配置成一个agent智能体，就配置多少个id。
 
-​		**执行结果日志**
+​	**执行结果日志**
 
 ~~~
 
@@ -363,7 +361,7 @@ systemctl restart oi-runtime
 
 ### 使用
 
-​	**选择OE-通算调优助手**
+​**选择OE-通算调优助手**
 
 ![调优的使用1](./pictures/调优的使用1.PNG)
 
