@@ -90,7 +90,7 @@ oi --logs
 ![调优设置](./pictures/调优设置.PNG)
 ![调优设置2](./pictures/调优设置2.PNG)
 
- ​点击mcp工具授权，可以切换手动确认或自动确认	
+​点击mcp工具授权，可以切换手动确认或自动确认
 
 ![调优设置3](./pictures/调优设置3.PNG)
 
@@ -323,7 +323,7 @@ python3 setup.py install
 ~~~
 
 ![调优更新1](./pictures/调优更新1.PNG)
-![调优更新2](./pictures/调优更新2.PNG)	
+![调优更新2](./pictures/调优更新2.PNG)
 
 ​euler-copilot-tune mcp服务归属于OE-通算调优助手。调优主要分为**采集服务数据，分析性能瓶颈，推荐优化参数，开始调优**四个步骤，自然语言交互时围绕这四个步骤按顺序依次提问执行。
 
@@ -358,7 +358,7 @@ systemctl restart oi-runtime
 
 ![调优的使用2](./pictures/调优的使用2.PNG)
 
-​点击确认后tune-mcpserver会进行数据采集，可以通过如下命令来查看运行日志
+​点击确认后"tune-mcpserver"会进行数据采集，可以通过如下命令来查看运行日志
 
 ```sh
 journalctl -xe -u tune-mcpserver --all -f 
