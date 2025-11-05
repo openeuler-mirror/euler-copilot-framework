@@ -358,7 +358,7 @@ systemctl restart oi-runtime
 
 ![调优的使用2](./pictures/调优的使用2.PNG)
 
-​点击确认后"tune-mcpserver"会进行数据采集，可以通过如下命令来查看运行日志
+​点击确认后"tune-mcp_server"会进行数据采集，可以通过如下命令来查看运行日志
 
 ```sh
 journalctl -xe -u tune-mcpserver --all -f 
