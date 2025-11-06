@@ -20,7 +20,7 @@ sudo dnf update -y
 sudo dnf install -y openeuler-intelligence-cli openeuler-intelligence-installer
 ```
 
-**注**：*如果在 openEuler 24.03 LTS SP2 上找不到 `openeuler-intelligence-cli` 软件包，请参考 Q&A 中的解决方案。*
+如果在 openEuler 24.03 LTS SP2 上找不到 `openeuler-intelligence-cli` 软件包，请参考 Q&A 中的解决方案。
 
 ### 2.2 初始化 openEuler Intelligence
 
@@ -28,9 +28,9 @@ sudo dnf install -y openeuler-intelligence-cli openeuler-intelligence-installer
 sudo oi --init
 ```
 
-**注意**：*请使用 root 用户或具有 sudo 权限的用户运行此命令。*
-
 ![选择连接现有服务或部署新服务](./pictures/oi-deploy-01-welcome.png)
+
+部署全新服务的过程中涉及安装 RPM 包，请使用具有管理员权限的用户运行该命令。
 
 **特别说明**：命令行客户端的界面样式会随着终端的适配情况出现差异，建议使用支持 256 色及以上的终端模拟器以获得最佳体验。本文档以 openEuler DevStation 内置的 GNOME 终端为例。
 
@@ -58,14 +58,14 @@ sudo oi --init
 依次配置大模型服务参数：
 
 - API 端点：填写线上或本地大模型服务的 API 地址；
-- API 密钥：根据所选大模型服务的要求，填写 API Key 或 Token
+- API 密钥：根据所选大模型服务的要求，填写 API Key 或 Token；
 - 模型名称：选择所需使用的大模型。
 
-**注意**：*请确保所选大模型支持工具调用能力，否则智能体将无法正常工作。*
+另外，请确保所选大模型支持工具调用能力，否则智能体将无法正常工作。
 
 ![填写大模型信息](./pictures/oi-deploy-05-llm-fill-in.png)
 
-**注意：**
+**Embedding 模型配置：**
 
 - “轻量部署”模式下，若不配置 Embedding 模型，可能会导致部分智能体功能受限；
 - “全量部署”模式下必须填写 Embedding 模型，否则无法继续部署；
@@ -119,9 +119,7 @@ export OI_SKIP_SSL_VERIFY=true
 
 若没有可用的大模型服务，可以在本地部署一个支持工具调用能力的大模型服务。openEuler Intelligence 支持标准的 OpenAI API (v1/chat/completions)。
 
-若本地设备没有 GPU，建议使用激活参数更少的 MoE 模型，如 Qwen3-30B-A3B，以获得更好的性能表现。
-
-**注**：*本地部署大模型需要较大的计算资源，建议使用至少 32GB 内存和多核 CPU 的服务器或 PC 进行部署。*
+若本地设备没有 GPU，建议使用激活参数更少的 MoE 模型，如 Qwen3-30B-A3B，以获得更好的性能表现。本地部署大模型需要较大的计算资源，建议使用至少 32GB 内存和多核 CPU 的服务器或 PC 进行部署。
 
 ### 3.3 为 openEuler Intelligence 配置代理
 
