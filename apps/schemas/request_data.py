@@ -52,7 +52,7 @@ class UpdateLLMReq(BaseModel):
     llm_id: str | None = Field(default=None, description="大模型ID", alias="id")
     base_url: str = Field(default="", description="OpenAI API Base URL", alias="baseUrl")
     api_key: str = Field(default="", description="OpenAI API Key", alias="apiKey")
-    model_name: str = Field(default="", description="模型名称", alias="modelName")
+    model_name: str | None = Field(default=None, description="模型名称", alias="modelName")
     max_tokens: int = Field(default=8192, description="最大token数", alias="maxTokens")
     provider: LLMProvider = Field(description="大模型提供商", alias="provider")
     ctx_length: int = Field(description="上下文长度", alias="ctxLength")

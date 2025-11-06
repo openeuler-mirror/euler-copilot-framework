@@ -105,8 +105,8 @@ class VectorTableManager:
             _logger.error(err)
             raise RuntimeError(err)
 
-        # 使用模型名称作为指纹
-        model_fingerprint = llm_config.modelName
+        # 使用模型名称作为指纹，如果不存在则使用空字符串
+        model_fingerprint = llm_config.modelName or ""
 
         async with self._lock:
             # 从数据库读取现有表的元数据（支持重启恢复）
@@ -195,8 +195,8 @@ class VectorTableManager:
         # 创建新的 Base（避免污染全局状态）
         self.VectorBase = declarative_base()
 
-        # 使用模型名称作为指纹
-        model_fingerprint = llm_config.modelName
+        # 使用模型名称作为指纹，如果不存在则使用空字符串
+        model_fingerprint = llm_config.modelName or ""
 
         # 定义表结构（使用局部变量，不污染全局字典）
         flow_pool_table_def = {

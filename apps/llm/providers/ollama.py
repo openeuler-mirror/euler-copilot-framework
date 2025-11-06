@@ -144,7 +144,6 @@ class OllamaProvider(BaseProvider):
     ) -> dict[str, Any]:
         """构建chat请求参数"""
         chat_kwargs = {
-            "model": self.config.modelName,
             "messages": messages,
             "options": {
                 "temperature": self.config.temperature,
@@ -153,6 +152,10 @@ class OllamaProvider(BaseProvider):
             "stream": streaming,
             **self.config.extraConfig,
         }
+
+        # 如果modelName存在，则传递该参数
+        if self.config.modelName:
+            chat_kwargs["model"] = self.config.modelName
 
         # 如果提供了tools，则传入以启用function-calling模式
         if tools:
@@ -214,8 +217,12 @@ class OllamaProvider(BaseProvider):
             _logger.error(err)
             raise RuntimeError(err)
 
-        result = await self._client.embed(
-            model=self.config.modelName,
-            input=text,
-        )
+        # 构建请求参数
+        embed_kwargs = {"input": text}
+
+        # 如果modelName存在，则传递该参数
+        if self.config.modelName:
+            embed_kwargs["model"] = self.config.modelName
+
+        result = await self._client.embed(**embed_kwargs)
         return self._seq_to_list(result.embeddings)

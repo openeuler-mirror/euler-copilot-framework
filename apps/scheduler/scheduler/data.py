@@ -7,8 +7,8 @@ from datetime import UTC, datetime
 from typing import Any
 
 from apps.common.security import Security
-from apps.models import Conversation, ExecutorStatus, Record, RecordMetadata, StepStatus
-from apps.schemas.record import FlowHistory, RecordContent
+from apps.models import Conversation, ExecutorStatus, Record, RecordMetadata
+from apps.schemas.record import RecordContent
 from apps.schemas.request_data import RequestData
 from apps.schemas.task import TaskData
 from apps.services.appcenter import AppCenterManager
@@ -69,12 +69,6 @@ class DataMixin:
                 feature={},
             ),
             createdAt=current_time,
-            flow=FlowHistory(
-                flow_id=task.state.flow_id if task.state else "",
-                flow_name=task.state.flow_name if task.state else "",
-                flow_status=task.state.flow_status if task.state else StepStatus.SUCCESS,
-                history_ids=[context.id for context in task.context],
-            ) if task.state else None,
         )
 
     async def _handle_document_management(self, record_group: str | None, used_docs: list[dict]) -> None:

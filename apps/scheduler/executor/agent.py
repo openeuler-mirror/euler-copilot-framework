@@ -15,8 +15,8 @@ from apps.scheduler.executor.base import BaseExecutor
 from apps.scheduler.mcp_agent.host import MCPHost
 from apps.scheduler.mcp_agent.plan import MCPPlanner
 from apps.scheduler.pool.mcp.pool import mcp_pool
-from apps.schemas.agent import AgentAppMetadata
 from apps.schemas.enum_var import EventType
+from apps.schemas.flow import AgentAppMetadata
 from apps.schemas.mcp import Step
 from apps.schemas.message import FlowParams
 from apps.services.appcenter import AppCenterManager

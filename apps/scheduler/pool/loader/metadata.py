@@ -12,10 +12,10 @@ from fastapi.encoders import jsonable_encoder
 from apps.common.config import config
 from apps.models import AppType
 from apps.scheduler.util import yaml_str_presenter
-from apps.schemas.agent import AgentAppMetadata
 from apps.schemas.enum_var import MetadataType
 from apps.schemas.flow import (
-    AppMetadata,
+    AgentAppMetadata,
+    FlowAppMetadata,
     ServiceMetadata,
 )
 
@@ -26,7 +26,7 @@ BASE_PATH = Path(config.deploy.data_dir) / "semantics"
 class MetadataLoader:
     """元数据加载器"""
 
-    async def load_one(self, file_path: Path) -> AppMetadata | ServiceMetadata | AgentAppMetadata | None:
+    async def load_one(self, file_path: Path) -> FlowAppMetadata | ServiceMetadata | AgentAppMetadata | None:
         """加载单个元数据"""
         # 检查yaml格式
         try:
@@ -49,7 +49,7 @@ class MetadataLoader:
             if app_type == AppType.FLOW:
                 try:
                     app_id = uuid.UUID(file_path.parent.name)
-                    metadata = AppMetadata(id=app_id, **metadata_dict)
+                    metadata = FlowAppMetadata(id=app_id, **metadata_dict)
                 except Exception as e:
                     err = "[MetadataLoader] App metadata.yaml格式错误"
                     logger.exception(err)
@@ -79,12 +79,12 @@ class MetadataLoader:
     async def save_one(
         self,
         metadata_type: MetadataType,
-        metadata: dict[str, Any] | AppMetadata | ServiceMetadata | AgentAppMetadata,
+        metadata: dict[str, Any] | FlowAppMetadata | ServiceMetadata | AgentAppMetadata,
         resource_id: uuid.UUID | str,
     ) -> None:
         """保存单个元数据"""
         class_dict = {
-            MetadataType.APP: AppMetadata | AgentAppMetadata,
+            MetadataType.APP: FlowAppMetadata | AgentAppMetadata,
             MetadataType.SERVICE: ServiceMetadata,
         }
 
@@ -102,7 +102,7 @@ class MetadataLoader:
         if isinstance(metadata, dict):
             try:
                 # 检查类型匹配
-                metadata_class: type[AppMetadata | ServiceMetadata] = class_dict[metadata_type]
+                metadata_class: type[FlowAppMetadata | ServiceMetadata] = class_dict[metadata_type]
                 data = metadata_class(**metadata)
             except Exception as e:
                 err = "[MetadataLoader] metadata.yaml格式错误"

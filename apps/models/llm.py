@@ -46,9 +46,9 @@ class LLMData(Base):
     """大模型ID"""
     baseUrl: Mapped[str] = mapped_column(String(300), nullable=False)  # noqa: N815
     """LLM URL地址"""
-    apiKey: Mapped[str] = mapped_column(String(300), nullable=False)  # noqa: N815
+    apiKey: Mapped[str | None] = mapped_column(String(300), nullable=True)  # noqa: N815
     """LLM API Key"""
-    modelName: Mapped[str] = mapped_column(String(300), nullable=False)  # noqa: N815
+    modelName: Mapped[str | None] = mapped_column(String(300), nullable=True)  # noqa: N815
     """LLM模型名"""
     ctxLength: Mapped[int] = mapped_column(Integer, default=8192, nullable=False)  # noqa: N815
     """LLM总上下文长度"""
