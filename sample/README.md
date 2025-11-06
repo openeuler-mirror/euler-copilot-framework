@@ -10,11 +10,6 @@
 | | | - icon.png           # 应用的图标
 | | | - flow/              # 应用中的工作流信息
 | | | | - test.yaml        # 样例工作流
-| - call/                  # 自定义Python工具相关数据
-| | - __init__.py
-| | - test_call/           # 样例用户工具
-| | | - __init__.py
-| | | - user_tool.py       # Python工具代码
 | - service/               # 语义接口&MCP相关数据（服务）
 | | - test_service/        # 样例服务
 | | | - metadata.yaml      # 服务的元数据
