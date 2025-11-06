@@ -7,7 +7,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
-from apps.models import CommentType, ExecutorStatus, StepStatus
+from apps.models import CommentType, StepStatus
 
 
 class RecordDocument(BaseModel):
@@ -88,24 +88,3 @@ class RecordData(BaseModel):
     metadata: RecordMetadata
     comment: CommentType = Field(default=CommentType.NONE)
     created_at: float = Field(alias="createdAt")
-
-
-class FlowHistory(BaseModel):
-    """Flow执行历史"""
-
-    flow_id: str = Field(default_factory=lambda: str(uuid.uuid4()), alias="_id")
-    flow_name: str = Field(default="", description="Flow名称")
-    flow_staus: ExecutorStatus = Field(default=ExecutorStatus.SUCCESS, description="Flow执行状态")
-    history_ids: list[str] = Field(default=[], description="Flow执行历史ID列表")
-
-
-class Record(RecordData):
-    """问答，用于保存在MongoDB中"""
-
-    user_id: str
-    key: dict[str, Any] = {}
-    task_id: uuid.UUID | None = Field(default=None, description="任务ID")
-    content: str = Field(default="", description="Record内容，已加密")
-    comment: RecordComment = Field(default=RecordComment())
-    flow: FlowHistory = Field(
-        default=FlowHistory(), description="Flow执行历史信息")

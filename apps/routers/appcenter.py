@@ -6,12 +6,12 @@ import uuid
 from typing import Annotated
 
 from fastapi import APIRouter, Body, Depends, Path, Query, Request, status
+from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
 
 from apps.dependency.user import verify_personal_token, verify_session
 from apps.exceptions import InstancePermissionError
 from apps.models import AppType, PermissionType
-from apps.schemas.agent import AgentAppMetadata
 from apps.schemas.appcenter import (
     AppFlowInfo,
     AppMcpServiceInfo,
@@ -29,7 +29,7 @@ from apps.schemas.appcenter import (
     GetRecentAppListRsp,
 )
 from apps.schemas.enum_var import AppFilterType
-from apps.schemas.flow import AppMetadata
+from apps.schemas.flow import AgentAppMetadata, FlowAppMetadata
 from apps.schemas.response_data import ResponseData
 from apps.services.appcenter import AppCenterManager
 from apps.services.mcp_service import MCPServiceManager
@@ -58,11 +58,13 @@ async def get_applications(  # noqa: PLR0913
     if createdByMe and favorited:  # 只能同时使用一个过滤条件
         return JSONResponse(
             status_code=status.HTTP_400_BAD_REQUEST,
-            content=ResponseData(
-                code=status.HTTP_400_BAD_REQUEST,
-                message="INVALID_PARAMETER",
-                result={},
-            ).model_dump(exclude_none=True, by_alias=True),
+            content=jsonable_encoder(
+                ResponseData(
+                    code=status.HTTP_400_BAD_REQUEST,
+                    message="INVALID_PARAMETER",
+                    result={},
+                ).model_dump(exclude_none=True, by_alias=True),
+            ),
         )
 
     try:
@@ -80,23 +82,27 @@ async def get_applications(  # noqa: PLR0913
         logger.exception("[AppCenter] 获取应用列表失败")
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            content=ResponseData(
-                code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                message="ERROR",
-                result={},
-            ).model_dump(exclude_none=True, by_alias=True),
+            content=jsonable_encoder(
+                ResponseData(
+                    code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    message="ERROR",
+                    result={},
+                ).model_dump(exclude_none=True, by_alias=True),
+            ),
         )
     return JSONResponse(
         status_code=status.HTTP_200_OK,
-        content=GetAppListRsp(
-            code=status.HTTP_200_OK,
-            message="OK",
-            result=GetAppListMsg(
-                currentPage=page,
-                totalApps=total_apps,
-                applications=app_cards,
-            ),
-        ).model_dump(exclude_none=True, by_alias=True),
+        content=jsonable_encoder(
+            GetAppListRsp(
+                code=status.HTTP_200_OK,
+                message="OK",
+                result=GetAppListMsg(
+                    currentPage=page,
+                    totalApps=total_apps,
+                    applications=app_cards,
+                ),
+            ).model_dump(exclude_none=True, by_alias=True),
+        ),
     )
 
 
@@ -113,31 +119,37 @@ async def create_or_update_application(raw_request: Request, request: CreateAppR
             logger.exception("[AppCenter] 更新应用请求无效")
             return JSONResponse(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                content=ResponseData(
-                    code=status.HTTP_400_BAD_REQUEST,
-                    message="BAD_REQUEST",
-                    result={},
-                ).model_dump(exclude_none=True, by_alias=True),
+                content=jsonable_encoder(
+                    ResponseData(
+                        code=status.HTTP_400_BAD_REQUEST,
+                        message="BAD_REQUEST",
+                        result={},
+                    ).model_dump(exclude_none=True, by_alias=True),
+                ),
             )
         except InstancePermissionError:
             logger.exception("[AppCenter] 更新应用鉴权失败")
             return JSONResponse(
                 status_code=status.HTTP_403_FORBIDDEN,
-                content=ResponseData(
-                    code=status.HTTP_403_FORBIDDEN,
-                    message="UNAUTHORIZED",
-                    result={},
-                ).model_dump(exclude_none=True, by_alias=True),
+                content=jsonable_encoder(
+                    ResponseData(
+                        code=status.HTTP_403_FORBIDDEN,
+                        message="UNAUTHORIZED",
+                        result={},
+                    ).model_dump(exclude_none=True, by_alias=True),
+                ),
             )
         except Exception:
             logger.exception("[AppCenter] 更新应用失败")
             return JSONResponse(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                content=ResponseData(
-                    code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                    message="ERROR",
-                    result={},
-                ).model_dump(exclude_none=True, by_alias=True),
+                content=jsonable_encoder(
+                    ResponseData(
+                        code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                        message="ERROR",
+                        result={},
+                    ).model_dump(exclude_none=True, by_alias=True),
+                ),
             )
     else:  # 创建应用
         try:
@@ -146,19 +158,23 @@ async def create_or_update_application(raw_request: Request, request: CreateAppR
             logger.exception("[AppCenter] 创建应用失败")
             return JSONResponse(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                content=ResponseData(
-                    code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                    message="ERROR",
-                    result={},
-                ).model_dump(exclude_none=True, by_alias=True),
+                content=jsonable_encoder(
+                    ResponseData(
+                        code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                        message="ERROR",
+                        result={},
+                    ).model_dump(exclude_none=True, by_alias=True),
+                ),
             )
     return JSONResponse(
         status_code=status.HTTP_200_OK,
-        content=BaseAppOperationRsp(
-            code=status.HTTP_200_OK,
-            message="OK",
-            result=BaseAppOperationMsg(appId=app_id),
-        ).model_dump(exclude_none=True, by_alias=True),
+        content=jsonable_encoder(
+            BaseAppOperationRsp(
+                code=status.HTTP_200_OK,
+                message="OK",
+                result=BaseAppOperationMsg(appId=app_id),
+            ).model_dump(exclude_none=True, by_alias=True),
+        ),
     )
 
 
@@ -175,19 +191,23 @@ async def get_recently_used_applications(
         logger.exception("[AppCenter] 获取最近使用的应用失败")
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            content=ResponseData(
-                code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                message="ERROR",
-                result={},
-            ).model_dump(exclude_none=True, by_alias=True),
+            content=jsonable_encoder(
+                ResponseData(
+                    code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    message="ERROR",
+                    result={},
+                ).model_dump(exclude_none=True, by_alias=True),
+            ),
         )
     return JSONResponse(
         status_code=status.HTTP_200_OK,
-        content=GetRecentAppListRsp(
-            code=status.HTTP_200_OK,
-            message="OK",
-            result=recent_apps,
-        ).model_dump(exclude_none=True, by_alias=True),
+        content=jsonable_encoder(
+            GetRecentAppListRsp(
+                code=status.HTTP_200_OK,
+                message="OK",
+                result=recent_apps,
+            ).model_dump(exclude_none=True, by_alias=True),
+        ),
     )
 
 
@@ -200,25 +220,29 @@ async def get_application(appId: Annotated[uuid.UUID, Path()]) -> JSONResponse: 
         logger.exception("[AppCenter] 获取应用详情请求无效")
         return JSONResponse(
             status_code=status.HTTP_400_BAD_REQUEST,
-            content=ResponseData(
-                code=status.HTTP_400_BAD_REQUEST,
-                message="INVALID_APP_ID",
-                result={},
-            ).model_dump(exclude_none=True, by_alias=True),
+            content=jsonable_encoder(
+                ResponseData(
+                    code=status.HTTP_400_BAD_REQUEST,
+                    message="INVALID_APP_ID",
+                    result={},
+                ).model_dump(exclude_none=True, by_alias=True),
+            ),
         )
     except Exception:
         logger.exception("[AppCenter] 获取应用详情失败")
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            content=ResponseData(
-                code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                message="ERROR",
-                result={},
-            ).model_dump(exclude_none=True, by_alias=True),
+            content=jsonable_encoder(
+                ResponseData(
+                    code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    message="ERROR",
+                    result={},
+                ).model_dump(exclude_none=True, by_alias=True),
+            ),
         )
 
     # 根据 Metadata 类型组装对应的 GetAppPropertyMsg
-    if isinstance(app_data, AppMetadata):
+    if isinstance(app_data, FlowAppMetadata):
         # 处理工作流应用（FLOW类型）
         workflows = [
             AppFlowInfo(
@@ -280,20 +304,24 @@ async def get_application(appId: Annotated[uuid.UUID, Path()]) -> JSONResponse: 
         logger.error("[AppCenter] 未知的应用元数据类型: %s", type(app_data).__name__)
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            content=ResponseData(
-                code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                message="UNKNOWN_APP_TYPE",
-                result={},
-            ).model_dump(exclude_none=True, by_alias=True),
+            content=jsonable_encoder(
+                ResponseData(
+                    code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    message="UNKNOWN_APP_TYPE",
+                    result={},
+                ).model_dump(exclude_none=True, by_alias=True),
+            ),
         )
 
     return JSONResponse(
         status_code=status.HTTP_200_OK,
-        content=GetAppPropertyRsp(
-            code=status.HTTP_200_OK,
-            message="OK",
-            result=result_msg,
-        ).model_dump(exclude_none=True, by_alias=True),
+        content=jsonable_encoder(
+            GetAppPropertyRsp(
+                code=status.HTTP_200_OK,
+                message="OK",
+                result=result_msg,
+            ).model_dump(exclude_none=True, by_alias=True),
+        ),
     )
 
 
@@ -313,39 +341,47 @@ async def delete_application(
         logger.exception("[AppCenter] 删除应用请求无效")
         return JSONResponse(
             status_code=status.HTTP_400_BAD_REQUEST,
-            content=ResponseData(
-                code=status.HTTP_400_BAD_REQUEST,
-                message="INVALID_APP_ID",
-                result={},
-            ).model_dump(exclude_none=True, by_alias=True),
+            content=jsonable_encoder(
+                ResponseData(
+                    code=status.HTTP_400_BAD_REQUEST,
+                    message="INVALID_APP_ID",
+                    result={},
+                ).model_dump(exclude_none=True, by_alias=True),
+            ),
         )
     except InstancePermissionError:
         logger.exception("[AppCenter] 删除应用鉴权失败")
         return JSONResponse(
             status_code=status.HTTP_403_FORBIDDEN,
-            content=ResponseData(
-                code=status.HTTP_403_FORBIDDEN,
-                message="UNAUTHORIZED",
-                result={},
-            ).model_dump(exclude_none=True, by_alias=True),
+            content=jsonable_encoder(
+                ResponseData(
+                    code=status.HTTP_403_FORBIDDEN,
+                    message="UNAUTHORIZED",
+                    result={},
+                ).model_dump(exclude_none=True, by_alias=True),
+            ),
         )
     except Exception:
         logger.exception("[AppCenter] 删除应用失败")
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            content=ResponseData(
-                code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                message="ERROR",
-                result={},
-            ).model_dump(exclude_none=True, by_alias=True),
+            content=jsonable_encoder(
+                ResponseData(
+                    code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    message="ERROR",
+                    result={},
+                ).model_dump(exclude_none=True, by_alias=True),
+            ),
         )
     return JSONResponse(
         status_code=status.HTTP_200_OK,
-        content=BaseAppOperationRsp(
-            code=status.HTTP_200_OK,
-            message="OK",
-            result=BaseAppOperationMsg(appId=app_id),
-        ).model_dump(exclude_none=True, by_alias=True),
+        content=jsonable_encoder(
+            BaseAppOperationRsp(
+                code=status.HTTP_200_OK,
+                message="OK",
+                result=BaseAppOperationMsg(appId=app_id),
+            ).model_dump(exclude_none=True, by_alias=True),
+        ),
     )
 
 
@@ -362,39 +398,47 @@ async def publish_application(
             logger.error("[AppCenter] 发布应用失败")
             return JSONResponse(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                content=ResponseData(
-                    code=status.HTTP_400_BAD_REQUEST,
-                    message="发布应用失败",
-                    result={},
-                ).model_dump(exclude_none=True, by_alias=True),
+                content=jsonable_encoder(
+                    ResponseData(
+                        code=status.HTTP_400_BAD_REQUEST,
+                        message="发布应用失败",
+                        result={},
+                    ).model_dump(exclude_none=True, by_alias=True),
+                ),
             )
     except InstancePermissionError:
         logger.exception("[AppCenter] 发布应用鉴权失败")
         return JSONResponse(
             status_code=status.HTTP_403_FORBIDDEN,
-            content=ResponseData(
-                code=status.HTTP_403_FORBIDDEN,
-                message="鉴权失败",
-                result={},
-            ).model_dump(exclude_none=True, by_alias=True),
+            content=jsonable_encoder(
+                ResponseData(
+                    code=status.HTTP_403_FORBIDDEN,
+                    message="鉴权失败",
+                    result={},
+                ).model_dump(exclude_none=True, by_alias=True),
+            ),
         )
     except Exception as e:
         logger.exception("[AppCenter] 发布应用失败")
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            content=ResponseData(
-                code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                message=f"发布应用失败: {e!s}",
-                result={},
-            ).model_dump(exclude_none=True, by_alias=True),
+            content=jsonable_encoder(
+                ResponseData(
+                    code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    message=f"发布应用失败: {e!s}",
+                    result={},
+                ).model_dump(exclude_none=True, by_alias=True),
+            ),
         )
     return JSONResponse(
         status_code=status.HTTP_200_OK,
-        content=BaseAppOperationRsp(
-            code=status.HTTP_200_OK,
-            message="OK",
-            result=BaseAppOperationMsg(appId=app_id),
-        ).model_dump(exclude_none=True, by_alias=True),
+        content=jsonable_encoder(
+            BaseAppOperationRsp(
+                code=status.HTTP_200_OK,
+                message="OK",
+                result=BaseAppOperationMsg(appId=app_id),
+            ).model_dump(exclude_none=True, by_alias=True),
+        ),
     )
 
 
@@ -412,30 +456,36 @@ async def modify_favorite_application(
         logger.exception("[AppCenter] 修改收藏状态请求无效")
         return JSONResponse(
             status_code=status.HTTP_400_BAD_REQUEST,
-            content=ResponseData(
-                code=status.HTTP_400_BAD_REQUEST,
-                message="BAD_REQUEST",
-                result={},
-            ).model_dump(exclude_none=True, by_alias=True),
+            content=jsonable_encoder(
+                ResponseData(
+                    code=status.HTTP_400_BAD_REQUEST,
+                    message="BAD_REQUEST",
+                    result={},
+                ).model_dump(exclude_none=True, by_alias=True),
+            ),
         )
     except Exception:
         logger.exception("[AppCenter] 修改收藏状态失败")
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            content=ResponseData(
-                code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                message="ERROR",
-                result={},
-            ).model_dump(exclude_none=True, by_alias=True),
+            content=jsonable_encoder(
+                ResponseData(
+                    code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    message="ERROR",
+                    result={},
+                ).model_dump(exclude_none=True, by_alias=True),
+            ),
         )
     return JSONResponse(
         status_code=status.HTTP_200_OK,
-        content=ChangeFavouriteAppRsp(
-            code=status.HTTP_200_OK,
-            message="OK",
-            result=ChangeFavouriteAppMsg(
-                appId=app_id,
-                favorited=request.favorited,
-            ),
-        ).model_dump(exclude_none=True, by_alias=True),
+        content=jsonable_encoder(
+            ChangeFavouriteAppRsp(
+                code=status.HTTP_200_OK,
+                message="OK",
+                result=ChangeFavouriteAppMsg(
+                    appId=app_id,
+                    favorited=request.favorited,
+                ),
+            ).model_dump(exclude_none=True, by_alias=True),
+        ),
     )

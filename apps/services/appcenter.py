@@ -21,7 +21,6 @@ from apps.models import (
     UserFavoriteType,
 )
 from apps.scheduler.pool.pool import pool
-from apps.schemas.agent import AgentAppMetadata
 from apps.schemas.appcenter import (
     AppCenterCardItem,
     AppData,
@@ -29,7 +28,7 @@ from apps.schemas.appcenter import (
     RecentAppListItem,
 )
 from apps.schemas.enum_var import AppFilterType
-from apps.schemas.flow import AppMetadata, MetadataType, Permission
+from apps.schemas.flow import AgentAppMetadata, FlowAppMetadata, MetadataType, Permission
 
 from .flow import FlowManager
 from .mcp_service import MCPServiceManager
@@ -202,7 +201,7 @@ class AppCenterManager:
 
 
     @staticmethod
-    async def fetch_app_metadata_by_id(app_id: uuid.UUID) -> AppMetadata | AgentAppMetadata:
+    async def fetch_app_metadata_by_id(app_id: uuid.UUID) -> FlowAppMetadata | AgentAppMetadata:
         """
         根据应用ID获取应用元数据（先检查数据库，再使用Loader）
 
@@ -454,12 +453,12 @@ class AppCenterManager:
     async def _create_flow_metadata(
         common_params: dict,
         data: AppData | None = None,
-        app_data: AppMetadata | None = None,
+        app_data: FlowAppMetadata | None = None,
         *,
         published: bool | None = None,
-    ) -> AppMetadata:
+    ) -> FlowAppMetadata:
         """创建工作流应用的元数据"""
-        metadata = AppMetadata(**common_params)
+        metadata = FlowAppMetadata(**common_params)
 
         if data:
             metadata.links = data.links
@@ -520,10 +519,10 @@ class AppCenterManager:
         app_id: uuid.UUID,
         user_id: str,
         data: AppData | None = None,
-        app_data: AppMetadata | AgentAppMetadata | None = None,
+        app_data: FlowAppMetadata | AgentAppMetadata | None = None,
         *,
         published: bool | None = None,
-    ) -> AppMetadata | AgentAppMetadata:
+    ) -> FlowAppMetadata | AgentAppMetadata:
         """
         创建应用元数据
 
@@ -559,7 +558,7 @@ class AppCenterManager:
             return await AppCenterManager._create_agent_metadata(
                 common_params, user_id, data, published=published,
             )
-        if app_type == AppType.FLOW and isinstance(app_data, AppMetadata):
+        if app_type == AppType.FLOW and isinstance(app_data, FlowAppMetadata):
             return await AppCenterManager._create_flow_metadata(common_params, data, app_data, published=published)
 
         msg = "无效的应用类型或元数据类型"

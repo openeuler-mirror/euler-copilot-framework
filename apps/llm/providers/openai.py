@@ -114,13 +114,16 @@ class OpenAIProvider(BaseProvider):
     ) -> dict:
         """构建请求参数"""
         request_kwargs = {
-            "model": self.config.modelName,
             "messages": self._convert_messages(messages),
             "max_tokens": self.config.maxToken,
             "temperature": self.config.temperature,
             "stream": streaming,
             **self.config.extraConfig,
         }
+
+        # 如果modelName存在，则传递该参数
+        if self.config.modelName:
+            request_kwargs["model"] = self.config.modelName
 
         # 流式模式下添加usage统计选项
         if streaming:
@@ -294,11 +297,15 @@ class OpenAIProvider(BaseProvider):
             _logger.error(err)
             raise RuntimeError(err)
 
+        # 构建请求参数
+        embedding_kwargs = {"input": text}
+
+        # 如果modelName存在，则传递该参数
+        if self.config.modelName:
+            embedding_kwargs["model"] = self.config.modelName
+
         # 使用 AsyncOpenAI 客户端的 embedding 功能
-        response = await self._client.embeddings.create(
-            input=text,
-            model=self.config.modelName,
-        )
+        response = await self._client.embeddings.create(**embedding_kwargs)
         return [data.embedding for data in response.data]
 
 

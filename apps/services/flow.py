@@ -19,7 +19,7 @@ from apps.models import Flow as FlowInfo
 from apps.scheduler.pool.pool import pool
 from apps.scheduler.slot.slot import Slot
 from apps.schemas.enum_var import EdgeType
-from apps.schemas.flow import AppMetadata, Edge, Flow, PositionItem, Step
+from apps.schemas.flow import FlowAppMetadata, Edge, Flow, PositionItem, Step
 from apps.schemas.flow_topology import (
     EdgeItem,
     FlowItem,
@@ -383,7 +383,7 @@ class FlowManager:
             )
             # 同步更新metadata yaml文件中的hash值
             metadata = await pool.app_loader.read_metadata(app_id)
-            if not isinstance(metadata, AppMetadata):
+            if not isinstance(metadata, FlowAppMetadata):
                 err = f"[FlowManager] 应用 {app_id} 不是Flow应用"
                 logger.error(err)
                 raise TypeError(err)

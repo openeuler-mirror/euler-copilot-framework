@@ -1,8 +1,10 @@
 {
+  "name": "Tavily",
+  "overview": "Tavily网络搜索工具",
+  "description": "调用Tavily API，获取关键词的搜索结果",
+  "author": "user01",
   "mcpServers": {
     "tavily-mcp": {
-      "name": "Tavily网页搜索",
-      "description": "调用Tavily API，获取关键词的搜索结果",
       "type": "stdio",
       "autoInstall": true,
       "iconPath": "",

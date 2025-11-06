@@ -281,7 +281,7 @@ sequenceDiagram
 
     FM->>DB: 删除 AppHashes 记录
     FM->>AL: read_metadata(app_id)
-    AL-->>FM: 返回 AppMetadata
+    AL-->>FM: 返回 FlowAppMetadata
     FM->>FM: 从 hashes 中移除 flow
     FM->>FM: 从 flows 列表中移除
     FM->>AL: save(metadata, app_id)

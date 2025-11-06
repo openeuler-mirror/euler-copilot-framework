@@ -126,16 +126,29 @@ class AppFlow(BaseModel):
     debug: bool = Field(description="调试是否成功", default=False)
 
 
-class AppMetadata(MetadataBase):
-    """App的元数据"""
+class AppMetadataBase(MetadataBase):
+    """App的基础元数据（智能体和Flow应用的公共部分）"""
 
     type: MetadataType = MetadataType.APP
-    app_type: AppType = Field(default=AppType.FLOW, description="应用类型", frozen=True)
+    app_type: AppType = Field(description="应用类型", frozen=True)
     published: bool = Field(description="是否发布", default=False)
     links: list[AppLink] = Field(description="相关链接", default=[])
     first_questions: list[str] = Field(description="首次提问", default=[])
     history_len: int = Field(description="对话轮次", default=3, le=10)
     permission: Permission | None = Field(description="应用权限配置", default=None)
+
+
+class AgentAppMetadata(AppMetadataBase):
+    """智能体App的元数据"""
+
+    app_type: AppType = Field(default=AppType.AGENT, description="应用类型", frozen=True)
+    mcp_service: list[str] = Field(default=[], description="MCP服务id列表")
+
+
+class FlowAppMetadata(AppMetadataBase):
+    """Flow App的元数据"""
+
+    app_type: AppType = Field(default=AppType.FLOW, description="应用类型", frozen=True)
     flows: list[AppFlow] = Field(description="Flow列表", default=[])
 
 

@@ -11,7 +11,7 @@ from sqlalchemy import and_, select
 from apps.common.postgres import postgres
 from apps.models import Conversation
 from apps.models import Record as PgRecord
-from apps.schemas.record import Record, RecordComment, RecordMetadata
+from apps.schemas.record import RecordComment, RecordData, RecordMetadata
 
 logger = logging.getLogger(__name__)
 
@@ -42,7 +42,7 @@ class RecordManager:
 
 
     @staticmethod
-    async def insert_record_data(user_id: str, conversation_id: uuid.UUID, record: Record) -> uuid.UUID | None:
+    async def insert_record_data(user_id: str, conversation_id: uuid.UUID, record: RecordData) -> uuid.UUID | None:
         """Record插入PostgreSQL"""
         async with postgres.session() as session:
             conv = (await session.scalars(
@@ -77,7 +77,7 @@ class RecordManager:
         conversation_id: uuid.UUID,
         total_pairs: int | None = None,
         order: Literal["desc", "asc"] = "desc",
-    ) -> list[Record]:
+    ) -> list[RecordData]:
         """查询ConversationID的最后n条问答对"""
         async with postgres.session() as session:
             sql = select(PgRecord).where(
@@ -93,7 +93,7 @@ class RecordManager:
 
             records = []
             for pg_record in pg_records:
-                record = Record(
+                record = RecordData(
                     id=pg_record.id,
                     conversationId=pg_record.conversationId,
                     task_id=pg_record.taskId,

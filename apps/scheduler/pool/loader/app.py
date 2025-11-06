@@ -21,10 +21,10 @@ from apps.models import (
     UserFavorite,
 )
 from apps.scheduler.pool.check import FileChecker
-from apps.schemas.agent import AgentAppMetadata
 from apps.schemas.flow import (
+    AgentAppMetadata,
     AppFlow,
-    AppMetadata,
+    FlowAppMetadata,
     MetadataType,
 )
 
@@ -47,7 +47,7 @@ class AppLoader:
         app_path = BASE_PATH / str(app_id)
         metadata = await self.read_metadata(app_id)
         metadata.hashes = hashes
-        if metadata.app_type == AppType.FLOW and isinstance(metadata, AppMetadata):
+        if metadata.app_type == AppType.FLOW and isinstance(metadata, FlowAppMetadata):
             # 加载工作流
             flow_path = app_path / "flow"
 
@@ -74,7 +74,7 @@ class AppLoader:
                 )
             metadata.flows = new_flows
             try:
-                metadata = AppMetadata.model_validate(metadata)
+                metadata = FlowAppMetadata.model_validate(metadata)
             except Exception as e:
                 err = "[AppLoader] Flow应用元数据验证失败"
                 logger.exception(err)
@@ -90,19 +90,19 @@ class AppLoader:
                 raise RuntimeError(err) from e
         await self._update_db(metadata)
 
-    async def read_metadata(self, app_id: uuid.UUID) -> AppMetadata | AgentAppMetadata:
+    async def read_metadata(self, app_id: uuid.UUID) -> FlowAppMetadata | AgentAppMetadata:
         """读取应用元数据"""
         metadata_path = BASE_PATH / str(app_id) / "metadata.yaml"
         metadata = await MetadataLoader().load_one(metadata_path)
         if not metadata:
             err = f"[AppLoader] 元数据不存在: {metadata_path}"
             raise ValueError(err)
-        if not isinstance(metadata, (AppMetadata, AgentAppMetadata)):
+        if not isinstance(metadata, (FlowAppMetadata, AgentAppMetadata)):
             err = f"[AppLoader] 元数据类型错误: {metadata_path}"
             raise TypeError(err)
         return metadata
 
-    async def save(self, metadata: AppMetadata | AgentAppMetadata, app_id: uuid.UUID) -> None:
+    async def save(self, metadata: FlowAppMetadata | AgentAppMetadata, app_id: uuid.UUID) -> None:
         """
         保存应用
 
@@ -144,7 +144,7 @@ class AppLoader:
 
     async def _update_db(
         self,
-        metadata: AppMetadata | AgentAppMetadata,
+        metadata: FlowAppMetadata | AgentAppMetadata,
         file_hashes: dict[str, str] | None = None,
     ) -> None:
         """更新数据库"""
