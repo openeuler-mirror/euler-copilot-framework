@@ -266,7 +266,7 @@ async def chat_generator(post_body: RequestData, user_sub: str, session_id: str)
             return
 
         # 创建新Record，存入数据库
-        await save_data(task, user_sub, post_body)
+        record_id = await save_data(task, user_sub, post_body)
 
         if post_body.app and post_body.app.flow_id:
             await FlowManager.update_flow_debug_by_app_and_flow_id(
@@ -275,6 +275,10 @@ async def chat_generator(post_body: RequestData, user_sub: str, session_id: str)
                 debug=True,
             )
 
+        # 发送 record_id 给前端
+        if record_id:
+            yield f"data: [RECORD_ID]{record_id}\n\n"
+        
         yield "data: [DONE]\n\n"
 
     except Exception:

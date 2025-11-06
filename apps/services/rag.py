@@ -374,13 +374,12 @@ Please generate a detailed, well-structured, and clearly formatted answer based 
         # 用于问题改写的LLM
         if history:
             try:
-                # 获取function call场景使用的模型ID用于问题改写
-                # 在RAG场景中，将对话模型ID作为应用配置模型传递（最高优先级）
-                # 降级顺序：对话模型 -> 用户偏好的function call模型 -> 系统默认function call模型 -> 系统默认chat模型
+                # 🔑 对于无应用对话（RAG场景），使用用户preference或系统默认的函数调用模型
+                # 降级顺序：用户偏好的function call模型 -> 系统默认function call模型 -> 系统默认chat模型
                 from apps.services.llm import LLMManager
                 function_call_model_id = await LLMManager.get_function_call_model_id(
                     user_sub,
-                    app_llm_id=llm.id  # 传递对话模型ID作为应用配置（最高优先级）
+                    app_llm_id=None  # 无应用对话不传递应用模型ID，使用用户preference或系统默认
                 )
                 
                 # 如果没有找到函数调用模型，使用对话模型作为降级方案
