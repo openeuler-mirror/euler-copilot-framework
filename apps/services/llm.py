@@ -65,32 +65,15 @@ class LLMManager:
         :param llm_id: 大模型ID
         :return: 大模型对象
         """
-        from bson import ObjectId
-        
         llm_collection = MongoDB().get_collection("llm")
         
-        # 尝试同时使用字符串和ObjectId查询，以兼容不同的存储格式
-        result = None
-        try:
-            # 首先尝试作为字符串查询
-            result = await llm_collection.find_one({"_id": llm_id})
-            
-            # 如果字符串查询失败，尝试转换为ObjectId查询
-            if not result and ObjectId.is_valid(llm_id):
-                result = await llm_collection.find_one({"_id": ObjectId(llm_id)})
-                
-        except Exception as e:
-            logger.warning(f"[LLMManager] 查询LLM时发生错误: {e}")
+        result = await llm_collection.find_one({"_id": llm_id})
         
         if not result:
             err = f"[LLMManager] LLM {llm_id} 不存在"
             logger.error(err)
             raise ValueError(err)
         
-        # 将ObjectId转换为字符串，以兼容LLM模型的验证
-        if isinstance(result.get("_id"), ObjectId):
-            result["_id"] = str(result["_id"])
-            
         return LLM.model_validate(result)
 
     @staticmethod
@@ -102,32 +85,15 @@ class LLMManager:
         :param llm_id: 大模型ID
         :return: 大模型对象
         """
-        from bson import ObjectId
-        
         llm_collection = MongoDB().get_collection("llm")
         
-        # 尝试同时使用字符串和ObjectId查询，以兼容不同的存储格式
-        result = None
-        try:
-            # 首先尝试作为字符串查询
-            result = await llm_collection.find_one({"_id": llm_id, "user_sub": user_sub})
-            
-            # 如果字符串查询失败，尝试转换为ObjectId查询
-            if not result and ObjectId.is_valid(llm_id):
-                result = await llm_collection.find_one({"_id": ObjectId(llm_id), "user_sub": user_sub})
-                
-        except Exception as e:
-            logger.warning(f"[LLMManager] 查询LLM时发生错误: {e}")
+        result = await llm_collection.find_one({"_id": llm_id, "user_sub": user_sub})
         
         if not result:
             err = f"[LLMManager] LLM {llm_id} 不存在"
             logger.error(err)
             raise ValueError(err)
         
-        # 将ObjectId转换为字符串，以兼容LLM模型的验证
-        if isinstance(result.get("_id"), ObjectId):
-            result["_id"] = str(result["_id"])
-            
         return LLM.model_validate(result)
 
     @staticmethod
@@ -178,7 +144,7 @@ class LLMManager:
                 llm_type = [llm_type]
             
             llm_item = LLMProviderInfo(
-                llmId=str(llm["_id"]),  # 转换ObjectId为字符串
+                llmId=llm["_id"],  # _id已经是UUID字符串
                 icon=llm["icon"],
                 openaiBaseUrl=llm["openai_base_url"],
                 openaiApiKey=llm["openai_api_key"],
@@ -436,7 +402,7 @@ class LLMManager:
                 llm_type = [llm_type]
             
             llm_item = LLMProviderInfo(
-                llmId=str(llm["_id"]),  # 转换ObjectId为字符串
+                llmId=llm["_id"],  # _id已经是UUID字符串
                 icon=llm["icon"],
                 openaiBaseUrl=llm["openai_base_url"],
                 openaiApiKey=llm["openai_api_key"],
@@ -475,7 +441,7 @@ class LLMManager:
                 llm_type = [llm_type]
             
             llm_item = LLMProviderInfo(
-                llmId=str(llm["_id"]),  # 转换ObjectId为字符串
+                llmId=llm["_id"],  # _id已经是UUID字符串
                 icon=llm["icon"],
                 openaiBaseUrl=llm["openai_base_url"],
                 openaiApiKey=llm["openai_api_key"],
@@ -510,7 +476,7 @@ class LLMManager:
                 llm_type = [llm_type]
             
             llm_item = LLMProviderInfo(
-                llmId=str(llm["_id"]),  # 转换ObjectId为字符串
+                llmId=llm["_id"],  # _id已经是UUID字符串
                 icon=llm["icon"],
                 openaiBaseUrl=llm["openai_base_url"],
                 openaiApiKey=llm["openai_api_key"],
@@ -549,7 +515,7 @@ class LLMManager:
                 llm_type = [llm_type]
             
             llm_item = LLMProviderInfo(
-                llmId=str(llm["_id"]),  # 转换ObjectId为字符串
+                llmId=llm["_id"],  # _id已经是UUID字符串
                 icon=llm["icon"],
                 openaiBaseUrl=llm["openai_base_url"],
                 openaiApiKey=llm["openai_api_key"],
@@ -596,8 +562,8 @@ class LLMManager:
             notes=model_info.notes if model_info else "",
         )
         
-        # 排除_id字段让MongoDB自动生成_id，避免冲突
-        insert_data = chat_llm.model_dump(exclude={"_id"})
+        # 使用by_alias=True将id字段作为_id插入，保持UUID字符串格式
+        insert_data = chat_llm.model_dump(by_alias=True)
         await llm_collection.insert_one(insert_data)
         logger.info(f"已初始化系统chat模型: {config.llm.model}")
 
@@ -641,26 +607,10 @@ class LLMManager:
             notes=model_info.notes if model_info else "",
         )
         
-        # 使用upsert模式：如果model_name已存在就更新，否则插入
-        filter_query = {
-            "user_sub": "",
-            "model_name": model_config.model
-        }
-        
-        # 排除id和_id字段以避免MongoDB的不可变_id字段错误
-        model_data = system_llm.model_dump(by_alias=True, exclude={"id", "_id"})
-        
-        # 使用update_one替代replace_one，更安全
-        result = await llm_collection.update_one(
-            filter_query,
-            {"$set": model_data},
-            upsert=True
-        )
-        
-        if result.upserted_id:
-            logger.info(f"[LLMManager] 创建系统{model_type}模型: {model_config.model}")
-        else:
-            logger.info(f"[LLMManager] 更新系统{model_type}模型: {model_config.model}")
+        # 使用by_alias=True将id字段作为_id插入，保持UUID字符串格式
+        insert_data = system_llm.model_dump(by_alias=True)
+        await llm_collection.insert_one(insert_data)
+        logger.info(f"[LLMManager] 创建系统{model_type}模型: {model_config.model}")
 
     @staticmethod
     async def get_function_call_model_id(user_sub: str, app_llm_id: str | None = None) -> str | None:
@@ -821,35 +771,15 @@ class LLMManager:
         mongo = MongoDB()
         llm_collection = mongo.get_collection("llm")
         
-        # 尝试将llm_id转换为ObjectId（如果适用）
-        from bson import ObjectId
-        from bson.errors import InvalidId
-        
-        # 先尝试作为字符串查询，如果失败再尝试ObjectId
-        try:
-            # 首先尝试作为字符串ID查询（UUID格式）
-            result = await llm_collection.find_one({
-                "_id": llm_id,
-                "$or": [{"user_sub": user_sub}, {"user_sub": ""}]
-            })
-            
-            # 如果没找到且llm_id可以转换为ObjectId，则尝试作为ObjectId查询
-            if not result and ObjectId.is_valid(llm_id):
-                result = await llm_collection.find_one({
-                    "_id": ObjectId(llm_id),
-                    "$or": [{"user_sub": user_sub}, {"user_sub": ""}]
-                })
-        except InvalidId:
-            result = None
+        result = await llm_collection.find_one({
+            "_id": llm_id,
+            "$or": [{"user_sub": user_sub}, {"user_sub": ""}]
+        })
         
         if not result:
             err = f"[LLMManager] LLM {llm_id} 不存在或无权限访问"
             logger.error(err)
             raise ValueError(err)
-        
-        # 将ObjectId转换为字符串，以兼容LLM模型的验证
-        if isinstance(result.get("_id"), ObjectId):
-            result["_id"] = str(result["_id"])
         
         llm = LLM.model_validate(result)
         

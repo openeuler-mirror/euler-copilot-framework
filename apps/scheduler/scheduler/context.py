@@ -106,8 +106,12 @@ async def generate_facts(task: Task, question: str) -> tuple[Task, list[str]]:
     return task, facts
 
 
-async def save_data(task: Task, user_sub: str, post_body: RequestData) -> None:
-    """保存当前Executor、Task、Record等的数据"""
+async def save_data(task: Task, user_sub: str, post_body: RequestData) -> str:
+    """保存当前Executor、Task、Record等的数据
+    
+    Returns:
+        str: record_id
+    """
     # 构造RecordContent
     used_docs = []
     order_to_id = {}
@@ -164,7 +168,7 @@ async def save_data(task: Task, user_sub: str, post_body: RequestData) -> None:
         encrypt_data, encrypt_config = Security.encrypt(record_content.model_dump_json(by_alias=True))
     except Exception:
         logger.exception("[Scheduler] 问答对加密错误")
-        return
+        return ""
 
     # 保存Flow信息
     if task.state:
@@ -204,7 +208,7 @@ async def save_data(task: Task, user_sub: str, post_body: RequestData) -> None:
          )
         if not record_group_id:
             logger.error("[Scheduler] 创建问答组失败")
-            return
+            return ""
     else:
         record_group_id = task.ids.group_id
 
@@ -224,3 +228,6 @@ async def save_data(task: Task, user_sub: str, post_body: RequestData) -> None:
         await TaskManager.delete_task_by_task_id(task.id)
     else:
         await TaskManager.save_task(task.id, task)
+    
+    # 返回 record_id
+    return task.ids.record_id
