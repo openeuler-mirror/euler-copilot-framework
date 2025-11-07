@@ -134,6 +134,10 @@ class MCPClient:
              asyncio.create_task(self.error_sign.wait())],
             return_when=asyncio.FIRST_COMPLETED,
         )
+        # 取消未完成的任务
+        for task in pending:
+            task.cancel()
+
         if self.error_sign.is_set():
             self.status = MCPStatus.ERROR
             err_msg = f"[MCPClient] MCP {mcp_id} 初始化失败"

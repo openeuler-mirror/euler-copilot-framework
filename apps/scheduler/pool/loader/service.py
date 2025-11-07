@@ -148,7 +148,7 @@ class ServiceLoader:
                 id=metadata.id,
                 name=metadata.name,
                 description=metadata.description,
-                author=metadata.author,
+                authorId=metadata.author,
                 permission=PermissionType.PRIVATE,
             )
             session.add(service_data)

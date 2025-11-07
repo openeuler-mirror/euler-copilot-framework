@@ -8,7 +8,7 @@ from typing import Any
 
 import asyncer
 from anyio import Path
-from sqlalchemy import and_, delete, select, update
+from sqlalchemy import and_, delete, select, text, update
 
 from apps.common.postgres import Postgres, postgres
 from apps.common.process_handler import ProcessHandler
@@ -34,6 +34,55 @@ class MCPLoader:
     """
 
     @staticmethod
+    async def _init_embedding_for_task(pg: Postgres) -> None:
+        """
+        为安装任务初始化 embedding 单例
+
+        :param Postgres pg: PostgreSQL实例
+        :return: 无
+        """
+        try:
+            from apps.models import GlobalSettings  # noqa: PLC0415
+            from apps.services.llm import LLMManager  # noqa: PLC0415
+
+            async with pg.session() as session:
+                from sqlalchemy import select  # noqa: PLC0415
+                settings = (await session.scalars(select(GlobalSettings))).first()
+                if settings and settings.embeddingLlmId:
+                    embedding_llm_config = await LLMManager.get_llm(settings.embeddingLlmId)
+                    if embedding_llm_config:
+                        await embedding.init(embedding_llm_config)
+                        logger.info("[Installer] Embedding单例已初始化")
+        except Exception as e:  # noqa: BLE001
+            logger.warning("[Installer] 初始化Embedding单例失败: %s", str(e))
+
+    @staticmethod
+    async def _check_vector_table_exists(pg: Postgres = postgres) -> bool:
+        """
+        检查向量表是否存在
+
+        :param Postgres pg: PostgreSQL实例，默认为全局单例postgres
+        :return: 向量表是否存在
+        :rtype: bool
+        """
+        async with pg.session() as session:
+            try:
+                result = await session.execute(
+                    text(
+                        "SELECT EXISTS ("
+                        "  SELECT FROM information_schema.tables "
+                        "  WHERE table_schema = 'public' "
+                        "  AND table_name = 'framework_mcp_tool_vector'"
+                        ")",
+                    ),
+                )
+                exists = result.scalar()
+                return bool(exists)
+            except Exception as e:  # noqa: BLE001
+                logger.debug("[MCPLoader] 检查向量表失败: %s", e)
+                return False
+
+    @staticmethod
     async def _check_dir() -> None:
         """
         检查MCP目录是否存在
@@ -50,6 +99,96 @@ class MCPLoader:
             await (MCP_PATH / "users").unlink(missing_ok=True)
             await (MCP_PATH / "users").mkdir(parents=True, exist_ok=True)
 
+
+    @staticmethod
+    async def _install_stdio_mcp(
+        mcp_id: str,
+        mcp_config: MCPServerStdioConfig,
+        item: MCPServerConfig,
+    ) -> MCPServerStdioConfig | None:
+        """
+        安装 Stdio 类型的 MCP
+
+        :param str mcp_id: MCP模板ID
+        :param MCPServerStdioConfig mcp_config: MCP配置
+        :param MCPServerConfig item: 完整的配置对象
+        :return: 安装后的配置，失败返回None
+        :rtype: MCPServerStdioConfig | None
+        """
+        print(f"[Installer] Stdio方式的MCP模板，开始自动安装: {mcp_id}")  # noqa: T201
+        if "uv" in mcp_config.command:
+            updated_config = await install_uvx(mcp_id, mcp_config)
+        elif "npx" in mcp_config.command:
+            updated_config = await install_npx(mcp_id, mcp_config)
+        else:
+            return mcp_config
+
+        if updated_config is None:
+            return None
+
+        item.mcpServers[mcp_id] = updated_config
+        template_config = MCP_PATH / "template" / mcp_id / "config.json"
+        f = await template_config.open("w+", encoding="utf-8")
+        config_data = item.model_dump(by_alias=True, exclude_none=True)
+        await f.write(json.dumps(config_data, indent=4, ensure_ascii=False))
+        await f.aclose()
+        return updated_config
+
+    @staticmethod
+    async def _handle_tool_vectorization(
+        mcp_id: str,
+        item: MCPServerConfig,
+        tool_list: list[MCPTools],
+        pg: Postgres,
+    ) -> None:
+        """
+        处理工具向量化
+
+        :param str mcp_id: MCP模板ID
+        :param MCPServerConfig item: MCP配置
+        :param list[MCPTools] tool_list: 工具列表
+        :param Postgres pg: PostgreSQL实例
+        :return: 无
+        """
+        if not await MCPLoader._check_vector_table_exists(pg):
+            logger.warning("[Installer] 向量表不存在，跳过MCP工具向量化: %s", mcp_id)
+            return
+
+        if not tool_list:
+            logger.warning("[Installer] 工具列表为空，跳过MCP工具向量化: %s", mcp_id)
+            return
+
+        if embedding.MCPVector is None or embedding.MCPToolVector is None:
+            logger.warning("[Installer] 向量表类未初始化，跳过MCP工具向量化: %s", mcp_id)
+            return
+
+        try:
+            logger.info("[Installer] 开始向量化MCP工具: %s", mcp_id)
+
+            tool_desc_list = [tool.description for tool in tool_list]
+            mcp_embedding = await embedding.get_embedding([item.description])
+            tool_embedding = await embedding.get_embedding(tool_desc_list)
+
+            async with pg.session() as session:
+                await session.execute(delete(embedding.MCPVector).where(embedding.MCPVector.id == mcp_id))
+                await session.execute(
+                    delete(embedding.MCPToolVector).where(embedding.MCPToolVector.mcpId == mcp_id),
+                )
+                session.add(embedding.MCPVector(
+                    id=mcp_id,
+                    embedding=mcp_embedding[0],
+                ))
+                for tool, emb in zip(tool_list, tool_embedding, strict=True):
+                    session.add(embedding.MCPToolVector(
+                        id=tool.id,
+                        mcpId=mcp_id,
+                        embedding=emb,
+                    ))
+                await session.commit()
+
+            logger.info("[Installer] MCP工具向量化完成: %s", mcp_id)
+        except Exception as e:  # noqa: BLE001
+            logger.warning("[Installer] MCP工具向量化失败: %s, 错误: %s", mcp_id, str(e))
 
     @staticmethod
     async def _load_config(config_path: Path) -> MCPServerConfig:
@@ -80,9 +219,8 @@ class MCPLoader:
         :param MCPServerConfig config: MCP配置
         :return: 无
         """
-        # 直接初始化PostgreSQL实例，不使用单例
-        pg = Postgres()
-        await pg.init()
+        await postgres.init()
+        await MCPLoader._init_embedding_for_task(postgres)
 
         mcp_id = next(iter(item.mcpServers.keys()))
         mcp_config = item.mcpServers[mcp_id]
@@ -90,40 +228,39 @@ class MCPLoader:
         try:
             if not mcp_config.autoInstall:
                 print(f"[Installer] MCP模板无需安装: {mcp_id}")  # noqa: T201
-
             elif isinstance(mcp_config, MCPServerStdioConfig):
-                print(f"[Installer] Stdio方式的MCP模板，开始自动安装: {mcp_id}")  # noqa: T201
-                if "uv" in mcp_config.command:
-                    mcp_config = await install_uvx(mcp_id, mcp_config)
-                elif "npx" in mcp_config.command:
-                    mcp_config = await install_npx(mcp_id, mcp_config)
-
-                if mcp_config is None:
+                updated_config = await MCPLoader._install_stdio_mcp(mcp_id, mcp_config, item)
+                if updated_config is None:
                     logger.error("[MCPLoader] MCP模板安装失败: %s", mcp_id)
-                    await MCPLoader.update_template_status(mcp_id, MCPInstallStatus.FAILED, pg)
+                    await MCPLoader.update_template_status(mcp_id, MCPInstallStatus.FAILED, postgres)
                     return
-
-                item.mcpServers[mcp_id] = mcp_config
-                # 重新保存config
-                template_config = MCP_PATH / "template" / mcp_id / "config.json"
-                f = await template_config.open("w+", encoding="utf-8")
-                config_data = item.model_dump(by_alias=True, exclude_none=True)
-                await f.write(json.dumps(config_data, indent=4, ensure_ascii=False))
-                await f.aclose()
-
+                mcp_config = updated_config
             else:
                 logger.info("[Installer] SSE/StreamableHTTP方式的MCP模板，无需安装: %s", mcp_id)
                 item.mcpServers[mcp_id].autoInstall = False
 
-            await MCPLoader._insert_template_tool(mcp_id, item, pg)
-            await MCPLoader.update_template_status(mcp_id, MCPInstallStatus.READY, pg)
+            tool_list = await MCPLoader._get_template_tool(mcp_id, item)
+
+            async with postgres.session() as session:
+                if await MCPLoader._check_vector_table_exists(postgres) and embedding.MCPToolVector is not None:
+                    await session.execute(
+                        delete(embedding.MCPToolVector).where(embedding.MCPToolVector.mcpId == mcp_id),
+                    )
+
+                await session.execute(delete(MCPTools).where(MCPTools.mcpId == mcp_id))
+                session.add_all(tool_list)
+                await session.commit()
+
+            await MCPLoader._handle_tool_vectorization(mcp_id, item, tool_list, postgres)
+
+            await MCPLoader.update_template_status(mcp_id, MCPInstallStatus.READY, postgres)
             logger.info("[Installer] MCP模板安装成功: %s", mcp_id)
         except Exception:
             logger.exception("[MCPLoader] MCP模板安装失败: %s", mcp_id)
-            await MCPLoader.update_template_status(mcp_id, MCPInstallStatus.FAILED, pg)
+            await MCPLoader.update_template_status(mcp_id, MCPInstallStatus.FAILED, postgres)
             raise
         finally:
-            await pg.close()
+            await postgres.close()
 
 
     @staticmethod
@@ -131,7 +268,6 @@ class MCPLoader:
         """清除状态为ready或failed的MCP安装任务"""
         mcp_ids = ProcessHandler.get_all_task_ids()
         async with postgres.session() as session:
-            # 检索_id在mcp_ids且状态为ready或者failed的MCP的内容
             result = await session.scalars(
                 select(MCPInfo).where(
                     and_(
@@ -155,23 +291,18 @@ class MCPLoader:
         :param MCPServerConfig config: MCP配置
         :return: 无
         """
-        # 清除状态为ready或failed的MCP安装任务
         await MCPLoader.clear_ready_or_failed_mcp_installation()
 
-        # 如果包含多个MCP Server，报错
         if len(config.mcpServers) > 1:
-            err = f"[MCPLoader] MCP模板“{mcp_id}”包含多个MCP Server，无法初始化"
+            err = f'[MCPLoader] MCP模板"{mcp_id}"包含多个MCP Server，无法初始化'
             logger.error(err)
             raise ValueError(err)
 
-        # 插入数据库；这里用旧的config就可以
         await MCPLoader._insert_template_db(mcp_id, config)
 
-        # 检查目录
         template_path = MCP_PATH / "template" / str(mcp_id)
         await Path.mkdir(template_path, parents=True, exist_ok=True)
 
-        # 安装MCP模板
         if not ProcessHandler.add_task(mcp_id, MCPLoader._install_template_task, config):
             err = f"安装任务无法执行，请稍后重试: {mcp_id}"
             logger.error(err)
@@ -184,7 +315,6 @@ class MCPLoader:
         template_path = MCP_PATH / "template"
         logger.info("[MCPLoader] 取消正在安装的MCP模板任务: %s", template_path)
 
-        # 获取所有MCP ID
         mcp_configs = await MCPLoader._get_all_mcp_configs()
         mcp_ids = list(mcp_configs.keys())
 
@@ -210,21 +340,17 @@ class MCPLoader:
         mcp_configs = {}
         template_path = MCP_PATH / "template"
 
-        # 遍历所有模板
         async for mcp_dir in template_path.iterdir():
-            # 不是目录
             if not await mcp_dir.is_dir():
                 logger.warning("[MCPLoader] 跳过非目录: %s", mcp_dir.as_posix())
                 continue
 
-            # 检查配置文件是否存在
             config_path = mcp_dir / "config.json"
             if not await config_path.exists():
                 logger.warning("[MCPLoader] 跳过没有配置文件的MCP模板: %s", mcp_dir.as_posix())
                 continue
 
             try:
-                # 读取配置
                 config = await MCPLoader._load_config(config_path)
                 mcp_configs[mcp_dir.name] = config
             except Exception as e:  # noqa: BLE001
@@ -246,7 +372,6 @@ class MCPLoader:
 
         mcp_configs = await MCPLoader._get_all_mcp_configs()
         for mcp_id, config in mcp_configs.items():
-            # 初始化第一个MCP Server
             logger.info("[MCPLoader] 初始化MCP模板: %s", mcp_id)
             await MCPLoader.init_one_template(mcp_id, config)
 
@@ -266,7 +391,6 @@ class MCPLoader:
         :return: 工具列表
         :rtype: list[str]
         """
-        # 创建客户端
         if (
             (config.mcpType == MCPType.STDIO and isinstance(config.mcpServers[mcp_id], MCPServerStdioConfig))
             or (config.mcpType == MCPType.SSE and isinstance(config.mcpServers[mcp_id], MCPServerSSEConfig))
@@ -279,7 +403,6 @@ class MCPLoader:
 
         await client.init(user_id, mcp_id, config.mcpServers[mcp_id])
 
-        # 获取工具列表
         tool_list = []
         for item in client.tools:
             tool_list += [MCPTools(
@@ -311,57 +434,6 @@ class MCPLoader:
                 mcpType=config.mcpType,
                 authorId=config.author or "",
             ))
-            await session.commit()
-
-
-    @staticmethod
-    async def _insert_template_tool(mcp_id: str, config: MCPServerConfig, pg: Postgres = postgres) -> None:
-        """
-        插入单个MCP Server工具信息到数据库
-
-        :param str mcp_id: MCP模板ID
-        :param MCPServerSSEConfig | MCPServerStdioConfig config: MCP配置
-        :param Postgres pg: PostgreSQL实例，默认为全局单例postgres
-        :return: 无
-        """
-        # 获取工具列表
-        tool_list = await MCPLoader._get_template_tool(mcp_id, config)
-
-        # 基本信息插入数据库
-        async with pg.session() as session:
-            # 删除旧的工具
-            await session.execute(delete(MCPTools).where(MCPTools.mcpId == mcp_id))
-            # 插入新的工具
-            session.add_all(tool_list)
-            await session.commit()
-
-
-    @staticmethod
-    async def _insert_template_tool_vector(mcp_id: str, config: MCPServerConfig) -> None:
-        """插入MCP相关的向量数据"""
-        # 获取工具列表
-        tool_list = await MCPLoader._get_template_tool(mcp_id, config)
-        tool_desc_list = [tool.description for tool in tool_list]
-        mcp_embedding = await embedding.get_embedding([config.description])
-        tool_embedding = await embedding.get_embedding(tool_desc_list)
-
-        async with postgres.session() as session:
-            # 删除旧数据
-            await session.execute(delete(embedding.MCPVector).where(embedding.MCPVector.id == mcp_id))
-            await session.execute(
-                delete(embedding.MCPToolVector).where(embedding.MCPToolVector.mcpId == mcp_id),
-            )
-            # 插入新数据
-            session.add(embedding.MCPVector(
-                id=mcp_id,
-                embedding=mcp_embedding[0],
-            ))
-            for tool, emb in zip(tool_list, tool_embedding, strict=True):
-                session.add(embedding.MCPToolVector(
-                    id=tool.id,
-                    mcpId=mcp_id,
-                    embedding=emb,
-                ))
             await session.commit()
 
 
@@ -417,13 +489,11 @@ class MCPLoader:
         template_path = MCP_PATH / "template" / str(mcp_id)
         user_path = MCP_PATH / "users" / user_id / str(mcp_id)
 
-        # 判断是否存在
         if await user_path.exists():
-            err = f"MCP模板“{mcp_id}”已存在或有同名文件，无法激活"
+            err = f'MCP模板"{mcp_id}"已存在或有同名文件，无法激活'
             raise FileExistsError(err)
 
         mcp_config = await MCPLoader.get_config(mcp_id)
-        # 拷贝文件
         await asyncer.asyncify(shutil.copytree)(
             template_path.as_posix(),
             user_path.as_posix(),
@@ -450,7 +520,6 @@ class MCPLoader:
 
         user_config_path = user_path / "config.json"
         mcp_config.mcpServers[mcp_id] = mcpsvc
-        # 更新用户配置
         f = await user_config_path.open("w", encoding="utf-8", errors="ignore")
         await f.write(
             json.dumps(
@@ -460,7 +529,6 @@ class MCPLoader:
             ),
         )
         await f.aclose()
-        # 更新数据库
         async with postgres.session() as session:
             await session.merge(MCPActivated(
                 mcpId=mcp_id,
@@ -479,11 +547,9 @@ class MCPLoader:
         :param str mcp_id: MCP模板ID
         :return: 无
         """
-        # 删除用户目录
         user_path = MCP_PATH / "users" / user_id / str(mcp_id)
         await asyncer.asyncify(shutil.rmtree)(user_path.as_posix(), ignore_errors=True)
 
-        # 更新数据库
         async with postgres.session() as session:
             await session.execute(delete(MCPActivated).where(
                 and_(
@@ -549,7 +615,6 @@ class MCPLoader:
         :param list[str] deleted_mcp_list: 被删除的MCP列表
         :return: 无
         """
-        # 移除Info
         async with postgres.session() as session:
             for mcp_id in deleted_mcp_list:
                 mcp_info = (await session.scalars(select(MCPInfo).where(MCPInfo.id == mcp_id))).one_or_none()
@@ -564,7 +629,6 @@ class MCPLoader:
             await session.commit()
             logger.info("[MCPLoader] 清除数据库中无效的MCP")
 
-        # 删除MCP的向量化数据
         async with postgres.session() as session:
             for mcp_id in deleted_mcp_list:
                 await session.execute(
@@ -624,34 +688,26 @@ class MCPLoader:
             return
 
         mcp_list = {}
-        # 遍历users目录
         async with postgres.session() as session:
             async for user_dir in user_path.iterdir():
                 if not await user_dir.is_dir():
                     continue
 
-                # 遍历单个用户的目录
                 async for mcp_dir in user_dir.iterdir():
-                    # 检查数据库中是否有这个MCP
                     mcp_item = (
                         await session.scalars(select(MCPInfo).where(MCPInfo.id == mcp_dir.name))
                     ).one()
                     if not mcp_item:
-                        # 数据库中不存在，当前文件夹无效，删除
                         await asyncer.asyncify(shutil.rmtree)(mcp_dir.as_posix(), ignore_errors=True)
                         continue
 
-                    # 添加到dict
                     if mcp_dir.name not in mcp_list:
                         mcp_list[mcp_dir.name] = []
                     mcp_list[mcp_dir.name].append(user_dir.name)
 
-        # 更新所有MCP的activated情况
         async with postgres.session() as session:
             for mcp_id, user_list in mcp_list.items():
-                # 删除所有的激活情况
                 await session.execute(delete(MCPActivated).where(MCPActivated.mcpId == mcp_id))
-                # 插入新的激活情况
                 for user_id in user_list:
                     session.add(MCPActivated(
                         mcpId=mcp_id,
@@ -668,13 +724,12 @@ class MCPLoader:
         :return: 无
         """
         try:
-            # 获取所有MCP配置
             mcp_configs = await MCPLoader._get_all_mcp_configs()
 
             for mcp_id, config in mcp_configs.items():
                 try:
-                    # 进行向量化
-                    await MCPLoader._insert_template_tool_vector(mcp_id, config)
+                    tool_list = await MCPLoader._get_template_tool(mcp_id, config)
+                    await MCPLoader._handle_tool_vectorization(mcp_id, config, tool_list, postgres)
                     logger.info("[MCPLoader] MCP工具向量化完成: %s", mcp_id)
                 except Exception as e:  # noqa: BLE001
                     logger.warning("[MCPLoader] MCP工具向量化失败: %s, 错误: %s", mcp_id, str(e))
@@ -693,16 +748,12 @@ class MCPLoader:
 
         :return: 无
         """
-        # 清空数据库
         deleted_mcp_list = await MCPLoader._find_deleted_mcp()
         await MCPLoader.remove_deleted_mcp(deleted_mcp_list)
 
-        # 检查目录
         await MCPLoader._check_dir()
 
-        # 初始化所有模板
         await MCPLoader._init_all_template()
         await MCPLoader.cancel_all_installing_task()
 
-        # 加载用户MCP
         await MCPLoader._load_user_mcp()
