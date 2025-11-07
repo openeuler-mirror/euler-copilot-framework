@@ -19,7 +19,7 @@ from apps.models import Flow as FlowInfo
 from apps.scheduler.pool.pool import pool
 from apps.scheduler.slot.slot import Slot
 from apps.schemas.enum_var import EdgeType
-from apps.schemas.flow import FlowAppMetadata, Edge, Flow, PositionItem, Step
+from apps.schemas.flow import Edge, Flow, FlowAppMetadata, PositionItem, Step
 from apps.schemas.flow_topology import (
     EdgeItem,
     FlowItem,

@@ -31,8 +31,6 @@ class CallLoader:
 
         # 动态导入 apps.scheduler.call 模块
         system_call = importlib.import_module("apps.scheduler.call")
-
-        # 检查合法性
         for call_id in system_call.__all__:
             call_cls = getattr(system_call, call_id)
             call_info = call_cls.info()
@@ -46,6 +44,10 @@ class CallLoader:
         """将数据插入数据库"""
         # 清除旧数据
         async with postgres.session() as session:
+            if await _table_exists(embedding.NodePoolVector.__tablename__):
+                await session.execute(
+                    delete(embedding.NodePoolVector).where(embedding.NodePoolVector.serviceId == None),  # noqa: E711
+                )
             await session.execute(delete(NodeInfo).where(NodeInfo.serviceId == None))  # noqa: E711
 
             # 更新数据库
@@ -109,3 +111,5 @@ class CallLoader:
 
         # 更新数据库
         await self._add_data_to_db(sys_call_metadata)
+        # 向量化
+        await self._add_vector_to_db(sys_call_metadata)

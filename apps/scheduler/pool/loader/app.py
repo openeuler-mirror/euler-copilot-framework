@@ -88,7 +88,7 @@ class AppLoader:
                 err = "[AppLoader] Agent应用元数据验证失败"
                 logger.exception(err)
                 raise RuntimeError(err) from e
-        await self._update_db(metadata)
+        await self._update_db(metadata, hashes)
 
     async def read_metadata(self, app_id: uuid.UUID) -> FlowAppMetadata | AgentAppMetadata:
         """读取应用元数据"""
@@ -129,12 +129,14 @@ class AppLoader:
         :param app_id: 应用 ID
         """
         async with postgres.session() as session:
-            await session.execute(delete(App).where(App.id == app_id))
-            await session.execute(delete(AppACL).where(AppACL.appId == app_id))
+            # 删除子表
             await session.execute(delete(AppHashes).where(AppHashes.appId == app_id))
+            await session.execute(delete(AppACL).where(AppACL.appId == app_id))
             await session.execute(delete(Flow).where(Flow.appId == app_id))
             await session.execute(delete(UserAppUsage).where(UserAppUsage.appId == app_id))
             await session.execute(delete(UserFavorite).where(UserFavorite.itemId == app_id))
+            # 删除主表
+            await session.execute(delete(App).where(App.id == app_id))
             await session.commit()
 
         if not is_reload:

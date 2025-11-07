@@ -41,9 +41,9 @@ async def lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
     """应用生命周期管理"""
     # 启动时初始化资源
     await postgres.init()
-    await pool.init()
-    # 初始化全局LLM设置
     await SettingsManager.init_global_llm_settings()
+    # 需要用到embedding
+    await pool.init()
     yield
     # 关闭时释放资源
     await postgres.close()
