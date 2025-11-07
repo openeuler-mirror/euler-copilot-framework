@@ -112,7 +112,7 @@ oi --logs
 - **Tab**: 在命令输入框和输出区域之间切换焦点
 - **Esc**: 退出应用程序
 
-### 补充：操作的细节，包括 oi --logs 日志等，参考 shell 的 [readme](https://gitee.com/openeuler/euler-copilot-shell/blob/master/README.md)。
+### 补充：操作的细节，包括 oi --logs 日志等，参考 shell 的 [readme](https://gitee.com/openeuler/euler-copilot-shell/blob/master/README.md)
 
 ## 2. 平台演示
 
@@ -197,7 +197,7 @@ oi
 首先准备一个 JSON 文件，格式如下，需要配置 **url** 为自定义 MCP 的访问端口，/sse 为标准路由，修改 **name**、**overview**、**description**，其他内容为默认即可。如下 JSON 为 openEuler Intelligence 对应的 MCP 服务配置文件：
 
 > [!NOTE]说明
-
+>
 > init 多次调用会删除之前注册的 mcp 服务，重新注册。
 
 ~~~json
@@ -374,7 +374,7 @@ journalctl -xe -u tune-mcpserver --all -f
 
 ![调优的使用3](./pictures/调优的使用3.PNG)
 
-执行完 Collecto r后，会依次执行数据分析工具，参数推荐工具，性能调优开始工具。
+执行完 Collector后，会依次执行数据分析工具，参数推荐工具，性能调优开始工具。
 
 ![调优的使用4](./pictures/调优的使用4.PNG)
 
