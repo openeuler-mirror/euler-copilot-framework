@@ -191,7 +191,7 @@ class DocumentManager:
                 # 尝试清理MinIO中的文件
                 try:
                     from apps.common.minio import MinioClient
-                    MinioClient.remove_object("document", file_id)
+                    MinioClient.delete_file("document", file_id)
                     logger.info(f"已清理MinIO中的文件: {file_id}")
                 except Exception:
                     logger.warning(f"清理MinIO文件失败: {file_id}")
@@ -228,7 +228,7 @@ class DocumentManager:
                 for doc in uploaded_files:
                     try:
                         from apps.common.minio import MinioClient
-                        MinioClient.remove_object("document", doc.id)
+                        MinioClient.delete_file("document", doc.id)
                     except Exception as cleanup_error:
                         cleanup_errors.append(f"MinIO清理失败 {doc.id}: {cleanup_error}")
                 
@@ -470,7 +470,8 @@ class DocumentManager:
                             name=final_var_name,
                             value=updated_value,
                             var_type=existing_variable.metadata.var_type,
-                            description=existing_variable.metadata.description
+                            description=existing_variable.metadata.description,
+                            force_system_update=(scope == "system")  # system.files 允许更新
                         )
                         logger.info(f"✅ 成功更新文件变量: {final_var_name}, uploaded_files_count={len(uploaded_files)}")
                     except Exception as e:
