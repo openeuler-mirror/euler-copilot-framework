@@ -137,7 +137,11 @@ class ReasoningLLM:
             self._init_client()
         
         # 初始化适配器
-        self._provider = get_provider_from_endpoint(self._config.endpoint)
+        # 优先使用配置中的provider，如果没有则从endpoint推断
+        if hasattr(self._config, 'provider') and self._config.provider:
+            self._provider = self._config.provider
+        else:
+            self._provider = get_provider_from_endpoint(self._config.endpoint)
         self._adapter = AdapterFactory.create_adapter(self._provider, self._config.model)
 
     def _init_client(self) -> None:
