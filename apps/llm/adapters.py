@@ -261,7 +261,17 @@ class AdapterFactoryV2:
 
 
 def get_provider_from_endpoint(endpoint: str) -> str:
-    """从endpoint推断provider"""
+    """从endpoint推断provider
+    
+    ⚠️ 注意：这个函数应该只作为后备方案使用！
+    优先级应该是：明确的provider参数 > 从endpoint推断
+    
+    Args:
+        endpoint: API endpoint URL
+        
+    Returns:
+        推断出的provider名称，如果无法推断则返回"unknown"
+    """
     if not endpoint:
         return "unknown"
     
@@ -272,7 +282,7 @@ def get_provider_from_endpoint(endpoint: str) -> str:
     elif "siliconflow.cn" in endpoint_lower:
         return "siliconflow"
     elif "dashscope.aliyuncs.com" in endpoint_lower:
-        return "qwen"
+        return "bailian"
     elif "api.deepseek.com" in endpoint_lower:
         return "deepseek"
     elif "baichuan-ai.com" in endpoint_lower:

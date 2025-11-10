@@ -510,14 +510,22 @@ def get_model_can_toggle_thinking(provider: str, model_name: str, registry: Opti
 # 初始化全局注册表实例
 def initialize_global_registry(providers_path: Optional[str] = None, models_path: Optional[str] = None) -> ModelRegistryV2:
     """初始化全局注册表"""
+    import os
+    
     # 默认配置路径
     if providers_path is None:
-        base_dir = Path(__file__).parent.parent.parent / "deploy" / "chart" / "euler_copilot" / "configs" / "framework"
-        providers_path = str(base_dir / "providers.conf")
+        # 优先从环境变量PROVIDERS_CONFIG读取
+        providers_path = os.getenv("PROVIDERS_CONFIG")
+        if providers_path is None:
+            # 默认使用 Path(__file__).parents[2] / "config" / "providers.conf"
+            providers_path = str(Path(__file__).parents[2] / "config" / "providers.conf")
     
     if models_path is None:
-        base_dir = Path(__file__).parent.parent.parent / "deploy" / "chart" / "euler_copilot" / "configs" / "framework"
-        models_path = str(base_dir / "models.conf")
+        # 优先从环境变量MODELS_CONFIG读取
+        models_path = os.getenv("MODELS_CONFIG")
+        if models_path is None:
+            # 默认使用 Path(__file__).parents[2] / "config" / "models.conf"
+            models_path = str(Path(__file__).parents[2] / "config" / "models.conf")
     
     registry = ModelRegistryV2(providers_path, models_path)
     return registry

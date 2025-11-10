@@ -21,8 +21,47 @@ from apps.llm.adapters import AdapterFactory, get_provider_from_endpoint
 import openai
 import httpx
 from openai import APIError, APIConnectionError, APITimeoutError, RateLimitError, AuthenticationError
+from apps.llm.model_registry import model_registry
+from apps.llm.model_types import ModelType, ChatCapabilities
 
 logger = logging.getLogger(__name__)
+
+
+def infer_backend_from_capabilities(provider: str, model_name: str, explicit_backend: str | None = None) -> str:
+    """
+    根据模型能力推断最佳的backend
+    
+    :param provider: 模型提供商
+    :param model_name: 模型名称
+    :param explicit_backend: 明确指定的backend（如果有），优先使用
+    :return: 推断的backend类型
+    """
+    # 如果明确指定了backend，直接使用
+    if explicit_backend:
+        logger.info(f"[FunctionCall] 使用明确指定的backend: {explicit_backend}")
+        return explicit_backend
+    
+    # 从模型注册表获取模型能力
+    capabilities = model_registry.get_model_capabilities(provider, model_name, ModelType.CHAT)
+    
+    if not capabilities or not isinstance(capabilities, ChatCapabilities):
+        logger.warning(f"[FunctionCall] 无法获取模型 {provider}:{model_name} 的能力信息，使用默认backend: json_mode")
+        return "json_mode"
+    
+    # 根据能力优先级推断backend
+    # 优先级: structured_output > function_call > json_mode
+    if capabilities.supports_structured_output:
+        logger.info(f"[FunctionCall] 模型 {provider}:{model_name} 支持structured_output，自动选择")
+        return "structured_output"
+    elif capabilities.supports_function_calling:
+        logger.info(f"[FunctionCall] 模型 {provider}:{model_name} 支持function_calling，自动选择")
+        return "function_call"
+    elif capabilities.supports_json_mode:
+        logger.info(f"[FunctionCall] 模型 {provider}:{model_name} 支持json_mode，自动选择")
+        return "json_mode"
+    else:
+        logger.warning(f"[FunctionCall] 模型 {provider}:{model_name} 不支持任何JSON生成能力，回退到json_mode")
+        return "json_mode"
 
 
 class FunctionLLM:
@@ -39,6 +78,8 @@ class FunctionLLM:
         - json_mode
         - structured_output
         
+        backend会根据模型能力自动推断，也可以通过配置明确指定
+        
         :param llm_config: 可选的LLM配置，如果不提供则使用配置文件中的function_call配置
         """
         # 使用传入的配置或从配置文件获取
@@ -46,7 +87,7 @@ class FunctionLLM:
             self._config = llm_config
             # 如果没有backend字段，根据模型特性推断
             if not hasattr(self._config, 'backend'):
-                # 默认使用json_mode，这对大多数模型都适用
+                # 创建一个包含backend的配置对象
                 class ConfigWithBackend:
                     def __init__(self, base_config):
                         self.model = base_config.model
@@ -54,7 +95,8 @@ class FunctionLLM:
                         self.api_key = getattr(base_config, 'key', getattr(base_config, 'api_key', ''))
                         self.max_tokens = getattr(base_config, 'max_tokens', 8192)
                         self.temperature = getattr(base_config, 'temperature', 0.7)
-                        self.backend = "json_mode"  # 默认使用json_mode
+                        # backend将在后面通过推断设置
+                        self.backend = None
                 
                 self._config = ConfigWithBackend(llm_config)
         else:
@@ -66,18 +108,37 @@ class FunctionLLM:
             logger.error(err_msg)
             raise ValueError(err_msg)
 
-        # 初始化适配器
-        self._provider = get_provider_from_endpoint(self._config.endpoint)
+        # 初始化provider和适配器
+        # 优先使用配置中的provider，如果没有则从endpoint推断
+        if hasattr(self._config, 'provider') and self._config.provider:
+            self._provider = self._config.provider
+        else:
+            self._provider = get_provider_from_endpoint(self._config.endpoint)
+        
         self._adapter = AdapterFactory.create_adapter(self._provider, self._config.model)
+        
+        # 智能推断backend：如果配置中backend为None或空字符串，则根据模型能力推断
+        explicit_backend = getattr(self._config, 'backend', None)
+        if not explicit_backend or explicit_backend == 'null':
+            explicit_backend = None
+        
+        self._backend = infer_backend_from_capabilities(
+            self._provider, 
+            self._config.model,
+            explicit_backend
+        )
+        
+        # 更新配置对象的backend字段，供后续使用
+        self._config.backend = self._backend
         
         self._params = {
             "model": self._config.model,
             "messages": [],
             "extra_body": {}
         }
-        if self._config.backend != "ollama":
+        if self._backend != "ollama":
             self._params["timeout"] = 300
-        if self._config.backend == "ollama":
+        if self._backend == "ollama":
             import ollama
 
             if not self._config.api_key:
@@ -127,23 +188,15 @@ class FunctionLLM:
             "temperature": temperature,
         })
 
-        # 🔑 特殊处理：如果provider是siliconflow，强制使用json_mode
-        if self._provider == "siliconflow":
-            logger.info("[FunctionCall] 检测到SiliconFlow provider，启用JSON模式")
-            # 确保系统消息中包含JSON输出提示
-            if messages and messages[0]["role"] == "system":
-                if "JSON" not in messages[0]["content"]:
-                    messages[0]["content"] += "\nYou are a helpful assistant designed to output JSON."
-            self._params["response_format"] = {"type": "json_object"}
-            
-        elif self._config.backend == "vllm":
+        # 根据backend配置选择不同的调用方式
+        if self._backend == "vllm":
             self._params["extra_body"] = {"guided_json": schema}
 
-        elif self._config.backend == "json_mode":
+        elif self._backend == "json_mode":
             logger.warning("[FunctionCall] json_mode无法确保输出格式符合要求，使用效果将受到影响")
             self._params["response_format"] = {"type": "json_object"}
 
-        elif self._config.backend == "structured_output":
+        elif self._backend == "structured_output":
             self._params["response_format"] = {
                 "type": "json_schema",
                 "json_schema": {
@@ -154,7 +207,7 @@ class FunctionLLM:
                 },
             }
 
-        elif self._config.backend == "function_call":
+        elif self._backend == "function_call":
             logger.warning("[FunctionCall] function_call无法确保一定调用工具，使用效果将受到影响")
             self._params["tools"] = [
                 {
@@ -327,12 +380,12 @@ class FunctionLLM:
             temperature = self._config.temperature
 
         try:
-            if self._config.backend == "ollama":
+            if self._backend == "ollama":
                 json_str = await self._call_ollama(messages, schema, max_tokens, temperature)
-            elif self._config.backend in ["function_call", "json_mode", "response_format", "vllm", "structured_output"]:
+            elif self._backend in ["function_call", "json_mode", "response_format", "vllm", "structured_output"]:
                 json_str = await self._call_openai(messages, schema, max_tokens, temperature)
             else:
-                err = f"未知的Function模型后端: {self._config.backend}"
+                err = f"未知的Function模型后端: {self._backend}"
                 logger.error("[FunctionCall] %s", err)
                 raise ValueError(err)
         except ValueError:
@@ -451,8 +504,10 @@ class JsonGenerator:
 
     async def _assemble_message(self) -> str:
         """组装消息"""
-        # 检查类型
-        function_call = Config().get_config().function_call.backend == "function_call"
+        # 创建一个临时FunctionLLM实例来获取backend信息
+        # 注意：这里只是为了检查backend类型，不会真正调用
+        temp_function = FunctionLLM()
+        function_call = temp_function._backend == "function_call"
 
         # 渲染模板
         template = self._env.from_string(JSON_GEN_BASIC)

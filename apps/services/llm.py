@@ -180,6 +180,24 @@ class LLMManager:
 
         # 推断模型能力
         provider = req.provider or get_provider_from_endpoint(req.openai_base_url)
+        
+        # 检查provider类型，如果是public类型，则验证URL
+        if provider in llm_provider_dict:
+            provider_info = llm_provider_dict[provider]
+            provider_type = provider_info.get("type", "public")
+            
+            # 如果是public类型的provider
+            if provider_type == "public":
+                standard_url = provider_info.get("url", "")
+                # 如果用户提供的URL不为空，且与标准URL不一致
+                if req.openai_base_url and req.openai_base_url.rstrip('/') != standard_url.rstrip('/'):
+                    err = f"[LLMManager] public类型的provider '{provider}' 不允许自定义URL，应使用标准URL: {standard_url}"
+                    logger.error(err)
+                    raise ValueError(err)
+                # 如果用户没有提供URL，使用标准URL
+                if not req.openai_base_url:
+                    req.openai_base_url = standard_url
+        
         model_info = model_registry.get_model_info(provider, req.model_name)
         
         # 标准化type字段为列表格式
