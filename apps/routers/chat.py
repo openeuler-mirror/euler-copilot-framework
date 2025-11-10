@@ -6,6 +6,7 @@ import logging
 from collections.abc import AsyncGenerator
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse, StreamingResponse
 
 from apps.common.queue import MessageQueue
@@ -124,9 +125,11 @@ async def stop_generation(request: Request) -> JSONResponse:
 
     return JSONResponse(
         status_code=status.HTTP_200_OK,
-        content=ResponseData(
-            code=status.HTTP_200_OK,
-            message="stop generation success",
-            result={},
-        ).model_dump(exclude_none=True, by_alias=True),
+        content=jsonable_encoder(
+            ResponseData(
+                code=status.HTTP_200_OK,
+                message="stop generation success",
+                result={},
+            ).model_dump(exclude_none=True, by_alias=True),
+        ),
     )

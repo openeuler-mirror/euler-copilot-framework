@@ -121,7 +121,7 @@ class MCPPlan(BaseModel):
 class Step(BaseModel):
     """MCP步骤"""
 
-    tool_id: str = Field(description="工具ID")
+    tool_name: str = Field(description="工具名称")
     description: str = Field(description="步骤描述")
 
 

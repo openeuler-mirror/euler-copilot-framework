@@ -6,6 +6,7 @@ import uuid
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Query, Request, status
+from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
 
 from apps.dependency import verify_personal_token, verify_session
@@ -58,11 +59,13 @@ async def get_conversation_list(request: Request) -> JSONResponse:
 
     return JSONResponse(
         status_code=status.HTTP_200_OK,
-        content=ConversationListRsp(
-            code=status.HTTP_200_OK,
-            message="success",
-            result=ConversationListMsg(conversations=result_conversations),
-        ).model_dump(exclude_none=True, by_alias=True),
+        content=jsonable_encoder(
+            ConversationListRsp(
+                code=status.HTTP_200_OK,
+                message="success",
+                result=ConversationListMsg(conversations=result_conversations),
+            ).model_dump(exclude_none=True, by_alias=True),
+        ),
     )
 
 
@@ -79,11 +82,13 @@ async def update_conversation(
         _logger.error("[Conversation] conversation_id 不存在")
         return JSONResponse(
             status_code=status.HTTP_400_BAD_REQUEST,
-            content=ResponseData(
-                code=status.HTTP_400_BAD_REQUEST,
-                message="conversation_id not found",
-                result={},
-            ).model_dump(exclude_none=True, by_alias=True),
+            content=jsonable_encoder(
+                ResponseData(
+                    code=status.HTTP_400_BAD_REQUEST,
+                    message="conversation_id not found",
+                    result={},
+                ).model_dump(exclude_none=True, by_alias=True),
+            ),
         )
 
     # 更新Conversation数据
@@ -99,27 +104,31 @@ async def update_conversation(
         _logger.exception("[Conversation] 更新对话数据失败")
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            content=ResponseData(
-                code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                message="update conversation failed",
-                result={},
-            ).model_dump(exclude_none=True, by_alias=True),
+            content=jsonable_encoder(
+                ResponseData(
+                    code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    message="update conversation failed",
+                    result={},
+                ).model_dump(exclude_none=True, by_alias=True),
+            ),
         )
 
     return JSONResponse(
         status_code=status.HTTP_200_OK,
-        content=UpdateConversationRsp(
-            code=status.HTTP_200_OK,
-            message="success",
-            result=ConversationListItem(
-                conversationId=conv.id,
-                title=conv.title,
-                docCount=await DocumentManager.get_doc_count(conv.id),
-                createdTime=conv.createdAt.strftime("%Y-%m-%d %H:%M:%S"),
-                appId=conv.appId,
-                debug=conv.isTemporary,
-            ),
-        ).model_dump(exclude_none=True, by_alias=True),
+        content=jsonable_encoder(
+            UpdateConversationRsp(
+                code=status.HTTP_200_OK,
+                message="success",
+                result=ConversationListItem(
+                    conversationId=conv.id,
+                    title=conv.title,
+                    docCount=await DocumentManager.get_doc_count(conv.id),
+                    createdTime=conv.createdAt.strftime("%Y-%m-%d %H:%M:%S"),
+                    appId=conv.appId,
+                    debug=conv.isTemporary,
+                ),
+            ).model_dump(exclude_none=True, by_alias=True),
+        ),
     )
 
 
@@ -146,9 +155,11 @@ async def delete_conversation(
 
     return JSONResponse(
         status_code=status.HTTP_200_OK,
-        content=DeleteConversationRsp(
-            code=status.HTTP_200_OK,
-            message="success",
-            result=DeleteConversationMsg(conversationIdList=deleted_conversation),
-        ).model_dump(exclude_none=True, by_alias=True),
+        content=jsonable_encoder(
+            DeleteConversationRsp(
+                code=status.HTTP_200_OK,
+                message="success",
+                result=DeleteConversationMsg(conversationIdList=deleted_conversation),
+            ).model_dump(exclude_none=True, by_alias=True),
+        ),
     )

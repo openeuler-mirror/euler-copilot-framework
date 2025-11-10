@@ -53,7 +53,7 @@ class CallLoader:
             # 更新数据库
             call_descriptions = []
             for call_id, call in call_metadata.items():
-                await session.merge(NodeInfo(
+                session.add(NodeInfo(
                     id=call_id,
                     name=call.name,
                     description=call.description,

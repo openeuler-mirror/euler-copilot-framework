@@ -1,7 +1,10 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2023-2025. All rights reserved.
 """FastAPI 大模型相关接口"""
 
+from typing import cast
+
 from fastapi import APIRouter, Depends, status
+from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
 
 from apps.dependency import verify_admin, verify_personal_token, verify_session
@@ -11,6 +14,8 @@ from apps.schemas.request_data import (
 from apps.schemas.response_data import (
     ListLLMAdminRsp,
     ListLLMRsp,
+    LLMAdminInfo,
+    LLMProviderInfo,
     ResponseData,
 )
 from apps.services.llm import LLMManager
@@ -39,14 +44,32 @@ admin_router = APIRouter(
 )
 async def list_llm(llmId: str | None = None) -> JSONResponse:  # noqa: N803
     """GET /llm: 获取大模型列表"""
-    llm_list = await LLMManager.list_llm(llmId, admin_view=False)
+    llm_list_raw = await LLMManager.list_llm(llmId, admin_view=False)
+
+    # 检查返回类型是否符合预期
+    if llm_list_raw and not all(isinstance(item, LLMProviderInfo) for item in llm_list_raw):
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content=jsonable_encoder(
+                ResponseData(
+                    code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    message="大模型列表数据类型不符合预期",
+                    result=None,
+                ).model_dump(exclude_none=True, by_alias=True),
+            ),
+        )
+
+    llm_list = cast("list[LLMProviderInfo]", llm_list_raw)
+
     return JSONResponse(
         status_code=status.HTTP_200_OK,
-        content=ListLLMRsp(
-            code=status.HTTP_200_OK,
-            message="success",
-            result=llm_list,
-        ).model_dump(exclude_none=True, by_alias=True),
+        content=jsonable_encoder(
+            ListLLMRsp(
+                code=status.HTTP_200_OK,
+                message="success",
+                result=llm_list,
+            ).model_dump(exclude_none=True, by_alias=True),
+        ),
     )
 
 
@@ -55,14 +78,32 @@ async def list_llm(llmId: str | None = None) -> JSONResponse:  # noqa: N803
 )
 async def admin_list_llm(llmId: str | None = None) -> JSONResponse:  # noqa: N803
     """GET /llm/config: 获取大模型配置列表（管理员视图）"""
-    llm_list = await LLMManager.list_llm(llmId, admin_view=True)
+    llm_list_raw = await LLMManager.list_llm(llmId, admin_view=True)
+
+    # 检查返回类型是否符合预期
+    if llm_list_raw and not all(isinstance(item, LLMAdminInfo) for item in llm_list_raw):
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content=jsonable_encoder(
+                ResponseData(
+                    code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    message="大模型配置列表数据类型不符合预期",
+                    result=None,
+                ).model_dump(exclude_none=True, by_alias=True),
+            ),
+        )
+
+    llm_list = cast("list[LLMAdminInfo]", llm_list_raw)
+
     return JSONResponse(
         status_code=status.HTTP_200_OK,
-        content=ListLLMAdminRsp(
-            code=status.HTTP_200_OK,
-            message="success",
-            result=llm_list,
-        ).model_dump(exclude_none=True, by_alias=True),
+        content=jsonable_encoder(
+            ListLLMAdminRsp(
+                code=status.HTTP_200_OK,
+                message="success",
+                result=llm_list,
+            ).model_dump(exclude_none=True, by_alias=True),
+        ),
     )
 
 
@@ -79,19 +120,23 @@ async def create_llm(
     except ValueError as e:
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            content=ResponseData(
-                code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                message=str(e),
-                result=None,
-            ).model_dump(exclude_none=True, by_alias=True),
+            content=jsonable_encoder(
+                ResponseData(
+                    code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    message=str(e),
+                    result=None,
+                ).model_dump(exclude_none=True, by_alias=True),
+            ),
         )
     return JSONResponse(
         status_code=status.HTTP_200_OK,
-        content=ResponseData(
-            code=status.HTTP_200_OK,
-            message="success",
-            result=llmId,
-        ).model_dump(exclude_none=True, by_alias=True),
+        content=jsonable_encoder(
+            ResponseData(
+                code=status.HTTP_200_OK,
+                message="success",
+                result=llmId,
+            ).model_dump(exclude_none=True, by_alias=True),
+        ),
     )
 
 
@@ -105,17 +150,21 @@ async def delete_llm(llmId: str) -> JSONResponse:  # noqa: N803
     except ValueError as e:
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            content=ResponseData(
-                code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                message=str(e),
-                result=None,
-            ).model_dump(exclude_none=True, by_alias=True),
+            content=jsonable_encoder(
+                ResponseData(
+                    code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    message=str(e),
+                    result=None,
+                ).model_dump(exclude_none=True, by_alias=True),
+            ),
         )
     return JSONResponse(
         status_code=status.HTTP_200_OK,
-        content=ResponseData(
-            code=status.HTTP_200_OK,
-            message="success",
-            result=llmId,
-        ).model_dump(exclude_none=True, by_alias=True),
+        content=jsonable_encoder(
+            ResponseData(
+                code=status.HTTP_200_OK,
+                message="success",
+                result=llmId,
+            ).model_dump(exclude_none=True, by_alias=True),
+        ),
     )

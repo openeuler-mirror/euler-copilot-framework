@@ -9,7 +9,7 @@ from typing import Any
 from jinja2 import BaseLoader
 from jinja2.sandbox import SandboxedEnvironment
 
-from apps.llm import json_generator
+from apps.llm import LLM, json_generator
 from apps.models import MCPTools
 from apps.scheduler.mcp_agent.base import MCPBase
 from apps.scheduler.mcp_agent.prompt import (
@@ -49,7 +49,7 @@ class MCPPlanner(MCPBase):
     async def get_flow_name(self) -> FlowName:
         """获取当前流程的名称"""
         template = _env.from_string(GENERATE_FLOW_NAME[self._language])
-        prompt = template.render(goal=self._goal)
+        prompt = template.render(goal=self.task.runtime.userInput)
 
         result = await json_generator.generate(
             function=GET_FLOW_NAME_FUNCTION[self._language],
@@ -65,11 +65,11 @@ class MCPPlanner(MCPBase):
         """创建下一步的执行步骤"""
         # 构建提示词
         template = _env.from_string(GEN_STEP[self._language])
-        prompt = template.render(goal=self._goal, history=history, tools=tools)
+        prompt = template.render(goal=self.task.runtime.userInput, history=history, tools=tools)
 
         # 获取函数定义并动态设置tool_id的enum
         function = deepcopy(CREATE_NEXT_STEP_FUNCTION[self._language])
-        function["parameters"]["properties"]["tool_id"]["enum"] = [tool.id for tool in tools]
+        function["parameters"]["properties"]["tool_name"]["enum"] = [tool.toolName for tool in tools]
 
         step = await json_generator.generate(
             function=function,
@@ -122,9 +122,9 @@ class MCPPlanner(MCPBase):
         """判断错误信息是否是参数错误"""
         tmplate = _env.from_string(IS_PARAM_ERROR[self._language])
         prompt = tmplate.render(
-            goal=self._goal,
+            goal=self.task.runtime.userInput,
             history=history,
-            step_id=tool.id,
+            step_id=tool.toolName,
             step_name=tool.toolName,
             step_description=step_description,
             input_params=input_params,
@@ -171,14 +171,14 @@ class MCPPlanner(MCPBase):
             language=self._language,
         )
 
-    async def generate_answer(self, memory: str) -> AsyncGenerator[LLMChunk, None]:
+    async def generate_answer(self, memory: str, llm: LLM) -> AsyncGenerator[LLMChunk, None]:
         """生成最终回答，返回LLMChunk"""
         template = _env.from_string(FINAL_ANSWER[self._language])
         prompt = template.render(
             memory=memory,
-            goal=self._goal,
+            goal=self.task.runtime.userInput,
         )
-        async for chunk in self._llm.call(
+        async for chunk in llm.call(
             [{"role": "user", "content": prompt}],
             streaming=True,
         ):

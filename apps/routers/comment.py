@@ -5,6 +5,7 @@ import logging
 from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, Request, status
+from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
 
 from apps.dependency import verify_personal_token, verify_session
@@ -36,13 +37,23 @@ async def add_comment(request: Request, post_body: AddCommentData) -> JSONRespon
     )
     result = await CommentManager.update_comment(post_body.record_id, comment_data, request.state.user_id)
     if not result:
-        return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content=ResponseData(
-            code=status.HTTP_400_BAD_REQUEST,
-            message="record_id not found",
-            result={},
-        ).model_dump(exclude_none=True, by_alias=True))
-    return JSONResponse(status_code=status.HTTP_200_OK, content=ResponseData(
-        code=status.HTTP_200_OK,
-        message="success",
-        result={},
-    ).model_dump(exclude_none=True, by_alias=True))
+        return JSONResponse(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            content=jsonable_encoder(
+                ResponseData(
+                    code=status.HTTP_400_BAD_REQUEST,
+                    message="record_id not found",
+                    result={},
+                ).model_dump(exclude_none=True, by_alias=True),
+            ),
+        )
+    return JSONResponse(
+        status_code=status.HTTP_200_OK,
+        content=jsonable_encoder(
+            ResponseData(
+                code=status.HTTP_200_OK,
+                message="success",
+                result={},
+            ).model_dump(exclude_none=True, by_alias=True),
+        ),
+    )

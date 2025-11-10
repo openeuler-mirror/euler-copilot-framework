@@ -2,6 +2,7 @@
 """用户相关接口"""
 
 from fastapi import APIRouter, Depends, Request, status
+from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
 
 from apps.common.config import config
@@ -29,12 +30,12 @@ async def update_user_info(request: Request, data: UserUpdateRequest) -> JSONRes
     except ValueError as e:
         return JSONResponse(
             status_code=status.HTTP_404_NOT_FOUND,
-            content={"code": status.HTTP_404_NOT_FOUND, "message": str(e)},
+            content=jsonable_encoder({"code": status.HTTP_404_NOT_FOUND, "message": str(e)}),
         )
 
     return JSONResponse(
         status_code=status.HTTP_200_OK,
-        content={"code": status.HTTP_200_OK, "message": "用户信息更新成功"},
+        content=jsonable_encoder({"code": status.HTTP_200_OK, "message": "用户信息更新成功"}),
     )
 
 
@@ -46,11 +47,13 @@ async def get_user_info(request: Request) -> JSONResponse:
     if not user:
         return JSONResponse(
             status_code=status.HTTP_404_NOT_FOUND,
-            content=ResponseData(
-                code=status.HTTP_404_NOT_FOUND,
-                message="用户不存在",
-                result=None,
-            ).model_dump(exclude_none=True, by_alias=True),
+            content=jsonable_encoder(
+                ResponseData(
+                    code=status.HTTP_404_NOT_FOUND,
+                    message="用户不存在",
+                    result=None,
+                ).model_dump(exclude_none=True, by_alias=True),
+            ),
         )
 
     user_info = UserInfoMsg(
@@ -63,11 +66,13 @@ async def get_user_info(request: Request) -> JSONResponse:
 
     return JSONResponse(
         status_code=status.HTTP_200_OK,
-        content=UserInfoRsp(
-            code=status.HTTP_200_OK,
-            message="用户信息获取成功",
-            result=user_info,
-        ).model_dump(exclude_none=True, by_alias=True),
+        content=jsonable_encoder(
+            UserInfoRsp(
+                code=status.HTTP_200_OK,
+                message="用户信息获取成功",
+                result=user_info,
+            ).model_dump(exclude_none=True, by_alias=True),
+        ),
     )
 
 
@@ -89,11 +94,13 @@ async def list_user(
 
     return JSONResponse(
         status_code=status.HTTP_200_OK,
-        content=UserListRsp(
-            code=status.HTTP_200_OK,
-            message="用户数据详细信息获取成功",
-            result=UserListMsg(userInfoList=user_info_list, total=total),
-        ).model_dump(exclude_none=True, by_alias=True),
+        content=jsonable_encoder(
+            UserListRsp(
+                code=status.HTTP_200_OK,
+                message="用户数据详细信息获取成功",
+                result=UserListMsg(userInfoList=user_info_list, total=total),
+            ).model_dump(exclude_none=True, by_alias=True),
+        ),
     )
 
 
@@ -110,17 +117,21 @@ async def get_user_tag(
     except ValueError as e:
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            content=ResponseData(
-                code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                message=str(e),
-                result=None,
-            ).model_dump(exclude_none=True, by_alias=True),
+            content=jsonable_encoder(
+                ResponseData(
+                    code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    message=str(e),
+                    result=None,
+                ).model_dump(exclude_none=True, by_alias=True),
+            ),
         )
     return JSONResponse(
         status_code=status.HTTP_200_OK,
-        content=ResponseData(
-            code=status.HTTP_200_OK,
-            message="success",
-            result=UserTagListResponse(tags=tags),
-        ).model_dump(exclude_none=True, by_alias=True),
+        content=jsonable_encoder(
+            ResponseData(
+                code=status.HTTP_200_OK,
+                message="success",
+                result=UserTagListResponse(tags=tags),
+            ).model_dump(exclude_none=True, by_alias=True),
+        ),
     )

@@ -48,7 +48,7 @@ class Activity:
             if current_active >= MAX_CONCURRENT_TASKS:
                 err = "系统并发已达上限"
                 raise ActivityError(err)
-            await session.merge(SessionActivity(userId=user_id, timestamp=time))
+            session.add(SessionActivity(userId=user_id, timestamp=time))
             await session.commit()
 
 

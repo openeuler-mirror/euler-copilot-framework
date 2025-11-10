@@ -5,6 +5,7 @@ import logging
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, Request, UploadFile, status
+from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
 
 from apps.dependency.user import verify_admin, verify_personal_token, verify_session
@@ -73,23 +74,27 @@ async def get_mcpservice_list(  # noqa: PLR0913
         _logger.exception(err)
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            content=ResponseData(
-                code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                message="ERROR",
-                result={},
-            ).model_dump(exclude_none=True, by_alias=True),
+            content=jsonable_encoder(
+                ResponseData(
+                    code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    message="ERROR",
+                    result={},
+                ).model_dump(exclude_none=True, by_alias=True),
+            ),
         )
 
     return JSONResponse(
         status_code=status.HTTP_200_OK,
-        content=GetMCPServiceListRsp(
-            code=status.HTTP_200_OK,
-            message="OK",
-            result=GetMCPServiceListMsg(
-                currentPage=page,
-                services=service_cards,
-            ),
-        ).model_dump(exclude_none=True, by_alias=True),
+        content=jsonable_encoder(
+            GetMCPServiceListRsp(
+                code=status.HTTP_200_OK,
+                message="OK",
+                result=GetMCPServiceListMsg(
+                    currentPage=page,
+                    services=service_cards,
+                ),
+            ).model_dump(exclude_none=True, by_alias=True),
+        ),
     )
 
 
@@ -106,11 +111,13 @@ async def create_or_update_mcpservice(
             _logger.exception("[MCPServiceCenter] MCP服务创建失败")
             return JSONResponse(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                content=ResponseData(
-                    code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                    message=f"MCP服务创建失败: {e!s}",
-                    result={},
-                ).model_dump(exclude_none=True, by_alias=True),
+                content=jsonable_encoder(
+                    ResponseData(
+                        code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                        message=f"MCP服务创建失败: {e!s}",
+                        result={},
+                    ).model_dump(exclude_none=True, by_alias=True),
+                ),
             )
     else:
         try:
@@ -119,20 +126,27 @@ async def create_or_update_mcpservice(
             _logger.exception("[MCPService] 更新MCP服务失败")
             return JSONResponse(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                content=ResponseData(
-                    code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                    message=f"更新MCP服务失败: {e!s}",
-                    result={},
-                ).model_dump(exclude_none=True, by_alias=True),
+                content=jsonable_encoder(
+                    ResponseData(
+                        code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                        message=f"更新MCP服务失败: {e!s}",
+                        result={},
+                    ).model_dump(exclude_none=True, by_alias=True),
+                ),
             )
-    return JSONResponse(status_code=status.HTTP_200_OK, content=UpdateMCPServiceRsp(
-        code=status.HTTP_200_OK,
-        message="OK",
-        result=UpdateMCPServiceMsg(
-            serviceId=service_id,
-            name=data.name,
+    return JSONResponse(
+        status_code=status.HTTP_200_OK,
+        content=jsonable_encoder(
+            UpdateMCPServiceRsp(
+                code=status.HTTP_200_OK,
+                message="OK",
+                result=UpdateMCPServiceMsg(
+                    serviceId=service_id,
+                    name=data.name,
+                ),
+            ).model_dump(exclude_none=True, by_alias=True),
         ),
-    ).model_dump(exclude_none=True, by_alias=True))
+    )
 
 
 @admin_router.post("/{serviceId}/install")
@@ -150,19 +164,23 @@ async def install_mcp_service(
         _logger.exception(err)
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            content=ResponseData(
-                code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                message=err,
-                result={},
-            ).model_dump(exclude_none=True, by_alias=True),
+            content=jsonable_encoder(
+                ResponseData(
+                    code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    message=err,
+                    result={},
+                ).model_dump(exclude_none=True, by_alias=True),
+            ),
         )
     return JSONResponse(
         status_code=status.HTTP_200_OK,
-        content=ResponseData(
-            code=status.HTTP_200_OK,
-            message="OK",
-            result={},
-        ).model_dump(exclude_none=True, by_alias=True),
+        content=jsonable_encoder(
+            ResponseData(
+                code=status.HTTP_200_OK,
+                message="OK",
+                result={},
+            ).model_dump(exclude_none=True, by_alias=True),
+        ),
     )
 
 
@@ -182,21 +200,25 @@ async def get_service_detail(
         _logger.exception(err)
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            content=ResponseData(
-                code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                message="ERROR",
-                result={},
-            ).model_dump(exclude_none=True, by_alias=True),
+            content=jsonable_encoder(
+                ResponseData(
+                    code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    message="ERROR",
+                    result={},
+                ).model_dump(exclude_none=True, by_alias=True),
+            ),
         )
 
     if data is None or config is None or icon is None:
         return JSONResponse(
             status_code=status.HTTP_404_NOT_FOUND,
-            content=ResponseData(
-                code=status.HTTP_404_NOT_FOUND,
-                message="MCP服务有关信息不存在",
-                result={},
-            ).model_dump(exclude_none=True, by_alias=True),
+            content=jsonable_encoder(
+                ResponseData(
+                    code=status.HTTP_404_NOT_FOUND,
+                    message="MCP服务有关信息不存在",
+                    result={},
+                ).model_dump(exclude_none=True, by_alias=True),
+            ),
         )
 
     if edit:
@@ -226,11 +248,13 @@ async def get_service_detail(
 
     return JSONResponse(
         status_code=status.HTTP_200_OK,
-        content=GetMCPServiceDetailRsp(
-            code=status.HTTP_200_OK,
-            message="OK",
-            result=detail,
-        ).model_dump(exclude_none=True, by_alias=True),
+        content=jsonable_encoder(
+            GetMCPServiceDetailRsp(
+                code=status.HTTP_200_OK,
+                message="OK",
+                result=detail,
+            ).model_dump(exclude_none=True, by_alias=True),
+        ),
     )
 
 
@@ -244,19 +268,23 @@ async def delete_service(serviceId: Annotated[str, Path()]) -> JSONResponse:  # 
         _logger.exception(err)
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            content=ResponseData(
-                code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                message="ERROR",
-                result={},
-            ).model_dump(exclude_none=True, by_alias=True),
+            content=jsonable_encoder(
+                ResponseData(
+                    code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    message="ERROR",
+                    result={},
+                ).model_dump(exclude_none=True, by_alias=True),
+            ),
         )
     return JSONResponse(
         status_code=status.HTTP_200_OK,
-        content=DeleteMCPServiceRsp(
-            code=status.HTTP_200_OK,
-            message="OK",
-            result=BaseMCPServiceOperationMsg(serviceId=serviceId),
-        ).model_dump(exclude_none=True, by_alias=True),
+        content=jsonable_encoder(
+            DeleteMCPServiceRsp(
+                code=status.HTTP_200_OK,
+                message="OK",
+                result=BaseMCPServiceOperationMsg(serviceId=serviceId),
+            ).model_dump(exclude_none=True, by_alias=True),
+        ),
     )
 
 
@@ -276,11 +304,13 @@ async def update_mcp_icon(
     if not icon.size or icon.size == 0 or icon.size > 1024 * 1024 * 1:
         return JSONResponse(
             status_code=status.HTTP_400_BAD_REQUEST,
-            content=ResponseData(
-                code=status.HTTP_400_BAD_REQUEST,
-                message="图标文件为空或超过1MB",
-                result={},
-            ).model_dump(exclude_none=True, by_alias=True),
+            content=jsonable_encoder(
+                ResponseData(
+                    code=status.HTTP_400_BAD_REQUEST,
+                    message="图标文件为空或超过1MB",
+                    result={},
+                ).model_dump(exclude_none=True, by_alias=True),
+            ),
         )
     try:
         url = await MCPServiceManager.save_mcp_icon(serviceId, icon)
@@ -289,19 +319,23 @@ async def update_mcp_icon(
         _logger.exception(err)
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            content=ResponseData(
-                code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                message=err,
-                result={},
-            ).model_dump(exclude_none=True, by_alias=True),
+            content=jsonable_encoder(
+                ResponseData(
+                    code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    message=err,
+                    result={},
+                ).model_dump(exclude_none=True, by_alias=True),
+            ),
         )
     return JSONResponse(
         status_code=status.HTTP_200_OK,
-        content=UploadMCPServiceIconRsp(
-            code=status.HTTP_200_OK,
-            message="OK",
-            result=UploadMCPServiceIconMsg(serviceId=serviceId, url=url),
-        ).model_dump(exclude_none=True, by_alias=True),
+        content=jsonable_encoder(
+            UploadMCPServiceIconRsp(
+                code=status.HTTP_200_OK,
+                message="OK",
+                result=UploadMCPServiceIconMsg(serviceId=serviceId, url=url),
+            ).model_dump(exclude_none=True, by_alias=True),
+        ),
     )
 
 
@@ -322,17 +356,21 @@ async def active_or_deactivate_mcp_service(
         _logger.exception(err)
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            content=ResponseData(
-                code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                message=err,
-                result={},
-            ).model_dump(exclude_none=True, by_alias=True),
+            content=jsonable_encoder(
+                ResponseData(
+                    code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    message=err,
+                    result={},
+                ).model_dump(exclude_none=True, by_alias=True),
+            ),
         )
     return JSONResponse(
         status_code=status.HTTP_200_OK,
-        content=ActiveMCPServiceRsp(
-            code=status.HTTP_200_OK,
-            message="OK",
-            result=BaseMCPServiceOperationMsg(serviceId=mcpId),
-        ).model_dump(exclude_none=True, by_alias=True),
+        content=jsonable_encoder(
+            ActiveMCPServiceRsp(
+                code=status.HTTP_200_OK,
+                message="OK",
+                result=BaseMCPServiceOperationMsg(serviceId=mcpId),
+            ).model_dump(exclude_none=True, by_alias=True),
+        ),
     )

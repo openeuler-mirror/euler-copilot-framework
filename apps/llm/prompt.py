@@ -76,13 +76,15 @@ JSON_GEN: dict[LanguageType, str] = {
                 <item>
                     <name>{{ func.name }}</name>
                     <description>{{ func.description }}</description>
-                    <parameters>{{ func.parameters | tojson(indent=2) }}</parameters>
+                    <parameters>{{ func.parameters }}</parameters>
                 </item>{% endfor %}
             </functions>{% else %}
 
             ## 可用工具
             {% for func in functions %}
-            - **{{ func.name }}**: {{ func.description }}
+            - **{{ func.name }}**:
+              - 工具描述：{{ func.description }}
+              - 工具参数Schema：{{ func.parameters }}
             {% endfor %}
 
             请根据用户查询选择合适的工具来回答问题。你必须使用上述工具之一来处理查询。

@@ -110,8 +110,8 @@ class FlowLoader:
         return flow_yaml
 
 
-    async def load(self, app_id: uuid.UUID, flow_id: str) -> Flow:
-        """从文件系统中加载【单个】工作流"""
+    async def _load_flow_without_vector(self, app_id: uuid.UUID, flow_id: str) -> Flow:
+        """从文件系统中加载【单个】工作流，但不进行向量化"""
         logger.info("[FlowLoader] 应用 %s：加载工作流 %s...", flow_id, app_id)
 
         # 构建工作流文件路径
@@ -153,9 +153,14 @@ class FlowLoader:
                 debug=flow_config.checkStatus.debug,
             ),
         )
+        return Flow.model_validate(flow_yaml)
+
+    async def load(self, app_id: uuid.UUID, flow_id: str) -> Flow:
+        """从文件系统中加载【单个】工作流"""
+        flow = await self._load_flow_without_vector(app_id, flow_id)
         # 重新向量化该App的所有工作流
         await self._update_vector(app_id)
-        return Flow.model_validate(flow_yaml)
+        return flow
 
 
     async def save(self, app_id: uuid.UUID, flow_id: str, flow: Flow) -> None:

@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Annotated
 
 from fastapi import APIRouter, Body, Depends, Request, status
+from fastapi.encoders import jsonable_encoder
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 
@@ -92,11 +93,13 @@ async def logout(request: Request) -> JSONResponse:
     if not request.client:
         return JSONResponse(
             status_code=status.HTTP_400_BAD_REQUEST,
-            content=ResponseData(
-                code=status.HTTP_400_BAD_REQUEST,
-                message="IP error",
-                result={},
-            ).model_dump(exclude_none=True, by_alias=True),
+            content=jsonable_encoder(
+                ResponseData(
+                    code=status.HTTP_400_BAD_REQUEST,
+                    message="IP error",
+                    result={},
+                ).model_dump(exclude_none=True, by_alias=True),
+            ),
         )
     await TokenManager.delete_plugin_token(request.state.user_id)
 
@@ -105,11 +108,13 @@ async def logout(request: Request) -> JSONResponse:
 
     return JSONResponse(
         status_code=status.HTTP_200_OK,
-        content=ResponseData(
-            code=status.HTTP_200_OK,
-            message="success",
-            result={},
-        ).model_dump(exclude_none=True, by_alias=True),
+        content=jsonable_encoder(
+            ResponseData(
+                code=status.HTTP_200_OK,
+                message="success",
+                result={},
+            ).model_dump(exclude_none=True, by_alias=True),
+        ),
     )
 
 
@@ -119,11 +124,13 @@ async def oidc_redirect() -> JSONResponse:
     redirect_url = await oidc_provider.get_redirect_url()
     return JSONResponse(
         status_code=status.HTTP_200_OK,
-        content=OidcRedirectRsp(
-            code=status.HTTP_200_OK,
-            message="success",
-            result=OidcRedirectMsg(url=redirect_url),
-        ).model_dump(exclude_none=True, by_alias=True),
+        content=jsonable_encoder(
+            OidcRedirectRsp(
+                code=status.HTTP_200_OK,
+                message="success",
+                result=OidcRedirectMsg(url=redirect_url),
+            ).model_dump(exclude_none=True, by_alias=True),
+        ),
     )
 
 
@@ -133,11 +140,13 @@ async def oidc_logout(token: Annotated[str, Body()]) -> JSONResponse:
     """POST /auth/logout: OIDC主动告知后端用户已在其他SSO站点登出"""
     return JSONResponse(
         status_code=status.HTTP_200_OK,
-        content=ResponseData(
-            code=status.HTTP_200_OK,
-            message="success",
-            result={},
-        ).model_dump(exclude_none=True, by_alias=True),
+        content=jsonable_encoder(
+            ResponseData(
+                code=status.HTTP_200_OK,
+                message="success",
+                result={},
+            ).model_dump(exclude_none=True, by_alias=True),
+        ),
     )
 
 
@@ -148,16 +157,20 @@ async def change_personal_token(request: Request) -> JSONResponse:
     """POST /auth/key: 重置用户的API密钥"""
     new_api_key: str | None = await PersonalTokenManager.update_personal_token(request.state.user_id)
     if not new_api_key:
-        return JSONResponse(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, content=ResponseData(
-            code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            message="failed to update personal token",
-            result={},
-        ).model_dump(exclude_none=True, by_alias=True))
+        return JSONResponse(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, content=jsonable_encoder(
+            ResponseData(
+                code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                message="failed to update personal token",
+                result={},
+            ).model_dump(exclude_none=True, by_alias=True),
+        ))
 
-    return JSONResponse(status_code=status.HTTP_200_OK, content=PostPersonalTokenRsp(
-        code=status.HTTP_200_OK,
-        message="success",
-        result=PostPersonalTokenMsg(
-            api_key=new_api_key,
-        ),
-    ).model_dump(exclude_none=True, by_alias=True))
+    return JSONResponse(status_code=status.HTTP_200_OK, content=jsonable_encoder(
+        PostPersonalTokenRsp(
+            code=status.HTTP_200_OK,
+            message="success",
+            result=PostPersonalTokenMsg(
+                api_key=new_api_key,
+            ),
+        ).model_dump(exclude_none=True, by_alias=True),
+    ))

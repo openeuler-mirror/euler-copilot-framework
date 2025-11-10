@@ -2,6 +2,7 @@
 """FastAPI 黑名单相关路由"""
 
 from fastapi import APIRouter, Depends, Request, status
+from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
 
 from apps.dependency.user import verify_admin, verify_personal_token, verify_session
@@ -51,11 +52,16 @@ async def get_blacklist_user(page: int = 0) -> JSONResponse:
         page * PAGE_SIZE,
     )
 
-    return JSONResponse(status_code=status.HTTP_200_OK, content=GetBlacklistUserRsp(
-        code=status.HTTP_200_OK,
-        message="ok",
-        result=GetBlacklistUserMsg(users=user_list),
-    ).model_dump(exclude_none=True, by_alias=True))
+    return JSONResponse(
+        status_code=status.HTTP_200_OK,
+        content=jsonable_encoder(
+            GetBlacklistUserRsp(
+                code=status.HTTP_200_OK,
+                message="ok",
+                result=GetBlacklistUserMsg(users=user_list),
+            ).model_dump(exclude_none=True, by_alias=True),
+        ),
+    )
 
 
 @admin_router.post("/user", response_model=ResponseData)
@@ -75,16 +81,26 @@ async def change_blacklist_user(request: UserBlacklistRequest) -> JSONResponse:
         )
 
     if not result:
-        return JSONResponse(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, content=ResponseData(
-            code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            message="Change user blacklist error.",
-            result={},
-        ).model_dump(exclude_none=True, by_alias=True))
-    return JSONResponse(status_code=status.HTTP_200_OK, content=ResponseData(
-        code=status.HTTP_200_OK,
-        message="ok",
-        result={},
-    ).model_dump(exclude_none=True, by_alias=True))
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content=jsonable_encoder(
+                ResponseData(
+                    code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    message="Change user blacklist error.",
+                    result={},
+                ).model_dump(exclude_none=True, by_alias=True),
+            ),
+        )
+    return JSONResponse(
+        status_code=status.HTTP_200_OK,
+        content=jsonable_encoder(
+            ResponseData(
+                code=status.HTTP_200_OK,
+                message="ok",
+                result={},
+            ).model_dump(exclude_none=True, by_alias=True),
+        ),
+    )
 
 @admin_router.get("/question", response_model=GetBlacklistQuestionRsp)
 async def get_blacklist_question(page: int = 0) -> JSONResponse:
@@ -101,11 +117,16 @@ async def get_blacklist_question(page: int = 0) -> JSONResponse:
     )
     # 将SQLAlchemy模型转换为Pydantic模型
     question_schemas = [BlacklistSchema.model_validate(q) for q in question_list]
-    return JSONResponse(status_code=status.HTTP_200_OK, content=GetBlacklistQuestionRsp(
-        code=status.HTTP_200_OK,
-        message="ok",
-        result=GetBlacklistQuestionMsg(question_list=question_schemas),
-    ).model_dump(exclude_none=True, by_alias=True))
+    return JSONResponse(
+        status_code=status.HTTP_200_OK,
+        content=jsonable_encoder(
+            GetBlacklistQuestionRsp(
+                code=status.HTTP_200_OK,
+                message="ok",
+                result=GetBlacklistQuestionMsg(question_list=question_schemas),
+            ).model_dump(exclude_none=True, by_alias=True),
+        ),
+    )
 
 @admin_router.post("/question", response_model=ResponseData)
 async def change_blacklist_question(request: QuestionBlacklistRequest) -> JSONResponse:
@@ -128,16 +149,26 @@ async def change_blacklist_question(request: QuestionBlacklistRequest) -> JSONRe
         )
 
     if not result:
-        return JSONResponse(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, content=ResponseData(
-            code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            message="Modify question blacklist error.",
-            result={},
-        ).model_dump(exclude_none=True, by_alias=True))
-    return JSONResponse(status_code=status.HTTP_200_OK, content=ResponseData(
-        code=status.HTTP_200_OK,
-        message="ok",
-        result={},
-    ).model_dump(exclude_none=True, by_alias=True))
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content=jsonable_encoder(
+                ResponseData(
+                    code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    message="Modify question blacklist error.",
+                    result={},
+                ).model_dump(exclude_none=True, by_alias=True),
+            ),
+        )
+    return JSONResponse(
+        status_code=status.HTTP_200_OK,
+        content=jsonable_encoder(
+            ResponseData(
+                code=status.HTTP_200_OK,
+                message="ok",
+                result={},
+            ).model_dump(exclude_none=True, by_alias=True),
+        ),
+    )
 
 
 @router.post("/complaint", response_model=ResponseData)
@@ -151,16 +182,26 @@ async def abuse_report(raw_request: Request, request: AbuseRequest) -> JSONRespo
     )
 
     if not result:
-        return JSONResponse(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, content=ResponseData(
-            code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            message="Report abuse complaint error.",
-            result={},
-        ).model_dump(exclude_none=True, by_alias=True))
-    return JSONResponse(status_code=status.HTTP_200_OK, content=ResponseData(
-        code=status.HTTP_200_OK,
-        message="ok",
-        result={},
-    ).model_dump(exclude_none=True, by_alias=True))
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content=jsonable_encoder(
+                ResponseData(
+                    code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    message="Report abuse complaint error.",
+                    result={},
+                ).model_dump(exclude_none=True, by_alias=True),
+            ),
+        )
+    return JSONResponse(
+        status_code=status.HTTP_200_OK,
+        content=jsonable_encoder(
+            ResponseData(
+                code=status.HTTP_200_OK,
+                message="ok",
+                result={},
+            ).model_dump(exclude_none=True, by_alias=True),
+        ),
+    )
 
 
 @admin_router.get("/abuse", response_model=GetBlacklistQuestionRsp)
@@ -174,11 +215,16 @@ async def get_abuse_report(page: int = 0) -> JSONResponse:
     )
     # 将SQLAlchemy模型转换为Pydantic模型
     result_schemas = [BlacklistSchema.model_validate(r) for r in result]
-    return JSONResponse(status_code=status.HTTP_200_OK, content=GetBlacklistQuestionRsp(
-        code=status.HTTP_200_OK,
-        message="ok",
-        result=GetBlacklistQuestionMsg(question_list=result_schemas),
-    ).model_dump(exclude_none=True, by_alias=True))
+    return JSONResponse(
+        status_code=status.HTTP_200_OK,
+        content=jsonable_encoder(
+            GetBlacklistQuestionRsp(
+                code=status.HTTP_200_OK,
+                message="ok",
+                result=GetBlacklistQuestionMsg(question_list=result_schemas),
+            ).model_dump(exclude_none=True, by_alias=True),
+        ),
+    )
 
 @admin_router.post("/abuse", response_model=ResponseData)
 async def change_abuse_report(request: AbuseProcessRequest) -> JSONResponse:
@@ -195,13 +241,23 @@ async def change_abuse_report(request: AbuseProcessRequest) -> JSONResponse:
         )
 
     if not result:
-        return JSONResponse(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, content=ResponseData(
-            code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            message="Audit abuse question error.",
-            result={},
-        ).model_dump(exclude_none=True, by_alias=True))
-    return JSONResponse(status_code=status.HTTP_200_OK, content=ResponseData(
-        code=status.HTTP_200_OK,
-        message="ok",
-        result={},
-    ).model_dump(exclude_none=True, by_alias=True))
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content=jsonable_encoder(
+                ResponseData(
+                    code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    message="Audit abuse question error.",
+                    result={},
+                ).model_dump(exclude_none=True, by_alias=True),
+            ),
+        )
+    return JSONResponse(
+        status_code=status.HTTP_200_OK,
+        content=jsonable_encoder(
+            ResponseData(
+                code=status.HTTP_200_OK,
+                message="ok",
+                result={},
+            ).model_dump(exclude_none=True, by_alias=True),
+        ),
+    )

@@ -402,28 +402,32 @@ class AppCenterManager:
         :param app_id: 应用唯一标识
         :return: 更新是否成功
         """
-        if str(app_id) == "00000000-0000-0000-0000-000000000000":
-            return
-
         async with postgres.session() as session:
-            app_usages = list((await session.scalars(
-                select(UserAppUsage).where(UserAppUsage.userId == user_id),
-            )).all())
-            if not app_usages:
-                msg = f"[AppCenterManager] 用户不存在: {user_id}"
-                raise ValueError(msg)
+            app_usage = (await session.scalars(
+                select(UserAppUsage).where(
+                    and_(
+                        UserAppUsage.userId == user_id,
+                        UserAppUsage.appId == app_id,
+                    ),
+                ),
+            )).one_or_none()
 
-            for app_data in app_usages:
-                if app_data.appId == app_id:
-                    app_data.lastUsed = datetime.now(UTC)
-                    app_data.usageCount += 1
-                    await session.merge(app_data)
-                    break
+            if app_usage:
+                # 存在则更新count和lastUsed
+                app_usage.lastUsed = datetime.now(UTC)
+                app_usage.usageCount += 1
+                await session.merge(app_usage)
             else:
-                app_data = UserAppUsage(userId=user_id, appId=app_id, lastUsed=datetime.now(UTC), usageCount=1)
-                await session.merge(app_data)
+                # 不存在则创建新条目
+                app_usage = UserAppUsage(
+                    userId=user_id,
+                    appId=app_id,
+                    lastUsed=datetime.now(UTC),
+                    usageCount=1,
+                )
+                session.add(app_usage)
+
             await session.commit()
-            return
 
 
     @staticmethod

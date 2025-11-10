@@ -53,11 +53,12 @@ class AppLoader:
 
             flow_ids = [app_flow.id for app_flow in metadata.flows]
             new_flows: list[AppFlow] = []
+            flow_loader = FlowLoader()
             async for flow_file in flow_path.rglob("*.yaml"):
                 if flow_file.stem not in flow_ids:
                     logger.warning("[AppLoader] 工作流 %s 不在元数据中", flow_file)
-                flow_loader = FlowLoader()
-                flow = await flow_loader.load(app_id, flow_file.stem)
+                # 加载工作流，但不进行向量化（通过内部方法）
+                flow = await flow_loader._load_flow_without_vector(app_id, flow_file.stem)
                 if not flow:
                     err = f"[AppLoader] 工作流 {flow_file} 加载失败"
                     raise ValueError(err)
@@ -73,6 +74,8 @@ class AppLoader:
                     ),
                 )
             metadata.flows = new_flows
+            # 所有工作流加载完成后，统一进行一次向量化
+            await flow_loader._update_vector(app_id)
             try:
                 metadata = FlowAppMetadata.model_validate(metadata)
             except Exception as e:

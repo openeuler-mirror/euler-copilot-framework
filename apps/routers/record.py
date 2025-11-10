@@ -6,6 +6,7 @@ import uuid
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Path, Request, status
+from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
 
 from apps.common.security import Security
@@ -51,11 +52,13 @@ async def get_record(request: Request, conversationId: Annotated[uuid.UUID, Path
     if not cur_conv:
         return JSONResponse(
             status_code=status.HTTP_403_FORBIDDEN,
-            content=ResponseData(
-                code=status.HTTP_403_FORBIDDEN,
-                message="Conversation invalid.",
-                result={},
-            ).model_dump(exclude_none=True),
+            content=jsonable_encoder(
+                ResponseData(
+                    code=status.HTTP_403_FORBIDDEN,
+                    message="Conversation invalid.",
+                    result={},
+                ).model_dump(exclude_none=True, by_alias=True),
+            ),
         )
 
     record_group_list = await RecordManager.query_record_group_by_conversation_id(conversationId)
@@ -109,9 +112,11 @@ async def get_record(request: Request, conversationId: Annotated[uuid.UUID, Path
             result.append(tmp_record)
     return JSONResponse(
         status_code=status.HTTP_200_OK,
-        content=RecordListRsp(
-            code=status.HTTP_200_OK,
-            message="success",
-            result=RecordListMsg(records=result),
-        ).model_dump(exclude_none=True, by_alias=True),
+        content=jsonable_encoder(
+            RecordListRsp(
+                code=status.HTTP_200_OK,
+                message="success",
+                result=RecordListMsg(records=result),
+            ).model_dump(exclude_none=True, by_alias=True),
+        ),
     )
