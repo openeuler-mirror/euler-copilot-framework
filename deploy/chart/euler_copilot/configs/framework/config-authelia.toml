@@ -60,18 +60,16 @@ half_key3 = '${halfKey3}'
 jwt_key = '${jwtKey}'
 
 [embedding]
-type = '{{ default "openai" .Values.models.embedding.type }}'
+provider = '{{ .Values.models.embedding.provider }}'
 endpoint = '{{ .Values.models.embedding.endpoint }}'
 api_key = '{{ .Values.models.embedding.key }}'
-model = '{{ default "bge-m3" .Values.models.embedding.name }}'
-icon = '{{ .Values.models.embedding.icon }}'
+model = '{{ .Values.models.embedding.name }}'
 
 [reranker]
-type = '{{ .Values.models.reranker.type }}'
-endpoint = '{{ .Values.models.reranker.endpoint }}'
-api_key = '{{ .Values.models.reranker.key }}'
-model = '{{ default "BAAI/bge-reranker-v2-m3" .Values.models.reranker.name }}'
-icon = '{{ .Values.models.reranker.icon }}'
+provider = '{{ default "" .Values.models.reranker.provider }}'
+endpoint = '{{ default "" .Values.models.reranker.endpoint }}'
+api_key = '{{ default "" .Values.models.reranker.key }}'
+model = '{{ default "" .Values.models.reranker.name }}'
 
 [rag]
 rag_service = 'http://rag-service.{{ .Release.Namespace }}.svc.cluster.local:9988'
@@ -108,12 +106,11 @@ max_tokens = {{ default 8192 .Values.models.answer.maxTokens }}
 temperature = {{ default 0.7 .Values.models.answer.temperature }}
 
 [function_call]
-backend = '{{ default "ollama" .Values.models.functionCall.backend }}'
 endpoint = '{{ default .Values.models.answer.endpoint .Values.models.functionCall.endpoint }}'
 model = '{{ default .Values.models.answer.name .Values.models.functionCall.name }}'
 api_key = '{{ default .Values.models.answer.key .Values.models.functionCall.key }}'
 max_tokens = {{ default .Values.models.answer.maxTokens .Values.models.functionCall.maxTokens }}
-temperature = {{ default 0.7 .Values.models.functionCall.temperature }}
+temperature = {{ default .Values.models.answer.temperature .Values.models.functionCall.temperature }}
 
 [check]
 enable = false

@@ -594,6 +594,13 @@ class LLMManager:
         :param model_config: 模型配置对象
         :param title: 模型标题
         """
+        # 检查配置是否为空（对于reranker，允许不配置，默认使用jaccard算法）
+        if model_type == "reranker":
+            # 如果关键字段都为空，则跳过初始化（使用jaccard算法作为默认）
+            if not model_config.provider and not model_config.model:
+                logger.info(f"[LLMManager] 跳过系统{model_type}模型初始化（将使用jaccard算法作为默认）")
+                return
+        
         mongo = MongoDB()
         llm_collection = mongo.get_collection("llm")
         

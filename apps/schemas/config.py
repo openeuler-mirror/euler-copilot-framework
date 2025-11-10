@@ -86,10 +86,10 @@ class EmbeddingConfig(BaseModel):
 class RerankerConfig(BaseModel):
     """Reranker配置"""
 
-    provider: str = Field(description="Reranker提供商")
-    endpoint: str = Field(description="Reranker模型地址")
-    api_key: str = Field(description="Reranker模型API Key")
-    model: str = Field(description="Reranker模型名称")
+    provider: str | None = Field(default=None, description="Reranker提供商")
+    endpoint: str | None = Field(default=None, description="Reranker模型地址")
+    api_key: str | None = Field(default=None, description="Reranker模型API Key")
+    model: str | None = Field(default=None, description="Reranker模型名称")
 
 
 class RAGConfig(BaseModel):
