@@ -10,7 +10,7 @@ CYAN='\033[0;36m'
 NC='\033[0m' # 恢复默认颜色
 
 # 默认配置
-DEFAULT_VERSION="0.9.5"
+DEFAULT_VERSION="0.10.1"
 IMAGE_BASE_DIR="/home/eulercopilot/images"
 
 # 显示帮助信息
@@ -166,6 +166,7 @@ check_images() {
         "hub.oepkgs.net/neocopilot/euler-copilot-web:${version}-arm"
         "hub.oepkgs.net/neocopilot/data_chain_back_end:${version}-arm"
         "hub.oepkgs.net/neocopilot/data_chain_web:${version}-arm"
+        "hub.oepkgs.net/neocopilot/openeuler-intelligence-sandbox:${version}-arm"
         "hub.oepkgs.net/neocopilot/authhub:0.9.3-arm"
         "hub.oepkgs.net/neocopilot/authhub-web:0.9.3-arm"
         "hub.oepkgs.net/neocopilot/opengauss:latest-arm"
