@@ -60,8 +60,10 @@ class UserTagManager:
             ).one_or_none()
 
             if not user_domain:
+                # 创建新记录
                 user_domain = UserTag(userId=user_id, tag=tag.id, count=1)
-                await session.merge(user_domain)
+                session.add(user_domain)
             else:
+                # 更新已存在记录
                 user_domain.count += 1
             await session.commit()

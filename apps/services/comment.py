@@ -68,5 +68,5 @@ class CommentManager:
                     feedbackLink=data.feedback_link,
                     feedbackContent=data.feedback_content,
                 )
-                await session.merge(comment_info)
+                session.add(comment_info)
             await session.commit()

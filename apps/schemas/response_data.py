@@ -94,7 +94,7 @@ class LLMAdminInfo(BaseModel):
     llm_description: str = Field(default="", alias="llmDescription", description="LLM描述")
     llm_type: list[LLMType] = Field(default=[], alias="llmType", description="LLM类型")
     base_url: str = Field(alias="baseUrl", description="API Base URL")
-    api_key: str = Field(alias="apiKey", description="API Key")
+    api_key: str | None = Field(default=None, alias="apiKey", description="API Key")
     model_name: str | None = Field(default=None, alias="modelName", description="模型名称")
     max_tokens: int = Field(alias="maxTokens", description="最大token数")
     ctx_length: int = Field(alias="ctxLength", description="上下文长度")

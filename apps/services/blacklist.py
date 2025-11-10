@@ -190,7 +190,7 @@ class AbuseManager:
                 reason=reason,
             )
 
-            await session.merge(new_blacklist)
+            session.add(new_blacklist)
             await session.commit()
             return True
 

@@ -66,11 +66,19 @@ class TagManager:
         :param domain_data: 领域信息
         """
         async with postgres.session() as session:
-            tag = Tag(
-                name=data.tag,
-                definition=data.description,
-            )
-            await session.merge(tag)
+            existing_tag = (await session.scalars(select(Tag).where(Tag.name == data.tag).limit(1))).one_or_none()
+
+            if existing_tag:
+                existing_tag.definition = data.description
+                existing_tag.updatedAt = datetime.now(tz=UTC)
+                await session.merge(existing_tag)
+            else:
+                tag = Tag(
+                    name=data.tag,
+                    definition=data.description,
+                )
+                session.add(tag)
+
             await session.commit()
 
 

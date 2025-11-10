@@ -96,9 +96,9 @@ CREATE_NEXT_STEP_FUNCTION: dict[LanguageType, dict] = {
         "parameters": {
             "type": "object",
             "properties": {
-                "tool_id": {
+                "tool_name": {
                     "type": "string",
-                    "description": "工具ID",
+                    "description": "工具名称",
                     "enum": [],
                 },
                 "description": {
@@ -106,11 +106,11 @@ CREATE_NEXT_STEP_FUNCTION: dict[LanguageType, dict] = {
                     "description": "步骤描述",
                 },
             },
-            "required": ["tool_id", "description"],
+            "required": ["tool_name", "description"],
         },
         "examples": [
             {
-                "tool_id": "mcp_tool_1",
+                "tool_name": "mcp_tool_1",
                 "description": "扫描ip为192.168.1.1的MySQL数据库,端口为3306,用户名为root,密码为password的数据库性能",
             },
         ],
@@ -124,9 +124,9 @@ CREATE_NEXT_STEP_FUNCTION: dict[LanguageType, dict] = {
         "parameters": {
             "type": "object",
             "properties": {
-                "tool_id": {
+                "tool_name": {
                     "type": "string",
-                    "description": "Tool ID",
+                    "description": "Tool Name",
                     "enum": [],
                 },
                 "description": {
@@ -134,11 +134,11 @@ CREATE_NEXT_STEP_FUNCTION: dict[LanguageType, dict] = {
                     "description": "Step description",
                 },
             },
-            "required": ["tool_id", "description"],
+            "required": ["tool_name", "description"],
         },
         "examples": [
             {
-                "tool_id": "mcp_tool_1",
+                "tool_name": "mcp_tool_1",
                 "description": "Scan MySQL database performance at 192.168.1.1:3306 with user root",
             },
         ],
@@ -176,7 +176,7 @@ GEN_STEP: dict[LanguageType, str] = {
 
             **可用工具**：
             {% for tool in tools %}
-            - **{{tool.id}}**：{{tool.description}}
+            - **{{tool.toolName}}**：{{tool.description}}
             {% endfor %}
         """,
     ),
@@ -215,7 +215,7 @@ GEN_STEP: dict[LanguageType, str] = {
 
             **Available Tools**:
             {% for tool in tools %}
-            - **{{tool.id}}**: {{tool.description}}
+            - **{{tool.toolName}}**: {{tool.description}}
             {% endfor %}
         """,
     ),

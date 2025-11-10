@@ -66,7 +66,7 @@ class UserAppUsage(Base):
     __tablename__ = "framework_user_app_usage"
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True, init=False)
     """用户应用使用情况ID"""
-    userId: Mapped[str] = mapped_column(String(50), ForeignKey("framework_user.id"), unique=True, nullable=False)  # noqa: N815
+    userId: Mapped[str] = mapped_column(String(50), ForeignKey("framework_user.id"), nullable=False)  # noqa: N815
     """用户ID"""
     appId: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("framework_app.id"), nullable=False)  # noqa: N815
     """应用ID"""

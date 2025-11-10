@@ -5,6 +5,7 @@ import uuid
 from typing import Annotated
 
 from fastapi import APIRouter, Body, Depends, Query, Request, status
+from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
 
 from apps.dependency import verify_personal_token, verify_session
@@ -65,29 +66,35 @@ async def get_flow(request: Request, appId: uuid.UUID, flowId: str) -> JSONRespo
     if not await AppCenterManager.validate_user_app_access(request.state.user_id, appId):
         return JSONResponse(
             status_code=status.HTTP_403_FORBIDDEN,
-            content=FlowStructureGetRsp(
-                code=status.HTTP_403_FORBIDDEN,
-                message="用户没有权限访问该Workflow",
-                result=FlowStructureGetMsg(),
-            ).model_dump(exclude_none=True, by_alias=True),
+            content=jsonable_encoder(
+                FlowStructureGetRsp(
+                    code=status.HTTP_403_FORBIDDEN,
+                    message="用户没有权限访问该Workflow",
+                    result=FlowStructureGetMsg(),
+                ).model_dump(exclude_none=True, by_alias=True),
+            ),
         )
     result = await FlowManager.get_flow_by_app_and_flow_id(appId, flowId)
     if result is None:
         return JSONResponse(
             status_code=status.HTTP_404_NOT_FOUND,
-            content=FlowStructureGetRsp(
-                code=status.HTTP_404_NOT_FOUND,
-                message="应用的Workflow获取失败",
-                result=FlowStructureGetMsg(),
-            ).model_dump(exclude_none=True, by_alias=True),
+            content=jsonable_encoder(
+                FlowStructureGetRsp(
+                    code=status.HTTP_404_NOT_FOUND,
+                    message="应用的Workflow获取失败",
+                    result=FlowStructureGetMsg(),
+                ).model_dump(exclude_none=True, by_alias=True),
+            ),
         )
     return JSONResponse(
         status_code=status.HTTP_200_OK,
-        content=FlowStructureGetRsp(
-            code=status.HTTP_200_OK,
-            message="应用的Workflow获取成功",
-            result=FlowStructureGetMsg(flow=result),
-        ).model_dump(exclude_none=True, by_alias=True),
+        content=jsonable_encoder(
+            FlowStructureGetRsp(
+                code=status.HTTP_200_OK,
+                message="应用的Workflow获取成功",
+                result=FlowStructureGetMsg(flow=result),
+            ).model_dump(exclude_none=True, by_alias=True),
+        ),
     )
 
 
@@ -108,11 +115,13 @@ async def put_flow(
     if not await AppCenterManager.validate_app_belong_to_user(request.state.user_id, appId):
         return JSONResponse(
             status_code=status.HTTP_403_FORBIDDEN,
-            content=FlowStructurePutRsp(
-                code=status.HTTP_403_FORBIDDEN,
-                message="用户没有权限访问该流",
-                result=FlowStructurePutMsg(),
-            ).model_dump(exclude_none=True, by_alias=True),
+            content=jsonable_encoder(
+                FlowStructurePutRsp(
+                    code=status.HTTP_403_FORBIDDEN,
+                    message="用户没有权限访问该流",
+                    result=FlowStructurePutMsg(),
+                ).model_dump(exclude_none=True, by_alias=True),
+            ),
         )
     put_body.flow = await FlowServiceManager.remove_excess_structure_from_flow(put_body.flow)
     await FlowServiceManager.validate_flow_illegal(put_body.flow)
@@ -123,11 +132,13 @@ async def put_flow(
     except Exception as e:  # noqa: BLE001
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            content=FlowStructurePutRsp(
-                code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                message=f"应用下流更新失败: {e!s}",
-                result=FlowStructurePutMsg(),
-            ).model_dump(exclude_none=True, by_alias=True),
+            content=jsonable_encoder(
+                FlowStructurePutRsp(
+                    code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    message=f"应用下流更新失败: {e!s}",
+                    result=FlowStructurePutMsg(),
+                ).model_dump(exclude_none=True, by_alias=True),
+            ),
         )
 
     flow = await FlowManager.get_flow_by_app_and_flow_id(appId, flowId)
@@ -135,19 +146,23 @@ async def put_flow(
     if flow is None:
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            content=FlowStructurePutRsp(
-                code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                message="应用下流更新后获取失败",
-                result=FlowStructurePutMsg(),
-            ).model_dump(exclude_none=True, by_alias=True),
+            content=jsonable_encoder(
+                FlowStructurePutRsp(
+                    code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    message="应用下流更新后获取失败",
+                    result=FlowStructurePutMsg(),
+                ).model_dump(exclude_none=True, by_alias=True),
+            ),
         )
     return JSONResponse(
         status_code=status.HTTP_200_OK,
-        content=FlowStructurePutRsp(
-            code=status.HTTP_200_OK,
-            message="应用下流更新成功",
-            result=FlowStructurePutMsg(flow=flow),
-        ).model_dump(exclude_none=True, by_alias=True),
+        content=jsonable_encoder(
+            FlowStructurePutRsp(
+                code=status.HTTP_200_OK,
+                message="应用下流更新成功",
+                result=FlowStructurePutMsg(flow=flow),
+            ).model_dump(exclude_none=True, by_alias=True),
+        ),
     )
 
 
@@ -160,27 +175,33 @@ async def delete_flow(request: Request, appId: uuid.UUID, flowId: str) -> JSONRe
     if not await AppCenterManager.validate_app_belong_to_user(request.state.user_id, appId):
         return JSONResponse(
             status_code=status.HTTP_403_FORBIDDEN,
-            content=FlowStructureDeleteRsp(
-                code=status.HTTP_403_FORBIDDEN,
-                message="用户没有权限访问该流",
-                result=FlowStructureDeleteMsg(),
-            ).model_dump(exclude_none=True, by_alias=True),
+            content=jsonable_encoder(
+                FlowStructureDeleteRsp(
+                    code=status.HTTP_403_FORBIDDEN,
+                    message="用户没有权限访问该流",
+                    result=FlowStructureDeleteMsg(),
+                ).model_dump(exclude_none=True, by_alias=True),
+            ),
         )
     result = await FlowManager.delete_flow_by_app_and_flow_id(appId, flowId)
     if result is None:
         return JSONResponse(
             status_code=status.HTTP_404_NOT_FOUND,
-            content=FlowStructureDeleteRsp(
-                code=status.HTTP_404_NOT_FOUND,
-                message="应用下流程删除失败",
-                result=FlowStructureDeleteMsg(),
-            ).model_dump(exclude_none=True, by_alias=True),
+            content=jsonable_encoder(
+                FlowStructureDeleteRsp(
+                    code=status.HTTP_404_NOT_FOUND,
+                    message="应用下流程删除失败",
+                    result=FlowStructureDeleteMsg(),
+                ).model_dump(exclude_none=True, by_alias=True),
+            ),
         )
     return JSONResponse(
         status_code=status.HTTP_200_OK,
-        content=FlowStructureDeleteRsp(
-            code=status.HTTP_200_OK,
-            message="应用下流程删除成功",
-            result=FlowStructureDeleteMsg(flowId=result),
-        ).model_dump(exclude_none=True, by_alias=True),
+        content=jsonable_encoder(
+            FlowStructureDeleteRsp(
+                code=status.HTTP_200_OK,
+                message="应用下流程删除成功",
+                result=FlowStructureDeleteMsg(flowId=result),
+            ).model_dump(exclude_none=True, by_alias=True),
+        ),
     )

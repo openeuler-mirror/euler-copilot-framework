@@ -6,6 +6,7 @@ import uuid
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Path, Request, UploadFile, status
+from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
 
 from apps.dependency import verify_personal_token, verify_session
@@ -60,11 +61,13 @@ async def document_upload(
 
     return JSONResponse(
         status_code=200,
-        content=UploadDocumentRsp(
-            code=status.HTTP_200_OK,
-            message="上传成功",
-            result=UploadDocumentMsg(documents=succeed_document),
-        ).model_dump(exclude_none=True, by_alias=False),
+        content=jsonable_encoder(
+            UploadDocumentRsp(
+                code=status.HTTP_200_OK,
+                message="上传成功",
+                result=UploadDocumentMsg(documents=succeed_document),
+            ).model_dump(exclude_none=True, by_alias=False),
+        ),
     )
 
 
@@ -161,10 +164,12 @@ async def get_document_list(
     if not await ConversationManager.verify_conversation_access(request.state.user_id, conversation_id):
         return JSONResponse(
             status_code=status.HTTP_403_FORBIDDEN,
-            content=ResponseData(
-                code=status.HTTP_403_FORBIDDEN,
-                message="无权限访问",
-                result={},
+            content=jsonable_encoder(
+                ResponseData(
+                    code=status.HTTP_403_FORBIDDEN,
+                    message="无权限访问",
+                    result={},
+                ).model_dump(exclude_none=True, by_alias=False),
             ),
         )
 
@@ -179,11 +184,13 @@ async def get_document_list(
     # 对外展示的时候用id，不用alias
     return JSONResponse(
         status_code=status.HTTP_200_OK,
-        content=ConversationDocumentRsp(
-            code=status.HTTP_200_OK,
-            message="获取成功",
-            result=ConversationDocumentMsg(documents=result),
-        ).model_dump(exclude_none=True, by_alias=False),
+        content=jsonable_encoder(
+            ConversationDocumentRsp(
+                code=status.HTTP_200_OK,
+                message="获取成功",
+                result=ConversationDocumentMsg(documents=result),
+            ).model_dump(exclude_none=True, by_alias=False),
+        ),
     )
 
 
@@ -197,11 +204,13 @@ async def delete_single_document(
     if not result:
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            content=ResponseData(
-                code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                message="删除文件失败",
-                result={},
-            ).model_dump(exclude_none=True, by_alias=False),
+            content=jsonable_encoder(
+                ResponseData(
+                    code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    message="删除文件失败",
+                    result={},
+                ).model_dump(exclude_none=True, by_alias=False),
+            ),
         )
     # 在RAG侧删除
     auth_header = getattr(request.session, "session_id", None) or request.state.personal_token
@@ -209,18 +218,22 @@ async def delete_single_document(
     if not result:
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            content=ResponseData(
-                code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                message="RAG端删除文件失败",
-                result={},
-            ).model_dump(exclude_none=True, by_alias=False),
+            content=jsonable_encoder(
+                ResponseData(
+                    code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    message="RAG端删除文件失败",
+                    result={},
+                ).model_dump(exclude_none=True, by_alias=False),
+            ),
         )
 
     return JSONResponse(
         status_code=status.HTTP_200_OK,
-        content=ResponseData(
-            code=status.HTTP_200_OK,
-            message="删除成功",
-            result={},
-        ).model_dump(exclude_none=True, by_alias=False),
+        content=jsonable_encoder(
+            ResponseData(
+                code=status.HTTP_200_OK,
+                message="删除成功",
+                result={},
+            ).model_dump(exclude_none=True, by_alias=False),
+        ),
     )

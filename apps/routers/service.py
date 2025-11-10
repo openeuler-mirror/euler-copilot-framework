@@ -6,6 +6,7 @@ import uuid
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Path, Request, status
+from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
 
 from apps.dependency.user import (
@@ -64,11 +65,13 @@ async def get_service_list(  # noqa: PLR0913
     if createdByMe and favorited:  # 只能同时选择一个筛选条件
         return JSONResponse(
             status_code=status.HTTP_400_BAD_REQUEST,
-            content=ResponseData(
-                code=status.HTTP_400_BAD_REQUEST,
-                message="INVALID_PARAMETER",
-                result={},
-            ).model_dump(exclude_none=True, by_alias=True),
+            content=jsonable_encoder(
+                ResponseData(
+                    code=status.HTTP_400_BAD_REQUEST,
+                    message="INVALID_PARAMETER",
+                    result={},
+                ).model_dump(exclude_none=True, by_alias=True),
+            ),
         )
 
     service_cards, total_count = [], -1
@@ -101,32 +104,38 @@ async def get_service_list(  # noqa: PLR0913
         _logger.exception("[ServiceCenter] 获取服务列表失败")
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            content=ResponseData(
-                code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                message="ERROR",
-                result={},
-            ).model_dump(exclude_none=True, by_alias=True),
+            content=jsonable_encoder(
+                ResponseData(
+                    code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    message="ERROR",
+                    result={},
+                ).model_dump(exclude_none=True, by_alias=True),
+            ),
         )
     if total_count == -1:
         return JSONResponse(
             status_code=status.HTTP_400_BAD_REQUEST,
-            content=ResponseData(
-                code=status.HTTP_400_BAD_REQUEST,
-                message="INVALID_PARAMETER",
-                result={},
-            ).model_dump(exclude_none=True, by_alias=True),
+            content=jsonable_encoder(
+                ResponseData(
+                    code=status.HTTP_400_BAD_REQUEST,
+                    message="INVALID_PARAMETER",
+                    result={},
+                ).model_dump(exclude_none=True, by_alias=True),
+            ),
         )
     return JSONResponse(
         status_code=status.HTTP_200_OK,
-        content=GetServiceListRsp(
-            code=status.HTTP_200_OK,
-            message="OK",
-            result=GetServiceListMsg(
-                currentPage=page,
-                totalCount=total_count,
-                services=service_cards,
-            ),
-        ).model_dump(exclude_none=True, by_alias=True),
+        content=jsonable_encoder(
+            GetServiceListRsp(
+                code=status.HTTP_200_OK,
+                message="OK",
+                result=GetServiceListMsg(
+                    currentPage=page,
+                    totalCount=total_count,
+                    services=service_cards,
+                ),
+            ).model_dump(exclude_none=True, by_alias=True),
+        ),
     )
 
 
@@ -140,11 +149,13 @@ async def update_service(request: Request, data: UpdateServiceRequest) -> JSONRe
             _logger.exception("[ServiceCenter] 创建服务失败")
             return JSONResponse(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                content=ResponseData(
-                    code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                    message=f"OpenAPI解析错误: {e!s}",
-                    result={},
-                ).model_dump(exclude_none=True, by_alias=True),
+                content=jsonable_encoder(
+                    ResponseData(
+                        code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                        message=f"OpenAPI解析错误: {e!s}",
+                        result={},
+                    ).model_dump(exclude_none=True, by_alias=True),
+                ),
             )
     else:
         try:
@@ -152,21 +163,25 @@ async def update_service(request: Request, data: UpdateServiceRequest) -> JSONRe
         except InstancePermissionError:
             return JSONResponse(
                 status_code=status.HTTP_403_FORBIDDEN,
-                content=ResponseData(
-                    code=status.HTTP_403_FORBIDDEN,
-                    message="未授权访问",
-                    result={},
-                ).model_dump(exclude_none=True, by_alias=True),
+                content=jsonable_encoder(
+                    ResponseData(
+                        code=status.HTTP_403_FORBIDDEN,
+                        message="未授权访问",
+                        result={},
+                    ).model_dump(exclude_none=True, by_alias=True),
+                ),
             )
         except Exception as e:
             _logger.exception("[ServiceCenter] 更新服务失败")
             return JSONResponse(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                content=ResponseData(
-                    code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                    message=f"更新服务失败: {e!s}",
-                    result={},
-                ).model_dump(exclude_none=True, by_alias=True),
+                content=jsonable_encoder(
+                    ResponseData(
+                        code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                        message=f"更新服务失败: {e!s}",
+                        result={},
+                    ).model_dump(exclude_none=True, by_alias=True),
+                ),
             )
     try:
         name, apis = await ServiceCenterManager.get_service_apis(service_id)
@@ -174,15 +189,19 @@ async def update_service(request: Request, data: UpdateServiceRequest) -> JSONRe
         _logger.exception("[ServiceCenter] 获取服务API失败")
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            content=ResponseData(
-                code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                message=f"获取服务API失败: {e!s}",
-                result={},
-            ).model_dump(exclude_none=True, by_alias=True),
+            content=jsonable_encoder(
+                ResponseData(
+                    code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    message=f"获取服务API失败: {e!s}",
+                    result={},
+                ).model_dump(exclude_none=True, by_alias=True),
+            ),
         )
     msg = UpdateServiceMsg(serviceId=service_id, name=name, apis=apis)
     rsp = UpdateServiceRsp(code=status.HTTP_200_OK, message="OK", result=msg)
-    return JSONResponse(status_code=status.HTTP_200_OK, content=rsp.model_dump(exclude_none=True, by_alias=True))
+    return JSONResponse(status_code=status.HTTP_200_OK, content=jsonable_encoder(
+        rsp.model_dump(exclude_none=True, by_alias=True),
+    ))
 
 
 @router.get("/{serviceId}", response_model=GetServiceDetailRsp)
@@ -198,21 +217,25 @@ async def get_service_detail(
         except InstancePermissionError:
             return JSONResponse(
                 status_code=status.HTTP_403_FORBIDDEN,
-                content=ResponseData(
-                    code=status.HTTP_403_FORBIDDEN,
-                    message="未授权访问",
-                    result={},
-                ).model_dump(exclude_none=True, by_alias=True),
+                content=jsonable_encoder(
+                    ResponseData(
+                        code=status.HTTP_403_FORBIDDEN,
+                        message="未授权访问",
+                        result={},
+                    ).model_dump(exclude_none=True, by_alias=True),
+                ),
             )
         except Exception:
             _logger.exception("[ServiceCenter] 获取服务数据失败")
             return JSONResponse(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                content=ResponseData(
-                    code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                    message="ERROR",
-                    result={},
-                ).model_dump(exclude_none=True, by_alias=True),
+                content=jsonable_encoder(
+                    ResponseData(
+                        code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                        message="ERROR",
+                        result={},
+                    ).model_dump(exclude_none=True, by_alias=True),
+                ),
             )
         detail = GetServiceDetailMsg(serviceId=serviceId, name=name, data=data)
     else:
@@ -222,15 +245,19 @@ async def get_service_detail(
             _logger.exception("[ServiceCenter] 获取服务API失败")
             return JSONResponse(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                content=ResponseData(
-                    code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                    message="ERROR",
-                    result={},
-                ).model_dump(exclude_none=True, by_alias=True),
+                content=jsonable_encoder(
+                    ResponseData(
+                        code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                        message="ERROR",
+                        result={},
+                    ).model_dump(exclude_none=True, by_alias=True),
+                ),
             )
         detail = GetServiceDetailMsg(serviceId=serviceId, name=name, apis=apis)
     rsp = GetServiceDetailRsp(code=status.HTTP_200_OK, message="OK", result=detail)
-    return JSONResponse(status_code=status.HTTP_200_OK, content=rsp.model_dump(exclude_none=True, by_alias=True))
+    return JSONResponse(status_code=status.HTTP_200_OK, content=jsonable_encoder(
+        rsp.model_dump(exclude_none=True, by_alias=True),
+    ))
 
 
 @admin_router.delete("/{serviceId}", response_model=DeleteServiceRsp)
@@ -241,25 +268,31 @@ async def delete_service(request: Request, serviceId: Annotated[uuid.UUID, Path(
     except InstancePermissionError:
         return JSONResponse(
             status_code=status.HTTP_403_FORBIDDEN,
-            content=ResponseData(
-                code=status.HTTP_403_FORBIDDEN,
-                message="未授权访问",
-                result={},
-            ).model_dump(exclude_none=True, by_alias=True),
+            content=jsonable_encoder(
+                ResponseData(
+                    code=status.HTTP_403_FORBIDDEN,
+                    message="未授权访问",
+                    result={},
+                ).model_dump(exclude_none=True, by_alias=True),
+            ),
         )
     except Exception:
         _logger.exception("[ServiceCenter] 删除服务失败")
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            content=ResponseData(
-                code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                message="ERROR",
-                result={},
-            ).model_dump(exclude_none=True, by_alias=True),
+            content=jsonable_encoder(
+                ResponseData(
+                    code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    message="ERROR",
+                    result={},
+                ).model_dump(exclude_none=True, by_alias=True),
+            ),
         )
     msg = BaseServiceOperationMsg(serviceId=serviceId)
     rsp = DeleteServiceRsp(code=status.HTTP_200_OK, message="OK", result=msg)
-    return JSONResponse(status_code=status.HTTP_200_OK, content=rsp.model_dump(exclude_none=True, by_alias=True))
+    return JSONResponse(status_code=status.HTTP_200_OK, content=jsonable_encoder(
+        rsp.model_dump(exclude_none=True, by_alias=True),
+    ))
 
 
 @router.put("/{serviceId}", response_model=ChangeFavouriteServiceRsp)
@@ -278,22 +311,28 @@ async def modify_favorite_service(
         if not success:
             return JSONResponse(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                content=ResponseData(
-                    code=status.HTTP_400_BAD_REQUEST,
-                    message="INVALID_PARAMETER",
-                    result={},
-                ).model_dump(exclude_none=True, by_alias=True),
+                content=jsonable_encoder(
+                    ResponseData(
+                        code=status.HTTP_400_BAD_REQUEST,
+                        message="INVALID_PARAMETER",
+                        result={},
+                    ).model_dump(exclude_none=True, by_alias=True),
+                ),
             )
     except Exception:
         _logger.exception("[ServiceCenter] 修改服务收藏状态失败")
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            content=ResponseData(
-                code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                message="ERROR",
-                result={},
-            ).model_dump(exclude_none=True, by_alias=True),
+            content=jsonable_encoder(
+                ResponseData(
+                    code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    message="ERROR",
+                    result={},
+                ).model_dump(exclude_none=True, by_alias=True),
+            ),
         )
     msg = ChangeFavouriteServiceMsg(serviceId=serviceId, favorited=data.favorited)
     rsp = ChangeFavouriteServiceRsp(code=status.HTTP_200_OK, message="OK", result=msg)
-    return JSONResponse(status_code=status.HTTP_200_OK, content=rsp.model_dump(exclude_none=True, by_alias=True))
+    return JSONResponse(status_code=status.HTTP_200_OK, content=jsonable_encoder(
+        rsp.model_dump(exclude_none=True, by_alias=True),
+    ))

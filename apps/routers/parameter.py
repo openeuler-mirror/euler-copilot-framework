@@ -4,6 +4,7 @@
 import uuid
 
 from fastapi import APIRouter, Depends, Request, status
+from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
 
 from apps.dependency.user import verify_personal_token, verify_session
@@ -31,30 +32,36 @@ async def get_parameters(
     if not await AppCenterManager.validate_user_app_access(request.state.user_id, appId):
         return JSONResponse(
             status_code=status.HTTP_403_FORBIDDEN,
-            content=GetParamsRsp(
-                code=status.HTTP_403_FORBIDDEN,
-                message="用户没有权限访问该流",
-                result=[],
-            ).model_dump(exclude_none=True, by_alias=True),
+            content=jsonable_encoder(
+                GetParamsRsp(
+                    code=status.HTTP_403_FORBIDDEN,
+                    message="用户没有权限访问该流",
+                    result=[],
+                ).model_dump(exclude_none=True, by_alias=True),
+            ),
         )
     flow = await FlowManager.get_flow_by_app_and_flow_id(appId, flowId)
     if not flow:
         return JSONResponse(
             status_code=status.HTTP_404_NOT_FOUND,
-            content=GetParamsRsp(
-                code=status.HTTP_404_NOT_FOUND,
-                message="未找到该流",
-                result=[],
-            ).model_dump(exclude_none=True, by_alias=True),
+            content=jsonable_encoder(
+                GetParamsRsp(
+                    code=status.HTTP_404_NOT_FOUND,
+                    message="未找到该流",
+                    result=[],
+                ).model_dump(exclude_none=True, by_alias=True),
+            ),
         )
     result = await ParameterManager.get_pre_params_by_flow_and_step_id(flow, stepId)
     return JSONResponse(
         status_code=status.HTTP_200_OK,
-        content=GetParamsRsp(
-            code=status.HTTP_200_OK,
-            message="获取参数成功",
-            result=result,
-        ).model_dump(exclude_none=True, by_alias=True),
+        content=jsonable_encoder(
+            GetParamsRsp(
+                code=status.HTTP_200_OK,
+                message="获取参数成功",
+                result=result,
+            ).model_dump(exclude_none=True, by_alias=True),
+        ),
     )
 
 
@@ -64,9 +71,11 @@ async def get_operate_parameters(paramType: Type) -> JSONResponse:  # noqa: N803
     result = await ParameterManager.get_operate_and_bind_type(paramType)
     return JSONResponse(
         status_code=status.HTTP_200_OK,
-        content=GetOperaRsp(
-            code=status.HTTP_200_OK,
-            message="获取操作成功",
-            result=result,
-        ).model_dump(exclude_none=True, by_alias=True),
+        content=jsonable_encoder(
+            GetOperaRsp(
+                code=status.HTTP_200_OK,
+                message="获取操作成功",
+                result=result,
+            ).model_dump(exclude_none=True, by_alias=True),
+        ),
     )

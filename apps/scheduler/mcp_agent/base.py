@@ -3,7 +3,6 @@
 
 import logging
 
-from apps.llm import LLM
 from apps.models import LanguageType
 from apps.schemas.task import TaskData
 
@@ -14,29 +13,11 @@ class MCPBase:
     """MCP基类"""
 
     _user_id: str
-    _llm: LLM
-    _goal: str
+    task: TaskData
     _language: LanguageType
 
-    def __init__(self, task: TaskData, llm: LLM) -> None:
+    def __init__(self, task: TaskData) -> None:
         """初始化MCP基类"""
         self._user_id = task.metadata.userId
-        self._llm = llm
-        self._goal = task.runtime.userInput
+        self.task = task
         self._language = task.runtime.language
-
-    async def get_reasoning_result(self, prompt: str) -> str:
-        """获取推理结果"""
-        # 调用推理大模型
-        message = [
-            {"role": "system", "content": prompt},
-            {"role": "user", "content": "Please provide a JSON response based on the above information and schema."},
-        ]
-        result = ""
-        async for chunk in self._llm.call(
-            message,
-            streaming=False,
-        ):
-            result += chunk.content or ""
-
-        return result

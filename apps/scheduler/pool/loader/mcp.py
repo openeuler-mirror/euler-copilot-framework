@@ -135,6 +135,36 @@ class MCPLoader:
         return updated_config
 
     @staticmethod
+    async def _install_sse_mcp(
+        mcp_id: str,
+        mcp_config: MCPServerSSEConfig,
+        item: MCPServerConfig,
+    ) -> MCPServerSSEConfig:
+        """
+        安装 SSE/StreamableHTTP 类型的 MCP
+
+        :param str mcp_id: MCP模板ID
+        :param MCPServerSSEConfig mcp_config: MCP配置
+        :param MCPServerConfig item: 完整的配置对象
+        :return: 安装后的配置
+        :rtype: MCPServerSSEConfig
+        """
+        logger.info("[Installer] SSE/StreamableHTTP方式的MCP模板，无需安装: %s", mcp_id)
+
+        # 修改 autoInstall 标志
+        mcp_config.autoInstall = False
+        item.mcpServers[mcp_id] = mcp_config
+
+        # 保存配置到文件
+        template_config = MCP_PATH / "template" / mcp_id / "config.json"
+        f = await template_config.open("w+", encoding="utf-8")
+        config_data = item.model_dump(by_alias=True, exclude_none=True)
+        await f.write(json.dumps(config_data, indent=4, ensure_ascii=False))
+        await f.aclose()
+
+        return mcp_config
+
+    @staticmethod
     async def _handle_tool_vectorization(
         mcp_id: str,
         item: MCPServerConfig,
@@ -235,9 +265,10 @@ class MCPLoader:
                     await MCPLoader.update_template_status(mcp_id, MCPInstallStatus.FAILED, postgres)
                     return
                 mcp_config = updated_config
+            elif isinstance(mcp_config, MCPServerSSEConfig):
+                mcp_config = await MCPLoader._install_sse_mcp(mcp_id, mcp_config, item)
             else:
-                logger.info("[Installer] SSE/StreamableHTTP方式的MCP模板，无需安装: %s", mcp_id)
-                item.mcpServers[mcp_id].autoInstall = False
+                logger.warning("[Installer] 未知的MCP类型，跳过安装: %s", mcp_id)
 
             tool_list = await MCPLoader._get_template_tool(mcp_id, item)
 
@@ -530,7 +561,7 @@ class MCPLoader:
         )
         await f.aclose()
         async with postgres.session() as session:
-            await session.merge(MCPActivated(
+            session.add(MCPActivated(
                 mcpId=mcp_id,
                 userId=user_id,
             ))

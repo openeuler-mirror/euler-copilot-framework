@@ -46,17 +46,17 @@ class MCPHost(MCPBase):
         )
 
     async def get_first_input_params(
-        self, mcp_tool: MCPTools, current_goal: str, runtime: TaskRuntime, context: list[ExecutorHistory],
+        self, mcp_tool: MCPTools, current_goal: str,
     ) -> dict[str, Any]:
         """填充工具参数"""
         # 更清晰的输入指令，这样可以调用generate
-        prompt = _env.from_string(GEN_PARAMS[runtime.language]).render(
+        prompt = _env.from_string(GEN_PARAMS[self.task.runtime.language]).render(
             tool_name=mcp_tool.toolName,
             tool_description=mcp_tool.description,
-            goal=self._goal,
+            goal=self.task.runtime.userInput,
             current_goal=current_goal,
             input_schema=mcp_tool.inputSchema,
-            background_info=await self.assemble_memory(runtime, context),
+            background_info=await self.assemble_memory(self.task.runtime, self.task.context),
         )
         _logger.info("[MCPHost] 填充工具参数: %s", prompt)
         # 使用json_generator解析结果
@@ -79,15 +79,14 @@ class MCPHost(MCPBase):
         mcp_tool: MCPTools,
         current_goal: str,
         current_input: dict[str, Any],
-        language: LanguageType,
-        error_message: str = "",
+        error_message: str | dict = "",
         params: dict[str, Any] | None = None,
         params_description: str = "",
     ) -> dict[str, Any]:
-        llm_query = _LLM_QUERY_FIX[language]
-        prompt = _env.from_string(REPAIR_PARAMS[language]).render(
+        llm_query = _LLM_QUERY_FIX[self._language]
+        prompt = _env.from_string(REPAIR_PARAMS[self._language]).render(
             tool_name=mcp_tool.toolName,
-            goal=self._goal,
+            goal=self.task.runtime.userInput,
             current_goal=current_goal,
             tool_description=mcp_tool.description,
             input_schema=mcp_tool.inputSchema,
@@ -110,5 +109,5 @@ class MCPHost(MCPBase):
                 {"role": "user", "content": prompt},
                 {"role": "user", "content": llm_query},
             ],
-            language=language,
+            language=self._language,
         )

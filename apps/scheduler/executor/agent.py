@@ -3,7 +3,7 @@
 
 import logging
 import uuid
-from typing import TYPE_CHECKING, cast
+from typing import cast
 
 import anyio
 from mcp.types import TextContent
@@ -11,6 +11,7 @@ from pydantic import Field
 
 from apps.constants import AGENT_FINAL_STEP_NAME, AGENT_MAX_RETRY_TIMES, AGENT_MAX_STEPS
 from apps.models import ExecutorHistory, ExecutorStatus, MCPTools, StepStatus
+from apps.models.task import ExecutorCheckpoint
 from apps.scheduler.executor.base import BaseExecutor
 from apps.scheduler.mcp_agent.host import MCPHost
 from apps.scheduler.mcp_agent.plan import MCPPlanner
@@ -22,9 +23,6 @@ from apps.schemas.message import FlowParams
 from apps.services.appcenter import AppCenterManager
 from apps.services.mcp_service import MCPServiceManager
 from apps.services.user import UserManager
-
-if TYPE_CHECKING:
-    from apps.models.task import ExecutorCheckpoint
 
 _logger = logging.getLogger(__name__)
 
@@ -49,8 +47,8 @@ class MCPAgentExecutor(BaseExecutor):
         self._current_tool = None
         self._tool_list = {}
         # 初始化MCP Host相关对象
-        self._planner = MCPPlanner(self.task, self.llm)
-        self._host = MCPHost(self.task, self.llm)
+        self._planner = MCPPlanner(self.task)
+        self._host = MCPHost(self.task)
         user = await UserManager.get_user(self.task.metadata.userId)
         if not user:
             err = "[MCPAgentExecutor] 用户不存在: %s"
@@ -59,6 +57,20 @@ class MCPAgentExecutor(BaseExecutor):
         self._user = user
         # 获取历史
         await self._load_history()
+
+        # 初始化任务状态（如果不存在）
+        if not self.task.state:
+            self.task.state = ExecutorCheckpoint(
+                taskId=self.task.metadata.id,
+                appId=self.agent_id,
+                executorId="",
+                executorName="",
+                executorStatus=ExecutorStatus.INIT,
+                stepId=uuid.uuid4(),
+                stepName="",
+                stepStatus=StepStatus.INIT,
+                stepType="",
+            )
 
     async def load_mcp(self) -> None:
         """加载MCP服务器列表"""
@@ -85,7 +97,7 @@ class MCPAgentExecutor(BaseExecutor):
                 self._mcp_list.append(mcp_service)
 
                 for tool in await MCPServiceManager.get_mcp_tools(mcp_id):
-                    self._tool_list[tool.id] = tool
+                    self._tool_list[tool.toolName] = tool
 
         self._tool_list[AGENT_FINAL_STEP_NAME] = MCPTools(
             mcpId="", toolName=AGENT_FINAL_STEP_NAME, description="结束流程的工具",
@@ -107,8 +119,10 @@ class MCPAgentExecutor(BaseExecutor):
         if is_first:
             # 获取第一个输入参数
             self._current_tool = self._tool_list[state.stepName]
+            # 更新host的task引用以确保使用最新的context
+            self._host.task = self.task
             self._current_input = await self._host.get_first_input_params(
-                self._current_tool, self.task.runtime.userInput, self.task,
+                self._current_tool, self.task.runtime.userInput,
             )
         else:
             # 获取后续输入参数
@@ -119,14 +133,13 @@ class MCPAgentExecutor(BaseExecutor):
                 params = {}
                 params_description = ""
             self._current_tool = self._tool_list[state.stepName]
-            state.currentInput = await self._host.fill_params(
+            self._current_input = await self._host.fill_params(
                 self._current_tool,
                 self.task.runtime.userInput,
-                state.currentInput,
+                self._current_input,
                 state.errorMessage,
                 params,
                 params_description,
-                self.task.runtime.language,
             )
         self.task.state = state
 
@@ -379,17 +392,17 @@ class MCPAgentExecutor(BaseExecutor):
             for _ in range(max_retry):
                 try:
                     step = await self._planner.create_next_step(history, list(self._tool_list.values()))
-                    if step.tool_id in self._tool_list:
+                    if step.tool_name in self._tool_list:
                         break
                 except Exception:
                     _logger.exception("[MCPAgentExecutor] 获取下一步失败，重试中...")
-            if step is None or step.tool_id not in self._tool_list:
+            if step is None or step.tool_name not in self._tool_list:
                 step = Step(
-                    tool_id=AGENT_FINAL_STEP_NAME,
+                    tool_name=AGENT_FINAL_STEP_NAME,
                     description=AGENT_FINAL_STEP_NAME,
                 )
             state.stepId = uuid.uuid4()
-            state.stepName = step.tool_id
+            state.stepName = step.tool_name
             state.stepStatus = StepStatus.INIT
         else:
             # 没有下一步了，结束流程
@@ -474,6 +487,7 @@ class MCPAgentExecutor(BaseExecutor):
         thinking_started = False
         async for chunk in self._planner.generate_answer(
             await self._host.assemble_memory(self.task.runtime, self.task.context),
+            self.llm,
         ):
             if chunk.reasoning_content:
                 if not thinking_started:

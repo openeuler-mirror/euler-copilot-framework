@@ -352,12 +352,7 @@ class MCPServiceManager:
             if mcp_info.status != MCPInstallStatus.READY:
                 err = "[MCPServiceManager] MCP服务未准备就绪"
                 raise RuntimeError(err)
-            await session.merge(MCPActivated(
-                mcpId=mcp_info.id,
-                userId=user_id,
-            ))
-            await session.commit()
-            await MCPLoader.user_active_template(user_id, mcp_id, mcp_env)
+        await MCPLoader.user_active_template(user_id, mcp_id, mcp_env)
 
 
     @staticmethod

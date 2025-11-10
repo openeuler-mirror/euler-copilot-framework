@@ -3,6 +3,7 @@
 
 import logging
 import uuid
+from datetime import UTC, datetime
 
 from jinja2 import BaseLoader
 from jinja2.sandbox import SandboxedEnvironment
@@ -48,10 +49,13 @@ class InitMixin:
                 id=task_id,
                 userId=user_id,
                 conversationId=conversation_id,
+                updatedAt=datetime.now(UTC),
             ),
             runtime=TaskRuntime(
                 taskId=task_id,
                 authHeader=auth_header,
+                userInput=self.post_body.question,
+                language=self.post_body.language,
             ),
             state=None,
             context=[],

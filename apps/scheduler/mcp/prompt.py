@@ -47,7 +47,7 @@ MCP_SELECT: dict[LanguageType, str] = {
 
             <tools>
                 {% for tool in tools %}
-                - <id>{{ tool.id }}</id><description>{{tool.name}}；{{ tool.description }}</description>
+                - <id>{{ tool.toolName }}</id><description>{{tool.toolName}}；{{ tool.description }}</description>
                 {% endfor %}
                 - <id>Final</id><description>结束步骤，当执行到这一步时，\
         表示计划执行结束，所得到的结果将作为最终结果。</description>
@@ -178,7 +178,7 @@ CREATE_PLAN: dict[str, str] = {
 
             ## 工具列表
             {% for tool in tools %}
-            - **{{ tool.id }}**: {{tool.name}}；{{ tool.description }}
+            - **{{ tool.toolName }}**: {{tool.toolName}}；{{ tool.description }}
             {% endfor %}
             - **Final**: 结束步骤，标志计划执行完成
 
@@ -226,7 +226,7 @@ CREATE_PLAN: dict[str, str] = {
 
             ## Tool List
             {% for tool in tools %}
-            - **{{ tool.id }}**: {{tool.name}}; {{ tool.description }}
+            - **{{ tool.toolName }}**: {{tool.toolName}}; {{ tool.description }}
             {% endfor %}
             - **Final**: End step, marks plan execution complete
 

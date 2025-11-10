@@ -57,7 +57,7 @@ class RecordManager:
                 logger.error("[RecordManager] 对话不存在: %s", conversation_id)
                 return None
 
-            await session.merge(PgRecord(
+            session.add(PgRecord(
                 id=record.id,
                 conversationId=conversation_id,
                 taskId=record.task_id,
