@@ -12,7 +12,10 @@ globals:
 models:
   # 用于问答的大模型；需要为OpenAI兼容接口
   answer:
-    # 可用的框架类型：["vllm", "sglang", "ollama", "openai"]
+    # 在线大模型平台支持["bailian", "wenxin", "siliconflow", "spark", "baichuan"]等
+    # 离线大模型推理服务支持["mindie", "vllm", "ollama", "modelscope"]等
+    # 如需额外配置，可以参考deploy/chart/euler_copilot/configs/framework/provider_config_summary.md修改相关配置新增支持
+    # [必填]模型提供方
     provider: 
     # [必填] 接口URL（请根据 API 提供商文档确定是否需要带上“v1”后缀）
     endpoint:
@@ -22,10 +25,17 @@ models:
     name:
     # [必填] 模型最大上下文数；建议>=8192
     ctxLength: 8192
-    # 模型最大输出长度，建议>=2048
+    # [必填] 模型最大输出长度，建议>=2048
     maxTokens: 2048
+    # [必填] 模型温度, 控制生成文本随机性与创造性, 建议0.7
+    temperature: 0.7
   # 用于Function Call的模型；建议使用特定推理框架
   functionCall:
+    # 在线大模型平台支持["bailian", "wenxin", "siliconflow", "spark", "baichuan"]等
+    # 离线大模型推理服务支持["mindie", "vllm", "ollama", "modelscope"]等
+    # 如需额外配置，可以参考deploy/chart/euler_copilot/configs/framework/provider_config_summary.md修改相关配置新增支持
+    # [必填]模型提供方；不填则与问答模型一致
+    provider: 
     # [必填] 模型地址；请根据 API 提供商文档确定是否需要带上“v1”后缀
     # 选择不填则与问答模型一致
     endpoint:
@@ -37,10 +47,14 @@ models:
     ctxLength:
     # 模型最大输出长度；不填则与问答模型一致
     maxTokens:
+    # 模型温度, 控制生成文本随机性与创造性, 建议0.7；不填则与问答模型一致
+    temperature:
   # 用于数据向量化（Embedding）的模型
   embedding:
-    # 推理框架类型，默认为openai
-    # [必填] Embedding接口类型：["openai", "mindie"]
+    # 在线大模型平台支持["bailian", "wenxin", "siliconflow", "spark", "baichuan"]等
+    # 离线大模型推理服务支持["mindie", "vllm", "ollama", "modelscope"]等
+    # 如需额外配置，可以参考deploy/chart/euler_copilot/configs/framework/provider_config_summary.md修改相关配置新增支持
+    # [必填]模型提供方
     provider:
     # [必填] Embedding URL（需要带上“v1”后缀）
     endpoint:
@@ -50,7 +64,10 @@ models:
     name:
   # 用于对rag检索结果重排的模型，支持硅基流动 百炼 vllm asscend等模型供应方提供的api
   reranker:
-    # [必填] reranker接口类型：["guijiliudong", "bailian", "v1lm", "assecend"]
+    # 在线大模型平台支持["bailian", "wenxin", "siliconflow", "spark", "baichuan"]等
+    # 离线大模型推理服务支持["mindie", "vllm", "ollama", "modelscope"]等
+    # 如需额外配置，可以参考deploy/chart/euler_copilot/configs/framework/provider_config_summary.md修改相关配置新增支持
+    # [必填]模型提供方
     provider:
     # [必填] reranker URL（需要带上“/v1/rerank”后缀）  
     endpoint:
