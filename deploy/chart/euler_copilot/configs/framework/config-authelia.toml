@@ -112,9 +112,9 @@ provider = '{{ default .Values.models.answer.provider .Values.models.functionCal
 endpoint = '{{ default .Values.models.answer.endpoint .Values.models.functionCall.endpoint }}'
 model = '{{ default .Values.models.answer.name .Values.models.functionCall.name }}'
 api_key = '{{ default .Values.models.answer.key .Values.models.functionCall.key }}'
-ctx_length = {{ default .Values.models.answer.ctxLength .Values.models.functionCall.ctxLength }}
-max_tokens = {{ default .Values.models.answer.maxTokens .Values.models.functionCall.maxTokens }}
-temperature = {{ default .Values.models.answer.temperature .Values.models.functionCall.temperature }}
+ctx_length = {{ default 8192 (default .Values.models.answer.ctxLength .Values.models.functionCall.ctxLength) }}
+max_tokens = {{ default 2048 (default .Values.models.answer.maxTokens .Values.models.functionCall.maxTokens) }}
+temperature = {{ default 0.7 (default .Values.models.answer.temperature .Values.models.functionCall.temperature) }}
 
 [check]
 enable = false
