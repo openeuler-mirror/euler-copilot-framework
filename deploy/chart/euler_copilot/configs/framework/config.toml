@@ -99,7 +99,6 @@ max_tokens = {{ default 8192 .Values.models.answer.maxTokens }}
 temperature = {{ default 0.7 .Values.models.answer.temperature }}
 
 [function_call]
-backend = '{{ default "ollama" .Values.models.functionCall.backend }}'
 endpoint = '{{ default .Values.models.answer.endpoint .Values.models.functionCall.endpoint }}'
 model = '{{ default .Values.models.answer.name .Values.models.functionCall.name }}'
 api_key = '{{ default .Values.models.answer.key .Values.models.functionCall.key }}'
