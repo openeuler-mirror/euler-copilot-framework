@@ -128,9 +128,6 @@ class FunctionLLM:
             explicit_backend
         )
         
-        # 更新配置对象的backend字段，供后续使用
-        self._config.backend = self._backend
-        
         self._params = {
             "model": self._config.model,
             "messages": [],
