@@ -80,7 +80,7 @@ class MCPSelector:
         return llm_mcp_list
 
     async def _get_mcp_by_llm(
-        self, query: str, mcp_list: list[dict[str, str]], mcp_ids: list[str], language
+        self, query: str, mcp_list: list[dict[str, str]], mcp_ids: list[str], language: LanguageType = LanguageType.CHINESE
     ) -> MCPSelectResult:
         """通过LLM选择最合适的MCP Server"""
         # 初始化jinja2环境
