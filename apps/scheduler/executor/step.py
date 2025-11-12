@@ -6,10 +6,10 @@ import logging
 import uuid
 from collections.abc import AsyncGenerator
 from datetime import UTC, datetime
-from typing import Any, Field
+from typing import Any
 import json
 import jsonschema
-from pydantic import ConfigDict
+from pydantic import ConfigDict, Field
 
 from apps.scheduler.call.core import CoreCall
 from apps.scheduler.call.empty import Empty
