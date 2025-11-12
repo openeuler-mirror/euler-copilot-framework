@@ -7,7 +7,6 @@ from copy import deepcopy
 from typing import Any, ClassVar
 
 from pydantic import Field
-
 from apps.scheduler.call.core import CallError, CoreCall
 from apps.scheduler.call.mcp.schema import (
     MCPInput,
@@ -60,7 +59,7 @@ class MCP(CoreCall, input_model=MCPInput, output_model=MCPOutput):
     })
 
     mcp_list: list[str] = Field(
-        description="MCP Server ID列表", max_length=5, min_length=1)
+        description="MCP Server ID列表", max_length=15, min_length=1)
     max_steps: int = Field(description="最大步骤数", default=20)
     text_output: bool = Field(description="是否将结果以文本形式返回", default=True)
     to_user: bool = Field(description="是否将结果返回给用户", default=True)
@@ -81,7 +80,9 @@ class MCP(CoreCall, input_model=MCPInput, output_model=MCPOutput):
     async def _init(self, call_vars: CallVars) -> MCPInput:
         """初始化MCP"""
         # 获取MCP交互类
-        self._host = MCPHost(call_vars.ids.user_sub, call_vars.ids.task_id,
+        from apps.services.appcenter import AppCenterManager
+        app = await AppCenterManager.fetch_app_data_by_id(call_vars.ids.app_id)
+        self._host = MCPHost(app.author, self.mcp_list, call_vars.ids.task_id,
                              call_vars.ids.flow_id, self.description)
         self._tool_list = await self._host.get_tool_list(self.mcp_list)
         self._call_vars = call_vars
@@ -106,7 +107,7 @@ class MCP(CoreCall, input_model=MCPInput, output_model=MCPOutput):
         # 执行计划
         plan_list = deepcopy(self._plan.plans)
         while len(plan_list) > 0:
-            async for chunk in self._execute_plan_item(plan_list.pop(0)):
+            async for chunk in self._execute_plan_item(plan_list.pop(0), language):
                 yield chunk
 
         # 生成总结
