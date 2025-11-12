@@ -26,7 +26,8 @@ class Blacklist(BaseModel):
     is_audited: bool = False
     reason_type: str = ""
     reason: str | None = None
-    updated_at: float = Field(default_factory=lambda: round(datetime.now(tz=UTC).timestamp(), 3))
+    updated_at: float = Field(default_factory=lambda: round(
+        datetime.now(tz=UTC).timestamp(), 3))
 
 
 class UserDomainData(BaseModel):
@@ -40,7 +41,8 @@ class AppUsageData(BaseModel):
     """User表子项：应用使用情况数据"""
 
     count: int = 0
-    last_used: float = Field(default_factory=lambda: round(datetime.now(tz=UTC).timestamp(), 3))
+    last_used: float = Field(default_factory=lambda: round(
+        datetime.now(tz=UTC).timestamp(), 3))
 
 
 class User(BaseModel):
@@ -53,7 +55,8 @@ class User(BaseModel):
 
     id: str = Field(alias="_id")
     user_name: str = Field(default="", description="用户名")
-    last_login: float = Field(default_factory=lambda: round(datetime.now(tz=UTC).timestamp(), 3))
+    last_login: float = Field(default_factory=lambda: round(
+        datetime.now(tz=UTC).timestamp(), 3))
     is_active: bool = False
     is_whitelisted: bool = False
     credit: int = 100
@@ -83,31 +86,39 @@ class LLM(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()), alias="_id")
     user_sub: str = Field(default="", description="用户ID")
     title: str = Field(default=NEW_CHAT)
-    icon: str = Field(default=llm_provider_dict["ollama"]["icon"], description="图标")
+    icon: str = Field(
+        default=llm_provider_dict["ollama"]["icon"], description="图标")
     openai_base_url: str = Field(default=Config().get_config().llm.endpoint)
-    openai_api_key: str = Field(default=Config().get_config().llm.key)
+    openai_api_key: str = Field(default=Config().get_config().llm.api_key)
     model_name: str = Field(default=Config().get_config().llm.model)
-    max_tokens: int | None = Field(default=Config().get_config().llm.max_tokens)
-    type: list[str] | str = Field(default=['chat'], description="模型类型，支持单个类型或多个类型")
-    
+    max_tokens: int | None = Field(
+        default=Config().get_config().llm.max_tokens)
+    type: list[str] | str = Field(
+        default=['chat'], description="模型类型，支持单个类型或多个类型")
+
     # 模型能力字段
     provider: str = Field(default="", description="模型提供商")
     supports_thinking: bool = Field(default=False, description="是否支持思维链")
-    can_toggle_thinking: bool = Field(default=False, description="是否支持开关思维链（仅当supports_thinking=True时有效）")
-    supports_function_calling: bool = Field(default=True, description="是否支持函数调用")
+    can_toggle_thinking: bool = Field(
+        default=False, description="是否支持开关思维链（仅当supports_thinking=True时有效）")
+    supports_function_calling: bool = Field(
+        default=True, description="是否支持函数调用")
     supports_json_mode: bool = Field(default=True, description="是否支持JSON模式")
-    supports_structured_output: bool = Field(default=False, description="是否支持结构化输出")
-    max_tokens_param: str = Field(default="max_tokens", description="最大token参数名")
+    supports_structured_output: bool = Field(
+        default=False, description="是否支持结构化输出")
+    max_tokens_param: str = Field(
+        default="max_tokens", description="最大token参数名")
     notes: str = Field(default="", description="备注信息")
-    
-    created_at: float = Field(default_factory=lambda: round(datetime.now(tz=UTC).timestamp(), 3))
-    
+
+    created_at: float = Field(default_factory=lambda: round(
+        datetime.now(tz=UTC).timestamp(), 3))
+
     def normalize_type(self) -> list[str]:
         """标准化type字段为列表格式"""
         if isinstance(self.type, str):
             return [self.type]
         return self.type
-    
+
     def model_dump(self, **kwargs):
         """重写model_dump方法，确保type字段存储为列表"""
         data = super().model_dump(**kwargs)
@@ -144,7 +155,8 @@ class Conversation(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()), alias="_id")
     user_sub: str
     title: str = NEW_CHAT
-    created_at: float = Field(default_factory=lambda: round(datetime.now(tz=UTC).timestamp(), 3))
+    created_at: float = Field(default_factory=lambda: round(
+        datetime.now(tz=UTC).timestamp(), 3))
     app_id: str | None = Field(default="")
     tasks: list[str] = []
     unused_docs: list[str] = []
@@ -166,7 +178,8 @@ class Document(BaseModel):
     name: str
     type: str
     size: float
-    created_at: float = Field(default_factory=lambda: round(datetime.now(tz=UTC).timestamp(), 3))
+    created_at: float = Field(default_factory=lambda: round(
+        datetime.now(tz=UTC).timestamp(), 3))
     conversation_id: str | None = Field(default=None)
 
 
@@ -180,7 +193,8 @@ class Audit(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()), alias="_id")
     user_sub: str | None = None
     http_method: str
-    created_at: float = Field(default_factory=lambda: round(datetime.now(tz=UTC).timestamp(), 3))
+    created_at: float = Field(default_factory=lambda: round(
+        datetime.now(tz=UTC).timestamp(), 3))
     module: str
     client_ip: str | None = None
     message: str
@@ -196,4 +210,5 @@ class Domain(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()), alias="_id")
     name: str
     definition: str
-    updated_at: float = Field(default_factory=lambda: round(datetime.now(tz=UTC).timestamp(), 3))
+    updated_at: float = Field(default_factory=lambda: round(
+        datetime.now(tz=UTC).timestamp(), 3))

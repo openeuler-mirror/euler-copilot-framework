@@ -37,7 +37,8 @@ class OIDCConfig(BaseModel):
     login_api: str = Field(description="EulerCopilot登录API")
     app_id: str = Field(description="OIDC AppID")
     app_secret: str = Field(description="OIDC App Secret")
-    redirect_settings_url: str | None = Field(description="用户设置页面重定向URL", default=None)
+    redirect_settings_url: str | None = Field(
+        description="用户设置页面重定向URL", default=None)
 
 
 class AutheliaConfig(BaseModel):
@@ -49,14 +50,16 @@ class AutheliaConfig(BaseModel):
     redirect_uri: str = Field(description="重定向URI")
     enable_pkce: bool = Field(description="是否启用PKCE", default=True)
     pkce_challenge_method: str = Field(description="PKCE挑战方法", default="S256")
-    redirect_settings_url: str | None = Field(description="用户设置页面重定向URL", default=None)
+    redirect_settings_url: str | None = Field(
+        description="用户设置页面重定向URL", default=None)
 
 
 class OpenEulerConfig(BaseModel):
     """OpenEuler认证配置"""
 
     host: str = Field(description="OpenEuler服务路径")
-    redirect_settings_url: str | None = Field(description="用户设置页面重定向URL", default=None)
+    redirect_settings_url: str | None = Field(
+        description="用户设置页面重定向URL", default=None)
 
 
 class FixedUserConfig(BaseModel):
@@ -79,17 +82,17 @@ class EmbeddingConfig(BaseModel):
 
     provider: str = Field(description="Embedding提供商")
     endpoint: str = Field(description="Embedding模型地址")
-    api_key: str = Field(description="Embedding模型API Key")
+    api_key: str = Field(description="Embedding模型API Key", default="")
     model: str = Field(description="Embedding模型名称")
 
 
 class RerankerConfig(BaseModel):
     """Reranker配置"""
 
-    provider: str | None = Field(default=None, description="Reranker提供商")
-    endpoint: str | None = Field(default=None, description="Reranker模型地址")
-    api_key: str | None = Field(default=None, description="Reranker模型API Key")
-    model: str | None = Field(default=None, description="Reranker模型名称")
+    provider: str | None = Field(description="Reranker提供商")
+    endpoint: str | None = Field(description="Reranker模型地址")
+    api_key: str | None = Field(description="Reranker模型API Key", default="")
+    model: str | None = Field(description="Reranker模型名称")
 
 
 class RAGConfig(BaseModel):
@@ -141,7 +144,7 @@ class LLMConfig(BaseModel):
     """LLM配置"""
 
     provider: str = Field(description="LLM提供商")
-    key: str = Field(description="LLM API密钥")
+    api_key: str = Field(description="LLM API密钥", default="")
     endpoint: str = Field(description="LLM API URL地址")
     model: str = Field(description="LLM API 模型名")
     max_tokens: int | None = Field(
@@ -155,7 +158,7 @@ class FunctionCallConfig(BaseModel):
     provider: str | None = Field(default=None, description="Function Call 提供商")
     model: str = Field(description="Function Call 模型名")
     endpoint: str = Field(description="Function Call API URL地址")
-    api_key: str = Field(description="Function Call API密钥")
+    api_key: str = Field(description="Function Call API密钥", default="")
     max_tokens: int | None = Field(
         description="Function Call 最大Token数", default=None)
     temperature: float | None = Field(
