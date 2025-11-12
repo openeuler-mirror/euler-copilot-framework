@@ -239,8 +239,6 @@ class StepExecutor(BaseExecutor):
             if self.step.step.params and isinstance(self.step.step.params, dict):
                 output_parameters = self.step.step.params.get(
                     "output_parameters", {})
-            elif hasattr(self.step, 'output_parameters'):
-                output_parameters = self.step.output_parameters
 
             if not output_parameters or not isinstance(output_parameters, dict):
                 logger.debug(
