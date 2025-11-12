@@ -59,15 +59,6 @@ class ConversationManager:
                 "model_name": config.llm.model
             })
             
-            if not system_llm:
-                # 如果系统模型不存在，创建它
-                await LLMManager.init_system_chat_model()
-                system_llm = await llm_collection.find_one({
-                    "user_sub": "",
-                    "type": "chat", 
-                    "model_name": config.llm.model
-                })
-            
             llm_item = LLMItem(
                 llm_id=str(system_llm["_id"]),
                 model_name=system_llm["model_name"],

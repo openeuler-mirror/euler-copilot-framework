@@ -85,11 +85,11 @@ class Scheduler:
                     self.task.ids.user_sub, self.task.ids.conversation_id,
                 )
                 logger.info(f"[Scheduler] 使用对话记录中的模型ID: {llm_id}")
-            
+
             if not llm_id:
                 logger.error("[Scheduler] 获取大模型ID失败")
                 return None
-            
+
             # 首先尝试通过用户ID和LLM ID查找
             try:
                 llm = await LLMManager.get_llm_by_user_sub_and_id(self.task.ids.user_sub, llm_id)
@@ -228,26 +228,19 @@ class Scheduler:
         if not app_metadata:
             logger.error("[Scheduler] 未找到Agent应用")
             return
-        logger.info(f"[Scheduler] 应用配置的模型ID: {app_metadata.llm_id}, 启用思维链: {app_metadata.enable_thinking if hasattr(app_metadata, 'enable_thinking') else 'N/A'}")
+        logger.info(
+            f"[Scheduler] 应用配置的模型ID: {app_metadata.llm_id}, 启用思维链: {app_metadata.enable_thinking if hasattr(app_metadata, 'enable_thinking') else 'N/A'}")
         if not app_metadata.llm_id or app_metadata.llm_id == "empty":
             # 获取系统默认模型
             llm_collection = MongoDB().get_collection("llm")
             config = Config().get_config()
-            
+
             system_llm = await llm_collection.find_one({
                 "user_sub": "",
                 "type": "chat",
                 "model_name": config.llm.model
             })
-            
-            if not system_llm:
-                await LLMManager.init_system_chat_model()
-                system_llm = await llm_collection.find_one({
-                    "user_sub": "",
-                    "type": "chat", 
-                    "model_name": config.llm.model
-                })
-            
+
             llm = LLM.model_validate(system_llm)
         else:
             llm = await LLMManager.get_llm_by_id(app_metadata.llm_id)
@@ -268,7 +261,8 @@ class Scheduler:
             try:
                 # 使用function call模型进行问题改写
                 # 降级顺序：应用配置模型 -> 用户偏好的function call模型 -> 系统默认function call模型 -> 系统默认chat模型
-                app_llm_id = app_metadata.llm_id if hasattr(app_metadata, 'llm_id') and app_metadata.llm_id != "empty" else None
+                app_llm_id = app_metadata.llm_id if hasattr(
+                    app_metadata, 'llm_id') and app_metadata.llm_id != "empty" else None
                 llm_id_for_rewrite = await LLMManager.get_function_call_model_id(
                     self.task.ids.user_sub,
                     app_llm_id=app_llm_id  # 传递应用配置的模型ID（最高优先级）
@@ -277,9 +271,10 @@ class Scheduler:
                 if not llm_id_for_rewrite:
                     llm_id_for_rewrite = app_llm_id
                     logger.warning("[Scheduler] 未找到任何系统模型，使用应用配置的模型进行问题改写")
-                
-                enable_thinking_for_rewrite = app_metadata.enable_thinking if hasattr(app_metadata, 'enable_thinking') else False
-                
+
+                enable_thinking_for_rewrite = app_metadata.enable_thinking if hasattr(
+                    app_metadata, 'enable_thinking') else False
+
                 logger.info(f"[Scheduler] 问题改写使用模型ID: {llm_id_for_rewrite}")
                 question_obj = QuestionRewrite(
                     llm_id=llm_id_for_rewrite,
@@ -330,8 +325,10 @@ class Scheduler:
                 msg_queue=queue,
                 question=post_body.question,
                 post_body_app=app_info,
-                enable_thinking=app_metadata.enable_thinking if hasattr(app_metadata, 'enable_thinking') else False,
-                llm_id=app_metadata.llm_id if hasattr(app_metadata, 'llm_id') and app_metadata.llm_id != "empty" else None,
+                enable_thinking=app_metadata.enable_thinking if hasattr(
+                    app_metadata, 'enable_thinking') else False,
+                llm_id=app_metadata.llm_id if hasattr(
+                    app_metadata, 'llm_id') and app_metadata.llm_id != "empty" else None,
                 background=background,
             )
 

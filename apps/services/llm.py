@@ -121,22 +121,6 @@ class LLMManager:
 
         llm_list = []
 
-        # 只有查询chat类型或者没有指定类型时，才检查并创建默认模型
-        if not model_type or model_type == 'chat':
-            # 检查是否已存在系统默认chat模型
-            config = Config().get_config()
-            existing_default = await llm_collection.find_one({
-                "user_sub": "",
-                "type": "chat",
-                "model_name": config.llm.model
-            })
-
-            if not existing_default:
-                # 如果不存在，创建系统默认chat模型
-                await LLMManager.init_system_chat_model()
-                # 重新查询以包含新创建的模型
-                result = await llm_collection.find(base_query).sort({"created_at": 1}).to_list(length=None)
-
         for llm in result:
             # 标准化type字段为列表格式
             llm_type = llm.get("type", "chat")
@@ -309,15 +293,6 @@ class LLMManager:
                 "model_name": config.llm.model
             })
 
-            if not system_llm:
-                # 如果系统模型不存在，创建它
-                await LLMManager.init_system_chat_model()
-                system_llm = await llm_collection.find_one({
-                    "user_sub": "",
-                    "type": "chat",
-                    "model_name": config.llm.model
-                })
-
             await conv_collection.update_many(
                 {"_id": conv_dict["_id"], "user_sub": user_sub},
                 {"$set": {"llm": {
@@ -350,15 +325,6 @@ class LLMManager:
                 "type": "chat",
                 "model_name": config.llm.model
             })
-
-            if not system_llm:
-                # 如果系统模型不存在，创建它
-                await LLMManager.init_system_chat_model()
-                system_llm = await llm_collection.find_one({
-                    "user_sub": "",
-                    "type": "chat",
-                    "model_name": config.llm.model
-                })
 
             llm_dict = {
                 "llm_id": str(system_llm["_id"]),
@@ -549,48 +515,6 @@ class LLMManager:
         return llm_list
 
     @staticmethod
-    async def init_system_chat_model():
-        """初始化系统级别的chat模型"""
-        config = Config().get_config()
-        mongo = MongoDB()
-        llm_collection = mongo.get_collection("llm")
-
-        # 推断chat模型能力
-        # 优先使用配置文件中明确指定的provider，如果没有则从endpoint推断
-        provider = getattr(config.llm, 'provider', '') or get_provider_from_endpoint(
-            config.llm.endpoint)
-        model_info = model_registry.get_model_info(provider, config.llm.model)
-
-        # 根据provider获取图标
-        provider_icon = llm_provider_dict.get(provider, {}).get("icon", "")
-
-        # 创建系统chat模型
-        chat_llm = LLM(
-            user_sub="",  # 系统级别模型
-            title="System Chat Model",
-            icon=provider_icon,
-            openai_api_key=config.llm.key,
-            openai_base_url=config.llm.endpoint,
-            model_name=config.llm.model,
-            max_tokens=config.llm.max_tokens or (
-                model_info.max_tokens_param if model_info else 8192),
-            type=['chat'],  # 使用列表格式
-            provider=provider,
-            supports_thinking=model_info.supports_thinking if model_info else False,
-            can_toggle_thinking=model_info.can_toggle_thinking if model_info else False,
-            supports_function_calling=model_info.supports_function_calling if model_info else False,
-            supports_json_mode=model_info.supports_json_mode if model_info else False,
-            supports_structured_output=model_info.supports_structured_output if model_info else False,
-            max_tokens_param=model_info.max_tokens_param if model_info else None,
-            notes=model_info.notes if model_info else "",
-        )
-
-        # 使用by_alias=True将id字段作为_id插入，保持UUID字符串格式
-        insert_data = chat_llm.model_dump(by_alias=True)
-        await llm_collection.insert_one(insert_data)
-        logger.info(f"已初始化系统chat模型: {config.llm.model}")
-
-    @staticmethod
     async def _init_system_model(model_id: str, model_type: str, model_config, title: str):
         """
         初始化系统模型的通用方法
@@ -737,18 +661,6 @@ class LLMManager:
                 "model_name": config.llm.model
             })
 
-            if not system_chat_model:
-                # 如果系统chat模型不存在，创建它
-                await LLMManager.init_system_chat_model()
-                system_chat_model = await llm_collection.find_one({
-                    "user_sub": "",
-                    "$or": [
-                        {"type": "chat"},  # 兼容字符串格式
-                        {"type": {"$in": ["chat"]}}  # 兼容数组格式
-                    ],
-                    "model_name": config.llm.model
-                })
-
             if system_chat_model:
                 llm_id = str(system_chat_model["_id"])
                 logger.info(f"[LLMManager] 降级使用系统默认的chat模型: {llm_id}")
@@ -777,6 +689,7 @@ class LLMManager:
 
         default_embedding_id = "default-embedding-model"
         default_reranker_id = "default-reranker-model"
+        default_chat_id = "default-chat-model"
         default_function_call_id = "default-function-call-model"
         # 初始化embedding模型
         await LLMManager._init_system_model(
@@ -793,7 +706,13 @@ class LLMManager:
             config.reranker,
             "System Reranker Model"
         )
-
+        # 初始化chat模型
+        await LLMManager._init_system_model(
+            default_chat_id,
+            "chat",
+            config.llm,
+            "System Chat Model"
+        )
         # 初始化function_call模型
         await LLMManager._init_system_model(
             default_function_call_id,
