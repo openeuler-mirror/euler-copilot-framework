@@ -156,7 +156,7 @@ class ReasoningLLM:
             return
 
         self._client = AsyncOpenAI(
-            api_key=self._config.key,
+            api_key=self._config.api_key,
             base_url=self._config.endpoint,
         )
 
