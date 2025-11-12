@@ -59,66 +59,6 @@ class MCPClient:
         # 创建Client
         if isinstance(config, MCPServerSSEConfig):
             headers = config.headers or {}
-            # 添加超时配置
-            timeout = getattr(config, 'timeout', 30)  # 默认30秒超时
-            logger.info("[MCPClient] MCP %s：尝试连接SSE端点 %s，超时时间: %s秒",
-                        mcp_id, config.url, timeout)
-
-            try:
-                # 先测试端点可达性 - 对于SSE端点，我们只检查连接性，不读取内容
-                async with httpx.AsyncClient(timeout=httpx.Timeout(5.0)) as test_client:
-                    try:
-                        # 首先尝试HEAD请求
-                        response = await test_client.head(config.url, headers=headers)
-                        logger.info("[MCPClient] MCP %s：端点预检查响应状态 %s",
-                                    mcp_id, response.status_code)
-
-                        # 如果HEAD请求返回404，尝试流式GET请求验证连接性
-                        if response.status_code == 404:
-                            logger.info(
-                                "[MCPClient] MCP %s：HEAD请求返回404，尝试流式连接验证", mcp_id)
-                            try:
-                                # 使用stream=True避免读取完整响应，只验证连接
-                                async with test_client.stream('GET', config.url, headers=headers) as stream_response:
-                                    if stream_response.status_code == 200:
-                                        logger.info(
-                                            "[MCPClient] MCP %s：流式连接成功，端点可用", mcp_id)
-                                        # 立即关闭流，不读取内容
-                                    else:
-                                        logger.warning(
-                                            "[MCPClient] MCP %s：流式连接返回状态 %s", mcp_id, stream_response.status_code)
-                            except httpx.ReadTimeout:
-                                # 对于SSE端点，读取超时是正常的，说明连接成功但在等待流数据
-                                logger.info(
-                                    "[MCPClient] MCP %s：连接成功但读取超时（SSE端点正常行为）", mcp_id)
-                            except Exception as get_e:
-                                logger.error(
-                                    "[MCPClient] MCP %s：流式连接失败: %s", mcp_id, get_e)
-                                raise ConnectionError(
-                                    f"MCP端点不可用: {config.url}")
-
-                    except httpx.ConnectTimeout:
-                        logger.error("[MCPClient] MCP %s：连接超时", mcp_id)
-                        raise ConnectionError(f"无法连接到MCP端点 {config.url}: 连接超时")
-                    except httpx.RequestError as e:
-                        logger.error(
-                            "[MCPClient] MCP %s：端点预检查失败: %s", mcp_id, e)
-                        raise ConnectionError(f"无法连接到MCP端点 {config.url}: {e}")
-                    except httpx.HTTPStatusError as e:
-                        logger.warning(
-                            "[MCPClient] MCP %s：端点返回HTTP错误 %s", mcp_id, e.response.status_code)
-                        # 对于SSE端点，某些HTTP错误是可以接受的
-
-            except ConnectionError:
-                # 重新抛出连接错误
-                self.error_sign.set()
-                self.status = MCPStatus.ERROR
-                raise
-            except Exception as e:
-                logger.warning(
-                    "[MCPClient] MCP %s：连接预检查遇到异常，但继续尝试连接: %s", mcp_id, e)
-                # 对于其他异常，记录警告但不阻止连接尝试
-
             client = sse_client(
                 url=config.url,
                 headers=headers,
