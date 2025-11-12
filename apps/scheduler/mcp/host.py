@@ -50,8 +50,11 @@ class MCPHost:
             lstrip_blocks=True,
         )
         self.mcp_pool = MCPPool()
-        for mcp_id in mcp_ids:
-            self.mcp_pool._init_mcp(mcp_id, user_sub)
+
+    async def init_mcp_pool(self) -> None:
+        """初始化MCP池"""
+        for mcp_id in self.mcp_ids:
+            await self.mcp_pool._init_mcp(mcp_id, self._user_sub)
 
     async def get_client(self, mcp_id: str) -> MCPClient | None:
         """获取MCP客户端"""
@@ -163,6 +166,7 @@ class MCPHost:
         """调用工具"""
         # 拿到Client
         client = await self.mcp_pool.get(tool.mcp_id, self._user_sub)
+        logging.error(f"Got MCP client: {client}")
         if client is None:
             err = f"[MCPHost] MCP Server不合法: {tool.mcp_id}"
             logger.error(err)

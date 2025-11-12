@@ -47,7 +47,8 @@ router = APIRouter(
 )
 async def get_services(
     user_sub: Annotated[str, Depends(get_user)],
-    language: LanguageType = Query(LanguageType.CHINESE, description="语言参数，默认为中文")
+    language: LanguageType = Query(
+        LanguageType.CHINESE, description="语言参数，默认为中文")
 ) -> NodeServiceListRsp:
     """获取用户可访问的节点元数据所在服务的信息"""
     services = await FlowManager.get_service_by_user_id(user_sub, language)
@@ -134,10 +135,24 @@ async def put_flow(
                 result=FlowStructurePutMsg(),
             ).model_dump(exclude_none=True, by_alias=True),
         )
+    import time
+    st = time.time()
     put_body.flow = await FlowService.remove_excess_structure_from_flow(put_body.flow)
+    en = time.time()
+    logger.error(f"Flow去除多余结构耗时: {en - st}秒")
+    st = time.time()
     await FlowService.validate_flow_illegal(put_body.flow)
+    en = time.time()
+    logger.error(f"Flow合法性验证耗时: {en - st}秒")
+    # 流连通性验证
+    st = time.time()
     put_body.flow.connectivity = await FlowService.validate_flow_connectivity(put_body.flow)
+    en = time.time()
+    logger.error(f"Flow连通性验证耗时: {en - st}秒")
+    st = time.time()
     result = await FlowManager.put_flow_by_app_and_flow_id(app_id, flow_id, put_body.flow, user_sub)
+    en = time.time()
+    logger.error(f"Flow保存耗时: {en - st}秒")
     if result is None:
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -158,20 +173,21 @@ async def put_flow(
                 result=FlowStructurePutMsg(),
             ).model_dump(exclude_none=True, by_alias=True),
         )
-    
+
     # 触发前置节点变量预解析（异步执行，不阻塞响应）
     try:
         from apps.services.predecessor_cache_service import PredecessorCacheService
         import asyncio
-        
+
         # 在后台异步触发预解析
         asyncio.create_task(
-            PredecessorCacheService.trigger_flow_parsing(flow_id, force_refresh=True)
+            PredecessorCacheService.trigger_flow_parsing(
+                flow_id, force_refresh=True)
         )
         logger.info(f"已触发Flow前置节点变量预解析: {flow_id}")
     except Exception as trigger_error:
         logger.warning(f"触发Flow前置节点变量预解析失败: {flow_id}, 错误: {trigger_error}")
-    
+
     return JSONResponse(
         status_code=status.HTTP_200_OK,
         content=FlowStructurePutRsp(
@@ -209,7 +225,7 @@ async def put_subflow(
                 result=FlowStructurePutMsg(),
             ).model_dump(exclude_none=True, by_alias=True),
         )
-    
+
     # 验证父工作流是否存在
     parent_flow = await FlowManager.get_flow_by_app_and_flow_id(app_id, flow_id)
     if parent_flow is None:
@@ -221,12 +237,13 @@ async def put_subflow(
                 result=FlowStructurePutMsg(),
             ).model_dump(exclude_none=True, by_alias=True),
         )
-    
+
     # 子工作流特殊处理：移除多余结构，但不强制要求end节点
     put_body.flow = await FlowService.remove_excess_structure_from_flow(put_body.flow)
     await FlowService.validate_subflow_illegal(put_body.flow)  # 使用子工作流专用验证
-    put_body.flow.connectivity = await FlowService.validate_subflow_connectivity(put_body.flow)  # 子工作流连通性验证
-    
+    # 子工作流连通性验证
+    put_body.flow.connectivity = await FlowService.validate_subflow_connectivity(put_body.flow)
+
     # 保存子工作流到专用路径
     result = await FlowManager.put_subflow_by_app_flow_and_subflow_id(
         app_id, flow_id, sub_flow_id, put_body.flow
@@ -240,7 +257,7 @@ async def put_subflow(
                 result=FlowStructurePutMsg(),
             ).model_dump(exclude_none=True, by_alias=True),
         )
-    
+
     # 获取更新后的子工作流
     subflow = await FlowManager.get_subflow_by_app_flow_and_subflow_id(app_id, flow_id, sub_flow_id)
     if subflow is None:
@@ -252,7 +269,7 @@ async def put_subflow(
                 result=FlowStructurePutMsg(),
             ).model_dump(exclude_none=True, by_alias=True),
         )
-    
+
     return JSONResponse(
         status_code=status.HTTP_200_OK,
         content=FlowStructurePutRsp(
@@ -261,6 +278,7 @@ async def put_subflow(
             result=FlowStructurePutMsg(flow=subflow),
         ).model_dump(exclude_none=True, by_alias=True),
     )
+
 
 @router.get(
     "/subflow",
@@ -286,7 +304,7 @@ async def get_subflow(
                 result=FlowStructureGetMsg(),
             ).model_dump(exclude_none=True, by_alias=True),
         )
-    
+
     # 获取子工作流
     result = await FlowManager.get_subflow_by_app_flow_and_subflow_id(app_id, flow_id, sub_flow_id)
     if result is None:
@@ -298,7 +316,7 @@ async def get_subflow(
                 result=FlowStructureGetMsg(),
             ).model_dump(exclude_none=True, by_alias=True),
         )
-    
+
     return JSONResponse(
         status_code=status.HTTP_200_OK,
         content=FlowStructureGetRsp(

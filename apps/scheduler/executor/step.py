@@ -25,7 +25,7 @@ from apps.scheduler.variable.integration import VariableIntegration
 from apps.schemas.enum_var import (
     EventType,
     SpecialCallType,
-    StepStatus,
+    StepStatus
 )
 from apps.schemas.message import TextAddContent
 from apps.schemas.scheduler import CallError, CallOutputChunk
@@ -97,7 +97,8 @@ class StepExecutor(BaseExecutor):
 
         # State写入ID和运行状态
         self.task.state.step_id = self.step.step_id  # type: ignore[arg-type]
-        self.task.state.step_name = self.step.step.name  # type: ignore[arg-type]
+        # type: ignore[arg-type]
+        self.task.state.step_name = self.step.step.name
 
         # 获取并验证Call类
         node_id = self.step.step.node
@@ -158,7 +159,8 @@ class StepExecutor(BaseExecutor):
         # 更新State
         self.task.state.step_id = str(uuid.uuid4())  # type: ignore[arg-type]
         self.task.state.step_name = "自动参数填充"  # type: ignore[arg-type]
-        self.task.state.step_status = StepStatus.RUNNING  # type: ignore[arg-type]
+        # type: ignore[arg-type]
+        self.task.state.step_status = StepStatus.RUNNING
         self.task.tokens.time = round(datetime.now(UTC).timestamp(), 2)
 
         # 初始化填参
@@ -181,9 +183,11 @@ class StepExecutor(BaseExecutor):
 
         # 如果没有填全，则状态设置为待填参
         if result.remaining_schema:
-            self.task.state.step_status = StepStatus.PARAM  # type: ignore[arg-type]
+            # type: ignore[arg-type]
+            self.task.state.step_status = StepStatus.PARAM
         else:
-            self.task.state.step_status = StepStatus.SUCCESS  # type: ignore[arg-type]
+            # type: ignore[arg-type]
+            self.task.state.step_status = StepStatus.SUCCESS
         await self.push_message(EventType.STEP_OUTPUT.value, result.model_dump(by_alias=True, exclude_none=True))
 
         # 更新输入
@@ -227,19 +231,20 @@ class StepExecutor(BaseExecutor):
 
         return content
 
-
     async def _save_output_parameters_to_variables(self, output_data: str | dict[str, Any]) -> None:
         """保存输出参数到变量池，并进行类型验证"""
         try:
             # 获取当前步骤的output_parameters配置
             output_parameters = None
             if self.step.step.params and isinstance(self.step.step.params, dict):
-                output_parameters = self.step.step.params.get("output_parameters", {})
+                output_parameters = self.step.step.params.get(
+                    "output_parameters", {})
             elif hasattr(self.step, 'output_parameters'):
                 output_parameters = self.step.output_parameters
-            
+
             if not output_parameters or not isinstance(output_parameters, dict):
-                logger.debug(f"[StepExecutor] 步骤 {self.step.step_id} 没有配置output_parameters")
+                logger.debug(
+                    f"[StepExecutor] 步骤 {self.step.step_id} 没有配置output_parameters")
                 return
 
             # 解析输出数据
@@ -247,7 +252,8 @@ class StepExecutor(BaseExecutor):
                 try:
                     data_dict = json.loads(output_data)
                 except json.JSONDecodeError:
-                    logger.warning(f"[StepExecutor] 无法解析输出数据为JSON: {output_data}")
+                    logger.warning(
+                        f"[StepExecutor] 无法解析输出数据为JSON: {output_data}")
                     data_dict = {"raw_output": output_data}
             else:
                 data_dict = output_data
@@ -258,65 +264,85 @@ class StepExecutor(BaseExecutor):
             # 保存每个output_parameter到变量池，并进行类型验证
             saved_count = 0
             failed_params = []
-                        
+
             # 特殊处理：如果是旧格式的JSON Schema结构（主要是Loop节点）
-            if (isinstance(output_parameters, dict) and 
-                "type" in output_parameters and 
-                "items" in output_parameters and 
-                isinstance(output_parameters["items"], dict)):
-                
+            if (isinstance(output_parameters, dict) and
+                "type" in output_parameters and
+                "items" in output_parameters and
+                    isinstance(output_parameters["items"], dict)):
+
                 # 提取items中的真正参数配置
                 output_parameters = output_parameters["items"]
-                
+
                 # 清理每个参数配置中的多余字段（如嵌套的items）
                 for param_name, param_config in output_parameters.items():
                     if isinstance(param_config, dict) and "items" in param_config:
                         # 移除多余的items字段，保持参数配置的简洁性
                         param_config.pop("items", None)
-                
-                logger.debug(f"[StepExecutor] 转换后的output_parameters: {output_parameters}")
-            
+
+                logger.debug(
+                    f"[StepExecutor] 转换后的output_parameters: {output_parameters}")
+
             for param_name, param_config in output_parameters.items():
-                try:                    
+                try:
                     # 检查param_config格式，确保它是字典
                     if not isinstance(param_config, dict):
-                        logger.warning(f"[StepExecutor] 输出参数 {param_name} 的配置不是字典格式: {param_config} (类型: {type(param_config)})")
+                        logger.warning(
+                            f"[StepExecutor] 输出参数 {param_name} 的配置不是字典格式: {param_config} (类型: {type(param_config)})")
                         # 如果不是字典，尝试转换为标准格式
                         if isinstance(param_config, str):
-                            param_config = {"type": param_config, "description": ""}
+                            param_config = {
+                                "type": param_config, "description": ""}
                         else:
-                            param_config = {"type": "string", "description": "", "raw_config": str(param_config)}
-                    
+                            param_config = {
+                                "type": "string", "description": "", "raw_config": str(param_config)}
+
                     # 获取参数值
-                    param_value = self._extract_value_from_output_data(param_name, data_dict, param_config)
-                    
+                    param_value = self._extract_value_from_output_data(
+                        param_name, data_dict, param_config)
+
                     if param_value is not None:
                         # 获取期望的类型
                         raw_expected_type = param_config.get("type", "string")
-                        
+
                         # 映射类型到变量系统支持的类型
                         type_mapping = {
                             "integer": "number",  # integer 映射到 number
-                            "int": "number",      # int 映射到 number  
+                            "int": "number",      # int 映射到 number
                             "float": "number",    # float 映射到 number
                             "str": "string",      # str 映射到 string
                             "bool": "boolean",    # bool 映射到 boolean
                             "dict": "object",     # dict 映射到 object
                         }
-                        expected_type = type_mapping.get(raw_expected_type, raw_expected_type)
-                        
+                        expected_type = type_mapping.get(
+                            raw_expected_type, raw_expected_type)
+                        if expected_type.lower() == "anyof":
+                            # 处理 anyOf 类型，暂时取第一个类型作为期望类型
+                            expected_type_list = param_config.get(
+                                "type_list", [])
+                            for i, et in enumerate(expected_type_list):
+                                if et in type_mapping:
+                                    expected_type_list[i] = type_mapping[et]
+                        else:
+                            expected_type_list = [expected_type]
+                        value_validated = False
+                        for et in expected_type_list:
+                            if self._validate_output_value_type(param_value, et):
+                                expected_type = et
+                                value_validated = True
+                                break
                         # 进行类型验证
-                        if not self._validate_output_value_type(param_value, expected_type):
+                        if not value_validated:
                             error_msg = (f"输出参数 '{param_name}' 类型不匹配。"
-                                       f"期望: {expected_type}, "
-                                       f"实际: {type(param_value).__name__}({param_value})")
+                                         f"期望: {expected_type}, "
+                                         f"实际: {type(param_value).__name__}({param_value})")
                             logger.error(f"[StepExecutor] {error_msg}")
                             failed_params.append(f"{param_name}: {error_msg}")
                             continue
-                        
+
                         # 构造变量名
                         var_name = f"{var_prefix}{param_name}"
-                        
+
                         # 保存到对话变量池
                         success = await VariableIntegration.save_conversation_variable(
                             var_name=var_name,
@@ -324,39 +350,45 @@ class StepExecutor(BaseExecutor):
                             var_type=expected_type,
                             description=param_config.get("description", ""),
                             user_sub=self.task.ids.user_sub,
-                            flow_id=self.task.state.flow_id, # type: ignore[arg-type]
+                            # type: ignore[arg-type]
+                            flow_id=self.task.state.flow_id,
                             conversation_id=self.task.ids.conversation_id
                         )
-                        
+
                         if success:
                             saved_count += 1
-                            logger.debug(f"[StepExecutor] 已保存输出参数变量: conversation.{var_name} = {param_value}")
+                            logger.debug(
+                                f"[StepExecutor] 已保存输出参数变量: conversation.{var_name} = {param_value}")
                         else:
                             error_msg = f"保存输出参数变量失败: {var_name}"
                             logger.warning(f"[StepExecutor] {error_msg}")
                             failed_params.append(f"{param_name}: {error_msg}")
-                            
+
                 except Exception as e:
                     error_msg = f"处理输出参数失败: {str(e)}"
-                    logger.warning(f"[StepExecutor] 保存输出参数 {param_name} 失败: {e}")
+                    logger.warning(
+                        f"[StepExecutor] 保存输出参数 {param_name} 失败: {e}")
                     failed_params.append(f"{param_name}: {error_msg}")
 
             # 如果有失败的参数，将步骤状态设置为失败
             if failed_params:
-                from apps.schemas.enum_var import StepStatus
-                self.task.state.step_status = StepStatus.FAILED # type: ignore[assignment]
-                
+
+                # type: ignore[assignment]
+                self.task.state.step_status = StepStatus.ERROR
+
                 failure_msg = f"输出参数类型验证失败:\n" + "\n".join(failed_params)
-                logger.error(f"[StepExecutor] 步骤 {self.step.step_id} 执行失败: {failure_msg}")
-                
+                logger.error(
+                    f"[StepExecutor] 步骤 {self.step.step_id} 执行失败: {failure_msg}")
+
                 # 保存错误信息到任务状态
                 if not hasattr(self.task.state, 'error_info') or self.task.state.error_info is None:
                     self.task.state.error_info = {}
-                self.task.state.error_info['output_validation_errors'] = failed_params # type: ignore[assignment]
-                
+                # type: ignore[assignment]
+                self.task.state.error_info['output_validation_errors'] = failed_params
+
                 # 抛出异常以停止工作流执行
                 raise ValueError(f"步骤输出参数类型验证失败: {failure_msg}")
-            
+
             if saved_count > 0:
                 logger.info(f"[StepExecutor] 已保存 {saved_count} 个输出参数到变量池")
 
@@ -366,18 +398,18 @@ class StepExecutor(BaseExecutor):
                 raise
             logger.error(f"[StepExecutor] 保存输出参数到变量池失败: {e}")
             # 对于其他意外错误，也将步骤设置为失败
-            from apps.schemas.enum_var import StepStatus
-            self.task.state.step_status = StepStatus.FAILED # type: ignore[assignment]
+            # type: ignore[assignment]
+            self.task.state.step_status = StepStatus.ERROR
             raise
 
     def _extract_value_from_output_data(self, param_name: str, output_data: dict[str, Any], param_config: dict) -> Any:
         """从输出数据中提取参数值"""
         # 支持多种提取方式
-        
+
         # 1. 直接从输出数据中获取同名key
         if param_name in output_data:
             return output_data[param_name]
-        
+
         # 2. 支持路径提取（例如：result.data.value）
         if "path" in param_config:
             path = param_config["path"]
@@ -388,15 +420,15 @@ class StepExecutor(BaseExecutor):
                 else:
                     return None
             return current_data
-        
+
         # 3. 支持默认值
         if "default" in param_config:
             return param_config["default"]
-        
+
         # 4. 如果参数配置为"full_output"，返回完整输出
         if param_config.get("source") == "full_output":
             return output_data
-        
+
         return None
 
     def _validate_output_value_type(self, value: Any, expected_type: str) -> bool:
@@ -404,7 +436,7 @@ class StepExecutor(BaseExecutor):
         try:
             if expected_type == "string":
                 return isinstance(value, str)
-            elif expected_type in ["number", "integer"]:
+            elif expected_type == "number":
                 return isinstance(value, (int, float))
             elif expected_type == "boolean":
                 return isinstance(value, bool)
@@ -416,11 +448,11 @@ class StepExecutor(BaseExecutor):
                 return True  # 任何类型都匹配
             else:
                 # 对于未知类型，默认接受字符串
-                logger.warning(f"[StepExecutor] 未知的期望类型: {expected_type}，默认验证为字符串")
+                logger.warning(
+                    f"[StepExecutor] 未知的期望类型: {expected_type}，默认验证为字符串")
                 return isinstance(value, str)
         except Exception:
             return False
-
 
     async def run(self) -> None:
         """运行单个步骤"""
@@ -430,20 +462,23 @@ class StepExecutor(BaseExecutor):
         await self._run_slot_filling()
 
         # 更新状态
-        self.task.state.step_status = StepStatus.RUNNING  # type: ignore[arg-type]
+        # type: ignore[arg-type]
+        self.task.state.step_status = StepStatus.RUNNING
         self.task.tokens.time = round(datetime.now(UTC).timestamp(), 2)
         # 推送输入
         await self.push_message(EventType.STEP_INPUT.value, self.obj.input)
 
         # 执行步骤
-        iterator = self.obj.exec(self, self.obj.input, language=self.task.language)
+        iterator = self.obj.exec(self, self.obj.input,
+                                 language=self.task.language)
 
         try:
             content = await self._process_chunk(iterator, to_user=self.obj.to_user)
         except Exception as e:
             logger.exception("[StepExecutor] 运行步骤失败，进行异常处理步骤")
-            self.task.state.step_status = StepStatus.ERROR  # type: ignore[arg-type]
-            
+            # type: ignore[arg-type]
+            self.task.state.step_status = StepStatus.ERROR
+
             # 构建错误输出数据
             if isinstance(e, CallError):
                 error_output = {
@@ -465,23 +500,26 @@ class StepExecutor(BaseExecutor):
                     "err_msg": str(e),
                     "data": {},
                 }
-            
+
             # 发送包含错误信息的输出
             await self.push_message(EventType.STEP_OUTPUT.value, error_output)
             return
 
         # 更新执行状态
-        self.task.state.step_status = StepStatus.SUCCESS  # type: ignore[arg-type]
+        # type: ignore[arg-type]
+        self.task.state.step_status = StepStatus.SUCCESS
         self.task.tokens.input_tokens += self.obj.tokens.input_tokens
         self.task.tokens.output_tokens += self.obj.tokens.output_tokens
-        self.task.tokens.full_time += round(datetime.now(UTC).timestamp(), 2) - self.task.tokens.time
+        self.task.tokens.full_time += round(datetime.now(
+            UTC).timestamp(), 2) - self.task.tokens.time
 
         # 更新history
         if isinstance(content, str):
             # 处理空字符串的情况，避免TextAddContent验证失败
             if not content:
                 content = " "  # 使用一个空格作为占位符
-            output_data = TextAddContent(text=content).model_dump(exclude_none=True, by_alias=True)
+            output_data = TextAddContent(text=content).model_dump(
+                exclude_none=True, by_alias=True)
         else:
             output_data = content
 
@@ -502,9 +540,10 @@ class StepExecutor(BaseExecutor):
             output_data=output_data,
         )
         self.task.context.append(history)
-        
+
         try:
             await self.push_message(EventType.STEP_OUTPUT.value, output_data)
         except Exception as e:
-            logger.error(f"[StepExecutor] {self.step.step.name} - push_message调用失败: {e}")
+            logger.error(
+                f"[StepExecutor] {self.step.step.name} - push_message调用失败: {e}")
             raise
