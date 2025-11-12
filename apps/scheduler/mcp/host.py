@@ -28,6 +28,7 @@ class MCPHost:
     def __init__(
         self,
         user_sub: str,
+        mcp_ids: list[str],
         task_id: str,
         runtime_id: str,
         runtime_name: str,
@@ -35,6 +36,7 @@ class MCPHost:
     ) -> None:
         """初始化MCP宿主"""
         self._user_sub = user_sub
+        self.mcp_ids = mcp_ids
         self._task_id = task_id
         self.language = language
         # 注意：runtime在工作流中是flow_id和step_description，在Agent中可为标识Agent的id和description
@@ -47,6 +49,9 @@ class MCPHost:
             trim_blocks=True,
             lstrip_blocks=True,
         )
+        self.mcp_pool = MCPPool()
+        for mcp_id in mcp_ids:
+            self.mcp_pool._init_mcp(mcp_id, user_sub)
 
     async def get_client(self, mcp_id: str) -> MCPClient | None:
         """获取MCP客户端"""
@@ -61,9 +66,10 @@ class MCPHost:
 
         # 获取MCP配置
         try:
-            return await MCPPool().get(mcp_id, self._user_sub)
+            return await self.mcp_pool.get(mcp_id, self._user_sub)
         except KeyError:
-            logger.warning("用户 %s 的MCP %s 没有运行中的实例，请检查环境", self._user_sub, mcp_id)
+            logger.warning("用户 %s 的MCP %s 没有运行中的实例，请检查环境",
+                           self._user_sub, mcp_id)
             return None
 
     async def assemble_memory(self) -> str:
@@ -75,7 +81,8 @@ class MCPHost:
 
         context_list = []
         for ctx_id in self._context_list:
-            context = next((ctx for ctx in task.context if ctx.id == ctx_id), None)
+            context = next(
+                (ctx for ctx in task.context if ctx.id == ctx_id), None)
             if not context:
                 continue
             context_list.append(context)
@@ -126,7 +133,8 @@ class MCPHost:
             logger.error("任务 %s 不存在", self._task_id)
             return {}
         self._context_list.append(context.id)
-        task.context.append(context.model_dump(exclude_none=True, by_alias=True))
+        task.context.append(context.model_dump(
+            exclude_none=True, by_alias=True))
         await TaskManager.save_task(self._task_id, task)
 
         return output_data
@@ -154,7 +162,7 @@ class MCPHost:
     async def call_tool(self, tool: MCPTool, plan_item: MCPPlanItem) -> list[dict[str, Any]]:
         """调用工具"""
         # 拿到Client
-        client = await MCPPool().get(tool.mcp_id, self._user_sub)
+        client = await self.mcp_pool.get(tool.mcp_id, self._user_sub)
         if client is None:
             err = f"[MCPHost] MCP Server不合法: {tool.mcp_id}"
             logger.error(err)
@@ -163,6 +171,7 @@ class MCPHost:
         # 填充参数
         params = await self._fill_params(tool, plan_item.instruction)
         # 调用工具
+        logging.error(f"{tool} {plan_item} {params}")
         result = await client.call_tool(tool.name, params)
         # 保存记忆
         processed_result = []
@@ -192,7 +201,8 @@ class MCPHost:
                 for tool in mcp_db_result["tools"]:
                     tool_list.extend([MCPTool.model_validate(tool)])
             except KeyError:
-                logger.warning("用户 %s 的MCP Tool %s 配置错误", self._user_sub, mcp_id)
+                logger.warning("用户 %s 的MCP Tool %s 配置错误",
+                               self._user_sub, mcp_id)
                 continue
 
         return tool_list
