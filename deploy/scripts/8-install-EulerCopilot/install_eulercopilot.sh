@@ -906,12 +906,12 @@ modify_yaml() {
     # 如果不需要保留模型配置，则添加模型相关的参数
     if [[ "$preserve_models" != [Yy]* ]]; then
         set_args+=(
+	    "--set" "models.answer.provider=ollama"
             "--set" "models.answer.endpoint=http://$host:11434/v1"
             "--set" "models.answer.key=sk-123456"
             "--set" "models.answer.name=deepseek-llm-7b-chat:latest"
-            "--set" "models.functionCall.backend=ollama"
-            "--set" "models.functionCall.endpoint=http://$host:11434"
-            "--set" "models.embedding.type=openai"
+            "--set" "models.functionCall.provider=ollama"
+            "--set" "models.embedding.provider=ollama"
             "--set" "models.embedding.endpoint=http://$host:11434/v1"
             "--set" "models.embedding.key=sk-123456"
             "--set" "models.embedding.name=bge-m3:latest"
