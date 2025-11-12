@@ -56,9 +56,10 @@ class ReasoningContent:
                         # <think>在内容中间，分离前后部分
                         parts = content.split(token, 1)
                         text = parts[0]  # <think>之前的内容作为普通文本
-                        reason = "<think>" + (parts[1] if len(parts) > 1 else "")
+                        reason = "<think>" + \
+                            (parts[1] if len(parts) > 1 else "")
                     break
-            
+
             # 如果没有检测到思维链标记，将内容作为普通文本
             if not self.is_reasoning:
                 text = content
@@ -107,9 +108,10 @@ class ReasoningContent:
                         # </think>在内容中间，分离前后部分
                         parts = content.split(token, 1)
                         reason = parts[0] + "</think>"
-                        text = parts[1] if len(parts) > 1 else ""  # </think>之后的内容作为普通文本
+                        # </think>之后的内容作为普通文本
+                        text = parts[1] if len(parts) > 1 else ""
                     break
-            
+
             if not end_token_found:
                 if self.is_reasoning:
                     # 仍在推理中，将内容作为推理内容
@@ -135,18 +137,19 @@ class ReasoningLLM:
         else:
             self._config: LLMConfig = llm_config
             self._init_client()
-        
+
         # 初始化适配器
         # 优先使用配置中的provider，如果没有则从endpoint推断
         if hasattr(self._config, 'provider') and self._config.provider:
             self._provider = self._config.provider
         else:
             self._provider = get_provider_from_endpoint(self._config.endpoint)
-        self._adapter = AdapterFactory.create_adapter(self._provider, self._config.model)
+        self._adapter = AdapterFactory.create_adapter(
+            self._provider, self._config.model)
 
     def _init_client(self) -> None:
         """初始化OpenAI客户端"""
-        if not self._config.key:
+        if not self._config.api_key:
             self._client = AsyncOpenAI(
                 base_url=self._config.endpoint,
             )
@@ -187,10 +190,10 @@ class ReasoningLLM:
         """创建流式响应"""
         if model is None:
             model = self._config.model
-        
+
         # 处理思维链控制
         messages_copy = [msg.copy() for msg in messages]
-        
+
         # 如果不支持原生thinking，使用prompt方式控制
         if self._adapter.should_use_prompt_thinking(enable_thinking):
             # 启用思维链但模型不支持原生thinking，不添加/no_think
@@ -204,7 +207,7 @@ class ReasoningLLM:
                 else:
                     messages_copy.append(
                         {"role": "user", "content": "/no_think"})
-        
+
         # 构建基础参数
         base_params = {
             "model": model,
@@ -215,13 +218,13 @@ class ReasoningLLM:
             "stream_options": {"include_usage": True},
             "timeout": 300,
         }
-        
+
         # 初始化 extra_body
         extra_body_params = {}
-        
+
         # enable_thinking 始终放在 extra_body 中
         extra_body_params["enable_thinking"] = enable_thinking
-        
+
         # 添加扩展参数到 extra_body（这些参数不被标准 OpenAI SDK 支持）
         if frequency_penalty is not None:
             extra_body_params["frequency_penalty"] = frequency_penalty
@@ -234,24 +237,26 @@ class ReasoningLLM:
         if top_p is not None:
             # top_p 是标准参数，但某些 provider 可能需要特殊处理
             base_params["top_p"] = top_p
-        
+
         # 只有当有扩展参数时才添加 extra_body
         if extra_body_params:
             base_params["extra_body"] = extra_body_params
-        
+
         # 使用适配器调整参数
-        adapted_params = self._adapter.adapt_create_params(base_params, enable_thinking)
-        
+        adapted_params = self._adapter.adapt_create_params(
+            base_params, enable_thinking)
+
         logger.info(f"[{self._provider}] 调用参数: model={model}, enable_thinking={enable_thinking}, "
-                   f"supports_native_thinking={self._adapter.capabilities.supports_enable_thinking}")
-        
+                    f"supports_native_thinking={self._adapter.capabilities.supports_enable_thinking}")
+
         # 打印完整请求体（排除messages内容以避免日志过长）
         log_params = adapted_params.copy()
         if 'messages' in log_params:
             log_params['messages'] = f"<{len(log_params['messages'])} messages>"
         logger.info(f"[{self._provider}] 请求体: {log_params}")
-        
-        return await self._client.chat.completions.create(**adapted_params)  # type: ignore[]
+
+        # type: ignore[]
+        return await self._client.chat.completions.create(**adapted_params)
 
     async def call(  # noqa: C901, PLR0912, PLR0913
         self,
@@ -279,10 +284,10 @@ class ReasoningLLM:
             model = self._config.model
         msg_list = self._validate_messages(messages)
         stream = await self._create_stream(
-            msg_list, 
-            max_tokens, 
-            temperature, 
-            model, 
+            msg_list,
+            max_tokens,
+            temperature,
+            model,
             enable_thinking,
             frequency_penalty,
             presence_penalty,
@@ -326,7 +331,7 @@ class ReasoningLLM:
             yield result
 
         logger.info("[Reasoning] 推理内容: %s\n\n%s", reasoning_content, result)
-        
+
         # 如果streaming模式下没有返回任何text，至少返回一个空格
         # 避免下游处理空字符串时出错
         if streaming and not result:
