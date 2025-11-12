@@ -662,14 +662,40 @@ class LLMProviderInfo(BaseModel):
     is_editable: bool = Field(default=True, description="是否可编辑", alias="isEditable")
     type: list[str] = Field(default=['chat'], description="模型类型列表")
     
-    # 模型能力字段
+    # 模型能力字段 - 基础能力
     provider: str = Field(default="", description="模型提供商")
-    supports_thinking: bool = Field(default=False, description="是否支持思维链", alias="supportsThinking")
-    can_toggle_thinking: bool = Field(default=False, description="是否支持开关思维链", alias="canToggleThinking")
+    supports_streaming: bool = Field(default=True, description="是否支持流式输出", alias="supportsStreaming")
     supports_function_calling: bool = Field(default=True, description="是否支持函数调用", alias="supportsFunctionCalling")
     supports_json_mode: bool = Field(default=True, description="是否支持JSON模式", alias="supportsJsonMode")
     supports_structured_output: bool = Field(default=False, description="是否支持结构化输出", alias="supportsStructuredOutput")
+    
+    # 推理能力
+    supports_thinking: bool = Field(default=False, description="是否支持思维链", alias="supportsThinking")
+    can_toggle_thinking: bool = Field(default=False, description="是否支持开关思维链", alias="canToggleThinking")
+    supports_reasoning_content: bool = Field(default=False, description="是否返回reasoning_content字段", alias="supportsReasoningContent")
+    
+    # 参数支持
     max_tokens_param: str = Field(default="max_tokens", description="最大token参数名", alias="maxTokensParam")
+    supports_temperature: bool = Field(default=True, description="是否支持temperature参数", alias="supportsTemperature")
+    supports_top_p: bool = Field(default=True, description="是否支持top_p参数", alias="supportsTopP")
+    supports_top_k: bool = Field(default=False, description="是否支持top_k参数", alias="supportsTopK")
+    supports_frequency_penalty: bool = Field(default=False, description="是否支持frequency_penalty参数", alias="supportsFrequencyPenalty")
+    supports_presence_penalty: bool = Field(default=False, description="是否支持presence_penalty参数", alias="supportsPresencePenalty")
+    supports_min_p: bool = Field(default=False, description="是否支持min_p参数", alias="supportsMinP")
+    
+    # 高级功能
+    supports_response_format: bool = Field(default=True, description="是否支持response_format参数", alias="supportsResponseFormat")
+    supports_tools: bool = Field(default=True, description="是否支持tools参数", alias="supportsTools")
+    supports_tool_choice: bool = Field(default=True, description="是否支持tool_choice参数", alias="supportsToolChoice")
+    supports_extra_body: bool = Field(default=True, description="是否支持extra_body参数", alias="supportsExtraBody")
+    supports_stream_options: bool = Field(default=True, description="是否支持stream_options参数", alias="supportsStreamOptions")
+    
+    # 特殊参数
+    supports_enable_thinking: bool = Field(default=False, description="是否支持enable_thinking参数", alias="supportsEnableThinking")
+    supports_thinking_budget: bool = Field(default=False, description="是否支持思维链token预算", alias="supportsThinkingBudget")
+    supports_enable_search: bool = Field(default=False, description="是否支持联网搜索", alias="supportsEnableSearch")
+    
+    # 其他信息
     notes: str = Field(default="", description="备注信息")
 
 

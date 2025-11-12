@@ -56,8 +56,11 @@ class API(CoreCall, input_model=APIInput, output_model=APIOutput):
     content_type: ContentType | None = Field(description="API接口的Content-Type", default=None)
     timeout: int = Field(description="工具超时时间", default=300, gt=30)
 
-    body: dict[str, Any] = Field(description="已知的部分请求体", default={})
-    query: dict[str, Any] = Field(description="已知的部分请求参数", default={})
+    headers: dict[str, Any] = Field(description="API接口的请求头", default={})
+    query: dict[str, Any] = Field(description="API接口的请求参数", default={})
+    json_body: Any = Field(description="JSON格式的请求体", default=None, alias="json")
+    formData: Any = Field(description="Form Data格式的请求体", default=None)
+    xWwwFormUrlencoded: Any = Field(description="x-www-form-urlencoded格式的请求体", default=None)
 
     i18n_info: ClassVar[dict[str, dict]] = {
         LanguageType.CHINESE: {
@@ -103,8 +106,11 @@ class API(CoreCall, input_model=APIInput, output_model=APIOutput):
         return APIInput(
             url=self.url,
             method=self.method,
+            headers=self.headers,
             query=self.query,
-            body=self.body,
+            json_body=self.json_body,
+            formData=self.formData,
+            xWwwFormUrlencoded=self.xWwwFormUrlencoded,
         )
 
     async def _exec(
@@ -134,18 +140,26 @@ class API(CoreCall, input_model=APIInput, output_model=APIOutput):
             req_cookie = {}
             req_params = {}
 
+        # 合并headers字典
+        if data.headers:
+            req_header.update(data.headers)
+
+        # 合并query字典
+        if data.query:
+            req_params.update(data.query)
+
         # 创建请求工厂
         request_factory = partial(
             self._client.request,
             method=self.method,
             url=self.url,
             cookies=req_cookie,
+            headers=req_header,
         )
 
         # 根据HTTP方法创建请求
         if self.method in [HTTPMethod.GET.value, HTTPMethod.DELETE.value]:
             # GET/DELETE 请求处理
-            req_params.update(data.query)
             return await request_factory(params=req_params)
 
         if self.method in [HTTPMethod.POST.value, HTTPMethod.PUT.value, HTTPMethod.PATCH.value]:
@@ -153,9 +167,23 @@ class API(CoreCall, input_model=APIInput, output_model=APIOutput):
             if not self.content_type:
                 raise CallError(message="API接口的Content-Type未指定", data={})
 
-            # 根据Content-Type设置请求参数
-            req_body = data.body
-            req_header.update({"Content-Type": self.content_type})
+            # 根据Content-Type获取请求体数据
+            req_body = None
+            if self.content_type == ContentType.JSON.value:
+                req_body = data.json_body
+                # 如果json字段是字符串，需要解析成对象
+                if isinstance(req_body, str):
+                    try:
+                        req_body = json.loads(req_body)
+                    except Exception as e:
+                        raise CallError(
+                            message="API接口的JSON请求体格式错误",
+                            data={"json": req_body},
+                        ) from e
+            elif self.content_type == ContentType.FORM_URLENCODED.value:
+                req_body = data.xWwwFormUrlencoded
+            elif self.content_type == ContentType.MULTIPART_FORM_DATA.value:
+                req_body = data.formData
 
             # 根据Content-Type决定如何发送请求体
             content_type_handlers = {
@@ -169,8 +197,9 @@ class API(CoreCall, input_model=APIInput, output_model=APIOutput):
                 raise CallError(message="API接口的Content-Type不支持", data={})
 
             request_kwargs = {}
-            request_kwargs.update(handler(req_body, files))
-            return await request_factory(**request_kwargs)
+            if req_body is not None:
+                request_kwargs.update(handler(req_body, files))
+            return await request_factory(params=req_params, **request_kwargs)
 
         raise CallError(message="API接口的HTTP Method不支持", data={})
 
