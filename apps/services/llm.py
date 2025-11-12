@@ -3,6 +3,7 @@
 
 import logging
 
+
 from apps.common.config import Config
 from apps.common.mongo import MongoDB
 from apps.schemas.config import EmbeddingConfig, RerankerConfig, LLMConfig, FunctionCallConfig
@@ -12,6 +13,7 @@ from apps.schemas.request_data import (
 )
 from apps.schemas.response_data import LLMProvider, LLMProviderInfo
 from apps.templates.generate_llm_operator_config import llm_provider_dict
+from apps.llm.schema import DefaultModelId
 from apps.llm.model_registry import model_registry
 from apps.llm.adapters import get_provider_from_endpoint
 
@@ -688,13 +690,9 @@ class LLMManager:
         delete_result = await llm_collection.delete_many({"user_sub": ""})
         logger.info(f"[LLMManager] 清理了 {delete_result.deleted_count} 个旧系统模型")
 
-        default_embedding_id = "default-embedding-model"
-        default_reranker_id = "default-reranker-model"
-        default_chat_id = "default-chat-model"
-        default_function_call_id = "default-function-call-model"
         # 初始化embedding模型
         await LLMManager._init_system_model(
-            default_embedding_id,
+            DefaultModelId.DEFAULT_EMBEDDING_MODEL_ID.value,
             "embedding",
             config.embedding,
             "System Embedding Model"
@@ -702,21 +700,21 @@ class LLMManager:
 
         # 初始化reranker模型
         await LLMManager._init_system_model(
-            default_reranker_id,
+            DefaultModelId.DEFAULT_RERANKER_MODEL_ID.value,
             "reranker",
             config.reranker,
             "System Reranker Model"
         )
         # 初始化chat模型
         await LLMManager._init_system_model(
-            default_chat_id,
+            DefaultModelId.DEFAULT_CHAT_MODEL_ID.value,
             "chat",
             config.llm,
             "System Chat Model"
         )
         # 初始化function_call模型
         await LLMManager._init_system_model(
-            default_function_call_id,
+            DefaultModelId.DEFAULT_FUNCTION_CALL_MODEL_ID.value,
             "function_call",
             config.function_call,
             "System Function Call Model"
