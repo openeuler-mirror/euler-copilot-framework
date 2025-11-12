@@ -13,6 +13,7 @@ class VariableType(StrEnum):
     FILE = "file"
 
     # 数组类型
+    ARRAY = "array"
     ARRAY_ANY = "array[any]"
     ARRAY_STRING = "array[string]"
     ARRAY_NUMBER = "array[number]"
@@ -33,8 +34,9 @@ class VariableType(StrEnum):
         """获取数组元素类型"""
         if not self.is_array_type():
             return None
-        
+
         element_type_map = {
+            VariableType.ARRAY: None,  # 未指定元素类型
             VariableType.ARRAY_ANY: None,  # any类型无法确定具体元素类型
             VariableType.ARRAY_STRING: VariableType.STRING,
             VariableType.ARRAY_NUMBER: VariableType.NUMBER,
@@ -56,6 +58,7 @@ class VariableScope(StrEnum):
 
 # 数组类型集合
 _ARRAY_TYPES = frozenset([
+    VariableType.ARRAY,
     VariableType.ARRAY_ANY,
     VariableType.ARRAY_STRING,
     VariableType.ARRAY_NUMBER,

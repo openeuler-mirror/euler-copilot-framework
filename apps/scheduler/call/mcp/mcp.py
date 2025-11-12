@@ -84,6 +84,7 @@ class MCP(CoreCall, input_model=MCPInput, output_model=MCPOutput):
         app = await AppCenterManager.fetch_app_data_by_id(call_vars.ids.app_id)
         self._host = MCPHost(app.author, self.mcp_list, call_vars.ids.task_id,
                              call_vars.ids.flow_id, self.description)
+        await self._host.init_mcp_pool()
         self._tool_list = await self._host.get_tool_list(self.mcp_list)
         self._call_vars = call_vars
 
