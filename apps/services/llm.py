@@ -5,6 +5,7 @@ import logging
 
 from apps.common.config import Config
 from apps.common.mongo import MongoDB
+from apps.schemas.config import EmbeddingConfig, RerankerConfig, LLMConfig, FunctionCallConfig
 from apps.schemas.collection import LLM, LLMItem
 from apps.schemas.request_data import (
     UpdateLLMReq,
@@ -515,7 +516,7 @@ class LLMManager:
         return llm_list
 
     @staticmethod
-    async def _init_system_model(model_id: str, model_type: str, model_config, title: str):
+    async def _init_system_model(model_id: str, model_type: str, model_config: EmbeddingConfig | RerankerConfig | LLMConfig | FunctionCallConfig, title: str):
         """
         初始化系统模型的通用方法
 

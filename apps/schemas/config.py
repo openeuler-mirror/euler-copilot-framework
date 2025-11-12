@@ -37,7 +37,8 @@ class OIDCConfig(BaseModel):
     login_api: str = Field(description="EulerCopilot登录API")
     app_id: str = Field(description="OIDC AppID")
     app_secret: str = Field(description="OIDC App Secret")
-    redirect_settings_url: str | None = Field(description="用户设置页面重定向URL", default=None)
+    redirect_settings_url: str | None = Field(
+        description="用户设置页面重定向URL", default=None)
 
 
 class AutheliaConfig(BaseModel):
@@ -49,14 +50,16 @@ class AutheliaConfig(BaseModel):
     redirect_uri: str = Field(description="重定向URI")
     enable_pkce: bool = Field(description="是否启用PKCE", default=True)
     pkce_challenge_method: str = Field(description="PKCE挑战方法", default="S256")
-    redirect_settings_url: str | None = Field(description="用户设置页面重定向URL", default=None)
+    redirect_settings_url: str | None = Field(
+        description="用户设置页面重定向URL", default=None)
 
 
 class OpenEulerConfig(BaseModel):
     """OpenEuler认证配置"""
 
     host: str = Field(description="OpenEuler服务路径")
-    redirect_settings_url: str | None = Field(description="用户设置页面重定向URL", default=None)
+    redirect_settings_url: str | None = Field(
+        description="用户设置页面重定向URL", default=None)
 
 
 class FixedUserConfig(BaseModel):
@@ -141,7 +144,7 @@ class LLMConfig(BaseModel):
     """LLM配置"""
 
     provider: str = Field(description="LLM提供商")
-    key: str = Field(description="LLM API密钥")
+    api_key: str = Field(description="LLM API密钥")
     endpoint: str = Field(description="LLM API URL地址")
     model: str = Field(description="LLM API 模型名")
     max_tokens: int | None = Field(
