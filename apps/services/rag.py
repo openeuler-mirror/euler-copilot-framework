@@ -365,12 +365,12 @@ Please generate a detailed, well-structured, and clearly formatted answer based 
             LLMConfig(
                 provider=llm.provider,
                 endpoint=llm.openai_base_url,
-                key=llm.openai_api_key,
+                api_key=llm.openai_api_key,
                 model=llm.model_name,
                 max_tokens=llm.max_tokens,
             )
         )
-        
+
         # 用于问题改写的LLM
         if history:
             try:
@@ -381,15 +381,16 @@ Please generate a detailed, well-structured, and clearly formatted answer based 
                     user_sub,
                     app_llm_id=None  # 无应用对话不传递应用模型ID，使用用户preference或系统默认
                 )
-                
+
                 # 如果没有找到函数调用模型，使用对话模型作为降级方案
                 if not function_call_model_id:
                     logger.warning("[RAG] 未找到函数调用模型，使用对话模型进行问题改写")
                     function_call_model_id = llm.id
                 else:
                     logger.info(f"[RAG] 问题改写使用模型: {function_call_model_id}")
-                
-                question_obj = QuestionRewrite(llm_id=function_call_model_id, enable_thinking=False)
+
+                question_obj = QuestionRewrite(
+                    llm_id=function_call_model_id, enable_thinking=False)
                 data.query = await question_obj.generate(
                     history=history, question=data.query, language=language
                 )

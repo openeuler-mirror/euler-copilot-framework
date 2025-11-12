@@ -246,7 +246,7 @@ class Scheduler:
             LLMConfig(
                 provider=llm.provider,
                 endpoint=llm.openai_base_url,
-                key=llm.openai_api_key,
+                api_key=llm.openai_api_key,
                 model=llm.model_name,
                 max_tokens=llm.max_tokens,
             )

@@ -31,7 +31,7 @@ class LLM(CoreCall, input_model=LLMInput, output_model=LLMOutput):
 
     to_user: bool = Field(default=True)
     controlled_output: bool = Field(default=True)
-    
+
     # 输出参数配置
     output_parameters: dict[str, Any] = Field(description="输出参数配置", default={
         "reply": {"type": "string", "description": "大模型的回复内容"},
@@ -39,7 +39,7 @@ class LLM(CoreCall, input_model=LLMInput, output_model=LLMOutput):
 
     # 模型配置
     llmId: str = Field(description="大模型ID", default="")
-    
+
     # 大模型基础参数
     temperature: float = Field(description="大模型温度（随机化程度）", default=0.7)
     enable_temperature: bool = Field(description="是否启用温度参数", default=True)
@@ -51,11 +51,13 @@ class LLM(CoreCall, input_model=LLMInput, output_model=LLMOutput):
         description="大模型系统提示词", default="You are a helpful assistant.")
     user_prompt: str = Field(description="大模型用户提示词",
                              default=LLM_DEFAULT_PROMPT)
-    
+
     # 新增参数配置
-    enable_frequency_penalty: bool = Field(description="是否启用频率惩罚", default=False)
+    enable_frequency_penalty: bool = Field(
+        description="是否启用频率惩罚", default=False)
     frequency_penalty: float = Field(description="频率惩罚", default=0.0)
-    enable_presence_penalty: bool = Field(description="是否启用内容重复度惩罚", default=False)
+    enable_presence_penalty: bool = Field(
+        description="是否启用内容重复度惩罚", default=False)
     presence_penalty: float = Field(description="内容重复度惩罚", default=0.0)
     enable_min_p: bool = Field(description="是否启用动态过滤阈值", default=False)
     min_p: float = Field(description="动态过滤阈值", default=0.0)
@@ -65,7 +67,8 @@ class LLM(CoreCall, input_model=LLMInput, output_model=LLMOutput):
     top_p: float = Field(description="Top-P采样值", default=0.9)
     enable_search: bool = Field(description="是否启用联网搜索", default=False)
     enable_json_mode: bool = Field(description="是否启用JSON模式输出", default=False)
-    enable_structured_output: bool = Field(description="是否启用结构化输出", default=False)
+    enable_structured_output: bool = Field(
+        description="是否启用结构化输出", default=False)
 
     i18n_info: ClassVar[dict[str, dict]] = {
         LanguageType.CHINESE: {
@@ -147,33 +150,34 @@ class LLM(CoreCall, input_model=LLMInput, output_model=LLMOutput):
             if self.llmId:
                 from apps.services.llm import LLMManager
                 from apps.llm.adapters import get_provider_from_endpoint
-                
+
                 llm_info = await LLMManager.get_llm_by_id(self.llmId)
                 if llm_info:
                     from apps.schemas.config import LLMConfig
-                    
+
                     # 获取provider，如果没有则从endpoint推断
-                    provider = llm_info.provider or get_provider_from_endpoint(llm_info.openai_base_url)
-                    
+                    provider = llm_info.provider or get_provider_from_endpoint(
+                        llm_info.openai_base_url)
+
                     llm_config = LLMConfig(
                         provider=provider,
                         endpoint=llm_info.openai_base_url,
-                        key=llm_info.openai_api_key,
+                        api_key=llm_info.openai_api_key,
                         model=llm_info.model_name,
                         max_tokens=llm_info.max_tokens,
                         temperature=self.temperature if self.enable_temperature else 0.7,
                     )
-            
+
             # 初始化LLM客户端（会自动加载适配器）
             llm = ReasoningLLM(llm_config) if llm_config else ReasoningLLM()
-            
+
             # 准备参数，只传递enable为True的参数
             call_params = {
                 "messages": data.message,
                 "enable_thinking": self.enable_thinking,
                 "temperature": self.temperature if self.enable_temperature else None,
             }
-            
+
             # 添加可选参数（只在enable为True时传递）
             if self.enable_frequency_penalty:
                 call_params["frequency_penalty"] = self.frequency_penalty
@@ -185,7 +189,7 @@ class LLM(CoreCall, input_model=LLMInput, output_model=LLMOutput):
                 call_params["top_k"] = self.top_k
             if self.enable_top_p:
                 call_params["top_p"] = self.top_p
-            
+
             async for chunk in llm.call(**call_params):
                 if not chunk:
                     continue
@@ -193,11 +197,12 @@ class LLM(CoreCall, input_model=LLMInput, output_model=LLMOutput):
                 yield CallOutputChunk(type=CallOutputType.TEXT, content=chunk)
             self.tokens.input_tokens = llm.input_tokens
             self.tokens.output_tokens = llm.output_tokens
-            
+
             # 最后输出一个DATA chunk，包含完整的输出数据，用于保存到变量池
             yield CallOutputChunk(
                 type=CallOutputType.DATA,
-                content=LLMOutput(reply=full_reply).model_dump(by_alias=True, exclude_none=True)
+                content=LLMOutput(reply=full_reply).model_dump(
+                    by_alias=True, exclude_none=True)
             )
         except Exception as e:
             raise CallError(message=f"大模型调用失败：{e!s}", data={}) from e

@@ -42,7 +42,7 @@ class QuestionRewrite(CorePattern):
         enable_thinking: bool = False,
     ) -> None:
         """初始化问题改写模式
-        
+
         :param system_prompt: 系统提示词
         :param user_prompt: 用户提示词
         :param llm_id: 大模型ID，如果为None则使用系统默认模型
@@ -186,31 +186,32 @@ class QuestionRewrite(CorePattern):
         history = kwargs.get("history", [])
         question = kwargs["question"]
         language = kwargs.get("language", LanguageType.CHINESE)
-        
+
         # 根据llm_id获取模型配置并创建LLM实例
         llm = None
         if self.llm_id:
             from apps.services.llm import LLMManager
             from apps.llm.adapters import get_provider_from_endpoint
             from apps.schemas.config import LLMConfig
-            
+
             llm_info = await LLMManager.get_llm_by_id(self.llm_id)
             if llm_info:
-                provider = llm_info.provider or get_provider_from_endpoint(llm_info.openai_base_url)
-                
+                provider = llm_info.provider or get_provider_from_endpoint(
+                    llm_info.openai_base_url)
+
                 llm_config = LLMConfig(
                     provider=provider,
                     endpoint=llm_info.openai_base_url,
-                    key=llm_info.openai_api_key,
+                    api_key=llm_info.openai_api_key,
                     model=llm_info.model_name,
                     max_tokens=llm_info.max_tokens,
                     temperature=0.7,
                 )
                 llm = ReasoningLLM(llm_config)
-        
+
         if not llm:
             llm = ReasoningLLM()
-            
+
         leave_tokens = llm._config.max_tokens
         leave_tokens -= TokenCalculator().calculate_token_length(
             messages=[{"role": "system", "content": _env.from_string(self.system_prompt[language]).render(

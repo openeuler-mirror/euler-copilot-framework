@@ -82,17 +82,17 @@ class EmbeddingConfig(BaseModel):
 
     provider: str = Field(description="Embedding提供商")
     endpoint: str = Field(description="Embedding模型地址")
-    api_key: str = Field(description="Embedding模型API Key")
+    api_key: str = Field(description="Embedding模型API Key", default="")
     model: str = Field(description="Embedding模型名称")
 
 
 class RerankerConfig(BaseModel):
     """Reranker配置"""
 
-    provider: str | None = Field(default=None, description="Reranker提供商")
-    endpoint: str | None = Field(default=None, description="Reranker模型地址")
-    api_key: str | None = Field(default=None, description="Reranker模型API Key")
-    model: str | None = Field(default=None, description="Reranker模型名称")
+    provider: str | None = Field(description="Reranker提供商")
+    endpoint: str | None = Field(description="Reranker模型地址")
+    api_key: str | None = Field(description="Reranker模型API Key", default="")
+    model: str | None = Field(description="Reranker模型名称")
 
 
 class RAGConfig(BaseModel):
@@ -144,7 +144,7 @@ class LLMConfig(BaseModel):
     """LLM配置"""
 
     provider: str = Field(description="LLM提供商")
-    api_key: str = Field(description="LLM API密钥")
+    api_key: str = Field(description="LLM API密钥", default="")
     endpoint: str = Field(description="LLM API URL地址")
     model: str = Field(description="LLM API 模型名")
     max_tokens: int | None = Field(
@@ -158,7 +158,7 @@ class FunctionCallConfig(BaseModel):
     provider: str | None = Field(default=None, description="Function Call 提供商")
     model: str = Field(description="Function Call 模型名")
     endpoint: str = Field(description="Function Call API URL地址")
-    api_key: str = Field(description="Function Call API密钥")
+    api_key: str = Field(description="Function Call API密钥", default="")
     max_tokens: int | None = Field(
         description="Function Call 最大Token数", default=None)
     temperature: float | None = Field(
