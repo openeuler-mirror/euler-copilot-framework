@@ -33,6 +33,7 @@ from apps.schemas.mcp import (
     Step,
     ToolRisk,
 )
+from apps.schemas.task import TaskData
 
 _env = SandboxedEnvironment(
     loader=BaseLoader,
@@ -49,7 +50,7 @@ class MCPPlanner(MCPBase):
     async def get_flow_name(self) -> FlowName:
         """获取当前流程的名称"""
         template = _env.from_string(GENERATE_FLOW_NAME[self._language])
-        prompt = template.render(goal=self.task.runtime.userInput)
+        prompt = template.render(goal=self._goal)
 
         result = await json_generator.generate(
             function=GET_FLOW_NAME_FUNCTION[self._language],
@@ -61,26 +62,28 @@ class MCPPlanner(MCPBase):
         )
         return FlowName.model_validate(result)
 
-    async def create_next_step(self, history: str, tools: list[MCPTools]) -> Step:
+    async def create_next_step(self, tools: list[MCPTools], task: TaskData) -> Step:
         """创建下一步的执行步骤"""
-        # 构建提示词
         template = _env.from_string(GEN_STEP[self._language])
-        prompt = template.render(goal=self.task.runtime.userInput, history=history, tools=tools)
+        prompt = template.render(goal=self._goal, tools=tools)
 
-        # 获取函数定义并动态设置tool_id的enum
         function = deepcopy(CREATE_NEXT_STEP_FUNCTION[self._language])
         function["parameters"]["properties"]["tool_name"]["enum"] = [tool.toolName for tool in tools]
 
+        history = await self.assemble_memory(task)
+
+        conversation = [
+            {"role": "system", "content": "You are a helpful assistant."},
+            *history,
+            {"role": "user", "content": prompt},
+        ]
+
         step = await json_generator.generate(
             function=function,
-            conversation=[
-                {"role": "system", "content": "You are a helpful assistant."},
-                {"role": "user", "content": prompt},
-            ],
+            conversation=conversation,
             language=self._language,
         )
         logger.info("[MCPPlanner] 创建下一步的执行步骤: %s", step)
-        # 使用Step模型解析结果
         return Step.model_validate(step)
 
     async def get_tool_risk(
@@ -90,7 +93,6 @@ class MCPPlanner(MCPBase):
         additional_info: str = "",
     ) -> ToolRisk:
         """获取MCP工具的风险评估结果"""
-        # 构建提示词
         template = _env.from_string(RISK_EVALUATE[self._language])
         prompt = template.render(
             tool_name=tool.toolName,
@@ -108,38 +110,40 @@ class MCPPlanner(MCPBase):
             language=self._language,
         )
 
-        # 返回风险评估结果
         return ToolRisk.model_validate(risk)
 
     async def is_param_error(
         self,
-        history: str,
+        task: TaskData,
         error_message: str,
         tool: MCPTools,
-        step_description: str,
+        step_goal: str,
         input_params: dict[str, Any],
     ) -> IsParamError:
         """判断错误信息是否是参数错误"""
         tmplate = _env.from_string(IS_PARAM_ERROR[self._language])
         prompt = tmplate.render(
-            goal=self.task.runtime.userInput,
-            history=history,
+            goal=self._goal,
             step_id=tool.toolName,
             step_name=tool.toolName,
-            step_description=step_description,
+            step_goal=step_goal,
             input_params=input_params,
             error_message=error_message,
         )
 
+        history = await self.assemble_memory(task)
+
+        conversation = [
+            {"role": "system", "content": "You are a helpful assistant."},
+            *history,
+            {"role": "user", "content": prompt},
+        ]
+
         is_param_error = await json_generator.generate(
             function=IS_PARAM_ERROR_FUNCTION[self._language],
-            conversation=[
-                {"role": "system", "content": "You are a helpful assistant."},
-                {"role": "user", "content": prompt},
-            ],
+            conversation=conversation,
             language=self._language,
         )
-        # 使用IsParamError模型解析结果
         return IsParamError.model_validate(is_param_error)
 
     async def get_missing_param(
@@ -157,11 +161,9 @@ class MCPPlanner(MCPBase):
             error_message=error_message,
         )
 
-        # 获取函数定义并设置parameters为schema_with_null
         function = deepcopy(GET_MISSING_PARAMS_FUNCTION[self._language])
         function["parameters"] = schema_with_null
 
-        # 解析为结构化数据
         return await json_generator.generate(
             function=function,
             conversation=[
@@ -171,15 +173,22 @@ class MCPPlanner(MCPBase):
             language=self._language,
         )
 
-    async def generate_answer(self, memory: str, llm: LLM) -> AsyncGenerator[LLMChunk, None]:
-        """生成最终回答，返回LLMChunk"""
+    async def generate_answer(self, task: TaskData, llm: LLM) -> AsyncGenerator[LLMChunk, None]:
+        """生成最终回答,返回LLMChunk"""
         template = _env.from_string(FINAL_ANSWER[self._language])
         prompt = template.render(
-            memory=memory,
-            goal=self.task.runtime.userInput,
+            goal=self._goal,
         )
+
+        history = await self.assemble_memory(task)
+        messages = [
+            {"role": "system", "content": "You are a helpful assistant."},
+            *history,
+            {"role": "user", "content": prompt},
+        ]
+
         async for chunk in llm.call(
-            [{"role": "user", "content": prompt}],
+            messages,
             streaming=True,
         ):
             yield chunk

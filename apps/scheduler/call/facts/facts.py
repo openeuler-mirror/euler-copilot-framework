@@ -16,7 +16,7 @@ from apps.schemas.scheduler import CallInfo, CallOutputChunk, CallVars
 from apps.services.tag import TagManager
 from apps.services.user_tag import UserTagManager
 
-from .prompt import DOMAIN_FUNCTION, DOMAIN_PROMPT, FACTS_FUNCTION, FACTS_PROMPT
+from .func import DOMAIN_FUNCTION, FACTS_FUNCTION
 from .schema import (
     DomainGen,
     FactsGen,
@@ -80,19 +80,17 @@ class FactsCall(CoreCall, input_model=FactsInput, output_model=FactsOutput):
         """执行工具"""
         data = FactsInput(**input_data)
 
-        # 组装conversation消息
-        facts_prompt = FACTS_PROMPT[self._sys_vars.language]
-        facts_conversation = [
-            {"role": "system", "content": "You are a helpful assistant."},
-            *data.message,
-            {"role": "user", "content": facts_prompt},
-        ]
+        # 加载并组装facts提示词
+        facts_prompt = self._load_prompt("facts")
 
         # 提取事实信息
         facts_result = await json_generator.generate(
             function=FACTS_FUNCTION[self._sys_vars.language],
-            conversation=facts_conversation,
-            language=self._sys_vars.language,
+            conversation=[
+                {"role": "system", "content": "You are a helpful assistant."},
+                *data.message,
+            ],
+            prompt=facts_prompt,
         )
         facts_obj = FactsGen.model_validate(facts_result)
 
@@ -100,26 +98,25 @@ class FactsCall(CoreCall, input_model=FactsInput, output_model=FactsOutput):
         all_tags = await TagManager.get_all_tag()
         tag_names = [tag.name for tag in all_tags]
 
+        # 加载domain提示词模板
+        domain_prompt_template_str = self._load_prompt("domain")
+
         # 使用jinja2渲染DOMAIN_PROMPT
         jinja_env = SandboxedEnvironment(
             loader=BaseLoader(),
             autoescape=False,
         )
-        domain_prompt_template = jinja_env.from_string(DOMAIN_PROMPT[self._sys_vars.language])
+        domain_prompt_template = jinja_env.from_string(domain_prompt_template_str)
         domain_prompt = domain_prompt_template.render(available_keywords=tag_names)
-
-        # 组装conversation消息
-        domain_conversation = [
-            {"role": "system", "content": "You are a helpful assistant."},
-            *data.message,
-            {"role": "user", "content": domain_prompt},
-        ]
 
         # 更新用户画像
         domain_result = await json_generator.generate(
             function=DOMAIN_FUNCTION[self._sys_vars.language],
-            conversation=domain_conversation,
-            language=self._sys_vars.language,
+            conversation=[
+                {"role": "system", "content": "You are a helpful assistant."},
+                *data.message,
+            ],
+            prompt=domain_prompt,
         )
         domain_list = DomainGen.model_validate(domain_result)
 

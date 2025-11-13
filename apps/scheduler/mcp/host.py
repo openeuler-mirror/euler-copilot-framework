@@ -48,11 +48,11 @@ class MCPHost:
             logger.warning("用户 %s 未启用MCP %s", self._user_id, mcp_id)
             return None
 
-        # 获取MCP配置
+        # 获取MCP配置（如果失败会抛出RuntimeError）
         try:
             return await mcp_pool.get(mcp_id, self._user_id)
-        except KeyError:
-            logger.warning("用户 %s 的MCP %s 没有运行中的实例，请检查环境", self._user_id, mcp_id)
+        except (KeyError, RuntimeError) as e:
+            logger.warning("获取MCP客户端失败: %s", e)
             return None
 
 
@@ -161,12 +161,8 @@ class MCPHost:
 
     async def call_tool(self, tool: MCPTools, plan_item: MCPPlanItem) -> list[dict[str, Any]]:
         """调用工具"""
-        # 拿到Client
+        # 拿到Client（如果失败会抛出异常）
         client = await mcp_pool.get(tool.mcpId, self._user_id)
-        if client is None:
-            err = f"[MCPHost] MCP Server不合法: {tool.mcpId}"
-            logger.error(err)
-            raise ValueError(err)
 
         # 填充参数
         params = await self._fill_params(tool, plan_item.instruction)

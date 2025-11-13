@@ -73,19 +73,22 @@ class _MCPPool:
             return result is not None
 
 
-    async def get(self, mcp_id: str, user_id: str) -> MCPClient | None:
-        """获取MCP客户端"""
+    async def get(self, mcp_id: str, user_id: str) -> MCPClient:
+        """获取MCP客户端，如果无法获取则抛出异常"""
         item = await self._get_from_dict(mcp_id, user_id)
         if item is None:
             # 检查用户是否已激活
             if not await self._validate_user(mcp_id, user_id):
-                logger.warning("用户 %s 未激活MCP %s", user_id, mcp_id)
-                return None
+                err = f"用户 {user_id} 未激活MCP {mcp_id}"
+                logger.warning(err)
+                raise RuntimeError(err)
 
             # 初始化进程
             item = await self.init_mcp(mcp_id, user_id)
             if item is None:
-                return None
+                err = f"初始化MCP {mcp_id} 失败（用户：{user_id}）"
+                logger.error(err)
+                raise RuntimeError(err)
 
             if user_id not in self.pool:
                 self.pool[user_id] = {}
@@ -97,6 +100,14 @@ class _MCPPool:
 
     async def stop(self, mcp_id: str, user_id: str) -> None:
         """停止MCP客户端"""
+        if user_id not in self.pool:
+            logger.warning("[MCPPool] 用户 %s 不存在于池中，无法停止MCP %s", user_id, mcp_id)
+            return
+
+        if mcp_id not in self.pool[user_id]:
+            logger.warning("[MCPPool] 用户 %s 的MCP %s 不存在于池中，无法停止", user_id, mcp_id)
+            return
+
         await self.pool[user_id][mcp_id].stop()
         del self.pool[user_id][mcp_id]
 

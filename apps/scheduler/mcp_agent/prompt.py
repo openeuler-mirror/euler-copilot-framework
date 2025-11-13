@@ -1,9 +1,25 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2023-2025. All rights reserved.
 """MCP相关的大模型Prompt"""
 
+from pathlib import Path
 from textwrap import dedent
 
 from apps.models import LanguageType
+
+
+def _load_prompt(prompt_id: str, language: LanguageType) -> str:
+    """
+    从Markdown文件加载提示词
+
+    :param prompt_id: 提示词ID，例如 "gen_params" 等
+    :param language: 语言类型
+    :return: 提示词内容
+    """
+    # 组装Prompt文件路径: prompt_id.language.md (例如: gen_params.en.md)
+    filename = f"{prompt_id}.{language.value}.md"
+    prompt_dir = Path(__file__).parent.parent.parent / "data" / "prompts" / "system" / "mcp"
+    prompt_file = prompt_dir / filename
+    return prompt_file.read_text(encoding="utf-8")
 
 GENERATE_FLOW_NAME: dict[LanguageType, str] = {
     LanguageType.CHINESE: dedent(
@@ -98,12 +114,12 @@ CREATE_NEXT_STEP_FUNCTION: dict[LanguageType, dict] = {
             "properties": {
                 "tool_name": {
                     "type": "string",
-                    "description": "工具名称",
+                    "description": "工具名称，必须从可用工具列表中选择一个",
                     "enum": [],
                 },
                 "description": {
                     "type": "string",
-                    "description": "步骤描述",
+                    "description": "步骤描述，清晰说明本步骤要做什么",
                 },
             },
             "required": ["tool_name", "description"],
@@ -126,12 +142,12 @@ CREATE_NEXT_STEP_FUNCTION: dict[LanguageType, dict] = {
             "properties": {
                 "tool_name": {
                     "type": "string",
-                    "description": "Tool Name",
+                    "description": "Tool name, must be selected from the available tools list",
                     "enum": [],
                 },
                 "description": {
                     "type": "string",
-                    "description": "Step description",
+                    "description": "Step description, clearly explain what this step will do",
                 },
             },
             "required": ["tool_name", "description"],
@@ -148,77 +164,95 @@ CREATE_NEXT_STEP_FUNCTION: dict[LanguageType, dict] = {
 GEN_STEP: dict[LanguageType, str] = {
     LanguageType.CHINESE: dedent(
         r"""
-            根据用户目标、执行历史和可用工具，生成下一个执行步骤。
+        你的任务是分析对话历史和用户目标，然后**调用`create_next_step`函数**来规划下一个执行步骤。
 
-            ## 任务要求
+        ## 重要提醒
+        **你必须且只能调用名为`create_next_step`的函数**，该函数接受两个参数：
+        1. `tool_name`: 从下方可用工具列表中选择一个工具名称
+        2. `description`: 清晰描述本步骤要完成的具体任务
 
-            作为计划生成器，你需要：
-            - **选择最合适的工具**：从可用工具集中选择当前阶段最适合的工具
-            - **推进目标完成**：基于历史记录，制定能完成阶段性任务的步骤
-            - **严格使用工具ID**：工具ID必须精确匹配可用工具列表中的ID
-            - **判断完成状态**：若目标已达成，选择`Final`工具结束流程
+        ## 可用工具列表
+        {% for tool in tools %}
+        - **工具名**: `{{tool.toolName}}`
+          **功能描述**: {{tool.description}}
+        {% endfor %}
 
-            ## 示例
+        ## 调用规范
+        - **函数名固定**: 必须调用`create_next_step`，不要使用工具名作为函数名
+        - **tool_name的值**: 必须是上述可用工具列表中的某个工具名称
+        - **description的值**: 描述本步骤的具体操作内容
+        - **任务完成时**: 如果用户目标已经完成，将`tool_name`参数设为`Final`
 
-            假设用户需要扫描一个MySQL数据库（地址192.168.1.1，端口3306，使用root账户和password密码），分析其性能瓶颈并进行调优。
-            之前已经完成了端口扫描，确认了3306端口开放。现在需要选择下一步操作。
-            查看可用工具列表后，发现有MySQL性能分析工具（mcp_tool_1）、文件存储工具（mcp_tool_2）和结束工具（Final）。
-            此时应选择MySQL性能分析工具，并描述这一步要做什么：使用提供的数据库连接信息（192.168.1.1:3306，root/password）来扫描和分析数据库性能。
+        ## 错误示例❌（严禁模仿）
+        ```
+        # 错误：直接使用工具名作为函数名或返回工具名的字典
+        {'Final': '{"description": "任务完成"}'}
+        ```
 
-            ---
+        ## 正确示例✅
+        ```
+        # 正确：调用create_next_step函数，tool_name参数的值才是工具名称
+        create_next_step(
+            tool_name="Final",
+            description="已完成所有分析任务，可以结束流程"
+        )
+        ```
 
-            ## 当前任务
+        ---
+        ## 当前任务
+        **用户目标**: {{goal}}
 
-            **目标**：{{goal}}
-
-            **历史记录**：
-            {{history}}
-
-            **可用工具**：
-            {% for tool in tools %}
-            - **{{tool.toolName}}**：{{tool.description}}
-            {% endfor %}
+        请根据上方对话历史中已执行步骤的结果，**调用`create_next_step`函数**规划下一步。
+        记住：函数名必须是`create_next_step`，`tool_name`参数的值才是具体的工具名称。
         """,
-    ),
+    ).strip(),
     LanguageType.ENGLISH: dedent(
         r"""
-            Generate the next execution step based on user goals, execution history, and available tools.
+        Your task is to analyze the conversation history and user goal, then **call the `create_next_step` \
+function** to plan the next execution step.
 
-            ## Task Requirements
+        ## Important Reminder
+        **You must and can only call the function named `create_next_step`**, which accepts two parameters:
+        1. `tool_name`: Select a tool name from the available tools list below
+        2. `description`: Clearly describe the specific task this step will accomplish
 
-            As a plan generator, you need to:
-            - **Select the most appropriate tool**: Choose the best tool from available tools for the current stage
-            - **Advance goal completion**: Based on execution history, formulate steps to complete phased tasks
-            - **Strictly use tool IDs**: Tool ID must exactly match the ID in the available tools list
-            - **Determine completion status**: If goal is achieved, select `Final` tool to end the workflow
+        ## Available Tools List
+        {% for tool in tools %}
+        - **Tool Name**: `{{tool.toolName}}`
+          **Description**: {{tool.description}}
+        {% endfor %}
 
-            ## Example
+        ## Calling Specifications
+        - **Fixed function name**: Must call `create_next_step`, do not use tool names as function names
+        - **tool_name value**: Must be one of the tool names from the available tools list above
+        - **description value**: Describe the specific operations of this step
+        - **When task completes**: If the user goal is achieved, set `tool_name` parameter to `Final`
 
-            Suppose the user needs to scan a MySQL database (at 192.168.1.1:3306, using root account with password),
-            analyze its performance bottlenecks, and optimize it.
-            Previously, a port scan was completed and confirmed that port 3306 is open. Now we need to select the
-            next action.
-            Looking at the available tools list, there is a MySQL performance analysis tool (mcp_tool_1), a file
-            storage tool (mcp_tool_2), and a final tool (Final).
-            At this point, we should select the MySQL performance analysis tool and describe what this step will do:
-            use the provided database connection information (192.168.1.1:3306, root/password) to scan and analyze
-            database performance.
+        ## Incorrect Examples ❌ (Strictly Forbidden)
+        ```
+        # Error: Using tool name as function name or returning a dictionary with tool name as key
+        {'Final': '{"description": "Task completed"}'}
+        ```
 
-            ---
+        ## Correct Examples ✅
+        ```
+        # Correct: Call create_next_step function, the tool_name parameter value is the tool name
+        create_next_step(
+            tool_name="Final",
+            description="All analysis tasks completed, workflow can be ended"
+        )
+        ```
 
-            ## Current Task
+        ---
+        ## Current Task
+        **User Goal**: {{goal}}
 
-            **Goal**: {{goal}}
-
-            **Execution History**:
-            {{history}}
-
-            **Available Tools**:
-            {% for tool in tools %}
-            - **{{tool.toolName}}**: {{tool.description}}
-            {% endfor %}
+        Please **call the `create_next_step` function** to plan the next step based on the results of \
+executed steps in the conversation history above.
+        Remember: The function name must be `create_next_step`, and the `tool_name` parameter value is \
+the specific tool name.
         """,
-    ),
+    ).strip(),
 }
 
 EVALUATE_TOOL_RISK_FUNCTION: dict[LanguageType, dict] = {
@@ -398,25 +432,23 @@ IS_PARAM_ERROR_FUNCTION: dict[LanguageType, dict] = {
 IS_PARAM_ERROR: dict[LanguageType, str] = {
     LanguageType.CHINESE: dedent(
         r"""
-            判断以下工具执行失败是否由参数错误导致，并调用 check_parameter_error 工具返回结果。
+            判断以下工具执行失败是否由参数错误导致,并调用 check_parameter_error 工具返回结果。
 
             **判断标准**：
             - **参数错误**：缺失必需参数、参数值不正确、参数格式/类型错误等
             - **非参数错误**：权限问题、网络故障、系统异常、业务逻辑错误等
 
             **示例**：当mysql_analyzer工具入参为 {"host": "192.0.0.1", ...}，报错"host is not correct"时，
-            错误明确指出host参数值不正确，属于**参数错误**，应调用工具返回 {"is_param_error": true}
+            错误明确指出host参数值不正确，属于**参数错误**,应调用工具返回 {"is_param_error": true}
 
             ---
 
-            **背景信息**：
-            - 用户目标：{{goal}}
-            - 执行历史：{{history}}
+            **用户目标**：{{goal}}
 
             **当前失败步骤**（步骤{{step_id}}）：
             - 工具：{{step_name}}
-            - 说明：{{step_instruction}}
-            - 入参：{{input_param}}
+            - 目标：{{step_goal}}
+            - 入参：{{input_params}}
             - 报错：{{error_message}}
 
             请基于报错信息和上下文综合判断，调用 check_parameter_error 工具返回判断结果。
@@ -439,14 +471,12 @@ should call the tool to return {"is_param_error": true}
 
             ---
 
-            **Background**:
-            - User goal: {{goal}}
-            - Execution history: {{history}}
+            **User Goal**: {{goal}}
 
             **Current Failed Step** (Step {{step_id}}):
             - Tool: {{step_name}}
-            - Instruction: {{step_instruction}}
-            - Input: {{input_param}}
+            - Goal: {{step_goal}}
+            - Input: {{input_params}}
             - Error: {{error_message}}
 
             Please make a comprehensive judgment based on the error message and context, and call the \
@@ -587,157 +617,16 @@ for user to provide credentials again
     ),
 }
 
-GEN_PARAMS: dict[LanguageType, str] = {
-    LanguageType.CHINESE: dedent(
-        r"""
-            根据总体目标、阶段目标、工具信息和背景信息，生成符合schema的工具参数。
 
-            ## 任务要求
-            - **严格遵循Schema**：生成的参数必须完全符合工具入参schema的类型和格式规范
-            - **充分理解上下文**：全面分析总体目标、阶段目标和背景信息，提取所有可用的参数值
-            - **匹配阶段目标**：确保生成的参数能够完成当前阶段目标
+def get_gen_params_prompt(language: LanguageType) -> str:
+    """
+    获取GEN_PARAMS提示词
 
-            ## 示例
+    :param language: 语言类型
+    :return: 提示词内容
+    """
+    return _load_prompt("gen_params", language)
 
-            **工具**：
-            - **名称**：`mysql_analyzer`
-            - **描述**：分析MySQL数据库性能
-
-            **总体目标**：扫描MySQL数据库（IP: 192.168.1.1，端口: 3306，用户名: root，密码: password），\
-分析性能瓶颈并调优
-
-            **阶段目标**：连接MySQL数据库并分析性能
-
-            **参数Schema**：
-            ```json
-            {
-              "type": "object",
-              "properties": {
-                "host": {"type": "string", "description": "主机地址"},
-                "port": {"type": "integer", "description": "端口号"},
-                "username": {"type": "string", "description": "用户名"},
-                "password": {"type": "string", "description": "密码"}
-              },
-              "required": ["host", "port", "username", "password"]
-            }
-            ```
-
-            **背景信息**：
-            - **步骤1**：生成端口扫描命令 → 成功，输出：`{"command": "nmap -sS -p --open 192.168.1.1"}`
-            - **步骤2**：执行端口扫描 → 成功，确认3306端口开放
-
-            **输出**：
-            ```json
-            {
-              "host": "192.168.1.1",
-              "port": 3306,
-              "username": "root",
-              "password": "password"
-            }
-            ```
-
-            ---
-
-            ## 当前任务
-
-            **工具**：
-            - **名称**：`{{tool_name}}`
-            - **描述**：{{tool_description}}
-
-            **总体目标**：
-            {{goal}}
-
-            **阶段目标**：
-            {{current_goal}}
-
-            **参数Schema**：
-            ```json
-            {{input_schema}}
-            ```
-
-            **背景信息**：
-            {{background_info}}
-
-            **输出**：
-        """,
-    ).strip("\n"),
-    LanguageType.ENGLISH: dedent(
-        r"""
-            Generate tool parameters that conform to the schema based on the overall goal, phase goal, tool \
-information, and background context.
-
-            ## Task Requirements
-            - **Strictly Follow Schema**: Generated parameters must fully conform to the tool input schema's type and \
-format specifications
-            - **Fully Understand Context**: Comprehensively analyze the overall goal, phase goal, and background \
-information to extract all available parameter values
-            - **Match Phase Goal**: Ensure the generated parameters can accomplish the current phase goal
-
-            ## Example
-
-            **Tool**:
-            - **Name**: `mysql_analyzer`
-            - **Description**: Analyze MySQL database performance
-
-            **Overall Goal**: Scan MySQL database (IP: 192.168.1.1, Port: 3306, Username: root, Password: password), \
-analyze performance bottlenecks, and optimize
-
-            **Phase Goal**: Connect to MySQL database and analyze performance
-
-            **Parameter Schema**:
-            ```json
-            {
-              "type": "object",
-              "properties": {
-                "host": {"type": "string", "description": "Host address"},
-                "port": {"type": "integer", "description": "Port number"},
-                "username": {"type": "string", "description": "Username"},
-                "password": {"type": "string", "description": "Password"}
-              },
-              "required": ["host", "port", "username", "password"]
-            }
-            ```
-
-            **Background Information**:
-            - **Step 1**: Generate port scan command → Success, output: `{"command": "nmap -sS -p --open 192.168.1.1"}`
-            - **Step 2**: Execute port scan → Success, confirmed port 3306 is open
-
-            **Output**:
-            ```json
-            {
-              "host": "192.168.1.1",
-              "port": 3306,
-              "username": "root",
-              "password": "password"
-            }
-            ```
-
-            ---
-
-            ## Current Task
-
-            **Tool**:
-            - **Name**: `{{tool_name}}`
-            - **Description**: {{tool_description}}
-
-            **Overall Goal**:
-            {{goal}}
-
-            **Phase Goal**:
-            {{current_goal}}
-
-            **Parameter Schema**:
-            ```json
-            {{input_schema}}
-            ```
-
-            **Background Information**:
-            {{background_info}}
-
-            **Output**:
-        """,
-    ).strip("\n"),
-}
 
 REPAIR_PARAMS: dict[LanguageType, str] = {
     LanguageType.CHINESE: dedent(
@@ -962,14 +851,6 @@ FINAL_ANSWER: dict[LanguageType, str] = {
             # 用户目标
             {{goal}}
 
-            # 计划执行情况
-            为了完成上述目标，你实施了以下计划：
-
-            {{memory}}
-
-            # 其他背景信息：
-            {{status}}
-
             # 现在，请根据以上信息，向用户报告目标的完成情况：
 
         """,
@@ -981,14 +862,6 @@ completion status to the user.
 
             # User Goal
             {{goal}}
-
-            # Plan Execution Status
-            To achieve the above goal, you implemented the following plan:
-
-            {{memory}}
-
-            # Additional Background Information:
-            {{status}}
 
             # Now, based on the above information, report the goal completion status to the user:
 
