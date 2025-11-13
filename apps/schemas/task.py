@@ -20,12 +20,19 @@ class TaskData(BaseModel):
     context: list[ExecutorHistory] = Field(description="执行历史")
 
 
-class CheckpointExtra(BaseModel):
+class AgentCheckpointExtra(BaseModel):
     """Executor额外数据"""
 
     current_input: dict[str, Any] = Field(description="当前输入数据", default={})
     error_message: str = Field(description="错误信息", default="")
     retry_times: int = Field(description="当前步骤重试次数", default=0)
+
+
+class AgentHistoryExtra(BaseModel):
+    """执行器历史额外数据"""
+
+    step_goal: str = Field(description="步骤目标")
+
 
 class StepQueueItem(BaseModel):
     """步骤栈中的元素"""

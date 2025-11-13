@@ -394,7 +394,7 @@ MEMORY_TEMPLATE: dict[str, str] = {
     LanguageType.CHINESE: dedent(
         r"""
             {% if msg_type == "user" %}
-            第{{ step_index }}步：{{ step_description }}
+            第{{ step_index }}步：{{ step_goal }}
             调用工具 `{{ step_name }}`，并提供参数 `{{ input_data | tojson }}`。
             {% elif msg_type == "assistant" %}
             第{{ step_index }}步执行完成。
@@ -406,7 +406,7 @@ MEMORY_TEMPLATE: dict[str, str] = {
     LanguageType.ENGLISH: dedent(
         r"""
             {% if msg_type == "user" %}
-            Step {{ step_index }}: {{ step_description }}
+            Step {{ step_index }}: {{ step_goal }}
             Called tool `{{ step_name }}` and provided parameters `{{ input_data | tojson }}`
             {% elif msg_type == "assistant" %}
             Step {{ step_index }} execution completed.

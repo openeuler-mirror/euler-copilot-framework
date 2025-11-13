@@ -125,6 +125,12 @@ class Step(BaseModel):
     description: str = Field(description="步骤描述")
 
 
+class MCPRiskConfirm(BaseModel):
+    """MCP工具风险确认"""
+
+    confirm: bool = Field(description="是否确认")
+
+
 class UpdateMCPServiceRequest(BaseModel):
     """POST /api/mcpservice 请求数据结构"""
 

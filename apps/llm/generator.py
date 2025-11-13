@@ -10,11 +10,10 @@ from jinja2 import BaseLoader
 from jinja2.sandbox import SandboxedEnvironment
 from jsonschema import Draft7Validator
 
-from apps.models import LanguageType, LLMType
+from apps.models import LLMType
 from apps.schemas.llm import LLMFunctions
 
 from .llm import LLM
-from .prompt import JSON_GEN
 from .token import token_calculator
 
 _logger = logging.getLogger(__name__)
@@ -66,23 +65,16 @@ class JsonGenerator:
 
     def _build_messages(
         self,
-        functions: list[dict[str, Any]],
+        prompt: str,
         conversation: list[dict[str, str]],
-        language: LanguageType = LanguageType.CHINESE,
     ) -> list[dict[str, str]]:
-        """构建messages，提取query并使用JSON_GEN模板格式化"""
+        """构建messages，使用传入的prompt替换最后一条用户消息"""
         if conversation[-1]["role"] == "user":
-            query = conversation[-1]["content"]
+            # 验证最后一项是用户消息
+            pass
         else:
             err = "[JSONGenerator] 对话历史中最后一项必须是用户消息"
             raise RuntimeError(err)
-
-        template = self._env.from_string(JSON_GEN[language])
-        prompt = template.render(
-            query=query,
-            use_xml_format=False,
-            functions=functions,
-        )
 
         messages = [*conversation[:-1], {"role": "user", "content": prompt}]
 
@@ -111,8 +103,8 @@ class JsonGenerator:
                     else:
                         break
 
-                    # 重新构建 messages 并计算 token
-                    messages = [*trimmed_conversation, {"role": "user", "content": prompt}]
+                    # 重新构建 messages 并计算 token，添加原始最后一条用户消息以保持完整对话
+                    messages = [*trimmed_conversation, conversation[-1], {"role": "user", "content": prompt}]
                     token_count = token_calculator.calculate_token_length(messages)
 
                 _logger.info(
@@ -126,8 +118,8 @@ class JsonGenerator:
     async def _single_trial(
         self,
         function: dict[str, Any],
+        prompt: str,
         conversation: list[dict[str, str]],
-        language: LanguageType = LanguageType.CHINESE,
     ) -> dict[str, Any]:
         """单次尝试，包含校验逻辑；function使用OpenAI标准Function格式"""
         if self._llm is None:
@@ -140,10 +132,10 @@ class JsonGenerator:
         # 执行生成
         if self._support_function_call:
             # 如果支持FunctionCall
-            result = await self._call_with_function(function, conversation, language)
+            result = await self._call_with_function(function, prompt, conversation)
         else:
             # 如果不支持FunctionCall
-            result = await self._call_without_function(function, conversation, language)
+            result = await self._call_without_function(function, prompt, conversation)
 
         # 校验结果
         try:
@@ -162,15 +154,15 @@ class JsonGenerator:
     async def _call_with_function(
         self,
         function: dict[str, Any],
+        prompt: str,
         conversation: list[dict[str, str]],
-        language: LanguageType = LanguageType.CHINESE,
     ) -> dict[str, Any]:
         """使用FunctionCall方式调用"""
         if self._llm is None:
             err = "[JSONGenerator] 未初始化，请先调用init()方法"
             raise RuntimeError(err)
 
-        messages = self._build_messages([function], conversation, language)
+        messages = self._build_messages(prompt, conversation)
 
         tool = LLMFunctions(
             name=function["name"],
@@ -192,15 +184,15 @@ class JsonGenerator:
     async def _call_without_function(
         self,
         function: dict[str, Any],
+        prompt: str,
         conversation: list[dict[str, str]],
-        language: LanguageType = LanguageType.CHINESE,
     ) -> dict[str, Any]:
         """不使用FunctionCall方式调用"""
         if self._llm is None:
             err = "[JSONGenerator] 未初始化，请先调用init()方法"
             raise RuntimeError(err)
 
-        messages = self._build_messages([function], conversation, language)
+        messages = self._build_messages(prompt, conversation)
 
         # 使用LLM的call方法获取响应
         full_response = ""
@@ -220,8 +212,8 @@ class JsonGenerator:
     async def generate(
         self,
         function: dict[str, Any],
+        prompt: str,
         conversation: list[dict[str, str]] | None = None,
-        language: LanguageType = LanguageType.CHINESE,
     ) -> dict[str, Any]:
         """生成JSON；function使用OpenAI标准Function格式"""
         if self._llm is None:
@@ -239,7 +231,7 @@ class JsonGenerator:
             count += 1
             try:
                 # 如果_single_trial没有抛出异常，直接返回结果，不进行重试
-                return await self._single_trial(function, retry_conversation, language)
+                return await self._single_trial(function, prompt, retry_conversation)
             except JsonValidationError as e:
                 _logger.exception(
                     "[JSONGenerator] 第 %d/%d 次尝试失败",

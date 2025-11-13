@@ -77,11 +77,11 @@ class FlowExecutor(BaseExecutor):
 
         # 尝试恢复State
         if (
-            self.state
-            and self.state.executorStatus != ExecutorStatus.INIT
+            not self.task.state
+            or self.task.state.executorStatus == ExecutorStatus.INIT
         ):
             # 创建ExecutorState
-            self.state = ExecutorCheckpoint(
+            self.task.state = ExecutorCheckpoint(
                 taskId=self.task.metadata.id,
                 appId=self.post_body_app.app_id,
                 executorId=str(self.flow_id),
@@ -142,20 +142,25 @@ class FlowExecutor(BaseExecutor):
 
     async def _find_flow_next(self) -> list[StepQueueItem]:
         """在当前步骤执行前，尝试获取下一步"""
+        if not self.task.state:
+            err = "[FlowExecutor] 任务状态不存在"
+            logger.error(err)
+            raise RuntimeError(err)
+
         # 如果当前步骤为结束，则直接返回
-        if self.state.stepId == "end" or not self.state.stepId:
+        if self.task.state.stepId == "end" or not self.task.state.stepId:
             return []
         if self.current_step.step.type == SpecialCallType.CHOICE.value:
             # 如果是choice节点，获取分支ID
             branch_id = self.task.context[-1].outputData["branch_id"]
             if branch_id:
-                next_steps = await self._find_next_id(str(self.state.stepId) + "." + branch_id)
+                next_steps = await self._find_next_id(str(self.task.state.stepId) + "." + branch_id)
                 logger.info("[FlowExecutor] 分支ID：%s", branch_id)
             else:
                 logger.warning("[FlowExecutor] 没有找到分支ID，返回空列表")
                 return []
         else:
-            next_steps = await self._find_next_id(self.state.stepId)
+            next_steps = await self._find_next_id(self.task.state.stepId)
         # 如果step没有任何出边，直接跳到end
         if not next_steps:
             return [
@@ -183,10 +188,15 @@ class FlowExecutor(BaseExecutor):
         """
         logger.info("[FlowExecutor] 运行工作流")
 
+        if not self.task.state:
+            err = "[FlowExecutor] 任务状态不存在"
+            logger.error(err)
+            raise RuntimeError(err)
+
         # 获取首个步骤
         first_step = StepQueueItem(
-            step_id=self.state.stepId,
-            step=self.flow.steps[self.state.stepId],
+            step_id=self.task.state.stepId,
+            step=self.flow.steps[self.task.state.stepId],
         )
 
         # 头插开始前的系统步骤，并执行
@@ -203,13 +213,13 @@ class FlowExecutor(BaseExecutor):
 
         # 插入首个步骤
         self.step_queue.append(first_step)
-        self.state.executorStatus = ExecutorStatus.RUNNING
+        self.task.state.executorStatus = ExecutorStatus.RUNNING
 
         # 运行Flow（未达终点）
         is_error = False
         while not self._reached_end:
             # 如果当前步骤出错，执行错误处理步骤
-            if self.state.stepStatus == StepStatus.ERROR:
+            if self.task.state.stepStatus == StepStatus.ERROR:
                 logger.warning("[FlowExecutor] Executor出错，执行错误处理步骤")
                 self.step_queue.clear()
                 self.step_queue.appendleft(
@@ -227,7 +237,7 @@ class FlowExecutor(BaseExecutor):
                             params={
                                 "user_prompt": FLOW_ERROR_PROMPT[self.task.runtime.language].replace(
                                     "{{ error_info }}",
-                                    self.state.errorMessage["err_msg"],
+                                    self.task.state.errorMessage["err_msg"],
                                 ),
                             },
                         ),
@@ -252,9 +262,9 @@ class FlowExecutor(BaseExecutor):
 
         # 更新Task状态
         if is_error:
-            self.state.executorStatus = ExecutorStatus.ERROR
+            self.task.state.executorStatus = ExecutorStatus.ERROR
         else:
-            self.state.executorStatus = ExecutorStatus.SUCCESS
+            self.task.state.executorStatus = ExecutorStatus.SUCCESS
 
         # 尾插运行结束后的系统步骤
         for step in FIXED_STEPS_AFTER_END:
