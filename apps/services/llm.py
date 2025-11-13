@@ -24,6 +24,66 @@ class LLMManager:
     """大模型管理"""
 
     @staticmethod
+    def _create_llm_provider_info(llm: dict) -> LLMProviderInfo:
+        """
+        从数据库 LLM 文档创建 LLMProviderInfo 对象的辅助方法
+        
+        :param llm: 数据库中的 LLM 文档
+        :return: LLMProviderInfo 对象
+        """
+        # 标准化type字段为列表格式
+        llm_type = llm.get("type", "chat")
+        if isinstance(llm_type, str):
+            llm_type = [llm_type]
+
+        return LLMProviderInfo(
+            llmId=llm["_id"],  # _id已经是UUID字符串
+            icon=llm["icon"],
+            openaiBaseUrl=llm["openai_base_url"],
+            openaiApiKey=llm["openai_api_key"],
+            modelName=llm["model_name"],
+            maxTokens=llm["max_tokens"],
+            isEditable=bool(llm.get("user_sub")),  # 系统模型（user_sub=""）不可编辑
+            type=llm_type,  # 始终返回列表格式
+            
+            # 模型能力字段 - 基础能力
+            provider=llm.get("provider", ""),
+            supportsStreaming=llm.get("supports_streaming", True),
+            supportsFunctionCalling=llm.get("supports_function_calling", True),
+            supportsJsonMode=llm.get("supports_json_mode", True),
+            supportsStructuredOutput=llm.get("supports_structured_output", False),
+            
+            # 推理能力
+            supportsThinking=llm.get("supports_thinking", False),
+            canToggleThinking=llm.get("can_toggle_thinking", False),
+            supportsReasoningContent=llm.get("supports_reasoning_content", False),
+            
+            # 参数支持
+            maxTokensParam=llm.get("max_tokens_param", "max_tokens"),
+            supportsTemperature=llm.get("supports_temperature", True),
+            supportsTopP=llm.get("supports_top_p", True),
+            supportsTopK=llm.get("supports_top_k", False),
+            supportsFrequencyPenalty=llm.get("supports_frequency_penalty", False),
+            supportsPresencePenalty=llm.get("supports_presence_penalty", False),
+            supportsMinP=llm.get("supports_min_p", False),
+            
+            # 高级功能
+            supportsResponseFormat=llm.get("supports_response_format", True),
+            supportsTools=llm.get("supports_tools", True),
+            supportsToolChoice=llm.get("supports_tool_choice", True),
+            supportsExtraBody=llm.get("supports_extra_body", True),
+            supportsStreamOptions=llm.get("supports_stream_options", True),
+            
+            # 特殊参数
+            supportsEnableThinking=llm.get("supports_enable_thinking", False),
+            supportsThinkingBudget=llm.get("supports_thinking_budget", False),
+            supportsEnableSearch=llm.get("supports_enable_search", False),
+            
+            # 其他信息
+            notes=llm.get("notes", ""),
+        )
+
+    @staticmethod
     async def list_llm_provider() -> list[LLMProvider]:
         """
         获取大模型提供商列表
@@ -123,34 +183,8 @@ class LLMManager:
         result = await llm_collection.find(base_query).sort({"created_at": 1}).to_list(length=None)
 
         llm_list = []
-
         for llm in result:
-            # 标准化type字段为列表格式
-            llm_type = llm.get("type", "chat")
-            if isinstance(llm_type, str):
-                llm_type = [llm_type]
-
-            llm_item = LLMProviderInfo(
-                llmId=llm["_id"],  # _id已经是UUID字符串
-                icon=llm["icon"],
-                openaiBaseUrl=llm["openai_base_url"],
-                openaiApiKey=llm["openai_api_key"],
-                modelName=llm["model_name"],
-                maxTokens=llm["max_tokens"],
-                isEditable=bool(llm.get("user_sub")),  # 系统模型（user_sub=""）不可编辑
-                type=llm_type,  # 始终返回列表格式
-                # 模型能力字段
-                provider=llm.get("provider", ""),
-                supportsThinking=llm.get("supports_thinking", False),
-                canToggleThinking=llm.get("can_toggle_thinking", False),
-                supportsFunctionCalling=llm.get(
-                    "supports_function_calling", True),
-                supportsJsonMode=llm.get("supports_json_mode", True),
-                supportsStructuredOutput=llm.get(
-                    "supports_structured_output", False),
-                maxTokensParam=llm.get("max_tokens_param", "max_tokens"),
-                notes=llm.get("notes", ""),
-            )
+            llm_item = LLMManager._create_llm_provider_info(llm)
             llm_list.append(llm_item)
         return llm_list
 
@@ -188,23 +222,53 @@ class LLMManager:
                 if not req.openai_base_url:
                     req.openai_base_url = standard_url
 
-        model_info = model_registry.get_model_info(provider, req.model_name)
-
         # 标准化type字段为列表格式
         model_type = req.type
         if isinstance(model_type, str):
             model_type = [model_type]
 
-        # 使用请求中的能力信息，如果没有则从model_registry获取，最后使用默认值
+        # 从model_registry获取完整的模型能力
+        from apps.llm.model_types import ModelType
+        capabilities_obj = model_registry.get_model_capabilities(provider, req.model_name, ModelType.CHAT)
+
+        # 使用请求中的能力信息，如果没有则从capabilities_obj获取，最后使用默认值
         capabilities = {
             "provider": provider,
-            "supports_thinking": req.supports_thinking if req.supports_thinking is not None else (model_info.supports_thinking if model_info else False),
-            "can_toggle_thinking": req.can_toggle_thinking if req.can_toggle_thinking is not None else (model_info.can_toggle_thinking if model_info else False),
-            "supports_function_calling": req.supports_function_calling if req.supports_function_calling is not None else (model_info.supports_function_calling if model_info else True),
-            "supports_json_mode": req.supports_json_mode if req.supports_json_mode is not None else (model_info.supports_json_mode if model_info else True),
-            "supports_structured_output": req.supports_structured_output if req.supports_structured_output is not None else (model_info.supports_structured_output if model_info else False),
-            "max_tokens_param": req.max_tokens_param or (model_info.max_tokens_param if model_info else "max_tokens"),
-            "notes": req.notes or (model_info.notes if model_info else ""),
+            
+            # 基础能力
+            "supports_streaming": req.supports_streaming if hasattr(req, 'supports_streaming') and req.supports_streaming is not None else (capabilities_obj.supports_streaming if capabilities_obj else True),
+            "supports_function_calling": req.supports_function_calling if req.supports_function_calling is not None else (capabilities_obj.supports_function_calling if capabilities_obj else True),
+            "supports_json_mode": req.supports_json_mode if req.supports_json_mode is not None else (capabilities_obj.supports_json_mode if capabilities_obj else True),
+            "supports_structured_output": req.supports_structured_output if req.supports_structured_output is not None else (capabilities_obj.supports_structured_output if capabilities_obj else False),
+            
+            # 推理能力
+            "supports_thinking": req.supports_thinking if req.supports_thinking is not None else (capabilities_obj.supports_thinking if capabilities_obj else False),
+            "can_toggle_thinking": req.can_toggle_thinking if req.can_toggle_thinking is not None else (capabilities_obj.can_toggle_thinking if capabilities_obj else False),
+            "supports_reasoning_content": req.supports_reasoning_content if hasattr(req, 'supports_reasoning_content') and req.supports_reasoning_content is not None else (capabilities_obj.supports_reasoning_content if capabilities_obj else False),
+            
+            # 参数支持
+            "max_tokens_param": req.max_tokens_param or (capabilities_obj.max_tokens_param if capabilities_obj else "max_tokens"),
+            "supports_temperature": req.supports_temperature if hasattr(req, 'supports_temperature') and req.supports_temperature is not None else (capabilities_obj.supports_temperature if capabilities_obj else True),
+            "supports_top_p": req.supports_top_p if hasattr(req, 'supports_top_p') and req.supports_top_p is not None else (capabilities_obj.supports_top_p if capabilities_obj else True),
+            "supports_top_k": req.supports_top_k if hasattr(req, 'supports_top_k') and req.supports_top_k is not None else (capabilities_obj.supports_top_k if capabilities_obj else False),
+            "supports_frequency_penalty": req.supports_frequency_penalty if hasattr(req, 'supports_frequency_penalty') and req.supports_frequency_penalty is not None else (capabilities_obj.supports_frequency_penalty if capabilities_obj else False),
+            "supports_presence_penalty": req.supports_presence_penalty if hasattr(req, 'supports_presence_penalty') and req.supports_presence_penalty is not None else (capabilities_obj.supports_presence_penalty if capabilities_obj else False),
+            "supports_min_p": req.supports_min_p if hasattr(req, 'supports_min_p') and req.supports_min_p is not None else (capabilities_obj.supports_min_p if capabilities_obj else False),
+            
+            # 高级功能
+            "supports_response_format": req.supports_response_format if hasattr(req, 'supports_response_format') and req.supports_response_format is not None else (capabilities_obj.supports_response_format if capabilities_obj else True),
+            "supports_tools": req.supports_tools if hasattr(req, 'supports_tools') and req.supports_tools is not None else (capabilities_obj.supports_tools if capabilities_obj else True),
+            "supports_tool_choice": req.supports_tool_choice if hasattr(req, 'supports_tool_choice') and req.supports_tool_choice is not None else (capabilities_obj.supports_tool_choice if capabilities_obj else True),
+            "supports_extra_body": req.supports_extra_body if hasattr(req, 'supports_extra_body') and req.supports_extra_body is not None else (capabilities_obj.supports_extra_body if capabilities_obj else True),
+            "supports_stream_options": req.supports_stream_options if hasattr(req, 'supports_stream_options') and req.supports_stream_options is not None else (capabilities_obj.supports_stream_options if capabilities_obj else True),
+            
+            # 特殊参数
+            "supports_enable_thinking": req.supports_enable_thinking if hasattr(req, 'supports_enable_thinking') and req.supports_enable_thinking is not None else (capabilities_obj.supports_enable_thinking if capabilities_obj else False),
+            "supports_thinking_budget": req.supports_thinking_budget if hasattr(req, 'supports_thinking_budget') and req.supports_thinking_budget is not None else (capabilities_obj.supports_thinking_budget if capabilities_obj else False),
+            "supports_enable_search": req.supports_enable_search if hasattr(req, 'supports_enable_search') and req.supports_enable_search is not None else (capabilities_obj.supports_enable_search if capabilities_obj else False),
+            
+            # 其他信息
+            "notes": req.notes or (capabilities_obj.notes if capabilities_obj and hasattr(capabilities_obj, 'notes') else ""),
         }
 
         if llm_id:
@@ -386,21 +450,7 @@ class LLMManager:
 
         llm_list = []
         for llm in result:
-            # 标准化type字段为列表格式
-            llm_type = llm.get("type", "embedding")
-            if isinstance(llm_type, str):
-                llm_type = [llm_type]
-
-            llm_item = LLMProviderInfo(
-                llmId=llm["_id"],  # _id已经是UUID字符串
-                icon=llm["icon"],
-                openaiBaseUrl=llm["openai_base_url"],
-                openaiApiKey=llm["openai_api_key"],
-                modelName=llm["model_name"],
-                maxTokens=llm["max_tokens"],
-                isEditable=bool(llm.get("user_sub")),  # 有user_sub的是用户创建的，可编辑
-                type=llm_type,
-            )
+            llm_item = LLMManager._create_llm_provider_info(llm)
             llm_list.append(llm_item)
         return llm_list
 
@@ -425,21 +475,7 @@ class LLMManager:
 
         llm_list = []
         for llm in result:
-            # 标准化type字段为列表格式
-            llm_type = llm.get("type", "embedding")
-            if isinstance(llm_type, str):
-                llm_type = [llm_type]
-
-            llm_item = LLMProviderInfo(
-                llmId=llm["_id"],  # _id已经是UUID字符串
-                icon=llm["icon"],
-                openaiBaseUrl=llm["openai_base_url"],
-                openaiApiKey=llm["openai_api_key"],
-                modelName=llm["model_name"],
-                maxTokens=llm["max_tokens"],
-                isEditable=bool(llm.get("user_sub")),  # 系统模型（user_sub=""）不可编辑
-                type=llm_type,
-            )
+            llm_item = LLMManager._create_llm_provider_info(llm)
             llm_list.append(llm_item)
         return llm_list
 
@@ -460,21 +496,7 @@ class LLMManager:
 
         llm_list = []
         for llm in result:
-            # 标准化type字段为列表格式
-            llm_type = llm.get("type", "reranker")
-            if isinstance(llm_type, str):
-                llm_type = [llm_type]
-
-            llm_item = LLMProviderInfo(
-                llmId=llm["_id"],  # _id已经是UUID字符串
-                icon=llm["icon"],
-                openaiBaseUrl=llm["openai_base_url"],
-                openaiApiKey=llm["openai_api_key"],
-                modelName=llm["model_name"],
-                maxTokens=llm["max_tokens"],
-                isEditable=bool(llm.get("user_sub")),  # 有user_sub的是用户创建的，可编辑
-                type=llm_type,
-            )
+            llm_item = LLMManager._create_llm_provider_info(llm)
             llm_list.append(llm_item)
         return llm_list
 
@@ -499,21 +521,7 @@ class LLMManager:
 
         llm_list = []
         for llm in result:
-            # 标准化type字段为列表格式
-            llm_type = llm.get("type", "reranker")
-            if isinstance(llm_type, str):
-                llm_type = [llm_type]
-
-            llm_item = LLMProviderInfo(
-                llmId=llm["_id"],  # _id已经是UUID字符串
-                icon=llm["icon"],
-                openaiBaseUrl=llm["openai_base_url"],
-                openaiApiKey=llm["openai_api_key"],
-                modelName=llm["model_name"],
-                maxTokens=llm["max_tokens"],
-                isEditable=bool(llm.get("user_sub")),  # 系统模型（user_sub=""）不可编辑
-                type=llm_type,
-            )
+            llm_item = LLMManager._create_llm_provider_info(llm)
             llm_list.append(llm_item)
         return llm_list
 
@@ -541,14 +549,27 @@ class LLMManager:
         # 优先使用配置文件中明确指定的provider，如果没有则从endpoint推断
         provider = getattr(model_config, 'provider', '') or getattr(
             model_config, 'backend', '') or get_provider_from_endpoint(model_config.endpoint)
-        model_info = model_registry.get_model_info(
-            provider, model_config.model)
-
-        # 根据provider获取图标，如果没有则使用配置文件中的图标
+        
+        # 根据模型类型选择正确的ModelType
+        from apps.llm.model_types import ModelType
+        model_type_map = {
+            "chat": ModelType.CHAT,
+            "embedding": ModelType.EMBEDDING,
+            "reranker": ModelType.RERANK,
+            "function_call": ModelType.FUNCTION_CALL,
+        }
+        registry_model_type = model_type_map.get(model_type, ModelType.CHAT)
+        
+        # 从model_registry获取完整的模型能力
+        capabilities = model_registry.get_model_capabilities(
+            provider, model_config.model, registry_model_type)
+        
+        # 获取图标
         provider_icon = llm_provider_dict.get(provider, {}).get(
             "icon", getattr(model_config, 'icon', ''))
 
         # 创建系统模型
+        # 对于非chat模型，使用默认值；对于chat模型，从capabilities获取
         system_llm = LLM(
             _id=model_id,
             user_sub="",  # 系统级别模型
@@ -560,13 +581,41 @@ class LLMManager:
             max_tokens=getattr(model_config, 'max_tokens', None),
             type=[model_type],  # 使用列表格式
             provider=provider,
-            supports_thinking=model_info.supports_thinking if model_info else False,
-            can_toggle_thinking=model_info.can_toggle_thinking if model_info else False,
-            supports_function_calling=model_info.supports_function_calling if model_info else True,
-            supports_json_mode=model_info.supports_json_mode if model_info else True,
-            supports_structured_output=model_info.supports_structured_output if model_info else False,
-            max_tokens_param=model_info.max_tokens_param if model_info else "max_tokens",
-            notes=model_info.notes if model_info else "",
+            
+            # 基础能力 - 使用getattr安全访问，适用于不同类型的能力对象
+            supports_streaming=getattr(capabilities, 'supports_streaming', True) if capabilities else True,
+            supports_function_calling=getattr(capabilities, 'supports_function_calling', True) if capabilities else True,
+            supports_json_mode=getattr(capabilities, 'supports_json_mode', True) if capabilities else True,
+            supports_structured_output=getattr(capabilities, 'supports_structured_output', False) if capabilities else False,
+            
+            # 推理能力
+            supports_thinking=getattr(capabilities, 'supports_thinking', False) if capabilities else False,
+            can_toggle_thinking=getattr(capabilities, 'can_toggle_thinking', False) if capabilities else False,
+            supports_reasoning_content=getattr(capabilities, 'supports_reasoning_content', False) if capabilities else False,
+            
+            # 参数支持
+            max_tokens_param=getattr(capabilities, 'max_tokens_param', "max_tokens") if capabilities else "max_tokens",
+            supports_temperature=getattr(capabilities, 'supports_temperature', True) if capabilities else True,
+            supports_top_p=getattr(capabilities, 'supports_top_p', True) if capabilities else True,
+            supports_top_k=getattr(capabilities, 'supports_top_k', False) if capabilities else False,
+            supports_frequency_penalty=getattr(capabilities, 'supports_frequency_penalty', False) if capabilities else False,
+            supports_presence_penalty=getattr(capabilities, 'supports_presence_penalty', False) if capabilities else False,
+            supports_min_p=getattr(capabilities, 'supports_min_p', False) if capabilities else False,
+            
+            # 高级功能
+            supports_response_format=getattr(capabilities, 'supports_response_format', True) if capabilities else True,
+            supports_tools=getattr(capabilities, 'supports_tools', True) if capabilities else True,
+            supports_tool_choice=getattr(capabilities, 'supports_tool_choice', True) if capabilities else True,
+            supports_extra_body=getattr(capabilities, 'supports_extra_body', True) if capabilities else True,
+            supports_stream_options=getattr(capabilities, 'supports_stream_options', True) if capabilities else True,
+            
+            # 特殊参数
+            supports_enable_thinking=getattr(capabilities, 'supports_enable_thinking', False) if capabilities else False,
+            supports_thinking_budget=getattr(capabilities, 'supports_thinking_budget', False) if capabilities else False,
+            supports_enable_search=getattr(capabilities, 'supports_enable_search', False) if capabilities else False,
+            
+            # 其他信息
+            notes=getattr(capabilities, 'notes', "") if capabilities else "",
         )
 
         # 使用by_alias=True将id字段作为_id插入，保持UUID字符串格式
