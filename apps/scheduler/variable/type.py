@@ -1,4 +1,5 @@
 from enum import StrEnum
+from typing import Any
 
 
 class VariableType(StrEnum):
@@ -46,6 +47,38 @@ class VariableType(StrEnum):
             VariableType.ARRAY_SECRET: VariableType.SECRET,
         }
         return element_type_map.get(self)
+
+    @staticmethod
+    def juge_list_type(value: list[Any]) -> "VariableType":
+        """判断列表的变量类型"""
+        if all(isinstance(item, str) for item in value):
+            return VariableType.ARRAY_STRING
+        elif all(isinstance(item, (int, float)) for item in value):
+            return VariableType.ARRAY_NUMBER
+        elif all(isinstance(item, dict) for item in value):
+            return VariableType.ARRAY_OBJECT
+        elif all(isinstance(item, bool) for item in value):
+            return VariableType.ARRAY_BOOLEAN
+        elif all(isinstance(item, bytes) for item in value):
+            return VariableType.ARRAY_FILE
+        else:
+            return VariableType.ARRAY_ANY
+
+    @staticmethod
+    def judge_type_by_value(value: Any) -> "VariableType":
+        """根据值获取变量类型"""
+        if isinstance(value, bool):
+            return VariableType.BOOLEAN
+        elif isinstance(value, int) or isinstance(value, float):
+            return VariableType.NUMBER
+        elif isinstance(value, str):
+            return VariableType.STRING
+        elif isinstance(value, list):
+            return VariableType.juge_list_type(value)
+        elif isinstance(value, dict):
+            return VariableType.OBJECT
+        else:
+            return VariableType.STRING  # 默认使用字符串类型
 
 
 class VariableScope(StrEnum):

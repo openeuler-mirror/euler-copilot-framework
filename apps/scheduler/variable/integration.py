@@ -11,7 +11,6 @@ logger = logging.getLogger(__name__)
 
 class VariableIntegration:
     """变量解析集成类 - 为现有调度器提供变量功能"""
-
     @staticmethod
     async def initialize_system_variables(context: Dict[str, Any]) -> None:
         """初始化系统变量
@@ -114,10 +113,8 @@ class VariableIntegration:
     async def save_conversation_variable(
         var_name: str,
         value: Any,
-        var_type: str = "string",
         description: str = "",
         user_sub: str = "",
-        flow_id: Optional[str] = None,
         conversation_id: Optional[str] = None
     ) -> bool:
         """保存对话变量
@@ -125,10 +122,8 @@ class VariableIntegration:
         Args:
             var_name: 变量名（不包含scope前缀）
             value: 变量值
-            var_type: 变量类型
             description: 变量描述
             user_sub: 用户ID
-            flow_id: 流程ID
             conversation_id: 对话ID
 
         Returns:
@@ -148,11 +143,7 @@ class VariableIntegration:
                 return False
 
             # 转换变量类型
-            try:
-                var_type_enum = VariableType(var_type)
-            except ValueError:
-                var_type_enum = VariableType.STRING
-                logger.warning(f"未知的变量类型 {var_type}，使用默认类型 string")
+            var_type_enum = VariableType.judge_type_by_value(value)
 
             # 尝试更新变量，如果不存在则创建
             try:
