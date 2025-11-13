@@ -265,7 +265,7 @@ async def init_resources() -> None:
     """初始化必要资源"""
     
     WordsCheck()
-    await LanceDB().init()
+    await LanceDB.init()
     await Pool.init()
     TokenCalculator()
     

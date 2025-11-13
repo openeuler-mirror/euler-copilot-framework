@@ -112,7 +112,8 @@ class MCPLoader(metaclass=SingletonMeta):
                 # 重新保存config
                 template_config = MCP_PATH / "template" / mcp_id / "config.json"
                 f = await template_config.open("w+", encoding="utf-8")
-                config_data = config.model_dump(by_alias=True, exclude_none=True)
+                config_data = config.model_dump(
+                    by_alias=True, exclude_none=True)
                 await f.write(json.dumps(config_data, indent=4, ensure_ascii=False))
                 await f.aclose()
 
@@ -137,13 +138,15 @@ class MCPLoader(metaclass=SingletonMeta):
         mcp_ids = ProcessHandler.get_all_task_ids()
         # 检索_id在mcp_ids且状态为ready或者failed的MCP的内容
         db_service_list = await mcp_collection.find(
-            {"_id": {"$in": mcp_ids}, "status": {"$in": [MCPInstallStatus.READY, MCPInstallStatus.FAILED]}},
+            {"_id": {"$in": mcp_ids}, "status": {
+                "$in": [MCPInstallStatus.READY, MCPInstallStatus.FAILED]}},
         ).to_list(None)
         for db_service in db_service_list:
             try:
                 item = MCPCollection.model_validate(db_service)
             except Exception as e:
-                logger.error("[MCPLoader] MCP模板数据验证失败: %s, 错误: %s", db_service["_id"], e)
+                logger.error("[MCPLoader] MCP模板数据验证失败: %s, 错误: %s",
+                             db_service["_id"], e)
                 continue
             ProcessHandler.remove_task(item.id)
             logger.info("[MCPLoader] 删除已完成或失败的MCP安装进程: %s", item.id)
@@ -211,7 +214,8 @@ class MCPLoader(metaclass=SingletonMeta):
         """
         # 创建客户端
         if (
-            (config.type == MCPType.STDIO and isinstance(config.config, MCPServerStdioConfig))
+            (config.type == MCPType.STDIO and isinstance(
+                config.config, MCPServerStdioConfig))
             or (config.type == MCPType.SSE and isinstance(config.config, MCPServerSSEConfig))
         ):
             client = MCPClient()
@@ -240,7 +244,8 @@ class MCPLoader(metaclass=SingletonMeta):
                     description=item.description or "",
                     input_schema=item.inputSchema,
                 )]
-            logger.info("[MCPLoader] MCP %s 成功获取 %d 个工具", mcp_id, len(tool_list))
+            logger.info("[MCPLoader] MCP %s 成功获取 %d 个工具",
+                        mcp_id, len(tool_list))
         except Exception as e:
             logger.error("[MCPLoader] MCP %s 获取工具列表失败: %s", mcp_id, e)
             raise ValueError(f"MCP {mcp_id} 获取工具列表失败: {e}")
@@ -250,10 +255,11 @@ class MCPLoader(metaclass=SingletonMeta):
                 try:
                     await client.stop()
                 except Exception as e:
-                    logger.warning("[MCPLoader] MCP %s 停止客户端时发生异常: %s", mcp_id, e)
+                    logger.warning(
+                        "[MCPLoader] MCP %s 停止客户端时发生异常: %s", mcp_id, e)
             else:
                 logger.warning("[MCPLoader] MCP %s 客户端没有stop方法", mcp_id)
-        
+
         return tool_list
 
     @staticmethod
@@ -310,13 +316,13 @@ class MCPLoader(metaclass=SingletonMeta):
 
         while True:
             try:
-                mcp_table = await LanceDB().get_table("mcp")
-                await mcp_table.merge_insert("id").when_matched_update_all().when_not_matched_insert_all().execute([
-                    MCPVector(
+                mcp_table = await LanceDB.get_table("mcp")
+                await mcp_table.add(
+                    [MCPVector(
                         id=mcp_id,
                         embedding=embedding[0],
-                    ),
-                ])
+                    )]
+                )
                 break
             except Exception as e:
                 if "Commit conflict" in str(e):
@@ -331,16 +337,14 @@ class MCPLoader(metaclass=SingletonMeta):
         for tool, embedding in zip(tool_list, tool_embedding, strict=True):
             while True:
                 try:
-                    mcp_tool_table = await LanceDB().get_table("mcp_tool")
-                    await mcp_tool_table.merge_insert(
-                        "id",
-                    ).when_matched_update_all().when_not_matched_insert_all().execute([
-                        MCPToolVector(
+                    mcp_tool_table = await LanceDB.get_table("mcp_tool")
+                    await mcp_tool_table.add(
+                        [MCPToolVector(
                             id=tool.id,
                             mcp_id=mcp_id,
                             embedding=embedding,
-                        ),
-                    ])
+                        )]
+                    )
                     break
                 except Exception as e:
                     if "Commit conflict" in str(e):
@@ -348,7 +352,7 @@ class MCPLoader(metaclass=SingletonMeta):
                         await asyncio.sleep(0.01)
                     else:
                         raise
-        await LanceDB().create_index("mcp_tool")
+        await LanceDB.create_index("mcp_tool")
 
     @staticmethod
     async def save_one(mcp_id: str, config: MCPServerConfig) -> None:
@@ -468,7 +472,8 @@ class MCPLoader(metaclass=SingletonMeta):
                 else:
                     mcp_config.config.args.append(str(user_path)+'/project')
             else:
-                mcp_config.config.args = ["--directory", str(user_path)+'/project'] + mcp_config.config.args
+                mcp_config.config.args = [
+                    "--directory", str(user_path)+'/project'] + mcp_config.config.args
         user_config_path = user_path / "config.json"
         # 更新用户配置
         f = await user_config_path.open("w", encoding="utf-8", errors="ignore")
@@ -575,7 +580,7 @@ class MCPLoader(metaclass=SingletonMeta):
         for mcp_id in deleted_mcp_list:
             while True:
                 try:
-                    mcp_table = await LanceDB().get_table("mcp")
+                    mcp_table = await LanceDB.get_table("mcp")
                     await mcp_table.delete(f"id == '{mcp_id}'")
                     break
                 except Exception as e:

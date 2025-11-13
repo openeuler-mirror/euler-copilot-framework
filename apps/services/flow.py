@@ -459,6 +459,8 @@ class FlowManager:
         :param flow_item: 流的item
         :return: 流的id
         """
+        import time
+        st = time.time()
         try:
             app_collection = MongoDB().get_collection("app")
             app_record = await app_collection.find_one({"_id": app_id})
@@ -468,6 +470,8 @@ class FlowManager:
         except Exception:
             logger.exception("[FlowManager] 获取流失败")
             return None
+        en = time.time()
+        logger.info(f"[FlowManager] 获取应用时间: {en-st}s")
         try:
             flow_config = Flow(
                 name=flow_item.name,
@@ -479,14 +483,15 @@ class FlowManager:
                 connectivity=flow_item.connectivity,
                 debug=flow_item.debug,
             )
-
+            st = time.time()
             # 获取旧的flow配置以便比较节点变化
             flow_loader = FlowLoader()
             old_flow_config = await flow_loader.load(app_id, flow_id)
-
+            en = time.time()
+            logger.info(f"[FlowManager] 加载旧流配置时间: {en-st}s")
             # 收集新配置中的所有步骤ID
             new_step_ids = set()
-
+            st = time.time()
             for node_item in flow_item.nodes:
                 params = node_item.parameters
                 new_step_ids.add(node_item.step_id)
@@ -507,7 +512,9 @@ class FlowManager:
                     service_id=node_item.service_id,
                     plugin_type=node_item.plugin_type,
                 )
-
+            en = time.time()
+            logger.info(f"[FlowManager] 处理节点时间: {en-st}s")
+            st = time.time()
             # 检查是否有节点被删除，如果有则清理相关变量
             if old_flow_config and user_sub:
                 old_step_ids = set(old_flow_config.steps.keys())
@@ -519,7 +526,9 @@ class FlowManager:
                     await FlowManager._cleanup_deleted_node_variables(
                         deleted_step_ids, flow_id, user_sub
                     )
-
+            en = time.time()
+            logger.info(f"[FlowManager] 清理删除节点变量时间: {en-st}s")
+            st = time.time()
             for edge_item in flow_item.edges:
                 try:
                     edge_from = edge_item.source_node
@@ -549,7 +558,9 @@ class FlowManager:
                     logger.error(
                         f"[FlowManager] 创建边失败: {edge_item.edge_id}, 错误: {e}")
                     continue
-
+            en = time.time()
+            logger.info(f"[FlowManager] 处理边时间: {en-st}s")
+            st = time.time()
             # 处理notes
             for note_item in flow_item.notes:
                 try:
@@ -566,10 +577,11 @@ class FlowManager:
                     logger.error(
                         f"[FlowManager] 创建备注失败: {note_item.note_id}, 错误: {e}")
                     continue
-
+            en = time.time()
+            logger.info(f"[FlowManager] 处理备注时间: {en-st}s")
             logger.info(
                 f"[FlowManager] 构建完成，flow_config.edges数量: {len(flow_config.edges)}, flow_config.notes数量: {len(flow_config.notes)}")
-
+            st = time.time()
             if old_flow_config is None:
                 error_msg = f"[FlowManager] 流 {flow_id} 不存在；可能为新创建"
                 logger.error(error_msg)
@@ -577,7 +589,12 @@ class FlowManager:
                 flow_config.debug = await FlowManager.is_flow_config_equal(old_flow_config, flow_config)
             else:
                 flow_config.debug = False
+            en = time.time()
+            logger.info(f"[FlowManager] 比较流配置时间: {en-st}s")
+            st = time.time()
             await flow_loader.save(app_id, flow_id, flow_config)
+            en = time.time()
+            logger.info(f"[FlowManager] 保存流配置时间: {en-st}s")
         except Exception:
             logger.exception("[FlowManager] 存储/更新流失败")
             return None

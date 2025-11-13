@@ -21,7 +21,8 @@ from apps.scheduler.pool.loader.metadata import MetadataLoader, MetadataType
 from apps.scheduler.pool.loader.openapi import OpenAPILoader
 
 logger = logging.getLogger(__name__)
-BASE_PATH = Path(Config().get_config().deploy.data_dir) / "semantics" / "service"
+BASE_PATH = Path(Config().get_config().deploy.data_dir) / \
+    "semantics" / "service"
 
 
 class ServiceLoader:
@@ -83,8 +84,8 @@ class ServiceLoader:
 
         try:
             # 获取 LanceDB 表
-            service_table = await LanceDB().get_table("service")
-            node_table = await LanceDB().get_table("node")
+            service_table = await LanceDB.get_table("service")
+            node_table = await LanceDB.get_table("node")
 
             # 删除数据
             await service_table.delete(f"id = '{service_id}'")
@@ -137,8 +138,8 @@ class ServiceLoader:
         # 向量化所有数据并保存
         while True:
             try:
-                service_table = await LanceDB().get_table("service")
-                node_table = await LanceDB().get_table("node")
+                service_table = await LanceDB.get_table("service")
+                node_table = await LanceDB.get_table("node")
                 await service_table.delete(f"id = '{metadata.id}'")
                 await node_table.delete(f"service_id = '{metadata.id}'")
                 break
@@ -159,10 +160,8 @@ class ServiceLoader:
         ]
         while True:
             try:
-                service_table = await LanceDB().get_table("service")
-                await service_table.merge_insert("id").when_matched_update_all().when_not_matched_insert_all().execute(
-                    service_vector_data,
-                )
+                service_table = await LanceDB.get_table("service")
+                await service_table.add(service_vector_data)
                 break
             except Exception as e:
                 if "Commit conflict" in str(e):
@@ -187,10 +186,8 @@ class ServiceLoader:
             )
         while True:
             try:
-                node_table = await LanceDB().get_table("node")
-                await node_table.merge_insert("id").when_matched_update_all().when_not_matched_insert_all().execute(
-                    node_vector_data,
-                )
+                node_table = await LanceDB.get_table("node")
+                await node_table.add(node_vector_data)
                 break
             except Exception as e:
                 if "Commit conflict" in str(e):
