@@ -4,6 +4,17 @@
 from enum import Enum
 
 
+class VectorPoolType(str, Enum):
+    """向量池类型"""
+
+    FLOW = "flow"
+    SERVICE = "service"
+    CALL = "call"
+    NODE = "node"
+    MCP = "mcp"
+    MCP_TOOL = "mcp_tool"
+
+
 class SlotType(str, Enum):
     """Slot类型"""
 

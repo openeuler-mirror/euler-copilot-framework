@@ -13,14 +13,16 @@ from anyio import Path
 from sqids.sqids import Sqids
 from typing import Any
 
-from apps.common.lance import LanceDB
+from apps.common.postgres import DataBase, McpVector, McpToolVector
 from apps.common.mongo import MongoDB
 from apps.common.process_handler import ProcessHandler
 from apps.common.singleton import SingletonMeta
 from apps.constants import MCP_PATH
 from apps.llm.embedding import Embedding
+from apps.services.vector import VectorManager
 from apps.scheduler.pool.mcp.client import MCPClient
 from apps.scheduler.pool.mcp.install import install_npx, install_uvx
+from apps.schemas.enum_var import VectorPoolType
 from apps.schemas.mcp import (
     MCPCollection,
     MCPInstallStatus,
@@ -28,9 +30,7 @@ from apps.schemas.mcp import (
     MCPServerSSEConfig,
     MCPServerStdioConfig,
     MCPTool,
-    MCPToolVector,
-    MCPType,
-    MCPVector,
+    MCPType
 )
 
 logger = logging.getLogger(__name__)
@@ -313,46 +313,28 @@ class MCPLoader(metaclass=SingletonMeta):
 
         # 服务本身向量化
         embedding = await Embedding.get_embedding([config.description])
-
-        while True:
-            try:
-                mcp_table = await LanceDB.get_table("mcp")
-                await mcp_table.add(
-                    [MCPVector(
-                        id=mcp_id,
-                        embedding=embedding[0],
-                    )]
-                )
-                break
-            except Exception as e:
-                if "Commit conflict" in str(e):
-                    logger.error("[MCPLoader] LanceDB插入mcp冲突，重试中...")  # noqa: TRY400
-                    await asyncio.sleep(0.01)
-                else:
-                    raise
+        mcp_vector_entity = McpVector(
+            id=mcp_id,
+            embedding=embedding[0],
+        )
+        await VectorManager.add_vector(mcp_vector_entity)
 
         # 工具向量化
         tool_desc_list = [tool.description for tool in tool_list]
         tool_embedding = await Embedding.get_embedding(tool_desc_list)
+        mcp_tool_entity_list = []
         for tool, embedding in zip(tool_list, tool_embedding, strict=True):
-            while True:
-                try:
-                    mcp_tool_table = await LanceDB.get_table("mcp_tool")
-                    await mcp_tool_table.add(
-                        [MCPToolVector(
-                            id=tool.id,
-                            mcp_id=mcp_id,
-                            embedding=embedding,
-                        )]
-                    )
-                    break
-                except Exception as e:
-                    if "Commit conflict" in str(e):
-                        logger.error("[MCPLoader] LanceDB插入mcp_tool冲突，重试中...")  # noqa: TRY400
-                        await asyncio.sleep(0.01)
-                    else:
-                        raise
-        await LanceDB.create_index("mcp_tool")
+            mcp_tool_entity_list.append(
+                McpToolVector(
+                    id=tool.id,
+                    mcp_id=mcp_id,
+                    embedding=embedding,
+                )
+            )
+        BATCH_SIZE = 1024
+        for i in range(0, len(mcp_tool_entity_list), BATCH_SIZE):
+            batch = mcp_tool_entity_list[i:i + BATCH_SIZE]
+            await VectorManager.add_vectors(batch)
 
     @staticmethod
     async def save_one(mcp_id: str, config: MCPServerConfig) -> None:
@@ -576,20 +558,9 @@ class MCPLoader(metaclass=SingletonMeta):
         await mcp_collection.delete_many({"_id": {"$in": deleted_mcp_list}})
         logger.info("[MCPLoader] 清除数据库中无效的MCP")
 
-        # 从LanceDB中移除
-        for mcp_id in deleted_mcp_list:
-            while True:
-                try:
-                    mcp_table = await LanceDB.get_table("mcp")
-                    await mcp_table.delete(f"id == '{mcp_id}'")
-                    break
-                except Exception as e:
-                    if "Commit conflict" in str(e):
-                        logger.error("[MCPLoader] LanceDB删除mcp冲突，重试中...")  # noqa: TRY400
-                        await asyncio.sleep(0.01)
-                    else:
-                        raise
-        logger.info("[MCPLoader] 清除LanceDB中无效的MCP")
+        # 从PostgreSQL/OpenGauss中移除
+        await VectorManager.delete_mcp_tool_vectors_by_mcp_ids(deleted_mcp_list)
+        logger.info("[MCPLoader] 清除PostgreSQL/OpenGauss中无效的MCP向量数据")
 
     @staticmethod
     async def delete_mcp(mcp_id: str) -> None:
@@ -603,6 +574,11 @@ class MCPLoader(metaclass=SingletonMeta):
         template_path = MCP_PATH / "template" / mcp_id
         if await template_path.exists():
             await asyncer.asyncify(shutil.rmtree)(template_path.as_posix(), ignore_errors=True)
+        # 从PostgreSQL/OpenGauss中删除
+        await VectorManager.delete_vectors(
+            vector_type=VectorPoolType.MCP,
+            ids=[mcp_id],
+        )
 
     @staticmethod
     async def _load_user_mcp() -> None:

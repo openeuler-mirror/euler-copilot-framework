@@ -7,15 +7,14 @@ import logging
 import sys
 from hashlib import shake_128
 from pathlib import Path
-
 import apps.scheduler.call as system_call
+from apps.common.postgres import DataBase, CallPoolVector
+from apps.services.vector import VectorManager
 from apps.common.config import Config
 from apps.common.singleton import SingletonMeta
-from apps.schemas.enum_var import CallType
+from apps.schemas.enum_var import CallType, VectorPoolType
 from apps.schemas.pool import CallPool, NodePool
-from apps.models.vector import CallPoolVector
 from apps.llm.embedding import Embedding
-from apps.common.lance import LanceDB
 from apps.common.mongo import MongoDB
 
 logger = logging.getLogger(__name__)
@@ -158,19 +157,11 @@ class CallLoader(metaclass=SingletonMeta):
             err = f"[CallLoader] 从MongoDB删除Call失败：{e}"
             logger.exception(err)
             raise RuntimeError(err) from e
-
-        # 从LanceDB中删除
-        while True:
-            try:
-                table = await LanceDB.get_table("call")
-                await table.delete(f"id = '{call_name}'")
-                break
-            except RuntimeError as e:
-                if "Commit conflict" in str(e):
-                    logger.error("[CallLoader] LanceDB删除call冲突，重试中...")  # noqa: TRY400
-                    await asyncio.sleep(0.01)
-                else:
-                    raise
+        # 从PostgreSQL/OpenGauss中删除
+        await VectorManager.delete_vectors(
+            vector_type=VectorPoolType.CALL,
+            ids=[call_name],
+        )
 
     # 更新数据库
 
@@ -201,42 +192,27 @@ class CallLoader(metaclass=SingletonMeta):
             err = "[CallLoader] 更新MongoDB失败"
             logger.exception(err)
             raise RuntimeError(err) from e
-
-        while True:
-            try:
-                table = await LanceDB.get_table("call")
-                # 删除重复的ID
-                for call in call_metadata:
-                    await table.delete(f"id = '{call.id}'")
-                break
-            except RuntimeError as e:
-                if "Commit conflict" in str(e):
-                    logger.error("[CallLoader] LanceDB插入call冲突，重试中...")  # noqa: TRY400
-                    await asyncio.sleep(0.01)
-                else:
-                    raise
+        call_ids = [call.id for call in call_metadata]
+        await VectorManager.delete_vectors(
+            vector_type=VectorPoolType.CALL,
+            ids=call_ids,
+        )
 
         # 进行向量化，更新LanceDB
         call_vecs = await Embedding.get_embedding(call_descriptions)
-        vector_data = []
+        vector_entites = []
         for i, vec in enumerate(call_vecs):
-            vector_data.append(
+            vector_entites.append(
                 CallPoolVector(
                     id=call_metadata[i].id,
                     embedding=vec,
                 ),
             )
-        while True:
-            try:
-                table = await LanceDB.get_table("call")
-                await table.add(vector_data)
-                break
-            except RuntimeError as e:
-                if "Commit conflict" in str(e):
-                    logger.error("[CallLoader] LanceDB插入call冲突，重试中...")  # noqa: TRY400
-                    await asyncio.sleep(0.01)
-                else:
-                    raise
+        # 分批次插入，防止数据量过大时插入失败
+        BATCH_SIZE = 1024
+        for i in range(0, len(vector_entites), BATCH_SIZE):
+            batch = vector_entites[i:i + BATCH_SIZE]
+            await VectorManager.add_vectors(batch)
 
     async def load(self) -> None:
         """初始化Call信息"""

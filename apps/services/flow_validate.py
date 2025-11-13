@@ -47,25 +47,28 @@ class FlowService:
                     # 保存原始的serviceId和callId，以便API插件节点能够正确识别
                     original_service_id = node.service_id
                     original_call_id = node.call_id
-                    
+
                     # 根据是否有serviceId来判断是API插件还是普通的Empty节点
                     if original_service_id and original_service_id.strip():
                         # 有serviceId，标记为Plugin类型（API插件节点）
                         node.node_id = SpecialCallType.PLUGIN.value
                         node.call_id = SpecialCallType.PLUGIN.value
                         node.service_id = original_service_id
-                        logger.info(f"[FlowService] 将节点 {original_call_id} 标记为API插件节点，serviceId: {original_service_id}")
+                        logger.info(
+                            f"[FlowService] 将节点 {original_call_id} 标记为API插件节点，serviceId: {original_service_id}")
                     else:
                         # 没有serviceId，标记为Empty类型
                         node.node_id = SpecialCallType.EMPTY.value
                         node.call_id = SpecialCallType.EMPTY.value
-                        logger.info(f"[FlowService] 将节点 {original_call_id} 标记为Empty节点")
-                    
+                        logger.info(
+                            f"[FlowService] 将节点 {original_call_id} 标记为Empty节点")
+
                     # 更新描述信息，保留原有描述
                     original_description = node.description or ""
                     node.description = f'【对应的api工具被删除！节点不可用！请联系相关人员！】\n\n{original_description}'
-                    
-                    logger.error(f"[FlowService] 获取步骤的call_id失败 {original_call_id}，错误: {e}")
+
+                    logger.error(
+                        f"[FlowService] 获取步骤的call_id失败 {original_call_id}，错误: {e}")
             node_branch_map[node.step_id] = set()
             if node.call_id == NodeType.CHOICE.value:
                 input_parameters = node.parameters["input_parameters"]
@@ -289,7 +292,7 @@ class FlowService:
     async def validate_subflow_illegal(cls, flow: FlowItem) -> None:
         """
         验证子工作流是否违法（子工作流专用验证，不强制要求end节点）
-        
+
         :param flow: 子工作流
         :raises ValidationError: 验证失败
         """
@@ -299,45 +302,45 @@ class FlowService:
     async def validate_subflow_connectivity(cls, flow: FlowItem) -> bool:
         """
         验证子工作流连通性（子工作流专用，不要求连接到end节点）
-        
+
         :param flow: 子工作流
         :return: 是否连通
         """
         if not flow.nodes:
             return True
-            
+
         # 构建图结构
         graph = {}
         start_nodes = []
-        
+
         for node in flow.nodes:
             graph[node.step_id] = []
             if node.call_id == 'start' or not any(
                 edge.target_node == node.step_id for edge in flow.edges
             ):
                 start_nodes.append(node.step_id)
-        
+
         for edge in flow.edges:
             if edge.source_node in graph:
                 graph[edge.source_node].append(edge.target_node)
-        
+
         # 检查从开始节点是否能到达所有其他节点
         if not start_nodes:
             return len(flow.nodes) <= 1  # 如果没有开始节点且只有一个或零个节点，认为连通
-            
+
         visited = set()
-        
+
         def dfs(node_id):
             if node_id in visited:
                 return
             visited.add(node_id)
             for neighbor in graph.get(node_id, []):
                 dfs(neighbor)
-        
+
         # 从所有开始节点开始遍历
         for start_node in start_nodes:
             dfs(start_node)
-        
+
         # 检查是否所有节点都被访问到
         all_node_ids = {node.step_id for node in flow.nodes}
         return len(visited) == len(all_node_ids)
@@ -346,7 +349,7 @@ class FlowService:
     async def _validate_flow_nodes(cls, flow: FlowItem, is_subflow: bool = False) -> None:
         """
         验证工作流节点（支持子工作流模式）
-        
+
         :param flow: 工作流
         :param is_subflow: 是否为子工作流
         :raises ValidationError: 验证失败
@@ -356,13 +359,13 @@ class FlowService:
 
         start_count = 0
         end_count = 0
-        
+
         for node in flow.nodes:
             if node.call_id == "start":
                 start_count += 1
             elif node.call_id == "end":
                 end_count += 1
-                
+
         # 主工作流必须有start和end节点
         if not is_subflow:
             if start_count != 1:
@@ -383,9 +386,11 @@ class FlowService:
 
         # 验证边引用的节点存在
         for edge in flow.edges:
-            source_exists = any(node.step_id == edge.source_node for node in flow.nodes)
-            target_exists = any(node.step_id == edge.target_node for node in flow.nodes)
-            
+            source_exists = any(
+                node.step_id == edge.source_node for node in flow.nodes)
+            target_exists = any(
+                node.step_id == edge.target_node for node in flow.nodes)
+
             if not source_exists:
                 raise ValidationError(f"边引用的源节点不存在: {edge.source_node}")
             if not target_exists:

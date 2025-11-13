@@ -11,13 +11,13 @@ import yaml
 from anyio import Path
 
 from apps.common.config import Config
-from apps.schemas.enum_var import NodeType, EdgeType
+from apps.schemas.enum_var import NodeType, EdgeType, VectorPoolType
 from apps.schemas.flow import AppFlow, Flow
 from apps.schemas.pool import AppPool
-from apps.models.vector import FlowPoolVector
 from apps.llm.embedding import Embedding
+from apps.services.vector import VectorManager
 from apps.services.node import NodeManager
-from apps.common.lance import LanceDB
+from apps.common.postgres import DataBase, FlowPoolVector
 from apps.common.mongo import MongoDB
 from apps.scheduler.util import yaml_enum_presenter, yaml_str_presenter
 from apps.schemas.subflow import AppSubFlow
@@ -240,12 +240,11 @@ class FlowLoader:
             except Exception:
                 logger.exception("[FlowLoader] 删除工作流文件失败：%s", flow_path)
                 return False
-
-            table = await LanceDB.get_table("flow")
-            try:
-                await table.delete(f"id = '{flow_id}'")
-            except Exception:
-                logger.exception("[FlowLoader] LanceDB删除flow失败")
+            # 从数据库中删除
+            await VectorManager.delete_vectors(
+                vector_type=VectorPoolType.FLOW,
+                ids=[flow_id],
+            )
             return True
         logger.warning("[FlowLoader] 工作流文件不存在或不是文件：%s", flow_path)
         return True
@@ -296,68 +295,27 @@ class FlowLoader:
         except Exception:
             logger.exception("[FlowLoader] 更新 MongoDB 失败")
 
-        # 删除重复的ID，增加重试次数限制
-        max_retries = 10
-        retry_count = 0
         import time
         st = time.time()
-        while retry_count < max_retries:
-            try:
-                table = await LanceDB.get_table("flow")
-                await table.delete(f"id = '{metadata.id}'")
-                break
-            except RuntimeError as e:
-                if "Commit conflict" in str(e):
-                    retry_count += 1
-                    logger.error(f"[FlowLoader] LanceDB删除flow冲突，重试中... ({retry_count}/{max_retries})")  # noqa: TRY400
-                    # 指数退避，减少冲突概率
-                    await asyncio.sleep(0.01 * (2 ** min(retry_count, 5)))
-                else:
-                    raise
-            except Exception as e:
-                logger.error(f"[FlowLoader] LanceDB删除操作异常: {e}")
-                break
+        await VectorManager.delete_vectors(
+            vector_type=VectorPoolType.FLOW,
+            ids=[metadata.id],
+        )
         en = time.time()
-        logger.error(f"[FlowLoader] LanceDB删除flow耗时: {en-st} 秒")
-        if retry_count >= max_retries:
-            logger.warning(
-                f"[FlowLoader] LanceDB删除flow达到最大重试次数，跳过删除: {metadata.id}")
-            # 不抛出异常，继续执行后续操作
+        logger.error(f"[FlowLoader] PostgreSQL/OpenGauss删除flow耗时: {en-st} 秒")
+
+        # 不抛出异常，继续执行后续操作
         # 进行向量化
         service_embedding = await Embedding.get_embedding([metadata.description])
-        vector_data = [
-            FlowPoolVector(
-                id=metadata.id,
-                app_id=app_id,
-                embedding=service_embedding[0],
-            ),
-        ]
         st = time.time()
-        # 插入向量数据，增加重试次数限制
-        max_retries_insert = 10
-        retry_count_insert = 0
-        while retry_count_insert < max_retries_insert:
-            try:
-                table = await LanceDB.get_table("flow")
-                await table.add(vector_data)
-                break
-            except RuntimeError as e:
-                if "Commit conflict" in str(e):
-                    retry_count_insert += 1
-                    logger.error(f"[FlowLoader] LanceDB插入flow冲突，重试中... ({retry_count_insert}/{max_retries_insert})")  # noqa: TRY400
-                    # 指数退避，减少冲突概率
-                    await asyncio.sleep(0.01 * (2 ** min(retry_count_insert, 5)))
-                else:
-                    raise
-            except Exception as e:
-                logger.error(f"[FlowLoader] LanceDB插入操作异常: {e}")
-                break
+        flow_pool_vector_entity = FlowPoolVector(
+            id=metadata.id,
+            app_id=app_id,
+            embedding=service_embedding[0],
+        )
+        await VectorManager.add_vector(flow_pool_vector_entity)
         en = time.time()
-        logger.error(f"[FlowLoader] LanceDB插入flow耗时: {en-st} 秒")
-        if retry_count_insert >= max_retries_insert:
-            logger.error(
-                f"[FlowLoader] LanceDB插入flow达到最大重试次数，操作失败: {metadata.id}")
-            raise RuntimeError(f"LanceDB插入flow失败，达到最大重试次数: {metadata.id}")
+        logger.error(f"[FlowLoader] PostgreSQL/OpenGauss添加flow耗时: {en-st} 秒")
 
     async def save_subflow(self, app_id: str, flow_id: str, sub_flow_id: str, flow: Flow) -> None:
         """保存子工作流到层次化路径"""

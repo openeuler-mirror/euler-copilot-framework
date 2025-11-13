@@ -3,8 +3,6 @@
 
 from enum import Enum
 from typing import Any
-
-from lancedb.pydantic import LanceModel, Vector
 from pydantic import BaseModel, Field
 
 
@@ -37,10 +35,12 @@ class MCPType(str, Enum):
 class MCPBasicConfig(BaseModel):
     """MCP 基本配置"""
 
-    auto_approve: list[str] = Field(description="自动批准的MCP工具ID列表", default=[], alias="autoApprove")
+    auto_approve: list[str] = Field(
+        description="自动批准的MCP工具ID列表", default=[], alias="autoApprove")
     disabled: bool = Field(description="MCP 服务器是否禁用", default=False)
     auto_install: bool = Field(description="是否自动安装MCP服务器", default=True)
-    timeout: int = Field(description="MCP 服务器超时时间（秒）", default=60, alias="timeout")
+    timeout: int = Field(description="MCP 服务器超时时间（秒）",
+                         default=60, alias="timeout")
     description: str = Field(description="MCP 服务器自然语言描述", default="")
 
 
@@ -55,7 +55,8 @@ class MCPServerStdioConfig(MCPBasicConfig):
 class MCPServerSSEConfig(MCPBasicConfig):
     """MCP 服务器配置"""
     headers: dict[str, str] = Field(description="MCP 服务器请求头", default={})
-    url: str = Field(description="MCP 服务器地址", default="http://example.com/sse", pattern=r"^https?://.*$")
+    url: str = Field(description="MCP 服务器地址",
+                     default="http://example.com/sse", pattern=r"^https?://.*$")
 
 
 class MCPServerConfig(BaseModel):
@@ -66,8 +67,10 @@ class MCPServerConfig(BaseModel):
     description: str = Field(description="MCP 服务器自然语言描述", default="")
     type: MCPType = Field(description="MCP 服务器类型", default=MCPType.STDIO)
     author: str = Field(description="MCP 服务器上传者", default="")
-    author_name: str = Field(description="MCP 服务器上传者用户名", default="", alias="authorName")
-    config: MCPServerStdioConfig | MCPServerSSEConfig = Field(description="MCP 服务器配置")
+    author_name: str = Field(description="MCP 服务器上传者用户名",
+                             default="", alias="authorName")
+    config: MCPServerStdioConfig | MCPServerSSEConfig = Field(
+        description="MCP 服务器配置")
 
 
 class MCPTool(BaseModel):
@@ -89,24 +92,11 @@ class MCPCollection(BaseModel):
     type: MCPType = Field(description="MCP 类型", default=MCPType.SSE)
     activated: list[str] = Field(description="激活该MCP的用户ID列表", default=[])
     tools: list[MCPTool] = Field(description="MCP工具列表", default=[])
-    status: MCPInstallStatus = Field(description="MCP服务状态", default=MCPInstallStatus.INIT)
+    status: MCPInstallStatus = Field(
+        description="MCP服务状态", default=MCPInstallStatus.INIT)
     author: str = Field(description="MCP作者", default="")
-    author_name: str = Field(description="MCP作者用户名", default="", alias="authorName")
-
-
-class MCPVector(LanceModel):
-    """MCP向量化数据，存储在LanceDB的 ``mcp`` 表中"""
-
-    id: str = Field(description="MCP ID")
-    embedding: Vector(dim=1024) = Field(description="MCP描述的向量信息")  # type: ignore[call-arg]
-
-
-class MCPToolVector(LanceModel):
-    """MCP工具向量化数据，存储在LanceDB的 ``mcp_tool`` 表中"""
-
-    id: str = Field(description="工具ID")
-    mcp_id: str = Field(description="MCP ID")
-    embedding: Vector(dim=1024) = Field(description="MCP工具描述的向量信息")  # type: ignore[call-arg]
+    author_name: str = Field(description="MCP作者用户名",
+                             default="", alias="authorName")
 
 
 class GoalEvaluationResult(BaseModel):
@@ -167,7 +157,8 @@ class ErrorType(str, Enum):
 class ToolExcutionErrorType(BaseModel):
     """MCP工具执行错误"""
 
-    type: ErrorType = Field(description="错误类型", default=ErrorType.MISSING_PARAM)
+    type: ErrorType = Field(
+        description="错误类型", default=ErrorType.MISSING_PARAM)
     reason: str = Field(description="错误原因", default="")
 
 

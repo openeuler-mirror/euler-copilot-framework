@@ -8,14 +8,14 @@ import shutil
 
 from anyio import Path
 from fastapi.encoders import jsonable_encoder
-
+from apps.common.postgres import ServicePoolVector, NodePoolVector
 from apps.common.config import Config
+from apps.schemas.enum_var import VectorPoolType
 from apps.schemas.flow import Permission, ServiceMetadata
 from apps.schemas.pool import NodePool, ServicePool
-from apps.models.vector import NodePoolVector, ServicePoolVector
 from apps.llm.embedding import Embedding
-from apps.common.lance import LanceDB
 from apps.common.mongo import MongoDB
+from apps.services.vector import VectorManager
 from apps.scheduler.pool.check import FileChecker
 from apps.scheduler.pool.loader.metadata import MetadataLoader, MetadataType
 from apps.scheduler.pool.loader.openapi import OpenAPILoader
@@ -82,16 +82,13 @@ class ServiceLoader:
         except Exception:
             logger.exception("[ServiceLoader] 删除Service失败")
 
-        try:
-            # 获取 LanceDB 表
-            service_table = await LanceDB.get_table("service")
-            node_table = await LanceDB.get_table("node")
-
-            # 删除数据
-            await service_table.delete(f"id = '{service_id}'")
-            await node_table.delete(f"id = '{service_id}'")
-        except Exception:
-            logger.exception("[ServiceLoader] 删除数据库失败")
+        await VectorManager.delete_vectors(
+            vector_type=VectorPoolType.SERVICE,
+            ids=[service_id],
+        )
+        await VectorManager.delete_call_vectors_by_service_ids(
+            service_ids=[service_id],
+        )
 
         if not is_reload:
             path = BASE_PATH / service_id
@@ -136,62 +133,37 @@ class ServiceLoader:
             raise RuntimeError(err) from e
 
         # 向量化所有数据并保存
-        while True:
-            try:
-                service_table = await LanceDB.get_table("service")
-                node_table = await LanceDB.get_table("node")
-                await service_table.delete(f"id = '{metadata.id}'")
-                await node_table.delete(f"service_id = '{metadata.id}'")
-                break
-            except Exception as e:
-                if "Commit conflict" in str(e):
-                    logger.error("[ServiceLoader] LanceDB删除service冲突，重试中...")  # noqa: TRY400
-                    await asyncio.sleep(0.01)
-                else:
-                    raise
+        await VectorManager.delete_vectors(
+            vector_type=VectorPoolType.SERVICE,
+            ids=[metadata.id],
+        )
+        await VectorManager.delete_call_vectors_by_service_ids(
+            service_ids=[metadata.id],
+        )
 
         # 进行向量化，更新LanceDB
         service_vecs = await Embedding.get_embedding([metadata.description])
-        service_vector_data = [
-            ServicePoolVector(
-                id=metadata.id,
-                embedding=service_vecs[0],
-            ),
-        ]
-        while True:
-            try:
-                service_table = await LanceDB.get_table("service")
-                await service_table.add(service_vector_data)
-                break
-            except Exception as e:
-                if "Commit conflict" in str(e):
-                    logger.error("[ServiceLoader] LanceDB插入service冲突，重试中...")  # noqa: TRY400
-                    await asyncio.sleep(0.01)
-                else:
-                    raise
+        service_vector_pool_entity = ServicePoolVector(
+            id=metadata.id,
+            embedding=service_vecs[0],
+        )
+        await VectorManager.add_vector(service_vector_pool_entity)
 
         node_descriptions = []
         for node in nodes:
             node_descriptions += [node.description]
 
         node_vecs = await Embedding.get_embedding(node_descriptions)
-        node_vector_data = []
+        node_vector_pool_entities = []
         for i, vec in enumerate(node_vecs):
-            node_vector_data.append(
+            node_vector_pool_entities.append(
                 NodePoolVector(
                     id=nodes[i].id,
                     service_id=metadata.id,
                     embedding=vec,
-                ),
+                )
             )
-        while True:
-            try:
-                node_table = await LanceDB.get_table("node")
-                await node_table.add(node_vector_data)
-                break
-            except Exception as e:
-                if "Commit conflict" in str(e):
-                    logger.error("[ServiceLoader] LanceDB插入node冲突，重试中...")  # noqa: TRY400
-                    await asyncio.sleep(0.01)
-                else:
-                    raise
+        BATCH_SIZE = 1024
+        for i in range(0, len(node_vector_pool_entities), BATCH_SIZE):
+            batch = node_vector_pool_entities[i:i + BATCH_SIZE]
+            await VectorManager.add_vectors(batch)

@@ -283,9 +283,12 @@ class Scheduler:
                 return
 
             # 如果用户选了特定的Flow
-            if app_info.flow_id:
+            if app_info.flow_id or len(flow_info) == 1:
                 logger.info("[Scheduler] 获取工作流定义")
-                flow_id = app_info.flow_id
+                if app_info.flow_id:
+                    flow_id = app_info.flow_id
+                else:
+                    flow_id = flow_info[0].id
                 flow_data = await Pool().get_flow(app_info.app_id, flow_id)
             else:
                 # 如果用户没有选特定的Flow，则根据语义选择一个Flow
