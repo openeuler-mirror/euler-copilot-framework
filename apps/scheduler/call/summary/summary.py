@@ -22,12 +22,12 @@ if TYPE_CHECKING:
     from apps.scheduler.executor.step import StepExecutor
 
 
-
 class Summary(CoreCall, input_model=DataBase, output_model=SummaryOutput):
     """总结工具"""
 
     context: ExecutorBackground = Field(description="对话上下文")
-    llm_id: str | None = Field(default=None, description="大模型ID，如果为None则使用系统默认模型")
+    llm_id: str | None = Field(
+        default=None, description="大模型ID，如果为None则使用系统默认模型")
     enable_thinking: bool = Field(default=False, description="是否启用思维链")
     i18n_info: ClassVar[dict[str, dict]] = {
         LanguageType.CHINESE: {
@@ -48,7 +48,7 @@ class Summary(CoreCall, input_model=DataBase, output_model=SummaryOutput):
         # 提取 llm_id 和 enable_thinking，避免重复传递
         llm_id = kwargs.pop("llm_id", None)
         enable_thinking = kwargs.pop("enable_thinking", False)
-        
+
         obj = cls(
             context=executor.background,
             name=executor.step.step.name,
@@ -61,11 +61,9 @@ class Summary(CoreCall, input_model=DataBase, output_model=SummaryOutput):
         await obj._set_input(executor)
         return obj
 
-
     async def _init(self, call_vars: CallVars) -> DataBase:
         """初始化工具，返回输入"""
         return DataBase()
-
 
     async def _exec(
         self, _input_data: dict[str, Any], language: LanguageType = LanguageType.CHINESE
@@ -73,7 +71,8 @@ class Summary(CoreCall, input_model=DataBase, output_model=SummaryOutput):
         """执行工具"""
         import logging
         logger = logging.getLogger(__name__)
-        logger.info(f"[Summary] 使用模型ID: {self.llm_id}, 启用思维链: {self.enable_thinking}")
+        logger.info(
+            f"[Summary] 使用模型ID: {self.llm_id}, 启用思维链: {self.enable_thinking}")
         summary_obj = ExecutorSummary(
             llm_id=self.llm_id,
             enable_thinking=self.enable_thinking,
@@ -82,8 +81,7 @@ class Summary(CoreCall, input_model=DataBase, output_model=SummaryOutput):
         self.tokens.input_tokens += summary_obj.input_tokens
         self.tokens.output_tokens += summary_obj.output_tokens
 
-        yield CallOutputChunk(type=CallOutputType.TEXT, content=summary)
-
+        yield CallOutputChunk(type=CallOutputType.DATA, content={"summary": summary})
 
     async def exec(
         self,
@@ -92,10 +90,8 @@ class Summary(CoreCall, input_model=DataBase, output_model=SummaryOutput):
         language: LanguageType = LanguageType.CHINESE,
     ) -> AsyncGenerator[CallOutputChunk, None]:
         """执行工具"""
+        content = ""
         async for chunk in self._exec(input_data, language):
-            content = chunk.content
-            if not isinstance(content, str):
-                err = "[SummaryCall] 工具输出格式错误"
-                raise TypeError(err)
+            content = chunk.content.get("summary", "")
             executor.task.runtime.summary = content
             yield chunk

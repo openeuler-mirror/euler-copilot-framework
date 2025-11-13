@@ -123,7 +123,8 @@ class StepExecutor(BaseExecutor):
         )
         if self.step.step.params:
             input_params = self.step.step.params.get("input_parameters", {})
-            params.update(input_params)
+            if isinstance(input_params, dict):
+                params.update(input_params)
 
         # 对于LLM调用，注入enable_thinking参数
         if self._call_id == "LLM":
@@ -198,6 +199,7 @@ class StepExecutor(BaseExecutor):
         content: str | dict[str, Any] = ""
 
         async for chunk in iterator:
+            logging.error(f"StepExecutor接收到chunk: {chunk}")
             if not isinstance(chunk, CallOutputChunk):
                 err = "[StepExecutor] 返回结果类型错误"
                 logger.error(err)
@@ -222,7 +224,7 @@ class StepExecutor(BaseExecutor):
 
     async def _save_output_parameters_to_variables(self, output_data: str | dict[str, Any]) -> None:
         """保存输出参数到变量池，并进行类型验证"""
-        output_data_schema = self.node.override_output
+        output_data_schema = self.obj.output_model.model_json_schema()
         try:
             jsonschema.validate(instance=output_data,
                                 schema=output_data_schema)
@@ -245,8 +247,8 @@ class StepExecutor(BaseExecutor):
                 conversation_id=self.task.ids.conversation_id
             )
         else:
-            if "items" in output_data_schema:
-                output_data_schema: dict = output_data_schema["items"]
+            if "properties" in output_data_schema:
+                output_data_schema: dict = output_data_schema["properties"]
             else:
                 raise ValueError(
                     f"[StepExecutor] 步骤 {self.step.step_id} 的 output_data_schema 格式错误，缺少 items 字段")
