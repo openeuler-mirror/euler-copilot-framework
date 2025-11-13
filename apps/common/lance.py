@@ -2,6 +2,7 @@
 """向LanceDB中存储向量化数据"""
 
 import lancedb
+from lancedb.db import AsyncConnection
 from lancedb.index import HnswSq
 
 from apps.common.config import Config
@@ -17,8 +18,10 @@ from apps.schemas.mcp import MCPToolVector, MCPVector
 
 class LanceDB(metaclass=SingletonMeta):
     """LanceDB向量化存储"""
+    _engine: AsyncConnection | None = None
 
-    async def init(self) -> None:
+    @staticmethod
+    async def init() -> None:
         """
         初始化LanceDB
 
@@ -26,44 +29,50 @@ class LanceDB(metaclass=SingletonMeta):
 
         :return: 无
         """
-        self._engine = await lancedb.connect_async(
+        LanceDB._engine = await lancedb.connect_async(
             Config().get_config().deploy.data_dir.rstrip("/") + "/vectors",
         )
 
         # 创建表
-        await self._engine.create_table(
+        await LanceDB._engine.create_table(
             "flow",
             schema=FlowPoolVector,
             exist_ok=True,
         )
-        await self._engine.create_table(
+        await LanceDB.create_index("flow")
+        await LanceDB._engine.create_table(
             "service",
             schema=ServicePoolVector,
             exist_ok=True,
         )
-        await self._engine.create_table(
+        await LanceDB.create_index("service")
+        await LanceDB._engine.create_table(
             "call",
             schema=CallPoolVector,
             exist_ok=True,
         )
-        await self._engine.create_table(
+        await LanceDB.create_index("call")
+        await LanceDB._engine.create_table(
             "node",
             schema=NodePoolVector,
             exist_ok=True,
         )
-        await self._engine.create_table(
+        await LanceDB.create_index("node")
+        await LanceDB._engine.create_table(
             "mcp",
             schema=MCPVector,
             exist_ok=True,
         )
-        await self._engine.create_table(
+        await LanceDB.create_index("mcp")
+        await LanceDB._engine.create_table(
             "mcp_tool",
             schema=MCPToolVector,
             exist_ok=True,
         )
+        await LanceDB.create_index("mcp_tool")
 
-
-    async def get_table(self, table_name: str) -> lancedb.AsyncTable:
+    @staticmethod
+    async def get_table(table_name: str) -> lancedb.AsyncTable:
         """
         获取LanceDB中的表
 
@@ -71,20 +80,17 @@ class LanceDB(metaclass=SingletonMeta):
         :return: 表
         :rtype: lancedb.AsyncTable
         """
-        self._engine = await lancedb.connect_async(
-            Config().get_config().deploy.data_dir.rstrip("/") + "/vectors",
-        )
-        return await self._engine.open_table(table_name)
+        return await LanceDB._engine.open_table(table_name)
 
-
-    async def create_index(self, table_name: str) -> None:
+    @staticmethod
+    async def create_index(table_name: str) -> None:
         """
         创建LanceDB中表的索引；使用HNSW算法
 
         :param str table_name: 表名
         :return: 无
         """
-        table = await self.get_table(table_name)
+        table = await LanceDB.get_table(table_name)
         await table.create_index(
             "embedding",
             config=HnswSq(),

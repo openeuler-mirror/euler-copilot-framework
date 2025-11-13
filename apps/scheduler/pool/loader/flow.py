@@ -11,7 +11,7 @@ import yaml
 from anyio import Path
 
 from apps.common.config import Config
-from apps.schemas.enum_var import NodeType,EdgeType
+from apps.schemas.enum_var import NodeType, EdgeType
 from apps.schemas.flow import AppFlow, Flow
 from apps.schemas.pool import AppPool
 from apps.models.vector import FlowPoolVector
@@ -24,6 +24,7 @@ from apps.schemas.subflow import AppSubFlow
 
 logger = logging.getLogger(__name__)
 BASE_PATH = Path(Config().get_config().deploy.data_dir) / "semantics" / "app"
+
 
 class FlowLoader:
     """工作流加载器"""
@@ -82,12 +83,13 @@ class FlowLoader:
                 err = f"[FlowLoader] 步骤名称不能以下划线开头：{key}"
                 logger.error(err)
                 raise ValueError(err)
-            if step["type"]==NodeType.START.value or step["type"]==NodeType.END.value:
+            if step["type"] == NodeType.START.value or step["type"] == NodeType.END.value:
                 continue
             try:
                 step["type"] = await NodeManager.get_node_call_id(step["node"])
             except ValueError as e:
-                logger.warning("[FlowLoader] 获取节点call_id失败：%s，错误信息：%s", step["node"], e)
+                logger.warning(
+                    "[FlowLoader] 获取节点call_id失败：%s，错误信息：%s", step["node"], e)
                 step["type"] = "Empty"
             step["name"] = (
                 (await NodeManager.get_node_name(step["node"]))
@@ -99,13 +101,13 @@ class FlowLoader:
     async def load(self, app_id: str, flow_id: str) -> Flow | None:
         """从文件系统中加载【单个】工作流"""
         flow_key = f"{app_id}:{flow_id}"
-        
+
         # 第一次检查：是否已在加载中
         existing_task = None
         async with self._loading_lock:
             if flow_key in self._loading_flows:
                 existing_task = self._loading_flows[flow_key]
-        
+
         # 如果找到现有任务，等待其完成
         if existing_task is not None:
             logger.info(f"[FlowLoader] 工作流正在加载中，等待完成: {flow_key}")
@@ -118,7 +120,7 @@ class FlowLoader:
                     if self._loading_flows.get(flow_key) == existing_task:
                         self._loading_flows.pop(flow_key, None)
                 return None
-        
+
         # 创建新的加载任务
         task = None
         async with self._loading_lock:
@@ -130,13 +132,14 @@ class FlowLoader:
                     try:
                         return await existing_task
                     except Exception as e:
-                        logger.error(f"[FlowLoader] 等待工作流加载失败: {flow_key}, 错误: {e}")
+                        logger.error(
+                            f"[FlowLoader] 等待工作流加载失败: {flow_key}, 错误: {e}")
                         return None
-            
+
             # 创建新的加载任务
             task = asyncio.create_task(self._do_load(app_id, flow_id))
             self._loading_flows[flow_key] = task
-        
+
         # 执行加载任务
         try:
             result = await task
@@ -176,6 +179,8 @@ class FlowLoader:
                 if not flow_yaml:
                     return None
             flow_config = Flow.model_validate(flow_yaml)
+            import time
+            st = time.time()
             await self._update_db(
                 app_id,
                 AppFlow(
@@ -187,9 +192,12 @@ class FlowLoader:
                     debug=flow_config.debug,
                 ),
             )
+            en = time.time()
+            logger.info(f"[FlowLoader] 更新数据库耗时: {en-st} 秒")
             return Flow.model_validate(flow_yaml)
         except Exception:
-            logger.exception("[FlowLoader] 应用 %s：工作流 %s 格式不合法", app_id, flow_id)
+            logger.exception(
+                "[FlowLoader] 应用 %s：工作流 %s 格式不合法", app_id, flow_id)
             return None
 
     async def save(self, app_id: str, flow_id: str, flow: Flow) -> None:
@@ -233,7 +241,7 @@ class FlowLoader:
                 logger.exception("[FlowLoader] 删除工作流文件失败：%s", flow_path)
                 return False
 
-            table = await LanceDB().get_table("flow")
+            table = await LanceDB.get_table("flow")
             try:
                 await table.delete(f"id = '{flow_id}'")
             except Exception:
@@ -281,7 +289,8 @@ class FlowLoader:
             await app_collection.aggregate(
                 [
                     {"$match": {"_id": app_id}},
-                    {"$replaceWith": {"$setField": {"field": key, "input": "$$ROOT", "value": new_hash}}},
+                    {"$replaceWith": {"$setField": {"field": key,
+                                                    "input": "$$ROOT", "value": new_hash}}},
                 ],
             )
         except Exception:
@@ -290,9 +299,11 @@ class FlowLoader:
         # 删除重复的ID，增加重试次数限制
         max_retries = 10
         retry_count = 0
+        import time
+        st = time.time()
         while retry_count < max_retries:
             try:
-                table = await LanceDB().get_table("flow")
+                table = await LanceDB.get_table("flow")
                 await table.delete(f"id = '{metadata.id}'")
                 break
             except RuntimeError as e:
@@ -306,9 +317,11 @@ class FlowLoader:
             except Exception as e:
                 logger.error(f"[FlowLoader] LanceDB删除操作异常: {e}")
                 break
-        
+        en = time.time()
+        logger.error(f"[FlowLoader] LanceDB删除flow耗时: {en-st} 秒")
         if retry_count >= max_retries:
-            logger.warning(f"[FlowLoader] LanceDB删除flow达到最大重试次数，跳过删除: {metadata.id}")
+            logger.warning(
+                f"[FlowLoader] LanceDB删除flow达到最大重试次数，跳过删除: {metadata.id}")
             # 不抛出异常，继续执行后续操作
         # 进行向量化
         service_embedding = await Embedding.get_embedding([metadata.description])
@@ -319,15 +332,14 @@ class FlowLoader:
                 embedding=service_embedding[0],
             ),
         ]
+        st = time.time()
         # 插入向量数据，增加重试次数限制
         max_retries_insert = 10
         retry_count_insert = 0
         while retry_count_insert < max_retries_insert:
             try:
-                table = await LanceDB().get_table("flow")
-                await table.merge_insert("id").when_matched_update_all().when_not_matched_insert_all().execute(
-                    vector_data,
-                )
+                table = await LanceDB.get_table("flow")
+                await table.add(vector_data)
                 break
             except RuntimeError as e:
                 if "Commit conflict" in str(e):
@@ -340,15 +352,18 @@ class FlowLoader:
             except Exception as e:
                 logger.error(f"[FlowLoader] LanceDB插入操作异常: {e}")
                 break
-        
+        en = time.time()
+        logger.error(f"[FlowLoader] LanceDB插入flow耗时: {en-st} 秒")
         if retry_count_insert >= max_retries_insert:
-            logger.error(f"[FlowLoader] LanceDB插入flow达到最大重试次数，操作失败: {metadata.id}")
+            logger.error(
+                f"[FlowLoader] LanceDB插入flow达到最大重试次数，操作失败: {metadata.id}")
             raise RuntimeError(f"LanceDB插入flow失败，达到最大重试次数: {metadata.id}")
 
     async def save_subflow(self, app_id: str, flow_id: str, sub_flow_id: str, flow: Flow) -> None:
         """保存子工作流到层次化路径"""
         # 子工作流路径: {app_id}/flow/{flow_id}/subflow/{sub_flow_id}.yaml
-        subflow_path = BASE_PATH / app_id / "flow" / flow_id / "subflow" / f"{sub_flow_id}.yaml"
+        subflow_path = BASE_PATH / app_id / "flow" / \
+            flow_id / "subflow" / f"{sub_flow_id}.yaml"
         if not await subflow_path.parent.exists():
             await subflow_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -363,7 +378,7 @@ class FlowLoader:
                     sort_keys=False,
                 ),
             )
-        
+
         # 更新数据库中的子工作流元数据
         await self._update_subflow_db(
             app_id,
@@ -379,12 +394,13 @@ class FlowLoader:
 
     async def load_subflow(self, app_id: str, flow_id: str, sub_flow_id: str) -> Flow | None:
         """加载子工作流"""
-        subflow_path = BASE_PATH / app_id / "flow" / flow_id / "subflow" / f"{sub_flow_id}.yaml"
-        
+        subflow_path = BASE_PATH / app_id / "flow" / \
+            flow_id / "subflow" / f"{sub_flow_id}.yaml"
+
         if not await subflow_path.exists():
             logger.warning("[FlowLoader] 子工作流文件不存在: %s", subflow_path)
             return None
-            
+
         try:
             async with aiofiles.open(subflow_path, mode="r", encoding="utf-8") as f:
                 content = await f.read()
@@ -396,17 +412,18 @@ class FlowLoader:
 
     async def delete_subflow(self, app_id: str, flow_id: str, sub_flow_id: str) -> bool:
         """删除子工作流文件"""
-        subflow_path = BASE_PATH / app_id / "flow" / flow_id / "subflow" / f"{sub_flow_id}.yaml"
-        
+        subflow_path = BASE_PATH / app_id / "flow" / \
+            flow_id / "subflow" / f"{sub_flow_id}.yaml"
+
         if await subflow_path.exists():
             try:
                 await subflow_path.unlink()
                 logger.info("[FlowLoader] 成功删除子工作流文件：%s", subflow_path)
-                
+
                 # 从数据库中删除子工作流元数据
                 await self._delete_subflow_db(app_id, flow_id, sub_flow_id)
                 return True
-                
+
             except Exception:
                 logger.exception("[FlowLoader] 删除子工作流文件失败：%s", subflow_path)
                 return False
@@ -418,19 +435,19 @@ class FlowLoader:
         """更新数据库中的子工作流元数据"""
         try:
             app_collection = MongoDB().get_collection("app")
-            
+
             # 查找应用
             app_record = await app_collection.find_one({"_id": app_id})
             if not app_record:
                 logger.error("[FlowLoader] 应用不存在: %s", app_id)
                 return
-                
+
             # 确保子工作流元数据结构存在
             if "subflows" not in app_record:
                 app_record["subflows"] = {}
             if flow_id not in app_record["subflows"]:
                 app_record["subflows"][flow_id] = []
-                
+
             # 更新或添加子工作流元数据
             subflows = app_record["subflows"][flow_id]
             existing_index = None
@@ -438,19 +455,20 @@ class FlowLoader:
                 if subflow.get("id") == metadata.id:
                     existing_index = i
                     break
-                    
-            subflow_data = metadata.model_dump(by_alias=True, exclude_none=True)
+
+            subflow_data = metadata.model_dump(
+                by_alias=True, exclude_none=True)
             if existing_index is not None:
                 subflows[existing_index] = subflow_data
             else:
                 subflows.append(subflow_data)
-                
+
             # 保存到数据库
             await app_collection.update_one(
                 {"_id": app_id},
                 {"$set": {f"subflows.{flow_id}": subflows}}
             )
-            
+
         except Exception:
             logger.exception("[FlowLoader] 更新子工作流数据库元数据失败")
 
@@ -458,12 +476,12 @@ class FlowLoader:
         """从数据库中删除子工作流元数据"""
         try:
             app_collection = MongoDB().get_collection("app")
-            
+
             # 从应用的子工作流列表中移除
             await app_collection.update_one(
                 {"_id": app_id},
                 {"$pull": {f"subflows.{flow_id}": {"id": sub_flow_id}}}
             )
-            
+
         except Exception:
             logger.exception("[FlowLoader] 删除子工作流数据库元数据失败")

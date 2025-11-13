@@ -1398,7 +1398,7 @@ RISK_EVALUATE: dict[LanguageType, str] = {
         "reason": "提示信息"
     }
     ```
-    # 样例
+    # 样例一
     # 工具名称
     mysql_analyzer
     # 工具描述
@@ -1422,10 +1422,28 @@ RISK_EVALUATE: dict[LanguageType, str] = {
     ```json
     {
         "risk": "medium",
-        "reason": "当前工具将连接到MySQL数据库并分析性能，可能会对数据库性能产生一定影响。请确保在非生产环境中执行此操作。"
+        "reason": "当前使用的工具名称为mysql_analyzer，工具的入参为 host: 192.0.0.1, port: 3306, username: root, password: password。该工具将连接到MySQL数据库并分析性能，可能会对数据库性能产生一定影响。请确保在非生产环境中执行此操作。"
     }
     ```
-    # 工具
+    # 样例二
+    # 工具名称
+    shell_command_executor
+    # 工具描述
+    执行shell命令
+    # 工具入参
+    {
+        "command": "rm -rf /"
+    }
+    # 附加信息
+    无
+    # 输出
+    ```json
+    {
+        "risk": "high",
+        "reason": "当前使用的工具名称为shell_command_executor，工具的入参为 command: rm -rf /. 该命令将删除系统根目录下的所有文件，这将导致系统无法正常运行，存在极高的风险。请立即停止执行该操作。"
+    }
+    ```
+    # 工具名称
     <tool>
         <name> {{tool_name}} </name>
         <description> {{tool_description}} </description>
@@ -1447,7 +1465,7 @@ RISK_EVALUATE: dict[LanguageType, str] = {
         "reason": "prompt message"
     }
     ```
-    # Example
+    # Example One
     # Tool name
     mysql_analyzer
     # Tool description
@@ -1471,10 +1489,29 @@ RISK_EVALUATE: dict[LanguageType, str] = {
     ```json
     {
         "risk": "medium",
-        "reason": "This tool will connect to a MySQL database and analyze performance, which may impact database performance. This operation should only be performed in a non-production environment."
+        "reason": "The current tool being used is mysql_analyzer, with input parameters host: 192.0.0.1, port: 3306, username: root, password: password. This tool will connect to a MySQL database and analyze performance, which may impact database performance. This operation should only be performed in a non-production environment."
     }
     ```
-    # Tool
+    # Example Two
+    # Tool name
+    shell_command_executor
+    # Tool description
+    Executes shell commands
+    # Tool input
+    {
+        "command": "rm -rf /"
+    }
+    # Additional information
+    None
+    # Output
+    ```json
+    {
+        "risk": "high",
+        "reason": "The current tool being used is shell_command_executor, with input parameter command: rm -rf /. This command will delete all files in the system root directory, which will cause the system to be unable to function properly and poses an extremely high risk. Please stop this operation immediately."
+    }
+    ```
+    
+    # Tool name
     <tool>
         <name> {{tool_name}} </name>
         <description> {{tool_description}} </description>

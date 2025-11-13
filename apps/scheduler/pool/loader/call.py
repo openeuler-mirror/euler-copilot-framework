@@ -56,7 +56,8 @@ class CallLoader(metaclass=SingletonMeta):
 
         call_dir = BASE_PATH / call_dir_name
         if not (call_dir / "__init__.py").exists():
-            logger.info("[CallLoader] 模块 %s 不存在__init__.py文件，尝试自动创建。", call_dir)
+            logger.info(
+                "[CallLoader] 模块 %s 不存在__init__.py文件，尝试自动创建。", call_dir)
             try:
                 (Path(call_dir) / "__init__.py").touch()
             except Exception as e:
@@ -110,7 +111,8 @@ class CallLoader(metaclass=SingletonMeta):
         try:
             sys.path.insert(0, str(call_dir.parent))
             if not (call_dir / "__init__.py").exists():
-                logger.info("[CallLoader] 父模块 %s 不存在__init__.py文件，尝试自动创建。", call_dir)
+                logger.info(
+                    "[CallLoader] 父模块 %s 不存在__init__.py文件，尝试自动创建。", call_dir)
                 (Path(call_dir) / "__init__.py").touch()
             importlib.import_module("call")
         except Exception as e:
@@ -160,7 +162,7 @@ class CallLoader(metaclass=SingletonMeta):
         # 从LanceDB中删除
         while True:
             try:
-                table = await LanceDB().get_table("call")
+                table = await LanceDB.get_table("call")
                 await table.delete(f"id = '{call_name}'")
                 break
             except RuntimeError as e:
@@ -170,8 +172,8 @@ class CallLoader(metaclass=SingletonMeta):
                 else:
                     raise
 
-
     # 更新数据库
+
     async def _add_to_db(self, call_metadata: list[CallPool]) -> None:  # noqa: C901
         """更新数据库"""
         # 更新MongoDB
@@ -202,7 +204,7 @@ class CallLoader(metaclass=SingletonMeta):
 
         while True:
             try:
-                table = await LanceDB().get_table("call")
+                table = await LanceDB.get_table("call")
                 # 删除重复的ID
                 for call in call_metadata:
                     await table.delete(f"id = '{call.id}'")
@@ -226,10 +228,8 @@ class CallLoader(metaclass=SingletonMeta):
             )
         while True:
             try:
-                table = await LanceDB().get_table("call")
-                await table.merge_insert("id").when_matched_update_all().when_not_matched_insert_all().execute(
-                    vector_data,
-                )
+                table = await LanceDB.get_table("call")
+                await table.add(vector_data)
                 break
             except RuntimeError as e:
                 if "Commit conflict" in str(e):

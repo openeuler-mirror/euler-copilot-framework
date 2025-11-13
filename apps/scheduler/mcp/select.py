@@ -47,7 +47,7 @@ class MCPSelector:
     ) -> list[dict[str, str]]:
         """通过向量检索获取Top5 MCP Server"""
         logger.info("[MCPHelper] 查询MCP Server向量: %s, %s", query, mcp_list)
-        mcp_table = await LanceDB().get_table("mcp")
+        mcp_table = await LanceDB.get_table("mcp")
         query_embedding = await Embedding.get_embedding([query])
         mcp_vecs = (
             await (
@@ -156,7 +156,7 @@ class MCPSelector:
         query: str, mcp_list: list[str], top_n: int = 10
     ) -> list[MCPTool]:
         """选择最合适的工具"""
-        tool_vector = await LanceDB().get_table("mcp_tool")
+        tool_vector = await LanceDB.get_table("mcp_tool")
         query_embedding = await Embedding.get_embedding([query])
         tool_vecs = await (await tool_vector.search(
             query=query_embedding,
