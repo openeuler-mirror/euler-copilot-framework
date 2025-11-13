@@ -140,6 +140,17 @@ class RedisConfig(BaseModel):
     health_check_interval: int = Field(description="健康检查间隔（秒）", default=30)
 
 
+class VectorDBConfig(BaseModel):
+    """向量数据库配置"""
+    # postgres或者openGuass
+    type: str = Field(description="向量数据库类型", pattern="^(postgres|opengauss)$")
+    host: str = Field(description="向量数据库主机名")
+    port: int = Field(description="向量数据库端口号", default=5432)
+    user: str = Field(description="向量数据库用户名")
+    password: str = Field(description="向量数据库密码")
+    db: str = Field(description="向量数据库名称")
+
+
 class LLMConfig(BaseModel):
     """LLM配置"""
 
@@ -214,6 +225,7 @@ class ConfigModel(BaseModel):
     minio: MinioConfig
     mongodb: MongoDBConfig
     redis: RedisConfig
+    vectordb: VectorDBConfig
     llm: LLMConfig
     function_call: FunctionCallConfig
     mcp_config: McpConfig = Field(description="MCP配置", default=McpConfig())

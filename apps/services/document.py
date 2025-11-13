@@ -57,9 +57,10 @@ class DocumentManager:
     async def validate_file_upload_for_variable(cls, user_sub: str, documents: list[UploadFile], var_name: str, var_type: str, scope: str, conversation_id: Optional[str] = None, flow_id: Optional[str] = None) -> tuple[bool, str]:
         """验证文件上传是否符合变量限制"""
         try:
-            logger.info(f"开始验证文件上传: scope={scope}, var_name={var_name}, conversation_id={conversation_id}, flow_id={flow_id}")
+            logger.info(
+                f"开始验证文件上传: scope={scope}, var_name={var_name}, conversation_id={conversation_id}, flow_id={flow_id}")
             pool_manager = await get_pool_manager()
-            
+
             # 根据scope获取变量池
             if scope == "system":
                 pool = await pool_manager.get_conversation_pool(conversation_id)
@@ -67,7 +68,8 @@ class DocumentManager:
                     # 兜底：如果conversation pool不存在，自动创建
                     if not flow_id:
                         flow_id = await cls._get_flow_id_for_conversation(conversation_id)
-                    logger.info(f"自动创建system scope的conversation pool: {conversation_id}, flow_id={flow_id}")
+                    logger.info(
+                        f"自动创建system scope的conversation pool: {conversation_id}, flow_id={flow_id}")
                     pool = await pool_manager.create_conversation_pool(conversation_id, flow_id)
             elif scope == "user":
                 pool = await pool_manager.get_user_pool(user_sub)
@@ -79,63 +81,69 @@ class DocumentManager:
                     # 兜底：如果conversation pool不存在，自动创建
                     if not flow_id:
                         flow_id = await cls._get_flow_id_for_conversation(conversation_id)
-                    logger.info(f"自动创建conversation scope的conversation pool: {conversation_id}, flow_id={flow_id}")
+                    logger.info(
+                        f"自动创建conversation scope的conversation pool: {conversation_id}, flow_id={flow_id}")
                     pool = await pool_manager.create_conversation_pool(conversation_id, flow_id)
             else:
                 return False, f"不支持的scope类型: {scope}"
-            
+
             if not pool:
                 return False, f"无法获取变量池，scope: {scope}"
-            
+
             # 获取变量
             variable = await pool.get_variable(var_name)
             if variable is None:
                 logger.error(f"变量 {var_name} 不存在")
                 return False, f"变量 {var_name} 不存在"
-            
+
             logger.info(f"找到变量: {var_name}, 类型: {variable.metadata.var_type}")
-            
+
             # 检查变量类型
             if variable.metadata.var_type not in [VariableType.FILE, VariableType.ARRAY_FILE]:
                 return False, f"变量 {var_name} 不是文件类型"
-            
+
             # 获取变量配置
             var_config = variable.value
             if not isinstance(var_config, dict):
-                logger.error(f"变量 {var_name} 配置格式不正确: {type(var_config)}, 值: {var_config}")
+                logger.error(
+                    f"变量 {var_name} 配置格式不正确: {type(var_config)}, 值: {var_config}")
                 return False, f"变量 {var_name} 配置格式不正确"
-            
+
             logger.info(f"变量配置: {var_config}")
-            
+
             # 1. 检查文件数量限制
-            max_files = var_config.get("max_files", 1 if variable.metadata.var_type == VariableType.FILE else 10)
+            max_files = var_config.get(
+                "max_files", 1 if variable.metadata.var_type == VariableType.FILE else 10)
             if len(documents) > max_files:
                 return False, f"文件数量超过限制：最多允许 {max_files} 个文件，实际上传 {len(documents)} 个"
-            
+
             # 2. 检查文件大小限制
-            max_file_size = var_config.get("max_file_size", 10 * 1024 * 1024)  # 默认10MB
+            max_file_size = var_config.get(
+                "max_file_size", 10 * 1024 * 1024)  # 默认10MB
             for doc in documents:
                 if doc.size and doc.size > max_file_size:
                     max_size_mb = max_file_size / (1024 * 1024)
                     return False, f"文件大小超过限制：{doc.filename} 大小为 {doc.size / (1024 * 1024):.1f}MB，最大允许 {max_size_mb:.1f}MB"
-            
+
             # 3. 检查文件类型限制
             supported_types = var_config.get("supported_types", [])
             if supported_types:
                 for doc in documents:
                     if doc.filename:
-                        file_ext = "." + doc.filename.split(".")[-1].lower() if "." in doc.filename else ""
+                        file_ext = "." + \
+                            doc.filename.split(
+                                ".")[-1].lower() if "." in doc.filename else ""
                         if file_ext not in supported_types:
                             return False, f"文件类型不支持：{doc.filename}，支持的类型：{supported_types}"
-            
+
             # 4. 检查上传方式限制（当前只支持文件流上传）
             upload_methods = var_config.get("upload_methods", ["manual"])
             if "manual" not in upload_methods:
                 return False, f"当前上传方式不支持，支持的上传方式：{upload_methods}"
-            
+
             logger.info(f"文件上传验证通过: {var_name}")
             return True, "验证通过"
-            
+
         except Exception as e:
             logger.exception(f"文件上传验证失败: {e}")
             return False, f"验证过程发生错误: {str(e)}"
@@ -143,7 +151,7 @@ class DocumentManager:
     @classmethod
     async def storage_docs(cls, user_sub: str, conversation_id: str, documents: list[UploadFile], scope: str = "system", var_name: Optional[str] = None, var_type: Optional[str] = None) -> list[Document]:
         """存储多个文件 - 支持system和conversation scope
-        
+
         🔑 优化说明：支持前端两阶段处理逻辑
         - 前端第一阶段：已通过updateVariable清空file_id/file_ids
         - 这里：上传文件到MinIO/MongoDB，然后更新变量池的file_id/file_ids
@@ -153,19 +161,22 @@ class DocumentManager:
         mongo = MongoDB()
         doc_collection = mongo.get_collection("document")
         conversation_collection = mongo.get_collection("conversation")
-        
+
         # 🔑 第一步：上传文件到MinIO和MongoDB
         for document in documents:
             if document.filename is None or document.size is None:
-                logger.warning(f"跳过无效文件: filename={document.filename}, size={document.size}")
+                logger.warning(
+                    f"跳过无效文件: filename={document.filename}, size={document.size}")
                 continue
 
             file_id = str(uuid.uuid4())
             try:
                 mime = await asyncer.asyncify(cls._storage_single_doc_minio)(file_id, document)
-                logger.info(f"文件上传到MinIO成功: {file_id}, filename={document.filename}")
+                logger.info(
+                    f"文件上传到MinIO成功: {file_id}, filename={document.filename}")
             except Exception as e:
-                logger.exception(f"[DocumentManager] 上传文件到MinIO失败: filename={document.filename}, error={e}")
+                logger.exception(
+                    f"[DocumentManager] 上传文件到MinIO失败: filename={document.filename}, error={e}")
                 continue
 
             # 保存到MongoDB
@@ -187,7 +198,8 @@ class DocumentManager:
                 )
                 logger.info(f"文件元数据保存到MongoDB成功: {file_id}")
             except Exception as e:
-                logger.exception(f"[DocumentManager] 保存文件元数据到MongoDB失败: file_id={file_id}, error={e}")
+                logger.exception(
+                    f"[DocumentManager] 保存文件元数据到MongoDB失败: file_id={file_id}, error={e}")
                 # 尝试清理MinIO中的文件
                 try:
                     from apps.common.minio import MinioClient
@@ -203,16 +215,18 @@ class DocumentManager:
         # 🔑 第二步：更新变量池中的file_id/file_ids
         if uploaded_files:
             try:
-                logger.info(f"开始更新变量池: scope={scope}, var_name={var_name}, uploaded_count={len(uploaded_files)}")
+                logger.info(
+                    f"开始更新变量池: scope={scope}, var_name={var_name}, uploaded_count={len(uploaded_files)}")
                 await cls._store_files_in_variable_pool(user_sub, conversation_id, uploaded_files, scope, var_name, var_type)
                 logger.info(f"✅ 变量池更新成功: {var_name}")
             except Exception as e:
-                logger.exception(f"❌ [DocumentManager] 存储文件变量到变量池失败: var_name={var_name}, error={e}")
-                
+                logger.exception(
+                    f"❌ [DocumentManager] 存储文件变量到变量池失败: var_name={var_name}, error={e}")
+
                 # 🔑 重要：变量池更新失败时，需要清理已上传的文件
                 logger.warning(f"开始清理已上传的文件，数量: {len(uploaded_files)}")
                 cleanup_errors = []
-                
+
                 # 清理MongoDB记录
                 for doc in uploaded_files:
                     try:
@@ -222,26 +236,30 @@ class DocumentManager:
                             {"$pull": {"unused_docs": doc.id}}
                         )
                     except Exception as cleanup_error:
-                        cleanup_errors.append(f"MongoDB清理失败 {doc.id}: {cleanup_error}")
-                
+                        cleanup_errors.append(
+                            f"MongoDB清理失败 {doc.id}: {cleanup_error}")
+
                 # 清理MinIO文件
                 for doc in uploaded_files:
                     try:
                         from apps.common.minio import MinioClient
                         MinioClient.delete_file("document", doc.id)
                     except Exception as cleanup_error:
-                        cleanup_errors.append(f"MinIO清理失败 {doc.id}: {cleanup_error}")
-                
+                        cleanup_errors.append(
+                            f"MinIO清理失败 {doc.id}: {cleanup_error}")
+
                 if cleanup_errors:
                     logger.warning(f"文件清理过程中出现错误: {cleanup_errors}")
-                
+
                 # 重新抛出原始异常
                 raise e
         elif scope == "conversation":
             # 🔑 重要：conversation scope但没有上传任何文件时，也需要确保变量存在
-            logger.warning(f"conversation scope但没有成功上传任何文件: var_name={var_name}")
+            logger.warning(
+                f"conversation scope但没有成功上传任何文件: var_name={var_name}")
 
-        logger.info(f"文件存储完成: uploaded_count={len(uploaded_files)}, scope={scope}")
+        logger.info(
+            f"文件存储完成: uploaded_count={len(uploaded_files)}, scope={scope}")
         return uploaded_files
 
     @classmethod
@@ -333,7 +351,7 @@ class DocumentManager:
 
         mongo = MongoDB()
         doc_collection = mongo.get_collection("document")
-        
+
         for document in files:
             if document.filename is None or document.size is None:
                 continue
@@ -374,13 +392,13 @@ class DocumentManager:
     @classmethod
     async def _store_files_in_variable_pool(cls, user_sub: str, conversation_id: str, uploaded_files: list[Document], scope: str, var_name: Optional[str] = None, var_type: Optional[str] = None):
         """将文件存储到变量池中 - 支持system和conversation scope
-        
+
         🔑 优化说明：支持前端两阶段处理逻辑
         - 前端第一阶段已清空file_id，这里只需要安全更新file_id
         - 避免与前端的变量更新逻辑冲突
         """
         pool_manager = await get_pool_manager()
-        
+
         # 根据scope确定变量池和is_system值
         if scope == "system":
             pool = await pool_manager.get_conversation_pool(conversation_id)
@@ -419,29 +437,34 @@ class DocumentManager:
             if existing_variable.metadata.var_type in [VariableType.FILE, VariableType.ARRAY_FILE]:
                 # 🔧 新增：数据验证和自动修复机制
                 from apps.scheduler.variable.file_utils import FileVariableHelper
-                
+
                 # 获取现有变量的配置
                 current_value = existing_variable.value
                 if isinstance(current_value, dict):
                     # 验证和标准化现有数据
                     var_type_str = existing_variable.metadata.var_type.value
-                    is_valid, error_msg = FileVariableHelper.validate_file_variable_consistency(current_value, var_type_str)
-                    
+                    is_valid, error_msg = FileVariableHelper.validate_file_variable_consistency(
+                        current_value, var_type_str)
+
                     if not is_valid:
-                        logger.warning(f"检测到变量 {final_var_name} 数据不一致: {error_msg}，将自动修复")
+                        logger.warning(
+                            f"检测到变量 {final_var_name} 数据不一致: {error_msg}，将自动修复")
                         # 自动标准化数据
-                        current_value = FileVariableHelper.normalize_file_variable(current_value, var_type_str)
+                        current_value = FileVariableHelper.normalize_file_variable(
+                            current_value, var_type_str)
                         logger.info(f"已自动修复变量 {final_var_name} 的数据格式")
-                    
+
                     # 🔑 关键：保持所有现有配置，只更新file_id
                     updated_value = current_value.copy()  # 深拷贝保持原有配置
-                    
+
                     if existing_variable.metadata.var_type == VariableType.FILE:
                         # 单文件：设置file_id和filename
                         if uploaded_files:
                             updated_value["file_id"] = uploaded_files[0].id
-                            updated_value["filename"] = uploaded_files[0].name  # 新增：保存原始文件名
-                            logger.info(f"更新单文件变量 {final_var_name}: file_id={updated_value['file_id']}, filename={updated_value['filename']}")
+                            # 新增：保存原始文件名
+                            updated_value["filename"] = uploaded_files[0].name
+                            logger.info(
+                                f"更新单文件变量 {final_var_name}: file_id={updated_value['file_id']}, filename={updated_value['filename']}")
                         else:
                             updated_value["file_id"] = ""
                             updated_value.pop("filename", None)  # 清空文件名
@@ -450,20 +473,22 @@ class DocumentManager:
                         # 文件数组：设置file_ids和files信息，确保数据一致性
                         file_ids_list = [doc.id for doc in uploaded_files]
                         files_list = [  # 新增：保存文件详细信息
-                            {"file_id": doc.id, "filename": doc.name} 
+                            {"file_id": doc.id, "filename": doc.name}
                             for doc in uploaded_files
                         ]
-                        
+
                         # 🔧 重要：确保file_ids和files数组始终保持同步
                         updated_value["file_ids"] = file_ids_list
                         updated_value["files"] = files_list
-                        
+
                         # 🔧 验证数据一致性
                         if len(file_ids_list) != len(files_list):
-                            logger.warning(f"文件数组变量数据不一致: file_ids={len(file_ids_list)}, files={len(files_list)}")
-                        
-                        logger.info(f"更新文件数组变量 {final_var_name}: file_ids={updated_value['file_ids']}, files={len(updated_value['files'])}个文件")
-                    
+                            logger.warning(
+                                f"文件数组变量数据不一致: file_ids={len(file_ids_list)}, files={len(files_list)}")
+
+                        logger.info(
+                            f"更新文件数组变量 {final_var_name}: file_ids={updated_value['file_ids']}, files={len(updated_value['files'])}个文件")
+
                     # 🔑 使用原子更新，避免并发冲突
                     try:
                         await pool.update_variable(
@@ -471,18 +496,23 @@ class DocumentManager:
                             value=updated_value,
                             var_type=existing_variable.metadata.var_type,
                             description=existing_variable.metadata.description,
-                            force_system_update=(scope == "system")  # system.files 允许更新
+                            # system.files 允许更新
+                            force_system_update=(scope == "system")
                         )
-                        logger.info(f"✅ 成功更新文件变量: {final_var_name}, uploaded_files_count={len(uploaded_files)}")
+                        logger.info(
+                            f"✅ 成功更新文件变量: {final_var_name}, uploaded_files_count={len(uploaded_files)}")
                     except Exception as e:
-                        logger.error(f"❌ 更新文件变量失败: {final_var_name}, error={e}")
+                        logger.error(
+                            f"❌ 更新文件变量失败: {final_var_name}, error={e}")
                         # 抛出异常，让上层处理文件上传失败的清理工作
                         raise Exception(f"文件变量更新失败: {e}")
                 else:
-                    logger.warning(f"现有变量 {final_var_name} 的值格式不正确，无法更新: type={type(current_value)}, value={current_value}")
+                    logger.warning(
+                        f"现有变量 {final_var_name} 的值格式不正确，无法更新: type={type(current_value)}, value={current_value}")
                     raise Exception(f"变量 {final_var_name} 配置格式错误")
             else:
-                logger.warning(f"现有变量 {final_var_name} 不是文件类型，无法更新: type={existing_variable.metadata.var_type}")
+                logger.warning(
+                    f"现有变量 {final_var_name} 不是文件类型，无法更新: type={existing_variable.metadata.var_type}")
                 raise Exception(f"变量 {final_var_name} 不是文件类型")
         else:
             # 只有system scope允许创建新变量
@@ -490,10 +520,10 @@ class DocumentManager:
                 # 创建新的system.files变量
                 file_ids_list = [doc.id for doc in uploaded_files]
                 files_list = [  # 新增：保存文件详细信息
-                    {"file_id": doc.id, "filename": doc.name} 
+                    {"file_id": doc.id, "filename": doc.name}
                     for doc in uploaded_files
                 ]
-                
+
                 final_var_value = {
                     "file_ids": file_ids_list,  # 确保使用相同的数据源
                     "files": files_list,        # 确保使用相同的数据源
@@ -503,13 +533,15 @@ class DocumentManager:
                     "max_file_size": 10 * 1024 * 1024,  # 10MB
                     "required": False
                 }
-                
+
                 # 🔧 验证数据一致性
                 if len(file_ids_list) != len(files_list):
-                    logger.warning(f"新建system变量数据不一致: file_ids={len(file_ids_list)}, files={len(files_list)}")
-                    
-                logger.info(f"创建新的system.files变量: file_ids={len(file_ids_list)}个文件, files={len(files_list)}个详细信息")
-                
+                    logger.warning(
+                        f"新建system变量数据不一致: file_ids={len(file_ids_list)}, files={len(files_list)}")
+
+                logger.info(
+                    f"创建新的system.files变量: file_ids={len(file_ids_list)}个文件, files={len(files_list)}个详细信息")
+
                 await pool.add_variable(
                     name=final_var_name,
                     var_type=final_var_type,
@@ -521,10 +553,12 @@ class DocumentManager:
                 logger.info(f"已创建新的system.files变量")
             else:
                 # 🔑 重要：conversation变量必须预先存在（前端第一阶段已创建）
-                logger.error(f"conversation变量 {final_var_name} 不存在，这可能表示前端第一阶段处理失败")
+                logger.error(
+                    f"conversation变量 {final_var_name} 不存在，这可能表示前端第一阶段处理失败")
                 raise Exception(f"变量 {final_var_name} 不存在，无法上传文件")
 
-        logger.info(f"✅ 已将文件存储到变量池，变量名: {final_var_name}, 类型: {final_var_type}, scope: {scope}")
+        logger.info(
+            f"✅ 已将文件存储到变量池，变量名: {final_var_name}, 类型: {final_var_type}, scope: {scope}")
 
     @classmethod
     async def _store_user_files_in_variable_pool(cls, user_sub: str, uploaded_files: list[Document], var_name: str, var_type: str):
@@ -548,8 +582,9 @@ class DocumentManager:
                     if existing_variable.metadata.var_type == VariableType.FILE:
                         current_value["file_id"] = uploaded_files[0].id if uploaded_files else ""
                     else:  # ARRAY_FILE
-                        current_value["file_ids"] = [doc.id for doc in uploaded_files]
-                    
+                        current_value["file_ids"] = [
+                            doc.id for doc in uploaded_files]
+
                     # 更新变量
                     await pool.update_variable(
                         name=var_name,
@@ -567,7 +602,8 @@ class DocumentManager:
             logger.warning(f"用户变量 {var_name} 不存在，无法创建新变量")
             return
 
-        logger.info(f"已将用户文件存储到变量池，变量名: {var_name}, 类型: {var_type}, user_sub: {user_sub}")
+        logger.info(
+            f"已将用户文件存储到变量池，变量名: {var_name}, 类型: {var_type}, user_sub: {user_sub}")
 
     @classmethod
     async def _store_env_files_in_variable_pool(cls, user_sub: str, flow_id: str, uploaded_files: list[Document]):
@@ -589,8 +625,9 @@ class DocumentManager:
                 current_value = existing_variable.value
                 if isinstance(current_value, dict):
                     # 更新文件ID列表
-                    current_value["file_ids"] = [doc.id for doc in uploaded_files]
-                    
+                    current_value["file_ids"] = [
+                        doc.id for doc in uploaded_files]
+
                     # 更新变量
                     await pool.update_variable(
                         name=var_name,
@@ -608,7 +645,8 @@ class DocumentManager:
             logger.warning(f"环境变量 {var_name} 不存在，无法创建新变量")
             return
 
-        logger.info(f"已将环境文件存储到变量池，变量名: {var_name}, user_sub: {user_sub}, flow_id: {flow_id}")
+        logger.info(
+            f"已将环境文件存储到变量池，变量名: {var_name}, user_sub: {user_sub}, flow_id: {flow_id}")
 
     @classmethod
     async def _get_flow_id_for_conversation(cls, conversation_id: str) -> str:
@@ -617,7 +655,7 @@ class DocumentManager:
             mongo = MongoDB()
             conversation_collection = mongo.get_collection("conversation")
             conversation = await conversation_collection.find_one({"_id": conversation_id})
-            
+
             if conversation and conversation.get("app_id"):
                 # 使用app_id作为flow_id
                 return conversation["app_id"]
@@ -661,7 +699,8 @@ class DocumentManager:
         for doc in docs:
             if doc.associated == "question":
                 doc_info = await document_collection.find_one({"_id": doc.id, "user_sub": user_sub})
-                doc_info = Document.model_validate(doc_info) if doc_info else None
+                doc_info = Document.model_validate(
+                    doc_info) if doc_info else None
                 if doc_info:
                     doc.name = doc_info.name
                     doc.extension = doc_info.type
@@ -677,10 +716,60 @@ class DocumentManager:
                 size=doc.size,
                 conversation_id=record_group.get("conversation_id", ""),
                 associated=doc.associated,
-                created_at=doc.created_at or round(datetime.now(tz=UTC).timestamp(), 3)
+                created_at=doc.created_at or round(
+                    datetime.now(tz=UTC).timestamp(), 3)
             )
             for doc in docs if type is None or doc.associated == type
         ]
+
+    @classmethod
+    async def get_used_docs_by_record_groups(
+            cls, user_sub: str, record_group_ids: list[str], type: str | None = None) -> list[RecordDocument]:
+        """获取多个RecordGroup关联的文件"""
+        mongo = MongoDB()
+        record_group_collection = mongo.get_collection("record_group")
+        document_collection = mongo.get_collection("document")
+        if type not in ["question", "answer", None]:
+            raise ValueError("type must be 'question', 'answer' or None")
+        docs = []
+        record_groups = record_group_collection.find(
+            {"_id": {"$in": record_group_ids}, "user_sub": user_sub})
+        question_doc_ids = []
+        async for record_group in record_groups:
+            rg = RecordGroup.model_validate(record_group)
+            for doc in rg.docs:
+                if doc.associated == "question":
+                    question_doc_ids.append(doc.id)
+        question_docs_info = {}
+        if question_doc_ids:
+            async for doc in document_collection.find({"_id": {"$in": question_doc_ids}, "user_sub": user_sub}):
+                question_docs_info[doc["_id"]] = Document.model_validate(doc)
+        for record_group in record_groups:
+            rg = RecordGroup.model_validate(record_group)
+            for doc in rg.docs:
+                if doc.associated == "question":
+                    doc_info = question_docs_info.get(doc.id)
+                    if doc_info:
+                        doc.name = doc_info.name
+                        doc.extension = doc_info.type
+                        doc.size = doc_info.size
+            docs.extend([
+                RecordDocument(
+                    _id=doc.id,
+                    order=doc.order,
+                    author=doc.author,
+                    abstract=doc.abstract,
+                    name=doc.name,
+                    type=doc.extension,
+                    size=doc.size,
+                    conversation_id=record_group.get("conversation_id", ""),
+                    associated=doc.associated,
+                    created_at=doc.created_at or round(
+                        datetime.now(tz=UTC).timestamp(), 3)
+                )
+                for doc in rg.docs if type is None or doc.associated == type
+            ])
+        return docs
 
     @classmethod
     async def get_used_docs(
@@ -693,7 +782,8 @@ class DocumentManager:
             raise ValueError("type must be 'question', 'answer' or None")
         if record_num:
             record_groups = (
-                record_group_collection.find({"conversation_id": conversation_id, "user_sub": user_sub})
+                record_group_collection.find(
+                    {"conversation_id": conversation_id, "user_sub": user_sub})
                 .sort("created_at", -1)
                 .limit(record_num)
             )

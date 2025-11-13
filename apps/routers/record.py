@@ -26,6 +26,8 @@ from apps.services.conversation import ConversationManager
 from apps.services.document import DocumentManager
 from apps.services.record import RecordManager
 from apps.services.task import TaskManager
+import logging
+logger = logging.getLogger(__name__)
 
 router = APIRouter(
     prefix="/api/record",
@@ -43,7 +45,11 @@ router = APIRouter(
 )
 async def get_record(conversation_id: str, user_sub: Annotated[str, Depends(get_user)]) -> JSONResponse:
     """获取某个对话的所有问答对"""
+    import time
+    st = time.time()
     cur_conv = await ConversationManager.get_conversation_by_conversation_id(user_sub, conversation_id)
+    en = time.time()
+    logger.error("get conversation time cost: %.4f", en - st)
     # 判断conversation是否合法
     if not cur_conv:
         return JSONResponse(
@@ -54,9 +60,12 @@ async def get_record(conversation_id: str, user_sub: Annotated[str, Depends(get_
                 result={},
             ).model_dump(exclude_none=True),
         )
-
+    st = time.time()
     record_group_list = await RecordManager.query_record_group_by_conversation_id(conversation_id)
+    en = time.time()
+    logger.error("query record group time cost: %.4f", en - st)
     result = []
+    st = time.time()
     for record_group in record_group_list:
         for record in record_group.records:
             record_data = Security.decrypt(record.content, record.key)
@@ -85,7 +94,7 @@ async def get_record(conversation_id: str, user_sub: Annotated[str, Depends(get_
             flow_step_list = await TaskManager.get_context_by_record_id(record_group.id, record.id)
             if flow_step_list:
                 tmp_record.flow = RecordFlow(
-                    id=record.flow.flow_id,  # TODO: 此处前端应该用name
+                    id=record.flow.flow_id,
                     recordId=record.id,
                     flowId=record.flow.flow_id,
                     flowName=record.flow.flow_name,
@@ -106,6 +115,8 @@ async def get_record(conversation_id: str, user_sub: Annotated[str, Depends(get_
                     )
 
             result.append(tmp_record)
+        en = time.time()
+    logger.error("process record time cost: %.4f", en - st)
     return JSONResponse(
         status_code=status.HTTP_200_OK,
         content=RecordListRsp(
