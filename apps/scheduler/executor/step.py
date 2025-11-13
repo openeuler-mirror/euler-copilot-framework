@@ -122,22 +122,11 @@ class StepExecutor(BaseExecutor):
             self.node.known_params if self.node and self.node.known_params else {}
         )
         if self.step.step.params:
-            params.update(self.step.step.params)
-
-        # 对于需要扁平化处理的Call类型，将input_parameters中的内容提取到顶级
-        # TODO Call中自带属性区分是否需要扁平化，避免逻辑判断频繁修改，或者修改Code逻辑为统一设计
-        if self._call_id not in ["Code"] and "input_parameters" in params:
-            # 提取input_parameters中的所有字段到顶级
-            input_params = params.get("input_parameters", {})
-            if isinstance(input_params, dict):
-                # 将input_parameters中的字段提取到顶级
-                for key, value in input_params.items():
-                    params[key] = value
-                # 移除input_parameters，避免重复
-                params.pop("input_parameters", None)
+            input_params = self.step.step.params.get("input_parameters", {})
+            params.update(input_params)
 
         # 对于LLM调用，注入enable_thinking参数
-        if self._call_id == "LLM" and hasattr(self.background, 'enable_thinking'):
+        if self._call_id == "LLM":
             params['enable_thinking'] = self.background.enable_thinking
 
         try:
