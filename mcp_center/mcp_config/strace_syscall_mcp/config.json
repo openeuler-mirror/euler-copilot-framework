@@ -1,0 +1,9 @@
+{
+    "name": "排查不合理的系统调用（高频 / 耗时）mcp",
+    "overview": "排查不合理的系统调用（高频 / 耗时）mcp",
+    "description": "排查不合理的系统调用（高频 / 耗时）mcp",
+    "mcpType": "sse",
+    "config": {
+        "url": "http://127.0.0.1:12219/sse"
+    }
+}

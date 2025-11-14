@@ -1,0 +1,9 @@
+{
+    "name": "停用swap空间工具",
+    "overview": "停用swap空间工具",
+    "description": "停用swap空间工具",
+    "mcpType": "sse",
+    "config": {
+        "url": "http://127.0.0.1:13105/sse"
+    }
+}

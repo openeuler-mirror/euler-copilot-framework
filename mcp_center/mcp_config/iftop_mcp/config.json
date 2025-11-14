@@ -1,0 +1,9 @@
+{
+    "name": "Iftop网络流量监控",
+    "overview": "Iftop网络流量监控",
+    "description": "Iftop网络流量监控",
+    "mcpType": "sse",
+    "config": {
+        "url": "http://127.0.0.1:12116/sse"
+    }
+}

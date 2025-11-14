@@ -1,0 +1,9 @@
+{
+    "name": "文本处理工具",
+    "overview": "文本处理工具",
+    "description": "文本处理工具",
+    "mcpType": "sse",
+    "config": {
+        "url": "http://127.0.0.1:13121/sse"
+    }
+}

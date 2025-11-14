@@ -1,0 +1,9 @@
+{
+    "name": "用 NUMA 绑定定位硬件问题mcp",
+    "overview": "用 NUMA 绑定定位硬件问题mcp",
+    "description": "用 NUMA 绑定定位硬件问题mcp",
+    "mcpType": "sse",
+    "config": {
+        "url": "http://127.0.0.1:12209/sse"
+    }
+}

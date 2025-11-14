@@ -1,0 +1,9 @@
+{
+    "name": "文件压缩解压工具",
+    "overview": "文件压缩解压工具",
+    "description": "文件压缩解压工具",
+    "mcpType": "sse",
+    "config": {
+        "url": "http://127.0.0.1:13119/sse"
+    }
+}

@@ -1,0 +1,9 @@
+{
+    "name": "查看系统整体 NUMA 内存访问状态mcp",
+    "overview": "查看系统整体 NUMA 内存访问状态mcp",
+    "description": "查看系统整体 NUMA 内存访问状态mcp",
+    "mcpType": "sse",
+    "config": {
+        "url": "http://127.0.0.1:12210/sse"
+    }
+}

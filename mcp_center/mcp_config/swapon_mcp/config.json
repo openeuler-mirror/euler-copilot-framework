@@ -1,0 +1,9 @@
+{
+    "name": "swap设备查看工具",
+    "overview": "swap设备查看工具",
+    "description": "swap设备查看工具",
+    "mcpType": "sse",
+    "config": {
+        "url": "http://127.0.0.1:13104/sse"
+    }
+}

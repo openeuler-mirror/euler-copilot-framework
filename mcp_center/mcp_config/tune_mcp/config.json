@@ -1,0 +1,9 @@
+{
+    "name": "调优mcp",
+    "overview": "调优mcp",
+    "description": "调优mcp",
+    "mcpType": "sse",
+    "config": {
+        "url": "http://127.0.0.1:12147/sse"
+    }
+}

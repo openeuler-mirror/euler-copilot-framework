@@ -1,0 +1,9 @@
+{
+    "name": "火焰图生成：可视化展示性能瓶颈mcp",
+    "overview": "火焰图生成：可视化展示性能瓶颈mcp",
+    "description": "火焰图生成：可视化展示性能瓶颈mcp",
+    "mcpType": "sse",
+    "config": {
+        "url": "http://127.0.0.1:12222/sse"
+    }
+}

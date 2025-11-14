@@ -1,0 +1,9 @@
+{
+    "name": "nvidia查询GPU信息",
+    "overview": "nvidia查询GPU信息",
+    "description": "nvidia查询GPU信息",
+    "mcpType": "sse",
+    "config": {
+        "url": "http://127.0.0.1:12114/sse"
+    }
+}

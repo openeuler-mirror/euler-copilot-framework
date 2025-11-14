@@ -1,0 +1,9 @@
+{
+    "name": "Firewalld网络防火墙管理工具",
+    "overview": "Firewalld网络防火墙管理工具",
+    "description": "Firewalld网络防火墙管理工具",
+    "mcpType": "sse",
+    "config": {
+        "url": "http://127.0.0.1:12130/sse"
+    }
+}

@@ -1,0 +1,9 @@
+{
+    "name": "定位高频中断导致的 CPU 占用mcp",
+    "overview": "定位高频中断导致的 CPU 占用mcp",
+    "description": "定位高频中断导致的 CPU 占用mcp",
+    "mcpType": "sse",
+    "config": {
+        "url": "http://127.0.0.1:12220/sse"
+    }
+}

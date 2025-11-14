@@ -1,0 +1,9 @@
+{
+    "name": "启动时绑定进程到指定 NUMA 节点mcp",
+    "overview": "启动时绑定进程到指定 NUMA 节点mcp",
+    "description": "启动时绑定进程到指定 NUMA 节点mcp",
+    "mcpType": "sse",
+    "config": {
+        "url": "http://127.0.0.1:12204/sse"
+    }
+}

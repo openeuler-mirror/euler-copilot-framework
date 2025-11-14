@@ -1,0 +1,9 @@
+{
+    "name": "为 Docker 容器配置 NUMA 绑定mcp",
+    "overview": "为 Docker 容器配置 NUMA 绑定mcp",
+    "description": "为 Docker 容器配置 NUMA 绑定mcp",
+    "mcpType": "sse",
+    "config": {
+        "url": "http://127.0.0.1:12206/sse"
+    }
+}

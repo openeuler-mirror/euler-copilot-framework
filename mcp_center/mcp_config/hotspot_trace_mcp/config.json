@@ -1,0 +1,9 @@
+{
+    "name": "快速定位系统 / 进程的 CPU 性能瓶颈mcp",
+    "overview": "快速定位系统 / 进程的 CPU 性能瓶颈mcp",
+    "description": "快速定位系统 / 进程的 CPU 性能瓶颈mcp",
+    "mcpType": "sse",
+    "config": {
+        "url": "http://127.0.0.1:12216/sse"
+    }
+}

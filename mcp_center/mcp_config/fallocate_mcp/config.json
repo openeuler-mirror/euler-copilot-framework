@@ -1,0 +1,9 @@
+{
+    "name": "创建启用启用swap文件工具",
+    "overview": "创建启用启用swap文件工具",
+    "description": "创建启用启用swap文件工具",
+    "mcpType": "sse",
+    "config": {
+        "url": "http://127.0.0.1:13106/sse"
+    }
+}

@@ -1,0 +1,9 @@
+{
+    "name": "后台运行进程",
+    "overview": "后台运行进程",
+    "description": "后台运行进程",
+    "mcpType": "sse",
+    "config": {
+        "url": "http://127.0.0.1:12112/sse"
+    }
+}

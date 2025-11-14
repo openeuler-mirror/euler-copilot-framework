@@ -1,0 +1,9 @@
+{
+    "name": "kill命令暂停/恢复进程&查询信号量含义",
+    "overview": "kill命令暂停/恢复进程&查询信号量含义",
+    "description": "kill命令暂停/恢复进程&查询信号量含义",
+    "mcpType": "sse",
+    "config": {
+        "url": "http://127.0.0.1:12111/sse"
+    }
+}

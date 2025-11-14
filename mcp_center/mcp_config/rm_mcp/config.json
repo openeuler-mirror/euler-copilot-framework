@@ -1,0 +1,9 @@
+{
+    "name": "文件删除工具",
+    "overview": "文件删除工具",
+    "description": "文件删除工具",
+    "mcpType": "sse",
+    "config": {
+        "url": "http://127.0.0.1:13110/sse"
+    }
+}

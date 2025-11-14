@@ -1,0 +1,9 @@
+{
+    "name": "netstat网络连接监控",
+    "overview": "netstat网络连接监控",
+    "description": "netstat网络连接监控",
+    "mcpType": "sse",
+    "config": {
+        "url": "http://127.0.0.1:12118/sse"
+    }
+}

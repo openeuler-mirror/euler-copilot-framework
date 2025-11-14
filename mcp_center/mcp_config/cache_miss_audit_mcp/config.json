@@ -1,0 +1,9 @@
+{
+    "name": "定位 CPU 缓存失效导致的性能损耗mcp",
+    "overview": "定位 CPU 缓存失效导致的性能损耗mcp",
+    "description": "定位 CPU 缓存失效导致的性能损耗mcp",
+    "mcpType": "sse",
+    "config": {
+        "url": "http://127.0.0.1:12217/sse"
+    }
+}

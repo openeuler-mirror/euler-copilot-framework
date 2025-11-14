@@ -1,0 +1,9 @@
+{
+    "name": "内存缓冲刷新工具",
+    "overview": "内存缓冲刷新工具",
+    "description": "内存缓冲刷新工具",
+    "mcpType": "sse",
+    "config": {
+        "url": "http://127.0.0.1:13103/sse"
+    }
+}

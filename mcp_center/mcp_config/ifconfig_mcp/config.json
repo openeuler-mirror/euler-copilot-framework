@@ -1,0 +1,9 @@
+{
+    "name": "ifconfig 网络接口信息监控",
+    "overview": "ifconfig 网络接口信息监控",
+    "description": "ifconfig 网络接口信息监控",
+    "mcpType": "sse",
+    "config": {
+        "url": "http://127.0.0.1:12120/sse"
+    }
+}

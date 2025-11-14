@@ -1,0 +1,9 @@
+{
+    "name": "docker工具",
+    "overview": "docker工具",
+    "description": "docker工具",
+    "mcpType": "sse",
+    "config": {
+        "url": "http://127.0.0.1:12133/sse"
+    }
+}

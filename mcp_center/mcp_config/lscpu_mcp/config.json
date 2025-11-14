@@ -1,0 +1,9 @@
+{
+    "name": "cpu架构等静态信息收集mcp",
+    "overview": "cpu架构等静态信息收集mcp",
+    "description": "cpu架构等静态信息收集mcp",
+    "mcpType": "sse",
+    "config": {
+        "url": "http://127.0.0.1:12202/sse"
+    }
+}

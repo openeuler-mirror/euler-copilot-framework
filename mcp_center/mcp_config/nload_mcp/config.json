@@ -1,0 +1,9 @@
+{
+    "name": "Nload带宽监控",
+    "overview": "Nload带宽监控",
+    "description": "Nload带宽监控",
+    "mcpType": "sse",
+    "config": {
+        "url": "http://127.0.0.1:12117/sse"
+    }
+}

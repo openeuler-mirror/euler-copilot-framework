@@ -1,0 +1,9 @@
+{
+    "name": "定位跨节点内存访问过高的进程mcp",
+    "overview": "定位跨节点内存访问过高的进程mcp",
+    "description": "定位跨节点内存访问过高的进程mcp",
+    "mcpType": "sse",
+    "config": {
+        "url": "http://127.0.0.1:12211/sse"
+    }
+}

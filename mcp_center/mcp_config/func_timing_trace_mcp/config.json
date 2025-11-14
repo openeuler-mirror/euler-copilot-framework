@@ -1,0 +1,9 @@
+{
+    "name": "精准测量函数执行时间（含调用栈）mcp",
+    "overview": "精准测量函数执行时间（含调用栈）mcp",
+    "description": "精准测量函数执行时间（含调用栈）mcp",
+    "mcpType": "sse",
+    "config": {
+        "url": "http://127.0.0.1:12218/sse"
+    }
+}

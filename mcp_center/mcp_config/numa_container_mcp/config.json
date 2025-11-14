@@ -1,0 +1,9 @@
+{
+    "name": "监控 Docker 容器的 NUMA 内存访问mcp",
+    "overview": "监控 Docker 容器的 NUMA 内存访问mcp",
+    "description": "监控 Docker 容器的 NUMA 内存访问mcp",
+    "mcpType": "sse",
+    "config": {
+        "url": "http://127.0.0.1:12214/sse"
+    }
+}

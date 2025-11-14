@@ -1,0 +1,9 @@
+{
+    "name": "修改已启动进程的 NUMA 绑定mcp",
+    "overview": "修改已启动进程的 NUMA 绑定mcp",
+    "description": "修改已启动进程的 NUMA 绑定mcp",
+    "mcpType": "sse",
+    "config": {
+        "url": "http://127.0.0.1:12205/sse"
+    }
+}

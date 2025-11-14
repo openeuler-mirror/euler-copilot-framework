@@ -1,0 +1,9 @@
+{
+    "name": "捕获、显示和分析网络流量",
+    "overview": "捕获、显示和分析网络流量",
+    "description": "捕获、显示和分析网络流量",
+    "mcpType": "sse",
+    "config": {
+        "url": "http://127.0.0.1:12122/sse"
+    }
+}

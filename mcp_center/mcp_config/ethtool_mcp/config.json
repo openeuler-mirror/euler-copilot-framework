@@ -1,0 +1,9 @@
+{
+    "name": "ethtool网卡信息查询，特性情况，网卡设置",
+    "overview": "ethtool网卡信息查询，特性情况，网卡设置",
+    "description": "ethtool网卡信息查询，特性情况，网卡设置",
+    "mcpType": "sse",
+    "config": {
+        "url": "http://127.0.0.1:12121/sse"
+    }
+}

@@ -1,0 +1,9 @@
+{
+    "name": "文件夹创建工具",
+    "overview": "文件夹创建工具",
+    "description": "文件夹创建工具",
+    "mcpType": "sse",
+    "config": {
+        "url": "http://127.0.0.1:13109/sse"
+    }
+}

@@ -1,0 +1,9 @@
+{
+    "name": "npu的查询和控制",
+    "overview": "npu的查询和控制",
+    "description": "npu的查询和控制",
+    "mcpType": "sse",
+    "config": {
+        "url": "http://127.0.0.1:12115/sse"
+    }
+}

@@ -1,0 +1,9 @@
+{
+    "name": "基于`curl`、`wget`、`scp`、`sftp`工具的文件传输MCP",
+    "overview": "基于`curl`、`wget`、`scp`、`sftp`工具的文件传输MCP",
+    "description": "基于`curl`、`wget`、`scp`、`sftp`工具的文件传输MCP",
+    "mcpType": "sse",
+    "config": {
+        "url": "http://127.0.0.1:12136/sse"
+    }
+}

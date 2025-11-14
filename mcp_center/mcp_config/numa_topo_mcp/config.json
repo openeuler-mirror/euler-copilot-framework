@@ -1,0 +1,9 @@
+{
+    "name": "查询 NUMA 硬件拓扑与系统配置mcp",
+    "overview": "查询 NUMA 硬件拓扑与系统配置mcp",
+    "description": "查询 NUMA 硬件拓扑与系统配置mcp",
+    "mcpType": "sse",
+    "config": {
+        "url": "http://127.0.0.1:12203/sse"
+    }
+}

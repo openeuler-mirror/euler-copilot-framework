@@ -1,0 +1,9 @@
+{
+    "name": "目录结构查看工具",
+    "overview": "目录结构查看工具",
+    "description": "目录结构查看工具",
+    "mcpType": "sse",
+    "config": {
+        "url": "http://127.0.0.1:13112/sse"
+    }
+}

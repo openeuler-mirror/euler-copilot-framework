@@ -1,0 +1,9 @@
+{
+    "name": "Qemu虚拟机管理工具",
+    "overview": "Qemu虚拟机管理工具",
+    "description": "Qemu虚拟机管理工具",
+    "mcpType": "sse",
+    "config": {
+        "url": "http://127.0.0.1:12134/sse"
+    }
+}

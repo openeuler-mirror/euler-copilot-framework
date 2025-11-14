@@ -1,0 +1,9 @@
+{
+    "name": "用 NUMA 绑定控制测试变量性能测试mcp",
+    "overview": "用 NUMA 绑定控制测试变量性能测试mcp",
+    "description": "用 NUMA 绑定控制测试变量性能测试mcp",
+    "mcpType": "sse",
+    "config": {
+        "url": "http://127.0.0.1:12208/sse"
+    }
+}

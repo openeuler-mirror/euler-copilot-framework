@@ -1,0 +1,9 @@
+{
+    "name": "文件开头内容查看工具",
+    "overview": "文件开头内容查看工具",
+    "description": "文件开头内容查看工具",
+    "mcpType": "sse",
+    "config": {
+        "url": "http://127.0.0.1:13113/sse"
+    }
+}

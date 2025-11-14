@@ -1,0 +1,9 @@
+{
+    "name": "Nmap扫描IP(网段)",
+    "overview": "Nmap扫描IP(网段)",
+    "description": "Nmap扫描IP(网段)",
+    "mcpType": "sse",
+    "config": {
+        "url": "http://127.0.0.1:12135/sse"
+    }
+}

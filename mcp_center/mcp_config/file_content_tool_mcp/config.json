@@ -1,0 +1,9 @@
+{
+    "name": "文件内容增删改查",
+    "overview": "文件内容增删改查",
+    "description": "文件内容增删改查",
+    "mcpType": "sse",
+    "config": {
+        "url": "http://127.0.0.1:12125/sse"
+    }
+}
