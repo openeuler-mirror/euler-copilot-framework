@@ -84,6 +84,14 @@ socket_connect_timeout = 5.0
 max_connections = 10
 health_check_interval = 30
 
+[vectordb]
+type = 'opengauss'
+host = 'opengauss-db.{{ .Release.Namespace }}.svc.cluster.local'
+port = 5432
+user = 'postgres'
+password = '${gauss-password}'
+db = 'postgres'
+
 [minio]
 endpoint = 'minio-service.{{ .Release.Namespace }}.svc.cluster.local:9000'
 access_key = 'minioadmin'
