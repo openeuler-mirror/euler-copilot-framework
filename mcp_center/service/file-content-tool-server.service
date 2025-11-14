@@ -1,0 +1,21 @@
+[Unit]
+Description=Cache Miss Audit Server for MCP Center
+After=network.target
+
+[Service]
+User=root
+WorkingDirectory=/usr/lib/euler-copilot-framework/mcp_center
+# 关键：添加 PYTHONPATH，将工作目录加入模块搜索路径
+Environment=PYTHONUNBUFFERED=1
+Environment=PYTHONPATH=/usr/lib/euler-copilot-framework/mcp_center
+Environment=CONFIG=/etc/euler-copilot-framework/config.toml
+ExecStart=/usr/bin/python3 servers/file_content_tool/src/server.py
+Restart=always
+RestartSec=5
+KillMode=control-group   
+KillSignal=SIGTERM      
+TimeoutStopSec=30    
+SuccessExitStatus=143 
+
+[Install]
+WantedBy=multi-user.target

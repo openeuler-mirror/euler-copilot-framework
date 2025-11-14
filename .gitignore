@@ -17,4 +17,4 @@ config
 uv.lock
 
 !mcp_center/config
-
+!mcp_center/servers/euler-copilot-tune/config
