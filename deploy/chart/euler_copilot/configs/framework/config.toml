@@ -93,7 +93,7 @@ secure = false
 [llm]
 provider = '{{ .Values.models.answer.provider }}'
 endpoint = '{{ .Values.models.answer.endpoint }}'
-key = '{{ .Values.models.answer.key }}'
+api_key = '{{ .Values.models.answer.key }}'
 model = '{{ .Values.models.answer.name }}'
 ctx_length = {{ default 8192 .Values.models.answer.ctxLength }}
 max_tokens = {{ default 2048 .Values.models.answer.maxTokens }}
