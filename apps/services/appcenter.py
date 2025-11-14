@@ -94,7 +94,8 @@ class AppCenterManager:
                 name=app.name,
                 description=app.description,
                 author=app.author,
-                authorName=getattr(app, 'author_name', app.author),  # 使用author_name，备选author
+                # 使用author_name，备选author
+                authorName=getattr(app, 'author_name', app.author),
                 favorited=(app.id in user_favorite_app_ids),
                 published=app.published,
             )
@@ -111,8 +112,7 @@ class AppCenterManager:
         :param app_id: 应用唯一标识
         :return: 应用元数据
         """
-        mongo = MongoDB()
-        app_collection = mongo.get_collection("app")
+        app_collection = MongoDB.get_collection("app")
         db_data = await app_collection.find_one({"_id": app_id})
         if not db_data:
             msg = "应用不存在"
@@ -182,8 +182,7 @@ class AppCenterManager:
                 break
 
         # 更新数据库
-        mongo = MongoDB()
-        app_collection = mongo.get_collection("app")
+        app_collection = MongoDB.get_collection("app")
         await app_collection.update_one(
             {"_id": app_id},
             {"$set": {"published": published}},
@@ -208,9 +207,8 @@ class AppCenterManager:
         :param user_sub: 用户唯一标识
         :param favorited: 是否收藏
         """
-        mongo = MongoDB()
-        app_collection = mongo.get_collection("app")
-        user_collection = mongo.get_collection("user")
+        app_collection = MongoDB.get_collection("app")
+        user_collection = MongoDB.get_collection("user")
         db_data = await app_collection.find_one({"_id": app_id})
         if not db_data:
             msg = "应用不存在"
@@ -245,8 +243,7 @@ class AppCenterManager:
         :param app_id: 应用唯一标识
         :param user_sub: 用户唯一标识
         """
-        mongo = MongoDB()
-        app_collection = mongo.get_collection("app")
+        app_collection = MongoDB.get_collection("app")
         app_data = AppPool.model_validate(await app_collection.find_one({"_id": app_id}))
         if not app_data:
             msg = "应用不存在"
@@ -269,9 +266,8 @@ class AppCenterManager:
         :param user_sub: 用户唯一标识
         :return: 最近使用的应用列表
         """
-        mongo = MongoDB()
-        user_collection = mongo.get_collection("user")
-        app_collection = mongo.get_collection("app")
+        user_collection = MongoDB.get_collection("user")
+        app_collection = MongoDB.get_collection("app")
         # 校验用户信息
         user_data = User.model_validate(await user_collection.find_one({"_id": user_sub}))
         # 获取最近使用的应用ID列表，按最后使用时间倒序排序
@@ -287,14 +283,15 @@ class AppCenterManager:
         else:
             # 查询 MongoDB，获取符合条件的应用
             apps = await app_collection.find({"_id": {"$in": app_ids}}, {"name": 1, "published": 1}).to_list(length=len(app_ids))
-        app_map = {str(a["_id"]): {"name": a.get("name", ""), "published": a.get("published", False)} for a in apps}
+        app_map = {str(a["_id"]): {"name": a.get("name", ""),
+                                   "published": a.get("published", False)} for a in apps}
         return RecentAppList(
             applications=[
                 RecentAppListItem(
-                    appId=app_id, 
+                    appId=app_id,
                     name=app_map.get(app_id, {}).get("name", ""),
                     published=app_map.get(app_id, {}).get("published", False)
-                ) 
+                )
                 for app_id in app_ids
             ],
         )
@@ -311,14 +308,14 @@ class AppCenterManager:
         if not app_id:
             return True
         try:
-            mongo = MongoDB()
-            user_collection = mongo.get_collection("user")
+            user_collection = MongoDB.get_collection("user")
             current_time = round(datetime.now(UTC).timestamp(), 3)
             result = await user_collection.update_one(
                 {"_id": user_sub},  # 查询条件
                 {
                     "$set": {
-                        f"app_usage.{app_id}.last_used": current_time,  # 更新最后使用时间
+                        # 更新最后使用时间
+                        f"app_usage.{app_id}.last_used": current_time,
                     },
                     "$inc": {
                         f"app_usage.{app_id}.count": 1,  # 增加使用次数
@@ -344,8 +341,7 @@ class AppCenterManager:
         :return: 默认工作流ID
         """
         try:
-            mongo = MongoDB()
-            app_collection = mongo.get_collection("app")
+            app_collection = MongoDB.get_collection("app")
             db_data = await app_collection.find_one({"_id": app_id})
             if not db_data:
                 logger.warning("[AppCenterManager] 应用不存在: %s", app_id)
@@ -366,8 +362,7 @@ class AppCenterManager:
         page_size: int,
     ) -> tuple[list[AppPool], int]:
         """根据过滤条件搜索应用并计算总页数"""
-        mongo = MongoDB()
-        app_collection = mongo.get_collection("app")
+        app_collection = MongoDB.get_collection("app")
         total_apps = await app_collection.count_documents(search_conditions)
         db_data = (
             await app_collection.find(search_conditions)
@@ -391,8 +386,7 @@ class AppCenterManager:
         :raises ValueError: 应用不存在
         :raises InstancePermissionError: 权限不足
         """
-        mongo = MongoDB()
-        app_collection = mongo.get_collection("app")
+        app_collection = MongoDB.get_collection("app")
         app_data = AppPool.model_validate(await app_collection.find_one({"_id": app_id}))
         if not app_data:
             msg = "应用不存在"
@@ -409,7 +403,7 @@ class AppCenterManager:
         from apps.services.user import UserManager
         user_info = await UserManager.get_userinfo_by_user_sub(user_sub)
         author_name = user_info.user_name if user_info and user_info.user_name else user_sub
-        
+
         return {
             "type": MetadataType.APP,
             "id": app_id,
@@ -532,7 +526,7 @@ class AppCenterManager:
         else:
             # 在预期的条件下，如果在 data 或 app_data 中找不到 llm_id，则默认回退为空字符串。
             metadata.llm_id = ""
-        
+
         # 处理enable_thinking字段
         if data is not None and hasattr(data, "enable_thinking"):
             # 创建或更新应用场景，使用传入的 enable_thinking 状态
@@ -547,23 +541,25 @@ class AppCenterManager:
             if metadata.llm_id:
                 try:
                     from apps.common.mongo import MongoDB
-                    mongo = MongoDB()
-                    llm_collection = mongo.get_collection("llm")
+                    llm_collection = MongoDB.get_collection("llm")
                     llm_doc = await llm_collection.find_one({"_id": metadata.llm_id})
                     if llm_doc:
-                        supports_thinking = llm_doc.get("supports_thinking", False)
-                        can_toggle_thinking = llm_doc.get("can_toggle_thinking", False)
+                        supports_thinking = llm_doc.get(
+                            "supports_thinking", False)
+                        can_toggle_thinking = llm_doc.get(
+                            "can_toggle_thinking", False)
                         # 只有同时支持思维链和开关思维链时，才默认启用
                         if supports_thinking and can_toggle_thinking:
                             default_enable_thinking = True
                 except Exception as e:
                     logger.warning(f"[AppCenter] 获取LLM思维链能力失败: {e}")
             metadata.enable_thinking = default_enable_thinking
-        
+
         # Agent 应用的发布状态逻辑
         if published is not None:  # 从 update_app_publish_status 调用，'published' 参数已提供
             metadata.published = published
-        else:  # 从 create_app 或 update_app 调用 (此时传递给 _create_metadata 的 'published' 参数为 None)
+        # 从 create_app 或 update_app 调用 (此时传递给 _create_metadata 的 'published' 参数为 None)
+        else:
             # 'published' 状态重置为 False。
             metadata.published = False
 
@@ -617,7 +613,8 @@ class AppCenterManager:
 
         # 设置权限
         if data:
-            common_params["permission"] = AppCenterManager._create_permission(data.permission)
+            common_params["permission"] = AppCenterManager._create_permission(
+                data.permission)
         elif app_data:
             common_params["permission"] = app_data.permission
 
@@ -663,7 +660,6 @@ class AppCenterManager:
     @staticmethod
     async def _get_favorite_app_ids_by_user(user_sub: str) -> list[str]:
         """获取用户收藏的应用ID"""
-        mongo = MongoDB()
-        user_collection = mongo.get_collection("user")
+        user_collection = MongoDB.get_collection("user")
         user_data = User.model_validate(await user_collection.find_one({"_id": user_sub}))
         return user_data.fav_apps

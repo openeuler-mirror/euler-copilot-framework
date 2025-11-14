@@ -113,11 +113,10 @@ class AppLoader:
 
         :param app_id: 应用 ID
         """
-        mongo = MongoDB()
         try:
-            app_collection = mongo.get_collection("app")
+            app_collection = MongoDB.get_collection("app")
             await app_collection.delete_one({"_id": app_id})  # 删除应用数据
-            user_collection = mongo.get_collection("user")
+            user_collection = MongoDB.get_collection("user")
             # 删除用户使用记录
             await user_collection.update_many(
                 {f"app_usage.{app_id}": {"$exists": True}},
@@ -144,9 +143,8 @@ class AppLoader:
             logger.error(err)
             raise ValueError(err)
         # 更新应用数据
-        mongo = MongoDB()
         try:
-            app_collection = mongo.get_collection("app")
+            app_collection = MongoDB.get_collection("app")
             metadata.permission = metadata.permission if metadata.permission else Permission()
             await app_collection.update_one(
                 {"_id": metadata.id},

@@ -22,7 +22,7 @@ class QuestionBlacklistManager:
     async def check_blacklisted_questions(input_question: str) -> bool:
         """给定问题，查找问题是否在黑名单里"""
         try:
-            blacklist_collection = MongoDB().get_collection("blacklist")
+            blacklist_collection = MongoDB.get_collection("blacklist")
             result = await blacklist_collection.find_one(
                 {"question": {"$regex": f"/{re.escape(input_question)}/i"}, "is_audited": True}, {"_id": 1},
             )
@@ -47,7 +47,7 @@ class QuestionBlacklistManager:
         is_deletion标识是否为删除操作
         """
         try:
-            blacklist_collection = MongoDB().get_collection("blacklist")
+            blacklist_collection = MongoDB.get_collection("blacklist")
 
             if is_deletion:
                 await blacklist_collection.find_one_and_delete({"_id": blacklist_id})
@@ -71,7 +71,7 @@ class QuestionBlacklistManager:
     async def get_blacklisted_questions(limit: int, offset: int, *, is_audited: bool) -> list[Blacklist]:
         """分页式获取目前所有的问题（待审核或已拉黑）黑名单"""
         try:
-            blacklist_collection = MongoDB().get_collection("blacklist")
+            blacklist_collection = MongoDB.get_collection("blacklist")
             return [
                 Blacklist.model_validate(item)
                 async for item in blacklist_collection.find({"is_audited": is_audited}).skip(offset).limit(limit)
@@ -89,7 +89,7 @@ class UserBlacklistManager:
     async def get_blacklisted_users(limit: int, offset: int) -> list[str]:
         """获取当前所有黑名单用户"""
         try:
-            user_collection = MongoDB().get_collection("user")
+            user_collection = MongoDB.get_collection("user")
             return [
                 user["_id"]
                 async for user in user_collection.find({"credit": {"$lte": 0}}, {"_id": 1})
@@ -105,7 +105,7 @@ class UserBlacklistManager:
     async def check_blacklisted_users(user_sub: str) -> bool:
         """检测某用户是否已被拉黑"""
         try:
-            user_collection = MongoDB().get_collection("user")
+            user_collection = MongoDB.get_collection("user")
             result = await user_collection.find_one(
                 {"user_sub": user_sub, "credit": {"$lte": 0}, "is_whitelisted": False}, {"_id": 1},
             )
@@ -123,7 +123,7 @@ class UserBlacklistManager:
         """修改用户的信用分"""
         try:
             # 获取用户当前信用分
-            user_collection = MongoDB().get_collection("user")
+            user_collection = MongoDB.get_collection("user")
             result = await user_collection.find_one({"user_sub": user_sub}, {"_id": 0, "credit": 1})
             # 用户不存在
             if result is None:
@@ -169,7 +169,7 @@ class AbuseManager:
         """存储用户举报详情"""
         try:
             # 判断record_id是否合法
-            record_group_collection = MongoDB().get_collection("record_group")
+            record_group_collection = MongoDB.get_collection("record_group")
             record = await record_group_collection.aggregate(
                 [
                     {"$match": {"user_sub": user_sub}},
@@ -190,7 +190,7 @@ class AbuseManager:
             record_data = RecordContent.model_validate_json(record_data)
 
             # 检查该条目类似内容是否已被举报过
-            blacklist_collection = MongoDB().get_collection("question_blacklist")
+            blacklist_collection = MongoDB.get_collection("question_blacklist")
             query = await blacklist_collection.find_one({"_id": record_id})
             if query is not None:
                 logger.info("[AbuseManager] 问题已被举报过")
@@ -217,7 +217,7 @@ class AbuseManager:
     async def audit_abuse_report(question_id: str, *, is_deletion: bool = False) -> bool:
         """对某一特定的待审问题进行操作，包括批准审核与删除未审问题"""
         try:
-            blacklist_collection = MongoDB().get_collection("blacklist")
+            blacklist_collection = MongoDB.get_collection("blacklist")
             if is_deletion:
                 await blacklist_collection.delete_one({"_id": question_id, "is_audited": False})
                 return True

@@ -37,7 +37,7 @@ class TaskManager:
         task_id = last_group.task_id
 
         # 查询最后一条问答组关联的任务
-        task_collection = MongoDB().get_collection("task")
+        task_collection = MongoDB.get_collection("task")
         task = await task_collection.find_one({"_id": task_id})
         if not task:
             # 任务不存在，新建Task
@@ -49,8 +49,8 @@ class TaskManager:
     @staticmethod
     async def get_task_by_group_id(group_id: str, conversation_id: str) -> Task | None:
         """获取组ID的最后一条问答组关联的任务"""
-        task_collection = MongoDB().get_collection("task")
-        record_group_collection = MongoDB().get_collection("record_group")
+        task_collection = MongoDB.get_collection("task")
+        record_group_collection = MongoDB.get_collection("record_group")
         record_group = await record_group_collection.find_one({"conversation_id": conversation_id, "_id": group_id})
         if not record_group:
             return None
@@ -61,7 +61,7 @@ class TaskManager:
     @staticmethod
     async def get_task_by_task_id(task_id: str) -> Task | None:
         """根据task_id获取任务"""
-        task_collection = MongoDB().get_collection("task")
+        task_collection = MongoDB.get_collection("task")
         task = await task_collection.find_one({"_id": task_id})
         if not task:
             return None
@@ -70,8 +70,8 @@ class TaskManager:
     @staticmethod
     async def get_context_by_record_id(record_group_id: str, record_id: str) -> list[FlowStepHistory]:
         """根据record_group_id获取flow信息"""
-        record_group_collection = MongoDB().get_collection("record_group")
-        flow_context_collection = MongoDB().get_collection("flow_context")
+        record_group_collection = MongoDB.get_collection("record_group")
+        flow_context_collection = MongoDB.get_collection("flow_context")
         try:
             record_group = await record_group_collection.aggregate([
                 {"$match": {"_id": record_group_id}},
@@ -97,8 +97,8 @@ class TaskManager:
     @staticmethod
     async def get_context_by_record_ids(record_group_ids: List[str], record_ids: List[str]) -> List[FlowStepHistory]:
         """根据record_group_ids获取flow信息"""
-        record_group_collection = MongoDB().get_collection("record_group")
-        flow_context_collection = MongoDB().get_collection("flow_context")
+        record_group_collection = MongoDB.get_collection("record_group")
+        flow_context_collection = MongoDB.get_collection("flow_context")
         flow_context_list = []
         # 查询所有符合条件的记录
         try:
@@ -123,7 +123,7 @@ class TaskManager:
     @staticmethod
     async def get_context_by_task_id(task_id: str, length: int | None = None) -> list[FlowStepHistory]:
         """根据task_id获取flow信息"""
-        flow_context_collection = MongoDB().get_collection("flow_context")
+        flow_context_collection = MongoDB.get_collection("flow_context")
 
         flow_context = []
         try:
@@ -165,7 +165,7 @@ class TaskManager:
     @staticmethod
     async def save_flow_context(task_id: str, flow_context: list[FlowStepHistory]) -> None:
         """保存flow信息到flow_context"""
-        flow_context_collection = MongoDB().get_collection("flow_context")
+        flow_context_collection = MongoDB.get_collection("flow_context")
         try:
             # 删除旧的flow_context
             await flow_context_collection.delete_many({"task_id": task_id})
@@ -182,8 +182,7 @@ class TaskManager:
     @staticmethod
     async def delete_task_by_task_id(task_id: str) -> None:
         """通过task_id删除Task信息"""
-        mongo = MongoDB()
-        task_collection = mongo.get_collection("task")
+        task_collection = MongoDB.get_collection("task")
 
         task = await task_collection.find_one({"_id": task_id}, {"_id": 1})
         if task:
@@ -192,8 +191,7 @@ class TaskManager:
     @staticmethod
     async def delete_tasks_by_conversation_id(conversation_id: str) -> list[str]:
         """通过ConversationID删除Task信息"""
-        mongo = MongoDB()
-        task_collection = mongo.get_collection("task")
+        task_collection = MongoDB.get_collection("task")
         task_ids = []
         try:
             async for task in task_collection.find(
@@ -211,11 +209,10 @@ class TaskManager:
     @staticmethod
     async def delete_tasks_and_flow_context_by_conversation_id(conversation_id: str) -> None:
         """通过ConversationID删除Task信息"""
-        mongo = MongoDB()
-        task_collection = mongo.get_collection("task")
-        flow_context_collection = mongo.get_collection("flow_context")
+        task_collection = MongoDB.get_collection("task")
+        flow_context_collection = MongoDB.get_collection("flow_context")
 
-        async with mongo.get_session() as session, await session.start_transaction():
+        async with MongoDB.get_session() as session, await session.start_transaction():
             task_ids = [
                 task["_id"] async for task in task_collection.find(
                     {"conversation_id": conversation_id},
@@ -229,7 +226,7 @@ class TaskManager:
     @classmethod
     async def save_task(cls, task_id: str, task: Task) -> None:
         """保存任务块"""
-        task_collection = MongoDB().get_collection("task")
+        task_collection = MongoDB.get_collection("task")
 
         # 更新已有的Task记录
         await task_collection.update_one(

@@ -157,10 +157,8 @@ class DocumentManager:
         - 这里：上传文件到MinIO/MongoDB，然后更新变量池的file_id/file_ids
         """
         uploaded_files = []
-
-        mongo = MongoDB()
-        doc_collection = mongo.get_collection("document")
-        conversation_collection = mongo.get_collection("conversation")
+        doc_collection = MongoDB.get_collection("document")
+        conversation_collection = MongoDB.get_collection("conversation")
 
         # 🔑 第一步：上传文件到MinIO和MongoDB
         for document in documents:
@@ -267,8 +265,7 @@ class DocumentManager:
         """存储用户scope文件"""
         uploaded_files = []
 
-        mongo = MongoDB()
-        doc_collection = mongo.get_collection("document")
+        doc_collection = MongoDB.get_collection("document")
         for document in documents:
             if document.filename is None or document.size is None:
                 continue
@@ -308,8 +305,7 @@ class DocumentManager:
         """存储环境scope文件"""
         uploaded_files = []
 
-        mongo = MongoDB()
-        doc_collection = mongo.get_collection("document")
+        doc_collection = MongoDB.get_collection("document")
         for document in documents:
             if document.filename is None or document.size is None:
                 continue
@@ -349,8 +345,7 @@ class DocumentManager:
         """为变量系统存储文件 - 不包含RAG处理和变量池存储"""
         uploaded_files = []
 
-        mongo = MongoDB()
-        doc_collection = mongo.get_collection("document")
+        doc_collection = MongoDB.get_collection("document")
 
         for document in files:
             if document.filename is None or document.size is None:
@@ -376,7 +371,8 @@ class DocumentManager:
 
             # 如果有关联的conversation，更新conversation的unused_docs
             if conversation_id:
-                conversation_collection = mongo.get_collection("conversation")
+                conversation_collection = MongoDB.get_collection(
+                    "conversation")
                 await conversation_collection.update_one(
                     {"_id": conversation_id},
                     {
@@ -652,8 +648,7 @@ class DocumentManager:
     async def _get_flow_id_for_conversation(cls, conversation_id: str) -> str:
         """获取对话对应的flow_id"""
         try:
-            mongo = MongoDB()
-            conversation_collection = mongo.get_collection("conversation")
+            conversation_collection = MongoDB.get_collection("conversation")
             conversation = await conversation_collection.find_one({"_id": conversation_id})
 
             if conversation and conversation.get("app_id"):
@@ -669,9 +664,8 @@ class DocumentManager:
     @classmethod
     async def get_unused_docs(cls, user_sub: str, conversation_id: str) -> list[Document]:
         """获取Conversation中未使用的文件"""
-        mongo = MongoDB()
-        conv_collection = mongo.get_collection("conversation")
-        doc_collection = mongo.get_collection("document")
+        conv_collection = MongoDB.get_collection("conversation")
+        doc_collection = MongoDB.get_collection("document")
 
         conv = await conv_collection.find_one({"_id": conversation_id, "user_sub": user_sub})
         if not conv:
@@ -685,9 +679,8 @@ class DocumentManager:
     async def get_used_docs_by_record_group(
             cls, user_sub: str, record_group_id: str, type: str | None = None) -> list[RecordDocument]:
         """获取RecordGroup关联的文件"""
-        mongo = MongoDB()
-        record_group_collection = mongo.get_collection("record_group")
-        document_collection = mongo.get_collection("document")
+        record_group_collection = MongoDB.get_collection("record_group")
+        document_collection = MongoDB.get_collection("document")
         if type not in ["question", "answer", None]:
             raise ValueError("type must be 'question', 'answer' or None")
         record_group = await record_group_collection.find_one({"_id": record_group_id, "user_sub": user_sub})
@@ -726,9 +719,8 @@ class DocumentManager:
     async def get_used_docs_by_record_groups(
             cls, user_sub: str, record_group_ids: list[str], type: str | None = None) -> list[RecordDocument]:
         """获取多个RecordGroup关联的文件"""
-        mongo = MongoDB()
-        record_group_collection = mongo.get_collection("record_group")
-        document_collection = mongo.get_collection("document")
+        record_group_collection = MongoDB.get_collection("record_group")
+        document_collection = MongoDB.get_collection("document")
         if type not in ["question", "answer", None]:
             raise ValueError("type must be 'question', 'answer' or None")
         docs = []
@@ -775,9 +767,8 @@ class DocumentManager:
     async def get_used_docs(
             cls, user_sub: str, conversation_id: str, record_num: int | None = 10, type: str | None = None) -> list[Document]:
         """获取最后n次问答所用到的文件"""
-        mongo = MongoDB()
-        docs_collection = mongo.get_collection("document")
-        record_group_collection = mongo.get_collection("record_group")
+        docs_collection = MongoDB.get_collection("document")
+        record_group_collection = MongoDB.get_collection("record_group")
         if type not in ["question", "answer", None]:
             raise ValueError("type must be 'question', 'answer' or None")
         if record_num:
@@ -810,11 +801,10 @@ class DocumentManager:
     @classmethod
     async def delete_document(cls, user_sub: str, document_list: list[str]) -> bool:
         """从未使用文件列表中删除一个文件"""
-        mongo = MongoDB()
-        doc_collection = mongo.get_collection("document")
-        conv_collection = mongo.get_collection("conversation")
+        doc_collection = MongoDB.get_collection("document")
+        conv_collection = MongoDB.get_collection("conversation")
         try:
-            async with mongo.get_session() as session, await session.start_transaction():
+            async with MongoDB.get_session() as session, await session.start_transaction():
                 for doc in document_list:
                     doc_info = await doc_collection.find_one_and_delete(
                         {"_id": doc, "user_sub": user_sub}, session=session,
@@ -846,11 +836,10 @@ class DocumentManager:
     @classmethod
     async def delete_document_by_conversation_id(cls, user_sub: str, conversation_id: str) -> list[str]:
         """通过ConversationID删除文件"""
-        mongo = MongoDB()
-        doc_collection = mongo.get_collection("document")
+        doc_collection = MongoDB.get_collection("document")
         doc_ids = []
 
-        async with mongo.get_session() as session, await session.start_transaction():
+        async with MongoDB.get_session() as session, await session.start_transaction():
             async for doc in doc_collection.find(
                 {"user_sub": user_sub, "conversation_id": conversation_id}, session=session,
             ):
@@ -869,16 +858,14 @@ class DocumentManager:
     @classmethod
     async def get_doc_count(cls, user_sub: str, conversation_id: str) -> int:
         """获取对话文件数量"""
-        mongo = MongoDB()
-        doc_collection = mongo.get_collection("document")
+        doc_collection = MongoDB.get_collection("document")
         return await doc_collection.count_documents({"user_sub": user_sub, "conversation_id": conversation_id})
 
     @classmethod
     async def change_doc_status(cls, user_sub: str, conversation_id: str, record_group_id: str) -> None:
         """文件状态由unused改为used"""
-        mongo = MongoDB()
-        record_group_collection = mongo.get_collection("record_group")
-        conversation_collection = mongo.get_collection("conversation")
+        record_group_collection = MongoDB.get_collection("record_group")
+        conversation_collection = MongoDB.get_collection("conversation")
 
         # 查找Conversation中的unused_docs
         conversation = await conversation_collection.find_one({"user_sub": user_sub, "_id": conversation_id})
@@ -901,8 +888,7 @@ class DocumentManager:
     @classmethod
     async def save_answer_doc(cls, user_sub: str, record_group_id: str, doc_infos: list[RecordDocument]) -> None:
         """保存与答案关联的文件"""
-        mongo = MongoDB()
-        record_group_collection = mongo.get_collection("record_group")
+        record_group_collection = MongoDB.get_collection("record_group")
         for doc_info in doc_infos:
             await record_group_collection.update_one(
                 {"_id": record_group_id, "user_sub": user_sub},

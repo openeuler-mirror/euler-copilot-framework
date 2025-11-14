@@ -24,7 +24,7 @@ class Activity:
         """
 
         # 检查用户是否正在提问
-        active = await MongoDB().get_collection("activity").find_one(
+        active = await MongoDB.get_collection("activity").find_one(
             {"_id": active_id},
         )
         return bool(active)
@@ -34,14 +34,15 @@ class Activity:
         """设置用户的活跃标识"""
         time = round(datetime.now(UTC).timestamp(), 3)
         # 设置用户活跃状态
-        collection = MongoDB().get_collection("activity")
+        collection = MongoDB.get_collection("activity")
         # 查看用户活跃标识是否在滑动窗口内
 
         if await collection.count_documents({"user_sub": user_sub, "timestamp": {"$gt": time - SLIDE_WINDOW_TIME}}) >= SLIDE_WINDOW_QUESTION_COUNT:
             err = "[Activity] 用户在滑动窗口内提问次数超过限制，请稍后再试。"
             raise ActivityError(err)
         await collection.delete_many(
-            {"user_sub": user_sub, "timestamp": {"$lte": time - SLIDE_WINDOW_TIME}},
+            {"user_sub": user_sub, "timestamp": {
+                "$lte": time - SLIDE_WINDOW_TIME}},
         )
         # 插入新的活跃记录
         tmp_record = {
@@ -62,6 +63,6 @@ class Activity:
         :param user_sub: 用户实体ID
         """
         # 清除用户当前活动标识
-        await MongoDB().get_collection("activity").delete_one(
+        await MongoDB.get_collection("activity").delete_one(
             {"_id": active_id},
         )

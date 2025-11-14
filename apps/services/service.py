@@ -122,7 +122,7 @@ class ServiceCenterManager:
         # 校验 OpenAPI 规范的 JSON Schema
         validated_data = await ServiceCenterManager._validate_service_data(data)
         # 检查是否存在相同服务
-        service_collection = MongoDB().get_collection("service")
+        service_collection = MongoDB.get_collection("service")
         db_service = await service_collection.find_one(
             {
                 "name": validated_data.id,
@@ -155,7 +155,7 @@ class ServiceCenterManager:
     ) -> str:
         """更新服务"""
         # 验证用户权限
-        service_collection = MongoDB().get_collection("service")
+        service_collection = MongoDB.get_collection("service")
         db_service = await service_collection.find_one({"_id": service_id})
         if not db_service:
             msg = "Service not found"
@@ -186,14 +186,14 @@ class ServiceCenterManager:
     ) -> tuple[str, list[ServiceApiData]]:
         """获取服务API列表"""
         # 获取服务名称
-        service_collection = MongoDB().get_collection("service")
+        service_collection = MongoDB.get_collection("service")
         db_service = await service_collection.find_one({"_id": service_id})
         if not db_service:
             msg = "Service not found"
             raise ServiceIDError(msg)
         service_pool_store = ServicePool.model_validate(db_service)
         # 根据 service_id 获取 API 列表
-        node_collection = MongoDB().get_collection("node")
+        node_collection = MongoDB.get_collection("node")
         db_nodes = await node_collection.find({"service_id": service_id}).to_list()
         api_list: list[ServiceApiData] = []
         for db_node in db_nodes:
@@ -216,7 +216,7 @@ class ServiceCenterManager:
     ) -> tuple[str, dict[str, Any]]:
         """获取服务数据"""
         # 验证用户权限
-        service_collection = MongoDB().get_collection("service")
+        service_collection = MongoDB.get_collection("service")
         match_conditions = [
             {"author": user_sub},
             {"permission.type": PermissionType.PUBLIC.value},
@@ -249,7 +249,7 @@ class ServiceCenterManager:
         service_id: str,
     ) -> ServiceMetadata:
         """获取服务元数据"""
-        service_collection = MongoDB().get_collection("service")
+        service_collection = MongoDB.get_collection("service")
         match_conditions = [
             {"author": user_sub},
             {"permission.type": PermissionType.PUBLIC.value},
@@ -279,8 +279,8 @@ class ServiceCenterManager:
         service_id: str,
     ) -> bool:
         """删除服务"""
-        service_collection = MongoDB().get_collection("service")
-        user_collection = MongoDB().get_collection("user")
+        service_collection = MongoDB.get_collection("service")
+        user_collection = MongoDB.get_collection("user")
         db_service = await service_collection.find_one({"_id": service_id})
         if not db_service:
             msg = "[ServiceCenterManager] Service未找到"
@@ -308,8 +308,8 @@ class ServiceCenterManager:
         favorited: bool,
     ) -> bool:
         """修改收藏状态"""
-        service_collection = MongoDB().get_collection("service")
-        user_collection = MongoDB().get_collection("user")
+        service_collection = MongoDB.get_collection("service")
+        user_collection = MongoDB.get_collection("user")
         db_service = await service_collection.find_one({"_id": service_id})
         if not db_service:
             msg = f"[ServiceCenterManager] Service未找到: {service_id}"
@@ -343,7 +343,7 @@ class ServiceCenterManager:
         page_size: int,
     ) -> tuple[list[ServicePool], int]:
         """基于输入条件获取服务数据"""
-        service_collection = MongoDB().get_collection("service")
+        service_collection = MongoDB.get_collection("service")
         # 获取服务总数
         total = await service_collection.count_documents(search_conditions)
         # 分页查询
@@ -358,7 +358,7 @@ class ServiceCenterManager:
     @staticmethod
     async def _get_favorite_service_ids_by_user(user_sub: str) -> list[str]:
         """获取用户收藏的服务ID"""
-        user_collection = MongoDB().get_collection("user")
+        user_collection = MongoDB.get_collection("user")
         user_doc = await user_collection.find_one({"_id": user_sub})
         if user_doc is None:
             # 用户不存在，返回空的收藏列表

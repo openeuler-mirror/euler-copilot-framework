@@ -134,7 +134,7 @@ class MCPLoader(metaclass=SingletonMeta):
         """
         清除状态为ready或failed的MCP安装任务
         """
-        mcp_collection = MongoDB().get_collection("mcp")
+        mcp_collection = MongoDB.get_collection("mcp")
         mcp_ids = ProcessHandler.get_all_task_ids()
         # 检索_id在mcp_ids且状态为ready或者failed的MCP的内容
         db_service_list = await mcp_collection.find(
@@ -180,8 +180,7 @@ class MCPLoader(metaclass=SingletonMeta):
         """
         template_path = MCP_PATH / "template"
         logger.info("[MCPLoader] 初始化所有MCP模板: %s", template_path)
-        mongo = MongoDB()
-        mcp_collection = mongo.get_collection("mcp")
+        mcp_collection = MongoDB.get_collection("mcp")
         # 遍历所有模板
         mcp_ids = []
         async for mcp_dir in template_path.iterdir():
@@ -265,7 +264,7 @@ class MCPLoader(metaclass=SingletonMeta):
     @staticmethod
     async def _insert_template_db(mcp_id: str, config: MCPServerConfig) -> None:
         """插入单个MCP Server模板信息到数据库"""
-        mcp_collection = MongoDB().get_collection("mcp")
+        mcp_collection = MongoDB.get_collection("mcp")
         await mcp_collection.update_one(
             {"_id": mcp_id},
             {
@@ -294,7 +293,7 @@ class MCPLoader(metaclass=SingletonMeta):
         tool_list = await MCPLoader._get_template_tool(mcp_id, config)
 
         # 基本信息插入数据库
-        mcp_collection = MongoDB().get_collection("mcp")
+        mcp_collection = MongoDB.get_collection("mcp")
         # 清空当前工具列表
         await mcp_collection.update_one(
             {"_id": mcp_id},
@@ -401,8 +400,7 @@ class MCPLoader(metaclass=SingletonMeta):
         :return: 无
         """
         # 更新数据库
-        mongo = MongoDB()
-        mcp_collection = mongo.get_collection("mcp")
+        mcp_collection = MongoDB.get_collection("mcp")
         logger.info("[MCPLoader] 更新MCP模板状态: %s -> %s", mcp_id, status)
         await mcp_collection.update_one(
             {"_id": mcp_id},
@@ -468,8 +466,7 @@ class MCPLoader(metaclass=SingletonMeta):
         )
         await f.aclose()
         # 更新数据库
-        mongo = MongoDB()
-        mcp_collection = mongo.get_collection("mcp")
+        mcp_collection = MongoDB.get_collection("mcp")
         await mcp_collection.update_one(
             {"_id": mcp_id},
             {"$addToSet": {"activated": user_sub}},
@@ -491,8 +488,7 @@ class MCPLoader(metaclass=SingletonMeta):
         await asyncer.asyncify(shutil.rmtree)(user_path.as_posix(), ignore_errors=True)
 
         # 更新数据库
-        mongo = MongoDB()
-        mcp_collection = mongo.get_collection("mcp")
+        mcp_collection = MongoDB.get_collection("mcp")
         await mcp_collection.update_one(
             {"_id": mcp_id},
             {"$pull": {"activated": user_sub}},
@@ -508,7 +504,7 @@ class MCPLoader(metaclass=SingletonMeta):
         """
         deleted_mcp_list = []
 
-        mcp_collection = MongoDB().get_collection("mcp")
+        mcp_collection = MongoDB.get_collection("mcp")
         mcp_list = await mcp_collection.find({}, {"_id": 1}).to_list(None)
         for db_item in mcp_list:
             mcp_path: Path = MCP_PATH / "template" / db_item["_id"]
@@ -525,8 +521,7 @@ class MCPLoader(metaclass=SingletonMeta):
         :param list[str] cancel_mcp_list: 需要取消的MCP列表
         :return: 无
         """
-        mongo = MongoDB()
-        mcp_collection = mongo.get_collection("mcp")
+        mcp_collection = MongoDB.get_collection("mcp")
         # 更新数据库状态
         cancel_mcp_list = await mcp_collection.distinct("_id", {"_id": {"$in": cancel_mcp_list}, "status": MCPInstallStatus.INSTALLING})
         await mcp_collection.update_many(
@@ -546,7 +541,7 @@ class MCPLoader(metaclass=SingletonMeta):
         :return: 无
         """
         # 从MongoDB中移除
-        mcp_collection = MongoDB().get_collection("mcp")
+        mcp_collection = MongoDB.get_collection("mcp")
         mcp_service_list = await mcp_collection.find(
             {"_id": {"$in": deleted_mcp_list}},
         ).to_list(None)
@@ -593,8 +588,7 @@ class MCPLoader(metaclass=SingletonMeta):
             logger.warning("[MCPLoader] users目录不存在，跳过加载用户MCP")
             return
 
-        mongo = MongoDB()
-        mcp_collection = mongo.get_collection("mcp")
+        mcp_collection = MongoDB.get_collection("mcp")
 
         mcp_list = {}
         # 遍历users目录

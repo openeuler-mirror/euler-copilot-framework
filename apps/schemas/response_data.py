@@ -103,7 +103,8 @@ class LLMIteam(BaseModel):
 
     icon: str = Field(default=llm_provider_dict["ollama"]["icon"])
     llm_id: str = Field(alias="llmId", default="")
-    model_name: str = Field(alias="modelName", default=Config().get_config().llm.model)
+    model_name: str = Field(
+        alias="modelName", default=Config().get_config().llm.model)
 
 
 class KbIteam(BaseModel):
@@ -272,7 +273,8 @@ class TeamKnowledgeBaseItem(BaseModel):
 class ListTeamKnowledgeMsg(BaseModel):
     """GET /api/knowledge Result数据结构"""
 
-    team_kb_list: list[TeamKnowledgeBaseItem] = Field(default=[], alias="teamKbList", description="团队知识库列表")
+    team_kb_list: list[TeamKnowledgeBaseItem] = Field(
+        default=[], alias="teamKbList", description="团队知识库列表")
 
 
 class ListTeamKnowledgeRsp(ResponseData):
@@ -298,7 +300,8 @@ class GetAppPropertyMsg(AppData):
 
     app_id: str = Field(..., alias="appId", description="应用ID")
     published: bool = Field(..., description="是否已发布")
-    mcp_service: list[AppMcpServiceInfo] = Field(default=[], alias="mcpService", description="MCP服务信息列表")
+    mcp_service: list[AppMcpServiceInfo] = Field(
+        default=[], alias="mcpService", description="MCP服务信息列表")
     llm: LLMIteam | None = Field(alias="llm", default=None)
 
 
@@ -413,8 +416,10 @@ class GetServiceDetailMsg(BaseModel):
 
     service_id: str = Field(..., alias="serviceId", description="服务ID")
     name: str = Field(..., description="服务名称")
-    apis: list[ServiceApiData] | None = Field(default=None, description="解析后的接口列表")
-    data: dict[str, Any] | None = Field(default=None, description="YAML 内容数据对象")
+    apis: list[ServiceApiData] | None = Field(
+        default=None, description="解析后的接口列表")
+    data: dict[str, Any] | None = Field(
+        default=None, description="YAML 内容数据对象")
 
 
 class GetServiceDetailRsp(ResponseData):
@@ -457,14 +462,17 @@ class NodeServiceListRsp(ResponseData):
 class MCPServiceCardItem(BaseModel):
     """插件中心：MCP服务卡片数据结构"""
 
-    mcpservice_id: str = Field(..., alias="mcpserviceId", description="mcp服务ID")
+    mcpservice_id: str = Field(..., alias="mcpserviceId",
+                               description="mcp服务ID")
     name: str = Field(..., description="mcp服务名称")
     description: str = Field(..., description="mcp服务简介")
     icon: str = Field(..., description="mcp服务图标")
     author: str = Field(..., description="mcp服务作者")
     author_name: str = Field(..., alias="authorName", description="mcp服务作者用户名")
-    is_active: bool = Field(default=False, alias="isActive", description="mcp服务是否激活")
-    status: MCPInstallStatus = Field(default=MCPInstallStatus.INSTALLING, description="mcp服务状态")
+    is_active: bool = Field(
+        default=False, alias="isActive", description="mcp服务是否激活")
+    status: MCPInstallStatus = Field(
+        default=MCPInstallStatus.INSTALLING, description="mcp服务状态")
 
 
 class BaseMCPServiceOperationMsg(BaseModel):
@@ -543,7 +551,8 @@ class EditMCPServiceMsg(BaseModel):
 class GetMCPServiceDetailRsp(ResponseData):
     """GET /api/service/{serviceId} 返回数据结构"""
 
-    result: GetMCPServiceDetailMsg | EditMCPServiceMsg = Field(..., title="Result")
+    result: GetMCPServiceDetailMsg | EditMCPServiceMsg = Field(
+        ..., title="Result")
 
 
 class DeleteMCPServiceRsp(ResponseData):
@@ -574,7 +583,8 @@ class PutFlowReq(BaseModel):
     """创建/修改流拓扑结构"""
 
     flow: FlowItem
-    focus_point: PositionItem = Field(alias="focusPoint", default=PositionItem())
+    focus_point: PositionItem = Field(
+        alias="focusPoint", default=PositionItem())
 
 
 class FlowStructurePutMsg(BaseModel):
@@ -631,7 +641,8 @@ class LLMProvider(BaseModel):
     icon: str = Field(description="LLM提供商图标")
     alias_zh: str = Field(default="", description="中文名称", alias="aliasZh")
     alias_en: str = Field(default="", description="英文名称", alias="aliasEn")
-    type: str = Field(default="public", description="类型：public(公网) 或 private(私有)")
+    type: str = Field(default="public",
+                      description="类型：public(公网) 或 private(私有)")
 
 
 class ListLLMProviderRsp(ResponseData):
@@ -658,43 +669,67 @@ class LLMProviderInfo(BaseModel):
         default="",
     )
     model_name: str = Field(description="模型名称", alias="modelName")
-    max_tokens: int | None = Field(default=None, description="最大token数", alias="maxTokens")
-    is_editable: bool = Field(default=True, description="是否可编辑", alias="isEditable")
+    max_tokens: int | None = Field(
+        default=None, description="最大token数", alias="maxTokens")
+    is_editable: bool = Field(
+        default=True, description="是否可编辑", alias="isEditable")
     type: list[str] = Field(default=['chat'], description="模型类型列表")
-    
+
     # 模型能力字段 - 基础能力
     provider: str = Field(default="", description="模型提供商")
-    supports_streaming: bool = Field(default=True, description="是否支持流式输出", alias="supportsStreaming")
-    supports_function_calling: bool = Field(default=True, description="是否支持函数调用", alias="supportsFunctionCalling")
-    supports_json_mode: bool = Field(default=True, description="是否支持JSON模式", alias="supportsJsonMode")
-    supports_structured_output: bool = Field(default=False, description="是否支持结构化输出", alias="supportsStructuredOutput")
-    
+    supports_streaming: bool = Field(
+        default=True, description="是否支持流式输出", alias="supportsStreaming")
+    supports_function_calling: bool = Field(
+        default=True, description="是否支持函数调用", alias="supportsFunctionCalling")
+    supports_json_mode: bool = Field(
+        default=True, description="是否支持JSON模式", alias="supportsJsonMode")
+    supports_structured_output: bool = Field(
+        default=False, description="是否支持结构化输出", alias="supportsStructuredOutput")
+
     # 推理能力
-    supports_thinking: bool = Field(default=False, description="是否支持思维链", alias="supportsThinking")
-    can_toggle_thinking: bool = Field(default=False, description="是否支持开关思维链", alias="canToggleThinking")
-    supports_reasoning_content: bool = Field(default=False, description="是否返回reasoning_content字段", alias="supportsReasoningContent")
-    
+    supports_thinking: bool = Field(
+        default=False, description="是否支持思维链", alias="supportsThinking")
+    can_toggle_thinking: bool = Field(
+        default=False, description="是否支持开关思维链", alias="canToggleThinking")
+    supports_reasoning_content: bool = Field(
+        default=False, description="是否返回reasoning_content字段", alias="supportsReasoningContent")
+
     # 参数支持
-    max_tokens_param: str = Field(default="max_tokens", description="最大token参数名", alias="maxTokensParam")
-    supports_temperature: bool = Field(default=True, description="是否支持temperature参数", alias="supportsTemperature")
-    supports_top_p: bool = Field(default=True, description="是否支持top_p参数", alias="supportsTopP")
-    supports_top_k: bool = Field(default=False, description="是否支持top_k参数", alias="supportsTopK")
-    supports_frequency_penalty: bool = Field(default=False, description="是否支持frequency_penalty参数", alias="supportsFrequencyPenalty")
-    supports_presence_penalty: bool = Field(default=False, description="是否支持presence_penalty参数", alias="supportsPresencePenalty")
-    supports_min_p: bool = Field(default=False, description="是否支持min_p参数", alias="supportsMinP")
-    
+    max_tokens_param: str = Field(
+        default="max_tokens", description="最大token参数名", alias="maxTokensParam")
+    supports_temperature: bool = Field(
+        default=True, description="是否支持temperature参数", alias="supportsTemperature")
+    supports_top_p: bool = Field(
+        default=True, description="是否支持top_p参数", alias="supportsTopP")
+    supports_top_k: bool = Field(
+        default=False, description="是否支持top_k参数", alias="supportsTopK")
+    supports_frequency_penalty: bool = Field(
+        default=False, description="是否支持frequency_penalty参数", alias="supportsFrequencyPenalty")
+    supports_presence_penalty: bool = Field(
+        default=False, description="是否支持presence_penalty参数", alias="supportsPresencePenalty")
+    supports_min_p: bool = Field(
+        default=False, description="是否支持min_p参数", alias="supportsMinP")
+
     # 高级功能
-    supports_response_format: bool = Field(default=True, description="是否支持response_format参数", alias="supportsResponseFormat")
-    supports_tools: bool = Field(default=True, description="是否支持tools参数", alias="supportsTools")
-    supports_tool_choice: bool = Field(default=True, description="是否支持tool_choice参数", alias="supportsToolChoice")
-    supports_extra_body: bool = Field(default=True, description="是否支持extra_body参数", alias="supportsExtraBody")
-    supports_stream_options: bool = Field(default=True, description="是否支持stream_options参数", alias="supportsStreamOptions")
-    
+    supports_response_format: bool = Field(
+        default=True, description="是否支持response_format参数", alias="supportsResponseFormat")
+    supports_tools: bool = Field(
+        default=True, description="是否支持tools参数", alias="supportsTools")
+    supports_tool_choice: bool = Field(
+        default=True, description="是否支持tool_choice参数", alias="supportsToolChoice")
+    supports_extra_body: bool = Field(
+        default=True, description="是否支持extra_body参数", alias="supportsExtraBody")
+    supports_stream_options: bool = Field(
+        default=True, description="是否支持stream_options参数", alias="supportsStreamOptions")
+
     # 特殊参数
-    supports_enable_thinking: bool = Field(default=False, description="是否支持enable_thinking参数", alias="supportsEnableThinking")
-    supports_thinking_budget: bool = Field(default=False, description="是否支持思维链token预算", alias="supportsThinkingBudget")
-    supports_enable_search: bool = Field(default=False, description="是否支持联网搜索", alias="supportsEnableSearch")
-    
+    supports_enable_thinking: bool = Field(
+        default=False, description="是否支持enable_thinking参数", alias="supportsEnableThinking")
+    supports_thinking_budget: bool = Field(
+        default=False, description="是否支持思维链token预算", alias="supportsThinkingBudget")
+    supports_enable_search: bool = Field(
+        default=False, description="是否支持联网搜索", alias="supportsEnableSearch")
+
     # 其他信息
     notes: str = Field(default="", description="备注信息")
 
@@ -734,7 +769,8 @@ class GetParamsRsp(ResponseData):
 class OperateAndBindType(BaseModel):
     """操作和绑定类型数据结构"""
 
-    operate: NumberOperate | StringOperate | ListOperate | BoolOperate | DictOperate = Field(description="操作类型")
+    operate: NumberOperate | StringOperate | ListOperate | BoolOperate | DictOperate = Field(
+        description="操作类型")
     bind_type: ValueType = Field(description="绑定类型")
 
 

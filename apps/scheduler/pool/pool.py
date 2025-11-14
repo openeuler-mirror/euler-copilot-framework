@@ -131,8 +131,7 @@ class Pool:
 
     async def get_flow_metadata(self, app_id: str) -> list[AppFlow]:
         """从数据库中获取特定App的全部Flow的元数据"""
-        mongo = MongoDB()
-        app_collection = mongo.get_collection("app")
+        app_collection = MongoDB.get_collection("app")
         flow_metadata_list = []
         try:
             flow_list = await app_collection.find_one({"_id": app_id}, {"flows": 1})
@@ -166,8 +165,7 @@ class Pool:
             return Plugin
         
         # 从MongoDB里拿到数据
-        mongo = MongoDB()
-        call_collection = mongo.get_collection("call")
+        call_collection = MongoDB.get_collection("call")
         call_db_data = await call_collection.find_one({"_id": call_id})
         if not call_db_data:
             err = f"[Pool] Call{call_id}不存在"

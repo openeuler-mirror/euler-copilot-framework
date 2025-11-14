@@ -53,7 +53,7 @@ class VariablePoolManager:
         try:
             # 这里应该从相应的用户和流程数据库表中加载
             # 目前先从变量表中推断存在的实体
-            collection = MongoDB().get_collection("variables")
+            collection = MongoDB.get_collection("variables")
             
             # 获取所有唯一的用户ID
             user_ids = await collection.distinct("metadata.user_sub", {
@@ -299,7 +299,7 @@ class VariablePoolManager:
                 return self._conversation_template_pools[flow_id]
             
             # 从MongoDB查询对话变量模板 (只查询is_template=True的)
-            collection = MongoDB().get_collection("variables")
+            collection = MongoDB.get_collection("variables")
             cursor = collection.find({
                 "metadata.scope": VariableScope.CONVERSATION.value,
                 "metadata.flow_id": flow_id,

@@ -73,9 +73,8 @@ class ServiceLoader:
 
     async def delete(self, service_id: str, *, is_reload: bool = False) -> None:
         """删除Service，并更新数据库"""
-        mongo = MongoDB()
-        service_collection = mongo.get_collection("service")
-        node_collection = mongo.get_collection("node")
+        service_collection = MongoDB.get_collection("service")
+        node_collection = MongoDB.get_collection("node")
         try:
             await service_collection.delete_one({"_id": service_id})
             await node_collection.delete_many({"service_id": service_id})
@@ -102,9 +101,8 @@ class ServiceLoader:
             logger.error(err)
             raise ValueError(err)
         # 更新MongoDB
-        mongo = MongoDB()
-        service_collection = mongo.get_collection("service")
-        node_collection = mongo.get_collection("node")
+        service_collection = MongoDB.get_collection("service")
+        node_collection = MongoDB.get_collection("node")
         try:
             # 先删除旧的节点
             await node_collection.delete_many({"service_id": metadata.id})

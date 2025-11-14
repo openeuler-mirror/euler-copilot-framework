@@ -20,7 +20,7 @@ class CommentManager:
         :param record_id: 问答ID
         :return: 评论内容
         """
-        record_group_collection = MongoDB().get_collection("record_group")
+        record_group_collection = MongoDB.get_collection("record_group")
         result = await record_group_collection.aggregate(
             [
                 {"$match": {"_id": group_id, "records.id": record_id}},
@@ -42,8 +42,7 @@ class CommentManager:
         :param record_id: 问答ID
         :param data: 评论内容
         """
-        mongo = MongoDB()
-        record_group_collection = mongo.get_collection("record_group")
+        record_group_collection = MongoDB.get_collection("record_group")
         await record_group_collection.update_one(
             {"_id": group_id, "records.id": record_id},
             {"$set": {"records.$.comment": data.model_dump(by_alias=True)}},

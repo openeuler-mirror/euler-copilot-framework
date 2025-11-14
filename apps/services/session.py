@@ -41,11 +41,11 @@ class SessionManager:
 
         if user_sub is not None:
             data.user_sub = user_sub
-            
+
         if user_name is not None:
             data.user_name = user_name
 
-        collection = MongoDB().get_collection("session")
+        collection = MongoDB.get_collection("session")
         await collection.insert_one(data.model_dump(exclude_none=True, by_alias=True))
         await collection.create_index(
             "expired_at", expireAfterSeconds=0,
@@ -57,7 +57,7 @@ class SessionManager:
         """删除浏览器Session"""
         if not session_id:
             return
-        collection = MongoDB().get_collection("session")
+        collection = MongoDB.get_collection("session")
         await collection.delete_one({"_id": session_id})
 
     @staticmethod
@@ -67,8 +67,7 @@ class SessionManager:
             return await SessionManager.create_session(session_ip)
 
         ip = None
-        mongo = MongoDB()
-        collection = mongo.get_collection("session")
+        collection = MongoDB.get_collection("session")
         data = await collection.find_one({"_id": session_id})
         if not data:
             return await SessionManager.create_session(session_ip)
@@ -81,8 +80,7 @@ class SessionManager:
     @staticmethod
     async def verify_user(session_id: str) -> bool:
         """验证用户是否在Session中"""
-        mongo = MongoDB()
-        collection = mongo.get_collection("session")
+        collection = MongoDB.get_collection("session")
         data = await collection.find_one({"_id": session_id})
         if not data:
             return False
@@ -91,8 +89,7 @@ class SessionManager:
     @staticmethod
     async def get_user(session_id: str) -> str | None:
         """从Session中获取用户"""
-        mongo = MongoDB()
-        collection = mongo.get_collection("session")
+        collection = MongoDB.get_collection("session")
         data = await collection.find_one({"_id": session_id})
         if not data:
             return None
@@ -109,8 +106,7 @@ class SessionManager:
     @staticmethod
     async def get_session_by_user_sub(user_sub: str) -> str | None:
         """根据用户sub获取Session"""
-        mongo = MongoDB()
-        collection = mongo.get_collection("session")
+        collection = MongoDB.get_collection("session")
         data = await collection.find_one({"user_sub": user_sub})
         if not data:
             return None

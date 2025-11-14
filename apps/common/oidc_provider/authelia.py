@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 
 class AutheliaOIDCProvider(OIDCProviderBase):
     """Authelia OIDC Provider"""
-    
+
     # PKCE相关的类变量，用于存储code_verifier
     _code_verifier: str = ""
 
@@ -27,16 +27,17 @@ class AutheliaOIDCProvider(OIDCProviderBase):
     def _generate_pkce_params(cls) -> tuple[str, str]:
         """生成PKCE参数"""
         # 生成code_verifier (43-128个字符的随机字符串)
-        code_verifier = base64.urlsafe_b64encode(secrets.token_bytes(32)).decode('utf-8').rstrip('=')
-        
+        code_verifier = base64.urlsafe_b64encode(
+            secrets.token_bytes(32)).decode('utf-8').rstrip('=')
+
         # 生成code_challenge (code_verifier的SHA256哈希值)
         code_challenge = base64.urlsafe_b64encode(
             hashlib.sha256(code_verifier.encode('utf-8')).digest()
         ).decode('utf-8').rstrip('=')
-        
+
         # 存储code_verifier供后续使用
         cls._code_verifier = code_verifier
-        
+
         return code_verifier, code_challenge
 
     @classmethod
@@ -60,7 +61,7 @@ class AutheliaOIDCProvider(OIDCProviderBase):
             "grant_type": "authorization_code",
             "code": code,
         }
-        
+
         # 如果启用了PKCE，添加code_verifier参数
         if login_config.enable_pkce and cls._code_verifier:
             data["code_verifier"] = cls._code_verifier
@@ -114,9 +115,11 @@ class AutheliaOIDCProvider(OIDCProviderBase):
             result = resp.json()
 
         # 获取用户名和默认的user_sub
-        user_name = result.get("name", result.get("preferred_username", result.get("nickname", "")))
-        default_user_sub = result.get("sub", result.get("preferred_username", ""))
-        
+        user_name = result.get("name", result.get(
+            "preferred_username", result.get("nickname", "")))
+        default_user_sub = result.get(
+            "sub", result.get("preferred_username", ""))
+
         # 管理员用户特殊处理逻辑
         final_user_sub = await cls._handle_admin_user_sub(user_name, default_user_sub)
 
@@ -124,39 +127,40 @@ class AutheliaOIDCProvider(OIDCProviderBase):
             "user_sub": final_user_sub,
             "user_name": user_name,
         }
-    
+
     @classmethod
     async def _handle_admin_user_sub(cls, user_name: str, default_user_sub: str) -> str:
         """处理管理员用户的user_sub逻辑（仅适用于Authelia）"""
         from apps.common.config import Config
-        
+
         config = Config().get_config()
-        
+
         # 只有在使用Authelia provider时才应用此逻辑
         if config.login.provider != "authelia":
             return default_user_sub
-        
+
         # 检查是否启用了管理员配置且用户名匹配
         if not config.admin.enable or user_name != config.admin.user_name:
             return default_user_sub
-        
+
         # 检查数据库中是否已存在管理员用户
         try:
             from apps.common.mongo import MongoDB
-            mongo = MongoDB()
-            user_collection = mongo.get_collection("user")
-            
+            user_collection = MongoDB.get_collection("user")
+
             existing_admin = await user_collection.find_one({"_id": config.admin.user_sub})
-            
+
             if existing_admin:
                 # 数据库中已存在管理员用户，使用默认的user_sub
-                logger.info(f"[_handle_admin_user_sub] 管理员用户已存在，使用默认user_sub: {default_user_sub}")
+                logger.info(
+                    f"[_handle_admin_user_sub] 管理员用户已存在，使用默认user_sub: {default_user_sub}")
                 return default_user_sub
             else:
                 # 数据库中不存在管理员用户，使用配置的管理员user_sub
-                logger.info(f"[_handle_admin_user_sub] 管理员用户不存在，使用配置的user_sub: {config.admin.user_sub}")
+                logger.info(
+                    f"[_handle_admin_user_sub] 管理员用户不存在，使用配置的user_sub: {config.admin.user_sub}")
                 return config.admin.user_sub
-                
+
         except Exception as e:
             logger.error(f"[_handle_admin_user_sub] 检查管理员用户时出错: {e}")
             # 出错时使用默认的user_sub
@@ -182,7 +186,7 @@ class AutheliaOIDCProvider(OIDCProviderBase):
                 err = f"[Authelia] 获取登录状态失败: {resp.status_code}，完整输出: {resp.text}"
                 raise RuntimeError(err)
             result = resp.json()
-            
+
             # Authelia 返回用户信息表示已登录，需要获取或生成token
             # 这里返回空的token，实际使用中可能需要根据具体情况调整
             return {
@@ -218,7 +222,7 @@ class AutheliaOIDCProvider(OIDCProviderBase):
 
         # 生成随机的 state 参数以确保安全性和唯一性
         state = secrets.token_urlsafe(32)
-        
+
         # 基础URL参数
         url_params = [
             f"client_id={login_config.client_id}",
@@ -227,7 +231,7 @@ class AutheliaOIDCProvider(OIDCProviderBase):
             f"redirect_uri={login_config.redirect_uri}",
             f"state={state}"
         ]
-        
+
         # 如果启用PKCE，添加PKCE参数
         if login_config.enable_pkce:
             code_verifier, code_challenge = cls._generate_pkce_params()
@@ -236,7 +240,7 @@ class AutheliaOIDCProvider(OIDCProviderBase):
                 f"code_challenge_method={login_config.pkce_challenge_method}"
             ])
             logger.info("[Authelia] 启用PKCE流程，生成code_challenge参数")
-        
+
         return f"{login_config.host.rstrip('/')}/api/oidc/authorization?" + "&".join(url_params)
 
     @classmethod

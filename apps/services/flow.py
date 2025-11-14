@@ -41,8 +41,8 @@ class FlowManager:
         :param service_id: 服务id
         :return: 如果用户具有所需权限则返回True，否则返回False
         """
-        node_pool_collection = MongoDB().get_collection("node")
-        service_collection = MongoDB().get_collection("service")
+        node_pool_collection = MongoDB.get_collection("node")
+        service_collection = MongoDB.get_collection("service")
 
         try:
             node_pool_record = await node_pool_collection.find_one({"_id": node_meta_data_id})
@@ -83,7 +83,7 @@ class FlowManager:
         :param service_id: 服务id
         :return: 节点元数据的列表
         """
-        node_pool_collection = MongoDB().get_collection("node")  # 获取节点集合
+        node_pool_collection = MongoDB.get_collection("node")  # 获取节点集合
         try:
             cursor = node_pool_collection.find(
                 {"service_id": service_id}).sort("created_at", ASCENDING)
@@ -147,8 +147,8 @@ class FlowManager:
         :user_sub: 用户的唯一标识符
         :return: service的列表
         """
-        service_collection = MongoDB().get_collection("service")
-        user_collection = MongoDB().get_collection("user")
+        service_collection = MongoDB.get_collection("service")
+        user_collection = MongoDB.get_collection("user")
         try:
             db_result = await user_collection.find_one({"_id": user_sub})
             user = User.model_validate(db_result)
@@ -220,7 +220,7 @@ class FlowManager:
         :param node_meta_data_id: node_meta_data的id
         :return: node meta data id对应的节点源数据信息
         """
-        node_pool_collection = MongoDB().get_collection("node")  # 获取节点集合
+        node_pool_collection = MongoDB.get_collection("node")  # 获取节点集合
         try:
             node_pool_record = await node_pool_collection.find_one({"_id": node_meta_data_id})
             if node_pool_record is None:
@@ -253,7 +253,7 @@ class FlowManager:
         :return: 流的item和用户在这个流上的视觉焦点
         """
         try:
-            app_collection = MongoDB().get_collection("app")
+            app_collection = MongoDB.get_collection("app")
             app_record = await app_collection.find_one({"_id": app_id})
             if app_record is None:
                 logger.error("[FlowManager] 应用 %s 不存在", app_id)
@@ -462,7 +462,7 @@ class FlowManager:
         import time
         st = time.time()
         try:
-            app_collection = MongoDB().get_collection("app")
+            app_collection = MongoDB.get_collection("app")
             app_record = await app_collection.find_one({"_id": app_id})
             if app_record is None:
                 logger.error("[FlowManager] 应用 %s 不存在", app_id)
@@ -612,7 +612,7 @@ class FlowManager:
         """
         try:
 
-            app_collection = MongoDB().get_collection("app")
+            app_collection = MongoDB.get_collection("app")
             key = f"flow/{flow_id}.yaml"
             await app_collection.update_one({"_id": app_id}, {"$unset": {f"hashes.{key}": ""}})
             await app_collection.update_one({"_id": app_id}, {"$pull": {"flows": {"id": flow_id}}})
@@ -902,7 +902,7 @@ class FlowManager:
         :return: 子工作流的item
         """
         try:
-            app_collection = MongoDB().get_collection("app")
+            app_collection = MongoDB.get_collection("app")
             app_record = await app_collection.find_one({"_id": app_id})
             if app_record is None:
                 logger.error("[FlowManager] 应用 %s 不存在", app_id)

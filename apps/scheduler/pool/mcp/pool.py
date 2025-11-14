@@ -54,8 +54,7 @@ class MCPPool(metaclass=SingletonMeta):
 
     async def _validate_user(self, mcp_id: str, user_sub: str) -> bool:
         """验证用户是否已激活"""
-        mongo = MongoDB()
-        mcp_collection = mongo.get_collection("mcp")
+        mcp_collection = MongoDB.get_collection("mcp")
         mcp_db_result = await mcp_collection.find_one({"_id": mcp_id, "activated": user_sub})
         return mcp_db_result is not None
 
@@ -86,7 +85,8 @@ class MCPPool(metaclass=SingletonMeta):
             logger.warning("[MCPPool] 用户 %s 不在池中，无法停止", user_sub)
             return
         if mcp_id not in self.pool[user_sub]:
-            logger.warning("[MCPPool] MCP %s 不在用户 %s 的池中，无法停止", mcp_id, user_sub)
+            logger.warning(
+                "[MCPPool] MCP %s 不在用户 %s 的池中，无法停止", mcp_id, user_sub)
             return
         await self.pool[user_sub][mcp_id].stop()
         del self.pool[user_sub][mcp_id]

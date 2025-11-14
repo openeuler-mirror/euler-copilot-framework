@@ -51,8 +51,7 @@ class MCPServiceManager:
         :param str mcp_id: MCP服务ID
         :return: 是否激活
         """
-        mongo = MongoDB()
-        mcp_collection = mongo.get_collection("mcp")
+        mcp_collection = MongoDB.get_collection("mcp")
         mcp_list = await mcp_collection.find({"_id": mcp_id}, {"activated": True}).to_list(None)
         return any(user_sub in db_item.get("activated", []) for db_item in mcp_list)
 
@@ -64,8 +63,7 @@ class MCPServiceManager:
         :param str mcp_id: MCP服务ID
         :return: MCP服务状态
         """
-        mongo = MongoDB()
-        mcp_collection = mongo.get_collection("mcp")
+        mcp_collection = MongoDB.get_collection("mcp")
         mcp_list = await mcp_collection.find({"_id": mcp_id}, {"status": True}).to_list(None)
         for db_item in mcp_list:
             status = db_item.get("status")
@@ -131,7 +129,7 @@ class MCPServiceManager:
         :return: MCP服务详细信息
         """
         # 验证用户权限
-        mcpservice_collection = MongoDB().get_collection("mcp")
+        mcpservice_collection = MongoDB.get_collection("mcp")
         db_service = await mcpservice_collection.find_one({"_id": mcpservice_id})
         if not db_service:
             msg = "[MCPServiceManager] MCP服务未找到"
@@ -161,7 +159,7 @@ class MCPServiceManager:
         :return: MCP工具详细信息列表
         """
         # 获取服务名称
-        service_collection = MongoDB().get_collection("mcp")
+        service_collection = MongoDB.get_collection("mcp")
         data = await service_collection.find({"_id": service_id}, {"tools": True}).to_list(None)
         result = []
         for item in data:
@@ -183,7 +181,7 @@ class MCPServiceManager:
         :param page: int: 页码
         :return: MCP列表
         """
-        mcpservice_collection = MongoDB().get_collection("mcp")
+        mcpservice_collection = MongoDB.get_collection("mcp")
         # 分页查询
         skip = (page - 1) * SERVICE_PAGE_SIZE
         db_mcpservices = await mcpservice_collection.find(search_conditions).skip(skip).limit(
@@ -208,7 +206,7 @@ class MCPServiceManager:
         :param page: int: 页码
         :return: (MCP列表, 总数量)
         """
-        mcpservice_collection = MongoDB().get_collection("mcp")
+        mcpservice_collection = MongoDB.get_collection("mcp")
         
         # 获取总数量
         total_count = await mcpservice_collection.count_documents(search_conditions)
@@ -280,7 +278,7 @@ class MCPServiceManager:
         )
 
         # 检查是否存在相同服务
-        mcp_collection = MongoDB().get_collection("mcp")
+        mcp_collection = MongoDB.get_collection("mcp")
         db_service = await mcp_collection.find_one({"name": mcp_server.name})
         mcp_id = sqids.encode([random.randint(0, 1000000) for _ in range(5)])[:6]  # noqa: S311
         if db_service:
@@ -321,7 +319,7 @@ class MCPServiceManager:
             msg = "[MCPServiceManager] MCP服务ID为空"
             raise ValueError(msg)
 
-        mcp_collection = MongoDB().get_collection("mcp")
+        mcp_collection = MongoDB.get_collection("mcp")
         db_service = await mcp_collection.find_one({"_id": data.service_id, "author": user_sub})
         if not db_service:
             msg = "[MCPServiceManager] MCP服务未找到或无权限"
@@ -369,7 +367,7 @@ class MCPServiceManager:
         await MCPLoader.delete_mcp(service_id)
 
         # 遍历所有应用，将其中的MCP依赖删除
-        app_collection = MongoDB().get_collection("application")
+        app_collection = MongoDB.get_collection("application")
         await app_collection.update_many(
             {"mcp_service": service_id},
             {"$pull": {"mcp_service": service_id}},
@@ -388,7 +386,7 @@ class MCPServiceManager:
         :param service_id: str: MCP服务ID
         :return: 无
         """
-        mcp_collection = MongoDB().get_collection("mcp")
+        mcp_collection = MongoDB.get_collection("mcp")
         status = await mcp_collection.find({"_id": service_id}, {"status": 1}).to_list()
         for item in status:
             mcp_status = item.get("status", MCPInstallStatus.INSTALLING)
@@ -466,7 +464,7 @@ class MCPServiceManager:
         :param install: bool: 是否安装
         :return: 无
         """
-        service_collection = MongoDB().get_collection("mcp")
+        service_collection = MongoDB.get_collection("mcp")
         db_service = await service_collection.find_one({"_id": service_id, "author": user_sub})
         db_service = MCPCollection.model_validate(db_service)
         if install:

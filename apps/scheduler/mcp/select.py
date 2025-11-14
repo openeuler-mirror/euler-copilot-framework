@@ -46,7 +46,7 @@ class MCPSelector:
         )
 
         # 拿到工具
-        tool_collection = MongoDB().get_collection("mcp")
+        tool_collection = MongoDB.get_collection("mcp")
         llm_tool_list = []
 
         for tool_vec in tool_vecs:
