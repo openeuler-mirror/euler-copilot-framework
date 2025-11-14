@@ -74,10 +74,8 @@ class MCPLoader(metaclass=SingletonMeta):
             err = f"MCP配置文件不存在: {config_path}"
             logger.error(err)
             raise FileNotFoundError(err)
-
-        f = await config_path.open("r", encoding="utf-8")
-        f_content = json.loads(await f.read())
-        await f.aclose()
+        with open(config_path, encoding="utf-8") as f:
+            f_content = json.loads(f.read())
 
         return MCPServerConfig.model_validate(f_content)
 
@@ -111,11 +109,10 @@ class MCPLoader(metaclass=SingletonMeta):
 
                 # 重新保存config
                 template_config = MCP_PATH / "template" / mcp_id / "config.json"
-                f = await template_config.open("w+", encoding="utf-8")
-                config_data = config.model_dump(
-                    by_alias=True, exclude_none=True)
-                await f.write(json.dumps(config_data, indent=4, ensure_ascii=False))
-                await f.aclose()
+                with open(template_config, "w+", encoding="utf-8") as f:
+                    config_data = config.model_dump(
+                        by_alias=True, exclude_none=True)
+                    f.write(json.dumps(config_data, indent=4, ensure_ascii=False))
 
             else:
                 logger.info(f"[Installer] SSE/StreamableHTTP方式的MCP模板，无需安装: {mcp_id}")  # noqa: T201
@@ -348,10 +345,9 @@ class MCPLoader(metaclass=SingletonMeta):
         config_path = MCP_PATH / "template" / mcp_id / "config.json"
         await Path.mkdir(config_path.parent, parents=True, exist_ok=True)
 
-        f = await config_path.open("w+", encoding="utf-8")
-        config_dict = config.model_dump(by_alias=True, exclude_none=True)
-        await f.write(json.dumps(config_dict, indent=4, ensure_ascii=False))
-        await f.aclose()
+        with open(config_path, "w+", encoding="utf-8") as f:
+            config_dict = config.model_dump(by_alias=True, exclude_none=True)
+            f.write(json.dumps(config_dict, indent=4, ensure_ascii=False))
 
     @staticmethod
     async def get_icon(mcp_id: str) -> str:
@@ -366,9 +362,8 @@ class MCPLoader(metaclass=SingletonMeta):
         if not await icon_path.exists():
             logger.warning("[MCPLoader] MCP模板图标不存在: %s", mcp_id)
             return ""
-        f = await icon_path.open("rb")
-        icon = await f.read()
-        await f.aclose()
+        with open(icon_path, "rb") as f:
+            icon = f.read()
         header = "data:image/png;base64,"
         return header + base64.b64encode(icon).decode("utf-8")
 
@@ -385,9 +380,8 @@ class MCPLoader(metaclass=SingletonMeta):
             err = f"MCP模板配置文件不存在: {mcp_id}"
             logger.error(err)
             raise FileNotFoundError(err)
-        f = await config_path.open("r", encoding="utf-8")
-        config = json.loads(await f.read())
-        await f.aclose()
+        with open(config_path, encoding="utf-8") as f:
+            config = json.loads(f.read())
         return MCPServerConfig.model_validate(config)
 
     @staticmethod
@@ -456,15 +450,14 @@ class MCPLoader(metaclass=SingletonMeta):
                     "--directory", str(user_path)+'/project'] + mcp_config.config.args
         user_config_path = user_path / "config.json"
         # 更新用户配置
-        f = await user_config_path.open("w", encoding="utf-8", errors="ignore")
-        await f.write(
-            json.dumps(
-                mcp_config.model_dump(by_alias=True, exclude_none=True),
-                indent=4,
-                ensure_ascii=False,
+        with open(user_config_path, "w+", encoding="utf-8") as f:
+            f.write(
+                json.dumps(
+                    mcp_config.model_dump(by_alias=True, exclude_none=True),
+                    indent=4,
+                    ensure_ascii=False,
+                )
             )
-        )
-        await f.aclose()
         # 更新数据库
         mcp_collection = MongoDB.get_collection("mcp")
         await mcp_collection.update_one(

@@ -30,10 +30,8 @@ class OpenAPILoader:
         if not await yaml_path.exists():
             msg = f"File not found: {yaml_path}"
             raise FileNotFoundError(msg)
-
-        f = await yaml_path.open(mode="r")
-        spec = yaml.safe_load(await f.read())
-        await f.aclose()
+        with open(yaml_path, mode="r", encoding="utf-8") as f:
+            spec = yaml.safe_load(f)
 
         return reduce_openapi_spec(spec)
 

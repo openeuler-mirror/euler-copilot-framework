@@ -40,7 +40,8 @@ class ServiceCenterManager:
         page_size: int,
     ) -> tuple[list[ServiceCardItem], int]:
         """获取所有服务列表"""
-        filters = ServiceCenterManager._build_filters({}, search_type, keyword) if keyword else {}
+        filters = ServiceCenterManager._build_filters(
+            {}, search_type, keyword) if keyword else {}
         service_pools, total_count = await ServiceCenterManager._search_service(filters, page, page_size)
         fav_service_ids = await ServiceCenterManager._get_favorite_service_ids_by_user(user_sub)
         services = [
@@ -70,7 +71,8 @@ class ServiceCenterManager:
                 return [], 0
             keyword = user_sub
         base_filter = {"author": user_sub}
-        filters = ServiceCenterManager._build_filters(base_filter, search_type, keyword) if keyword else base_filter
+        filters = ServiceCenterManager._build_filters(
+            base_filter, search_type, keyword) if keyword else base_filter
         service_pools, total_count = await ServiceCenterManager._search_service(filters, page, page_size)
         fav_service_ids = await ServiceCenterManager._get_favorite_service_ids_by_user(user_sub)
         services = [
@@ -97,7 +99,8 @@ class ServiceCenterManager:
         """获取用户收藏的服务"""
         fav_service_ids = await ServiceCenterManager._get_favorite_service_ids_by_user(user_sub)
         base_filter = {"_id": {"$in": fav_service_ids}}
-        filters = ServiceCenterManager._build_filters(base_filter, search_type, keyword) if keyword else base_filter
+        filters = ServiceCenterManager._build_filters(
+            base_filter, search_type, keyword) if keyword else base_filter
         service_pools, total_count = await ServiceCenterManager._search_service(filters, page, page_size)
         services = [
             ServiceCardItem(
@@ -237,10 +240,11 @@ class ServiceCenterManager:
             msg = "Permission denied"
             raise InstancePermissionError(msg)
         service_path = (
-            Path(Config().get_config().deploy.data_dir) / "semantics" / "service" / service_id / "openapi" / "api.yaml"
+            Path(Config().get_config().deploy.data_dir) / "semantics" /
+            "service" / service_id / "openapi" / "api.yaml"
         )
-        async with await service_path.open() as f:
-            service_data = yaml.safe_load(await f.read())
+        with open(service_path, "r", encoding="utf-8") as f:
+            service_data = yaml.safe_load(f)
         return service_pool_store.name, service_data
 
     @staticmethod
@@ -267,10 +271,11 @@ class ServiceCenterManager:
             raise ServiceIDError(msg)
 
         metadata_path = (
-            Path(Config().get_config().deploy.data_dir) / "semantics" / "service" / service_id / "metadata.yaml"
+            Path(Config().get_config().deploy.data_dir) /
+            "semantics" / "service" / service_id / "metadata.yaml"
         )
         async with await metadata_path.open() as f:
-            metadata_data = yaml.safe_load(await f.read())
+            metadata_data = yaml.safe_load(f.read())
         return ServiceMetadata.model_validate(metadata_data)
 
     @staticmethod
@@ -350,9 +355,11 @@ class ServiceCenterManager:
         skip = (page - 1) * page_size
         db_services = await service_collection.find(search_conditions).skip(skip).limit(page_size).to_list()
         if not db_services and total > 0:
-            logger.warning("[ServiceCenterManager] 没有找到符合条件的服务: %s", search_conditions)
+            logger.warning(
+                "[ServiceCenterManager] 没有找到符合条件的服务: %s", search_conditions)
             return [], -1
-        service_pools = [ServicePool.model_validate(db_service) for db_service in db_services]
+        service_pools = [ServicePool.model_validate(
+            db_service) for db_service in db_services]
         return service_pools, total
 
     @staticmethod
