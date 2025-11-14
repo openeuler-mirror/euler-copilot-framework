@@ -4,15 +4,17 @@
 import logging
 from copy import deepcopy
 
+from anyio import Path
 from jinja2.sandbox import SandboxedEnvironment
 
+from apps.common.config import config
 from apps.llm import json_generator
 from apps.scheduler.pool.pool import pool
 from apps.schemas.request_data import RequestData
 from apps.schemas.scheduler import TopFlow
 from apps.schemas.task import TaskData
 
-from .prompt import FLOW_SELECT, FLOW_SELECT_FUNCTION
+from .func import FLOW_SELECT_FUNCTION
 
 _logger = logging.getLogger(__name__)
 
@@ -43,9 +45,12 @@ class FlowMixin:
             "description": f"{flow.name}, {flow.description}",
         } for flow in flow_list]
 
-        template = self._env.from_string(FLOW_SELECT[self.task.runtime.language])
+        language = self.task.runtime.language.value
+        template_path = Path(config.deploy.data_dir) / "prompts" / "system" / "scheduler" / f"flow_select.{language}.md"
+        template_content = await template_path.read_text(encoding="utf-8")
+
+        template = self._env.from_string(template_content)
         prompt = template.render(
-            template,
             question=self.post_body.question,
             choice_list=choices,
         )
@@ -55,9 +60,8 @@ class FlowMixin:
             function=function,
             conversation=[
                 {"role": "system", "content": "You are a helpful assistant."},
-                {"role": "user", "content": prompt},
             ],
-            language=self.task.runtime.language,
+            prompt=prompt,
         )
         result = TopFlow.model_validate(result_str)
         return result.choice

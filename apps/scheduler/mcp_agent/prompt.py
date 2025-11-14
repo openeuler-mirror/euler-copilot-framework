@@ -1,25 +1,9 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2023-2025. All rights reserved.
 """MCP相关的大模型Prompt"""
 
-from pathlib import Path
 from textwrap import dedent
 
 from apps.models import LanguageType
-
-
-def _load_prompt(prompt_id: str, language: LanguageType) -> str:
-    """
-    从Markdown文件加载提示词
-
-    :param prompt_id: 提示词ID，例如 "gen_params" 等
-    :param language: 语言类型
-    :return: 提示词内容
-    """
-    # 组装Prompt文件路径: prompt_id.language.md (例如: gen_params.en.md)
-    filename = f"{prompt_id}.{language.value}.md"
-    prompt_dir = Path(__file__).parent.parent.parent / "data" / "prompts" / "system" / "mcp"
-    prompt_file = prompt_dir / filename
-    return prompt_file.read_text(encoding="utf-8")
 
 GENERATE_FLOW_NAME: dict[LanguageType, str] = {
     LanguageType.CHINESE: dedent(
@@ -401,11 +385,6 @@ IS_PARAM_ERROR_FUNCTION: dict[LanguageType, dict] = {
             },
             "required": ["is_param_error"],
         },
-        "examples": [
-            {
-                "is_param_error": True,
-            },
-        ],
     },
     LanguageType.ENGLISH: {
         "name": "check_parameter_error",
@@ -421,11 +400,6 @@ IS_PARAM_ERROR_FUNCTION: dict[LanguageType, dict] = {
             },
             "required": ["is_param_error"],
         },
-        "examples": [
-            {
-                "is_param_error": True,
-            },
-        ],
     },
 }
 
@@ -615,232 +589,6 @@ for user to provide credentials again
             **Please call the `get_missing_parameters` tool to return the analysis result**.
         """,
     ),
-}
-
-
-def get_gen_params_prompt(language: LanguageType) -> str:
-    """
-    获取GEN_PARAMS提示词
-
-    :param language: 语言类型
-    :return: 提示词内容
-    """
-    return _load_prompt("gen_params", language)
-
-
-REPAIR_PARAMS: dict[LanguageType, str] = {
-    LanguageType.CHINESE: dedent(
-        r"""
-            你是一个工具参数修复器。
-            你的任务是根据当前的工具信息、目标、工具入参的schema、工具当前的入参、工具的报错、补充的参数和补充的参数描述，修复当前工具的入参。
-
-            注意：
-            1.最终修复的参数要符合目标和工具入参的schema。
-
-            # 样例
-            ## 工具信息
-            <tool>
-                <name>mysql_analyzer</name>
-                <description>分析MySQL数据库性能</description>
-            </tool>
-
-            ## 总目标
-            我需要扫描当前mysql数据库，分析性能瓶颈, 并调优
-
-            ## 当前阶段目标
-            我要连接MySQL数据库，分析性能瓶颈，并调优。
-
-            ## 工具入参的schema
-            {
-                "type": "object",
-                "properties": {
-                    "host": {
-                        "type": "string",
-                        "description": "MySQL数据库的主机地址"
-                    },
-                    "port": {
-                        "type": "integer",
-                        "description": "MySQL数据库的端口号"
-                    },
-                    "username": {
-                        "type": "string",
-                        "description": "MySQL数据库的用户名"
-                    },
-                    "password": {
-                        "type": "string",
-                        "description": "MySQL数据库的密码"
-                    }
-                },
-                "required": ["host", "port", "username", "password"]
-            }
-
-            ## 工具当前的入参
-            {
-                "host": "192.0.0.1",
-                "port": 3306,
-                "username": "root",
-                "password": "password"
-            }
-
-            ## 工具的报错
-            执行端口扫描命令时，出现了错误：`password is not correct`。
-
-            ## 补充的参数
-            {
-                "username": "admin",
-                "password": "admin123"
-            }
-
-            ## 补充的参数描述
-            用户希望使用admin用户和admin123密码来连接MySQL数据库。
-
-            ## 输出
-            ```json
-            {
-                "host": "192.0.0.1",
-                "port": 3306,
-                "username": "admin",
-                "password": "admin123"
-            }
-            ```
-
-            # 现在开始修复工具入参：
-            ## 工具
-            <tool>
-                <name>{{tool_name}}</name>
-                <description>{{tool_description}}</description>
-            </tool>
-
-            ## 总目标
-            {{goal}}
-
-            ## 当前阶段目标
-            {{current_goal}}
-
-            ## 工具入参Schema
-            {{input_schema}}
-
-            ## 工具当前的入参
-            {{input_params}}
-
-            ## 运行报错
-            {{error_message}}
-
-            ## 补充的参数
-            {{params}}
-
-            ## 补充的参数描述
-            {{params_description}}
-
-            ## 输出
-        """,
-    ),
-    LanguageType.ENGLISH: dedent(
-        r"""
-            You are a tool parameter fixer.
-            Your task is to fix the current tool input parameters based on the current tool information, tool input \
-parameter schema, tool current input parameters, tool error, supplemented parameters, and supplemented \
-parameter descriptions.
-
-            # Example
-            ## Tool information
-            <tool>
-                <name>mysql_analyzer</name>
-                <description>Analyze MySQL database performance</description>
-            </tool>
-
-            ## Tool input parameter schema
-            {
-                "type": "object",
-                "properties": {
-                    "host": {
-                        "type": "string",
-                        "description": "MySQL database host address"
-                    },
-                    "port": {
-                        "type": "integer",
-                        "description": "MySQL database port number"
-                    },
-                    "username": {
-                        "type": "string",
-                        "description": "MySQL database username"
-                    },
-                    "password": {
-                        "type": "string",
-                        "description": "MySQL database password"
-                    }
-                },
-                "required": ["host", "port", "username", "password"]
-            }
-
-            ## Current tool input parameters
-            {
-                "host": "192.0.0.1",
-                "port": 3306,
-                "username": "root",
-                "password": "password"
-            }
-
-            ## Tool error
-            When executing the port scan command, an error occurred: `password is not correct`.
-
-            ## Supplementary parameters
-            {
-                "username": "admin",
-                "password": "admin123"
-            }
-
-            ## Supplementary parameter description
-            The user wants to use the admin user and the admin123 password to connect to the MySQL database.
-
-            ## Output
-            ```json
-            {
-                "host": "192.0.0.1",
-                "port": 3306,
-                "username": "admin",
-                "password": "admin123"
-            }
-            ```
-
-            # Now start fixing tool input parameters:
-            ## Tool
-            <tool>
-                <name> {{tool_name}} </name>
-                <description> {{tool_description}} </description>
-            </tool>
-
-            ## Tool input schema
-            {{input_schema}}
-
-            ## Current tool input parameters
-            {{input_params}}
-
-            ## Runtime error
-            {{error_message}}
-
-            ## Supplementary parameters
-            {{params}}
-
-            ## Supplementary parameter descriptions
-            {{params_description}}
-
-            ## Output
-        """,
-    ),
-}
-
-GET_MISSING_PARAMS_FUNCTION: dict[LanguageType, dict] = {
-    LanguageType.CHINESE: {
-        "name": "get_missing_parameters",
-        "description": "根据错误反馈提取并提供缺失或错误的参数",
-        "parameters": None,
-    },
-    LanguageType.ENGLISH: {
-        "name": "get_missing_parameters",
-        "description": "Extract and provide the missing or incorrect parameters based on error feedback",
-        "parameters": None,
-    },
 }
 
 FINAL_ANSWER: dict[LanguageType, str] = {

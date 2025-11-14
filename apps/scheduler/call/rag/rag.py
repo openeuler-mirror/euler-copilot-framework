@@ -26,7 +26,7 @@ from apps.schemas.scheduler import (
 )
 from apps.services.document import DocumentManager
 
-from .prompt import QUESTION_REWRITE, QUESTION_REWRITE_FUNCTION
+from .func import QUESTION_REWRITE_FUNCTION
 from .schema import (
     DocItem,
     QuestionRewriteOutput,
@@ -170,7 +170,7 @@ class RAG(CoreCall, input_model=RAGInput, output_model=RAGOutput):
                 trim_blocks=True,
                 lstrip_blocks=True,
             )
-            tmpl = env.from_string(QUESTION_REWRITE[self._sys_vars.language])
+            tmpl = env.from_string(self._load_prompt("question_rewrite"))
             prompt = tmpl.render(question=data.query)
 
             # 使用json_generator直接获取JSON结果
@@ -179,9 +179,8 @@ class RAG(CoreCall, input_model=RAGInput, output_model=RAGOutput):
                 conversation=[
                     {"role": "system", "content": "You are a helpful assistant."},
                     *self._sys_vars.background.conversation[-self.history_len:],
-                    {"role": "user", "content": prompt},
                 ],
-                language=self._sys_vars.language,
+                prompt=prompt,
             )
             # 直接使用解析后的JSON结果
             data.query = QuestionRewriteOutput.model_validate(json_result).question
