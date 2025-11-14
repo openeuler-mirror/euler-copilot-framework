@@ -111,29 +111,25 @@ class MCPAgentExecutor(BaseExecutor):
             _logger.error(err)
             raise RuntimeError(err)
 
-        if is_first:
-            # 获取第一个输入参数
-            self._current_tool = self._tool_list[self.task.state.stepName]
-            # 更新host的task引用以确保使用最新的context
-            self._current_input = await self._host.get_first_input_params(
-                self._current_tool, self.task,
-            )
+        # 获取输入参数
+        if isinstance(self.params, FlowParams):
+            params = self.params.content
+            params_description = self.params.description
         else:
-            # 获取后续输入参数
-            if isinstance(self.params, FlowParams):
-                params = self.params.content
-                params_description = self.params.description
-            else:
-                params = {}
-                params_description = ""
-            self._current_tool = self._tool_list[self.task.state.stepName]
-            self._current_input = await self._host.fill_params(
-                self._current_tool,
-                self.task,
-                self._current_input,
-                params,
-                params_description,
-            )
+            params = {}
+            params_description = ""
+        self._current_tool = self._tool_list[self.task.state.stepName]
+
+        # 对于首次调用,使用空的current_input
+        current_input = {} if is_first else self._current_input
+
+        self._current_input = await self._host.fill_params(
+            self._current_tool,
+            self.task,
+            current_input,
+            params,
+            params_description,
+        )
 
     def _get_error_message_str(self, error_message: dict | str | None) -> str:
         """将错误消息转换为字符串"""

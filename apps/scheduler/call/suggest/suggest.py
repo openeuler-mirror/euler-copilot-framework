@@ -23,7 +23,7 @@ from apps.schemas.scheduler import (
 )
 from apps.services.user_tag import UserTagManager
 
-from .prompt import SUGGEST_FUNCTION, SUGGEST_PROMPT
+from .func import SUGGEST_FUNCTION
 from .schema import (
     SingleFlowSuggestionConfig,
     SuggestGenResult,
@@ -108,7 +108,8 @@ class Suggestion(CoreCall, input_model=SuggestionInput, output_model=SuggestionO
 
         user_domain_info = await UserTagManager.get_user_domain_by_user_and_topk(data.user_id, 5)
         user_domain = [tag.name for tag in user_domain_info]
-        prompt_tpl = self._env.from_string(SUGGEST_PROMPT[self._sys_vars.language])
+        prompt_content = self._load_prompt("suggest")
+        prompt_tpl = self._env.from_string(prompt_content)
 
         if self.configs:
             async for output_chunk in self._process_configs():
@@ -149,12 +150,11 @@ class Suggestion(CoreCall, input_model=SuggestionInput, output_model=SuggestionO
         messages = [
             {"role": "system", "content": "You are a helpful assistant."},
             *self._sys_vars.background.conversation,
-            {"role": "user", "content": prompt},
         ]
         result = await json_generator.generate(
             function=SUGGEST_FUNCTION[self._sys_vars.language],
             conversation=messages,
-            language=self._sys_vars.language,
+            prompt=prompt,
         )
         return SuggestGenResult.model_validate(result)
 

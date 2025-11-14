@@ -5,9 +5,11 @@ import json
 import logging
 from typing import Any
 
+from anyio import Path
 from jinja2 import BaseLoader
 from jinja2.sandbox import SandboxedEnvironment
 
+from apps.common.config import config
 from apps.models import LanguageType
 from apps.scheduler.mcp.prompt import MEMORY_TEMPLATE
 from apps.schemas.task import TaskData
@@ -41,6 +43,17 @@ class MCPBase:
         self._user_id = task.metadata.userId
         self._goal = task.runtime.userInput
         self._language = task.runtime.language
+
+    async def _load_prompt(self, prompt_id: str) -> str:
+        """
+        从Markdown文件加载提示词
+
+        :param prompt_id: 提示词ID,例如 "gen_params" 等
+        :return: 提示词内容
+        """
+        filename = f"{prompt_id}.{self._language.value}.md"
+        prompt_file = Path(config.deploy.data_dir) / "prompts" / "system" / "mcp" / filename
+        return await prompt_file.read_text(encoding="utf-8")
 
     @staticmethod
     async def assemble_memory(task: TaskData) -> list[dict[str, str]]:

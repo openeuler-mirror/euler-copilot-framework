@@ -20,10 +20,6 @@ DOMAIN_FUNCTION: dict[LanguageType, dict[str, Any]] = {
             },
             "required": ["keywords"],
         },
-        "examples": [
-            {"keywords": ["北京", "天气"]},
-            {"keywords": ["Python", "装饰器", "设计模式"]},
-        ],
     },
     LanguageType.ENGLISH: {
         "name": "extract_domain",
@@ -39,10 +35,6 @@ DOMAIN_FUNCTION: dict[LanguageType, dict[str, Any]] = {
             },
             "required": ["keywords"],
         },
-        "examples": [
-            {"keywords": ["Beijing", "weather"]},
-            {"keywords": ["Python", "decorator", "design pattern"]},
-        ],
     },
 }
 
@@ -61,10 +53,6 @@ FACTS_FUNCTION: dict[LanguageType, dict[str, Any]] = {
             },
             "required": ["facts"],
         },
-        "examples": [
-            {"facts": ["杭州西湖有苏堤、白堤、断桥、三潭印月等景点"]},
-            {"facts": ["用户喜欢看科幻电影", "用户可能对《星际穿越》感兴趣"]},
-        ],
     },
     LanguageType.ENGLISH: {
         "name": "extract_facts",
@@ -80,14 +68,5 @@ FACTS_FUNCTION: dict[LanguageType, dict[str, Any]] = {
             },
             "required": ["facts"],
         },
-        "examples": [
-            {
-                "facts": [
-                    "Hangzhou West Lake has Su Causeway, Bai Causeway, Broken Bridge, "
-                    "Three Pools Mirroring the Moon, etc.",
-                ],
-            },
-            {"facts": ["User likes watching sci-fi movies", "User may be interested in Interstellar"]},
-        ],
     },
 }
