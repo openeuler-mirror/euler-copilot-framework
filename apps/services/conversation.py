@@ -25,7 +25,7 @@ class ConversationManager:
     @staticmethod
     async def get_conversation_by_user_sub(user_sub: str) -> list[Conversation]:
         """根据用户ID获取对话列表，按时间由近到远排序"""
-        conv_collection = MongoDB().get_collection("conversation")
+        conv_collection = MongoDB.get_collection("conversation")
         return [
             Conversation(**conv)
             async for conv in conv_collection.find({"user_sub": user_sub, "debug": False}).sort({"created_at": 1})
@@ -34,7 +34,7 @@ class ConversationManager:
     @staticmethod
     async def get_conversation_by_conversation_id(user_sub: str, conversation_id: str) -> Conversation | None:
         """通过ConversationID查询对话信息"""
-        conv_collection = MongoDB().get_collection("conversation")
+        conv_collection = MongoDB.get_collection("conversation")
         result = await conv_collection.find_one({"_id": conversation_id, "user_sub": user_sub})
         if not result:
             return None
@@ -98,12 +98,11 @@ class ConversationManager:
             kb_list=kb_item_list,
             debug=debug if debug else False,
         )
-        mongo = MongoDB()
         try:
-            async with mongo.get_session() as session, await session.start_transaction():
-                conv_collection = mongo.get_collection("conversation")
+            async with MongoDB.get_session() as session, await session.start_transaction():
+                conv_collection = MongoDB.get_collection("conversation")
                 await conv_collection.insert_one(conv.model_dump(by_alias=True), session=session)
-                user_collection = mongo.get_collection("user")
+                user_collection = MongoDB.get_collection("user")
                 update_data: dict[str, dict[str, Any]] = {
                     "$push": {"conversations": conversation_id},
                 }
@@ -128,8 +127,7 @@ class ConversationManager:
     @staticmethod
     async def update_conversation_by_conversation_id(user_sub: str, conversation_id: str, data: dict[str, Any]) -> bool:
         """通过ConversationID更新对话信息"""
-        mongo = MongoDB()
-        conv_collection = mongo.get_collection("conversation")
+        conv_collection = MongoDB.get_collection("conversation")
         result = await conv_collection.update_one(
             {"_id": conversation_id, "user_sub": user_sub},
             {"$set": data},
@@ -139,10 +137,9 @@ class ConversationManager:
     @staticmethod
     async def delete_conversation_by_conversation_id(user_sub: str, conversation_id: str) -> None:
         """通过ConversationID删除对话"""
-        mongo = MongoDB()
-        user_collection = mongo.get_collection("user")
-        conv_collection = mongo.get_collection("conversation")
-        record_group_collection = mongo.get_collection("record_group")
+        user_collection = MongoDB.get_collection("user")
+        conv_collection = MongoDB.get_collection("conversation")
+        record_group_collection = MongoDB.get_collection("record_group")
 
         # 🔑 修正：获取所有需要清理的文件ID
         files_to_cleanup = []
@@ -162,7 +159,7 @@ class ConversationManager:
                 elif "_id" in doc:
                     files_to_cleanup.append(doc["_id"])
 
-        async with mongo.get_session() as session, await session.start_transaction():
+        async with MongoDB.get_session() as session, await session.start_transaction():
             await conv_collection.delete_one(
                 {"_id": conversation_id, "user_sub": user_sub}, session=session,
             )

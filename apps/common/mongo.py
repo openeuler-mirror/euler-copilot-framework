@@ -15,18 +15,14 @@ logger = logging.getLogger(__name__)
 
 
 class MongoDB:
+    from pymongo import AsyncMongoClient
     """MongoDB连接器"""
+    _client: "AsyncMongoClient" = AsyncMongoClient(
+        f"mongodb://{urllib.parse.quote_plus(Config().get_config().mongodb.user)}:{urllib.parse.quote_plus(Config().get_config().mongodb.password)}@{Config().get_config().mongodb.host}:{Config().get_config().mongodb.port}/?directConnection=true",
+    )
 
-    def __init__(self) -> None:
-        """初始化MongoDB连接器"""
-        from pymongo import AsyncMongoClient
-
-        self._client = AsyncMongoClient(
-            f"mongodb://{urllib.parse.quote_plus(Config().get_config().mongodb.user)}:{urllib.parse.quote_plus(Config().get_config().mongodb.password)}@{Config().get_config().mongodb.host}:{Config().get_config().mongodb.port}/?directConnection=true",
-        )
-
-
-    def get_collection(self, collection_name: str) -> "AsyncCollection":
+    @staticmethod
+    def get_collection(collection_name: str) -> "AsyncCollection":
         """
         获取MongoDB集合
 
@@ -34,20 +30,20 @@ class MongoDB:
         :return: 集合对象
         :rtype: AsyncCollection
         """
-        return self._client[Config().get_config().mongodb.database][collection_name]
+        return MongoDB._client[Config().get_config().mongodb.database][collection_name]
 
-
-    async def clear_collection(self, collection_name: str) -> None:
+    @staticmethod
+    async def clear_collection(collection_name: str) -> None:
         """
         清空MongoDB集合
 
         :param str collection_name: 集合名称
         :return: 无
         """
-        await self._client[Config().get_config().mongodb.database][collection_name].delete_many({})
+        await MongoDB._client[Config().get_config().mongodb.database][collection_name].delete_many({})
 
-
-    def get_session(self) -> "AsyncClientSession":
+    @staticmethod
+    def get_session() -> "AsyncClientSession":
         """
         获取MongoDB会话
 
@@ -56,4 +52,4 @@ class MongoDB:
         :return: 会话对象
         :rtype: AsyncClientSession
         """
-        return self._client.start_session()
+        return MongoDB._client.start_session()

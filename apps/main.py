@@ -160,8 +160,7 @@ async def add_no_auth_user() -> None:
     from apps.common.config import Config
 
     config = Config().get_config()
-    mongo = MongoDB()
-    user_collection = mongo.get_collection("user")
+    user_collection = MongoDB.get_collection("user")
 
     # 使用配置文件中的no_auth设置
     user_sub = config.no_auth.user_sub
@@ -196,8 +195,7 @@ async def set_administrator() -> None:
     from apps.common.config import Config
 
     config = Config().get_config()
-    mongo = MongoDB()
-    user_collection = mongo.get_collection("user")
+    user_collection = MongoDB.get_collection("user")
 
     # 获取管理员配置
     admin_user_sub = config.admin.user_sub
@@ -232,8 +230,7 @@ async def clear_user_activity() -> None:
     """清除所有用户的活跃状态"""
     from apps.services.activity import Activity
     from apps.common.mongo import MongoDB
-    mongo = MongoDB()
-    activity_collection = mongo.get_collection("activity")
+    activity_collection = MongoDB.get_collection("activity")
     await activity_collection.delete_many({})
     logging.info("清除所有用户活跃状态完成")
 
@@ -325,11 +322,10 @@ async def startup_file_cleanup():
         from apps.scheduler.variable.type import VariableType
         from apps.common.mongo import MongoDB
 
-        mongo = MongoDB()
-        doc_collection = mongo.get_collection("document")
-        variables_collection = mongo.get_collection("variables")
-        record_group_collection = mongo.get_collection("record_group")
-        conversation_collection = mongo.get_collection("conversation")
+        doc_collection = MongoDB.get_collection("document")
+        variables_collection = MongoDB.get_collection("variables")
+        record_group_collection = MongoDB.get_collection("record_group")
+        conversation_collection = MongoDB.get_collection("conversation")
 
         # 获取所有文档ID
         all_file_ids = set()
@@ -409,12 +405,10 @@ async def cleanup_orphaned_files():
         from apps.scheduler.variable.type import VariableType
         from apps.common.mongo import MongoDB
 
-        mongo = MongoDB()
-        doc_collection = mongo.get_collection("document")
-        variables_collection = mongo.get_collection("variables")
-        record_group_collection = mongo.get_collection("record_group")
-        conversation_collection = mongo.get_collection("conversation")
-
+        doc_collection = MongoDB.get_collection("document")
+        variables_collection = MongoDB.get_collection("variables")
+        record_group_collection = MongoDB.get_collection("record_group")
+        conversation_collection = MongoDB.get_collection("conversation")
         # 获取所有文档ID
         all_file_ids = set()
         async for doc in doc_collection.find({}, {"_id": 1}):
@@ -504,8 +498,7 @@ async def start_periodic_cleanup():
                 logger.info("开始定期清理任务")
 
                 # 获取活跃的对话列表
-                mongo = MongoDB()
-                conv_collection = mongo.get_collection("conversation")
+                conv_collection = MongoDB.get_collection("conversation")
 
                 # 获取最近24小时内有活动的对话ID
                 cutoff_time = datetime.utcnow() - timedelta(hours=24)

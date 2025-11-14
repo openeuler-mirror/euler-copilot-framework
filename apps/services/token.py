@@ -28,8 +28,7 @@ class TokenManager:
             err = "用户不存在！"
             raise ValueError(err)
 
-        mongo = MongoDB()
-        collection = mongo.get_collection("session")
+        collection = MongoDB.get_collection("session")
         token_data = await collection.find_one({
             "_id": f"{plugin_name}_token_{user_sub}",
         })
@@ -67,8 +66,7 @@ class TokenManager:
         expire_time: int,
     ) -> str | None:
         """生成插件Token"""
-        mongo = MongoDB()
-        collection = mongo.get_collection("session")
+        collection = MongoDB.get_collection("session")
 
         # 获取OIDC token
         oidc_token = await collection.find_one({
@@ -141,8 +139,7 @@ class TokenManager:
     @staticmethod
     async def delete_plugin_token(user_sub: str) -> None:
         """删除插件token"""
-        mongo = MongoDB()
-        collection = mongo.get_collection("token")
+        collection = MongoDB.get_collection("token")
         await collection.delete_many({
             "user_sub": user_sub,
             "$or": [

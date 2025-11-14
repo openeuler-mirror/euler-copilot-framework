@@ -14,17 +14,14 @@ from apps.schemas.enum_var import FlowStatus
 logger = logging.getLogger(__name__)
 
 
-
-
 class RecordManager:
     """问答对相关操作"""
 
     @staticmethod
     async def create_record_group(group_id: str, user_sub: str, conversation_id: str) -> str | None:
         """创建问答组"""
-        mongo = MongoDB()
-        record_group_collection = mongo.get_collection("record_group")
-        conversation_collection = mongo.get_collection("conversation")
+        record_group_collection = MongoDB.get_collection("record_group")
+        conversation_collection = MongoDB.get_collection("conversation")
         record_group = RecordGroup(
             _id=group_id,
             user_sub=user_sub,
@@ -32,7 +29,7 @@ class RecordManager:
         )
 
         try:
-            async with mongo.get_session() as session, await session.start_transaction():
+            async with MongoDB.get_session() as session, await session.start_transaction():
                 # RecordGroup里面加一条记录
                 await record_group_collection.insert_one(record_group.model_dump(by_alias=True), session=session)
                 # Conversation里面加一个ID
@@ -48,8 +45,7 @@ class RecordManager:
     @staticmethod
     async def insert_record_data_into_record_group(user_sub: str, group_id: str, record: Record) -> str | None:
         """加密问答对，并插入MongoDB中的特定问答组"""
-        mongo = MongoDB()
-        group_collection = mongo.get_collection("record_group")
+        group_collection = MongoDB.get_collection("record_group")
         try:
             await group_collection.update_one(
                 {"_id": group_id, "user_sub": user_sub},
@@ -79,8 +75,7 @@ class RecordManager:
         """
         sort_order = -1 if order == "desc" else 1
 
-        mongo = MongoDB()
-        record_group_collection = mongo.get_collection("record_group")
+        record_group_collection = MongoDB.get_collection("record_group")
         try:
             # 得到conversation的全部record_group id
             record_groups = await record_group_collection.aggregate(
@@ -105,7 +100,8 @@ class RecordManager:
                 )
                 record = await record.to_list(length=1)
                 if not record:
-                    logger.info("[RecordManager] 问答组 %s 没有问答对", record_group_id)
+                    logger.info("[RecordManager] 问答组 %s 没有问答对",
+                                record_group_id)
                     continue
 
                 records.append(Record.model_validate(record[0]["records"]))
@@ -124,7 +120,7 @@ class RecordManager:
 
         包含全部record_group及其关联的record
         """
-        record_group_collection = MongoDB().get_collection("record_group")
+        record_group_collection = MongoDB.get_collection("record_group")
         try:
             pipeline = [
                 {"$match": {"conversation_id": conversation_id}},
@@ -134,7 +130,7 @@ class RecordManager:
                 pipeline.append({"$limit": total_pairs})
 
             records = await record_group_collection.aggregate(pipeline)
-            
+
             return [RecordGroup.model_validate(record) async for record in records]
         except Exception:
             logger.exception("[RecordManager] 查询问答组失败")
@@ -143,11 +139,13 @@ class RecordManager:
     @staticmethod
     async def update_record_flow_status_to_cancelled_by_task_ids(task_ids: list[str]) -> None:
         """更新Record关联的Flow状态"""
-        record_group_collection = MongoDB().get_collection("record_group")
+        record_group_collection = MongoDB.get_collection("record_group")
         try:
             await record_group_collection.update_many(
-                {"records.task_id": {"$in": task_ids}, "records.flow.flow_status": {"$nin": [FlowStatus.ERROR.value, FlowStatus.SUCCESS.value]}},
-                {"$set": {"records.$[elem].flow.flow_status": FlowStatus.CANCELLED}},
+                {"records.task_id": {"$in": task_ids}, "records.flow.flow_status": {
+                    "$nin": [FlowStatus.ERROR.value, FlowStatus.SUCCESS.value]}},
+                {"$set": {
+                    "records.$[elem].flow.flow_status": FlowStatus.CANCELLED}},
                 array_filters=[{"elem.flow.flow_id": {"$in": task_ids}}],
             )
         except Exception:
@@ -162,7 +160,7 @@ class RecordManager:
         :return: 记录是否存在
         """
         try:
-            record_group_collection = MongoDB().get_collection("record_group")
+            record_group_collection = MongoDB.get_collection("record_group")
             record_data = await record_group_collection.find_one(
                 {"_id": group_id, "user_sub": user_sub, "records.id": record_id},
             )
@@ -174,7 +172,7 @@ class RecordManager:
     @staticmethod
     async def check_group_id(group_id: str, user_sub: str) -> bool:
         """检查group_id是否存在"""
-        record_group_collection = MongoDB().get_collection("record_group")
+        record_group_collection = MongoDB.get_collection("record_group")
         try:
             result = await record_group_collection.find_one({"_id": group_id, "user_sub": user_sub})
             return bool(result)

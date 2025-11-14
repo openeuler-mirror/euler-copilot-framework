@@ -361,7 +361,7 @@ class PredecessorCacheService:
         try:
             from apps.common.mongo import MongoDB
             
-            app_collection = MongoDB().get_collection("app")
+            app_collection = MongoDB.get_collection("app")
             
             # 查询包含此flow_id的app，同时获取app_id
             app_record = await app_collection.find_one(

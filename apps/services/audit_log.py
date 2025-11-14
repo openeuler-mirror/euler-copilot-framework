@@ -18,6 +18,5 @@ class AuditLogManager:
 
         :param data: 审计日志数据
         """
-        mongo = MongoDB()
-        collection = mongo.get_collection("audit")
+        collection = MongoDB.get_collection("audit")
         await collection.insert_one(data.model_dump(by_alias=True))

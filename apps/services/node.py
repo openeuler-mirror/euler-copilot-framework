@@ -31,7 +31,7 @@ class NodeManager:
             return SpecialCallType.PLUGIN.value
         
         # 其他节点类型：从数据库查询
-        node_collection = MongoDB().get_collection("node")
+        node_collection = MongoDB.get_collection("node")
         node = await node_collection.find_one({"_id": node_id}, {"call_id": 1})
         if not node:
             err = f"[NodeManager] Node call_id {node_id} not found."
@@ -41,7 +41,7 @@ class NodeManager:
     @staticmethod
     async def get_node(node_id: str) -> NodePool:
         """获取Node的类型"""
-        node_collection = MongoDB().get_collection("node")
+        node_collection = MongoDB.get_collection("node")
         node = await node_collection.find_one({"_id": node_id})
         if not node:
             err = f"[NodeManager] Node {node_id} not found."
@@ -51,7 +51,7 @@ class NodeManager:
     @staticmethod
     async def get_node_name(node_id: str) -> str:
         """获取node的名称"""
-        node_collection = MongoDB().get_collection("node")
+        node_collection = MongoDB.get_collection("node")
         # 查询 Node 集合获取对应的 name
         node_doc = await node_collection.find_one({"_id": node_id}, {"name": 1})
         if not node_doc:
@@ -126,7 +126,7 @@ class NodeManager:
         
         # 查找Node信息
         logger.info("[NodeManager] 获取节点 %s", node_id)
-        node_collection = MongoDB().get_collection("node")
+        node_collection = MongoDB.get_collection("node")
         node = await node_collection.find_one({"_id": node_id})
         if not node:
             err = f"[NodeManager] Node {node_id} not found."

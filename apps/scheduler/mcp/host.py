@@ -58,8 +58,7 @@ class MCPHost:
 
     async def get_client(self, mcp_id: str) -> MCPClient | None:
         """获取MCP客户端"""
-        mongo = MongoDB()
-        mcp_collection = mongo.get_collection("mcp")
+        mcp_collection = MongoDB.get_collection("mcp")
 
         # 检查用户是否启用了这个mcp
         mcp_db_result = await mcp_collection.find_one({"_id": mcp_id, "activated": self._user_sub})
@@ -189,8 +188,7 @@ class MCPHost:
 
     async def get_tool_list(self, mcp_id_list: list[str]) -> list[MCPTool]:
         """获取工具列表"""
-        mongo = MongoDB()
-        mcp_collection = mongo.get_collection("mcp")
+        mcp_collection = MongoDB.get_collection("mcp")
 
         # 获取工具列表
         tool_list = []

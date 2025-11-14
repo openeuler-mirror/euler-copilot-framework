@@ -256,7 +256,7 @@ class SecretVariableSecurity:
             List[Dict[str, Any]]: 访问日志列表
         """
         try:
-            collection = MongoDB().get_collection("variable_access_logs")
+            collection = MongoDB.get_collection("variable_access_logs")
             
             # 构建查询条件
             query = {
@@ -306,7 +306,7 @@ class SecretVariableSecurity:
         """检查访问频率限制"""
         try:
             # 获取最近1分钟的访问记录
-            collection = MongoDB().get_collection("variable_access_logs")
+            collection = MongoDB.get_collection("variable_access_logs")
             count = await collection.count_documents({
                 "user_sub": user_sub,
                 "access_time": {
@@ -366,7 +366,7 @@ class SecretVariableSecurity:
             }
             
             # 保存到数据库
-            collection = MongoDB().get_collection("variable_access_logs")
+            collection = MongoDB.get_collection("variable_access_logs")
             await collection.insert_one(log_entry)
             
         except Exception as e:
@@ -375,7 +375,7 @@ class SecretVariableSecurity:
     async def _save_audit_record(self, audit_record: Dict[str, Any]):
         """保存审计记录"""
         try:
-            collection = MongoDB().get_collection("variable_audit_logs")
+            collection = MongoDB.get_collection("variable_audit_logs")
             await collection.insert_one(audit_record)
         except Exception as e:
             logger.error(f"保存审计记录失败: {e}")
@@ -386,13 +386,13 @@ class SecretVariableSecurity:
             cutoff_time = datetime.now(UTC) - timedelta(days=self.audit_retention_days)
             
             # 清理访问日志
-            access_collection = MongoDB().get_collection("variable_access_logs")
+            access_collection = MongoDB.get_collection("variable_access_logs")
             result1 = await access_collection.delete_many({
                 "access_time": {"$lt": cutoff_time}
             })
             
             # 清理审计日志
-            audit_collection = MongoDB().get_collection("variable_audit_logs")
+            audit_collection = MongoDB.get_collection("variable_audit_logs")
             result2 = await audit_collection.delete_many({
                 "access_time": {"$lt": cutoff_time}
             })

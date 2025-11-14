@@ -34,8 +34,7 @@ class OIDCProvider:
     @staticmethod
     async def set_token(user_sub: str, access_token: str, refresh_token: str) -> None:
         """设置MongoDB中的OIDC Token到sessions集合"""
-        mongo = MongoDB()
-        sessions_collection = mongo.get_collection("session")
+        sessions_collection = MongoDB.get_collection("session")
 
         await sessions_collection.update_one(
             {"_id": f"access_token_{user_sub}"},
@@ -67,16 +66,13 @@ class OIDCProvider:
         """检查登录状态"""
         return await self.provider.get_login_status(cookie)
 
-
     async def oidc_logout(self, cookie: dict[str, str]) -> None:
         """触发OIDC的登出"""
         return await self.provider.oidc_logout(cookie)
 
-
     async def get_oidc_token(self, code: str) -> dict[str, Any]:
         """获取OIDC 访问Token"""
         return await self.provider.get_oidc_token(code)
-
 
     async def get_oidc_user(self, access_token: str) -> dict[str, Any]:
         """获取OIDC 用户信息"""

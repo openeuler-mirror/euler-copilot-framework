@@ -252,7 +252,7 @@ class FlowLoader:
     async def _update_db(self, app_id: str, metadata: AppFlow) -> None:  # noqa: C901
         """更新数据库"""
         try:
-            app_collection = MongoDB().get_collection("app")
+            app_collection = MongoDB.get_collection("app")
             # 获取当前的flows
             app_data = await app_collection.find_one({"_id": app_id})
             if not app_data:
@@ -392,7 +392,7 @@ class FlowLoader:
     async def _update_subflow_db(self, app_id: str, flow_id: str, metadata: "AppSubFlow") -> None:
         """更新数据库中的子工作流元数据"""
         try:
-            app_collection = MongoDB().get_collection("app")
+            app_collection = MongoDB.get_collection("app")
 
             # 查找应用
             app_record = await app_collection.find_one({"_id": app_id})
@@ -433,7 +433,7 @@ class FlowLoader:
     async def _delete_subflow_db(self, app_id: str, flow_id: str, sub_flow_id: str) -> None:
         """从数据库中删除子工作流元数据"""
         try:
-            app_collection = MongoDB().get_collection("app")
+            app_collection = MongoDB.get_collection("app")
 
             # 从应用的子工作流列表中移除
             await app_collection.update_one(

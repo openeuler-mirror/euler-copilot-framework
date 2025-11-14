@@ -22,7 +22,7 @@ async def _delete_user(timestamp: float) -> None:
     for user_id in user_ids:
         await UserManager.delete_userinfo_by_user_sub(user_id)
         # 查找用户关联的文件
-        doc_collection = MongoDB().get_collection("document")
+        doc_collection = MongoDB.get_collection("document")
         docs = [doc["_id"] async for doc in doc_collection.find({"user_sub": user_id})]
         # 删除文件
         try:

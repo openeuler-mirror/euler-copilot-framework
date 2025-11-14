@@ -147,9 +147,8 @@ class CallLoader(metaclass=SingletonMeta):
     async def _delete_from_db(self, call_name: str) -> None:
         """从数据库中删除单个Call"""
         # 从MongoDB中删除
-        mongo = MongoDB()
-        call_collection = mongo.get_collection("call")
-        node_collection = mongo.get_collection("node")
+        call_collection = MongoDB.get_collection("call")
+        node_collection = MongoDB.get_collection("node")
         try:
             await call_collection.delete_one({"_id": call_name})
             await node_collection.delete_many({"call_id": call_name})
@@ -168,9 +167,8 @@ class CallLoader(metaclass=SingletonMeta):
     async def _add_to_db(self, call_metadata: list[CallPool]) -> None:  # noqa: C901
         """更新数据库"""
         # 更新MongoDB
-        mongo = MongoDB()
-        call_collection = mongo.get_collection("call")
-        node_collection = mongo.get_collection("node")
+        call_collection = MongoDB.get_collection("call")
+        node_collection = MongoDB.get_collection("node")
         call_descriptions = []
         try:
             for call in call_metadata:
@@ -217,9 +215,8 @@ class CallLoader(metaclass=SingletonMeta):
     async def load(self) -> None:
         """初始化Call信息"""
         # 清空collection
-        mongo = MongoDB()
-        call_collection = mongo.get_collection("call")
-        node_collection = mongo.get_collection("node")
+        call_collection = MongoDB.get_collection("call")
+        node_collection = MongoDB.get_collection("node")
         try:
             await call_collection.delete_many({})
             await node_collection.delete_many({"service_id": ""})

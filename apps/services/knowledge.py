@@ -29,8 +29,7 @@ class KnowledgeBaseManager:
         :param conversation_id: 对话ID
         :return: 知识库ID列表
         """
-        mongo = MongoDB()
-        conv_collection = mongo.get_collection("conversation")
+        conv_collection = MongoDB.get_collection("conversation")
         result = await conv_collection.find_one({"_id": conversation_id, "user_sub": user_sub})
         if not result:
             err_msg = "[KnowledgeBaseManager] 获取知识库ID失败，未找到对话"
@@ -80,8 +79,7 @@ class KnowledgeBaseManager:
         :param user_sub: 用户sub
         :return: 知识库ID列表
         """
-        mongo = MongoDB()
-        conv_collection = mongo.get_collection("conversation")
+        conv_collection = MongoDB.get_collection("conversation")
         result = await conv_collection.find_one({"_id": conversation_id, "user_sub": user_sub})
         if not result:
             err_msg = "[KnowledgeBaseManager] 获取知识库ID失败，未找到对话"
@@ -128,9 +126,7 @@ class KnowledgeBaseManager:
         :return: 是否更新成功
         """
         kb_ids = list(set(kb_ids))
-        mongo = MongoDB()
-
-        conv_collection = mongo.get_collection("conversation")
+        conv_collection = MongoDB.get_collection("conversation")
         conv_dict = await conv_collection.find_one({"_id": conversation_id, "user_sub": user_sub})
         if not conv_dict:
             err_msg = "[KnowledgeBaseManager] 更新知识库失败，未找到对话"

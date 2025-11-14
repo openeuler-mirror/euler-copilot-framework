@@ -226,7 +226,7 @@ class Scheduler:
             logger.error("[Scheduler] 未使用应用中心功能！")
             return
         # 获取agent信息
-        app_collection = MongoDB().get_collection("app")
+        app_collection = MongoDB.get_collection("app")
         app_metadata = AppPool.model_validate(await app_collection.find_one({"_id": app_info.app_id}))
         if not app_metadata:
             logger.error("[Scheduler] 未找到Agent应用")
