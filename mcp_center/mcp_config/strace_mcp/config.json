@@ -1,9 +1,0 @@
-{
-    "name": "strace命令跟踪进程",
-    "overview": "strace命令跟踪进程",
-    "description": "strace命令跟踪进程",
-    "mcpType": "sse",
-    "config": {
-        "url": "http://127.0.0.1:12113/sse"
-    }
-}
