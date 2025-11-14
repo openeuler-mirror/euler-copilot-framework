@@ -14,6 +14,8 @@ btdl_spec = []
 
 {"docker": ("描述", [{全局options}], {"cmd1名字": ("cmd1描述", "cmd1用法", [{cmd1选项}], [{cmd1参数}], "cmd1例子")})}
 """
+
+
 class BTDLLoader:
     """二进制描述文件 加载器"""
 
@@ -84,7 +86,8 @@ class BTDLLoader:
                 new_item.pop("name")
                 options.update({option_name: new_item})
 
-                id = hashlib.md5(f"o_{binary_name}_sub_{name}_{option_name}".encode()).hexdigest()
+                id = hashlib.md5(
+                    f"o_{binary_name}_sub_{name}_{option_name}".encode()).hexdigest()
                 option_docs.append(DocumentWrapper(
                     id=id,
                     data=new_item["description"],
@@ -118,7 +121,8 @@ class BTDLLoader:
                 new_item.pop("name")
                 arguments.update({argument_name: new_item})
 
-                id = hashlib.md5(f"a_{binary_name}_sub_{name}_{argument_name}".encode()).hexdigest()
+                id = hashlib.md5(
+                    f"a_{binary_name}_sub_{name}_{argument_name}".encode()).hexdigest()
                 arguments_docs.append(DocumentWrapper(
                     id=id,
                     data=new_item["description"],
@@ -139,7 +143,8 @@ class BTDLLoader:
 
             examples = "以下是几组命令行，以及它的作用的示例：\n"
             for items in subcmd_spec["examples"]:
-                examples += "`{}`: {}\n".format(items["command"], items["description"])
+                examples += "`{}`: {}\n".format(
+                    items["command"], items["description"])
         else:
             examples = ""
 
@@ -167,7 +172,8 @@ class BTDLLoader:
                 new_item.pop("name")
                 result.update({name: new_item})
 
-                id = hashlib.md5(f"g_{binary_name}_{name}".encode()).hexdigest()
+                id = hashlib.md5(
+                    f"g_{binary_name}_{name}".encode()).hexdigest()
                 result_doc.append(DocumentWrapper(
                     id=id,
                     data=new_item["description"],
@@ -206,7 +212,8 @@ class BTDLLoader:
             sub_cmds_doc = []
             for sub_cmd in cmd_spec["commands"]:
                 sub_cmds.update(self._load_single_subcmd(key, sub_cmd))
-                id = hashlib.md5(f"s_{key}_{sub_cmd['name']}".encode()).hexdigest()
+                id = hashlib.md5(
+                    f"s_{key}_{sub_cmd['name']}".encode()).hexdigest()
                 sub_cmds_doc.append(DocumentWrapper(
                     id=id,
                     data=sub_cmd["description"],

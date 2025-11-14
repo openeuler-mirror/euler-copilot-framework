@@ -36,8 +36,8 @@ class FlowLoader:
     async def _load_yaml_file(self, flow_path: Path) -> dict[str, Any]:
         """从YAML文件加载工作流配置"""
         try:
-            async with aiofiles.open(flow_path, encoding="utf-8") as f:
-                return yaml.safe_load(await f.read())
+            with open(flow_path, encoding="utf-8") as f:
+                return yaml.safe_load(f.read())
         except Exception:
             logger.exception("[FlowLoader] 加载YAML文件失败：%s", flow_path)
             return {}
@@ -207,10 +207,10 @@ class FlowLoader:
             await flow_path.parent.mkdir(parents=True)
 
         flow_dict = flow.model_dump(by_alias=True, exclude_none=True)
-        async with aiofiles.open(flow_path, mode="w", encoding="utf-8") as f:
+        with open(flow_path, mode="w", encoding="utf-8") as f:
             yaml.add_representer(str, yaml_str_presenter)
             yaml.add_representer(EdgeType, yaml_enum_presenter)
-            await f.write(
+            f.write(
                 yaml.dump(
                     flow_dict,
                     allow_unicode=True,
@@ -251,7 +251,9 @@ class FlowLoader:
 
     async def _update_db(self, app_id: str, metadata: AppFlow) -> None:  # noqa: C901
         """更新数据库"""
+        import time
         try:
+            st = time.time()
             app_collection = MongoDB.get_collection("app")
             # 获取当前的flows
             app_data = await app_collection.find_one({"_id": app_id})
@@ -260,6 +262,8 @@ class FlowLoader:
                 logger.error(err)
                 return
             app_obj = AppPool.model_validate(app_data)
+            en = time.time()
+            logger.error(f"[FlowLoader] MongoDB获取app耗时: {en-st} 秒")
             flows = app_obj.flows
 
             for flow in flows:
@@ -267,7 +271,7 @@ class FlowLoader:
                     flows.remove(flow)
                     break
             flows.append(metadata)
-
+            st = time.time()
             # 执行更新操作
             await app_collection.update_one(
                 filter={
@@ -280,10 +284,15 @@ class FlowLoader:
                 },
                 upsert=True,
             )
+            en = time.time()
+            logger.error(f"[FlowLoader] MongoDB更新app耗时: {en-st} 秒")
+            st = time.time()
             flow_path = BASE_PATH / app_id / "flow" / f"{metadata.id}.yaml"
-            async with aiofiles.open(flow_path, "rb") as f:
-                new_hash = sha256(await f.read()).hexdigest()
-
+            with open(flow_path, "rb") as f:
+                new_hash = sha256(f.read()).hexdigest()
+            en = time.time()
+            logger.error(f"[FlowLoader] 计算flow文件hash耗时: {en-st} 秒")
+            st = time.time()
             key = f"hashes.flow/{metadata.id}.yaml"
             await app_collection.aggregate(
                 [
@@ -292,10 +301,11 @@ class FlowLoader:
                                                     "input": "$$ROOT", "value": new_hash}}},
                 ],
             )
+            en = time.time()
+            logger.error(f"[FlowLoader] MongoDB更新flow文件hash耗时: {en-st} 秒")
         except Exception:
             logger.exception("[FlowLoader] 更新 MongoDB 失败")
 
-        import time
         st = time.time()
         await VectorManager.delete_vectors(
             vector_type=VectorPoolType.FLOW,
@@ -306,7 +316,10 @@ class FlowLoader:
 
         # 不抛出异常，继续执行后续操作
         # 进行向量化
+        st = time.time()
         service_embedding = await Embedding.get_embedding([metadata.description])
+        en = time.time()
+        logger.error(f"[FlowLoader] 获取flow描述向量耗时: {en-st} 秒")
         st = time.time()
         flow_pool_vector_entity = FlowPoolVector(
             id=metadata.id,
@@ -326,10 +339,10 @@ class FlowLoader:
             await subflow_path.parent.mkdir(parents=True, exist_ok=True)
 
         flow_dict = flow.model_dump(by_alias=True, exclude_none=True)
-        async with aiofiles.open(subflow_path, mode="w", encoding="utf-8") as f:
+        with open(subflow_path, mode="w", encoding="utf-8") as f:
             yaml.add_representer(str, yaml_str_presenter)
             yaml.add_representer(EdgeType, yaml_enum_presenter)
-            await f.write(
+            f.write(
                 yaml.dump(
                     flow_dict,
                     allow_unicode=True,
@@ -360,8 +373,8 @@ class FlowLoader:
             return None
 
         try:
-            async with aiofiles.open(subflow_path, mode="r", encoding="utf-8") as f:
-                content = await f.read()
+            with open(subflow_path, mode="r", encoding="utf-8") as f:
+                content = f.read()
                 flow_dict = yaml.safe_load(content)
                 return Flow(**flow_dict)
         except Exception:

@@ -41,10 +41,9 @@ class Graph(CoreCall, input_model=RenderInput, output_model=RenderOutput):
         """初始化Render Call，校验参数，读取option模板"""
         try:
             option_location = Path(__file__).parent / "option.json"
-            f = await Path(option_location).open(encoding="utf-8")
-            data = await f.read()
+            with open(option_location, encoding="utf-8") as f:
+                data = f.read()
             self._option_template = json.loads(data)
-            await f.aclose()
         except Exception as e:
             raise CallError(message=f"图表模板读取失败：{e!s}", data={}) from e
 
@@ -52,13 +51,13 @@ class Graph(CoreCall, input_model=RenderInput, output_model=RenderOutput):
         if not self.dataset_key:
             last_step_id = call_vars.history_order[-1]
             self.dataset_key = f"{last_step_id}/dataset"
-        data = self._extract_history_variables(self.dataset_key, call_vars.history)
+        data = self._extract_history_variables(
+            self.dataset_key, call_vars.history)
 
         return RenderInput(
             question=call_vars.question,
             data=data,
         )
-
 
     async def _exec(
         self, input_data: dict[str, Any], language: LanguageType = LanguageType.CHINESE
@@ -96,9 +95,11 @@ class Graph(CoreCall, input_model=RenderInput, output_model=RenderOutput):
             self.tokens.output_tokens += style_obj.output_tokens
 
             add_style = llm_output.get("additional_style", "")
-            self._parse_options(column_num, llm_output["chart_type"], add_style, llm_output["scale_type"])
+            self._parse_options(
+                column_num, llm_output["chart_type"], add_style, llm_output["scale_type"])
         except Exception as e:
-            raise CallError(message=f"图表生成失败：{e!s}", data={"data": data}) from e
+            raise CallError(message=f"图表生成失败：{e!s}", data={
+                            "data": data}) from e
 
         yield CallOutputChunk(
             type=CallOutputType.DATA,
@@ -106,7 +107,6 @@ class Graph(CoreCall, input_model=RenderInput, output_model=RenderOutput):
                 output=RenderFormat.model_validate(self._option_template),
             ).model_dump(exclude_none=True, by_alias=True),
         )
-
 
     @staticmethod
     def _separate_key_value(data: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -123,7 +123,6 @@ class Graph(CoreCall, input_model=RenderInput, output_model=RenderOutput):
             for key, val in item.items():
                 result.append({"type": key, "value": val})
         return result
-
 
     def _parse_options(
         self, column_num: int, chart_style: str, additional_style: str, scale_style: str
