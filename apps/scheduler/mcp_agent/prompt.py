@@ -5,47 +5,6 @@ from textwrap import dedent
 
 from apps.models import LanguageType
 
-GENERATE_FLOW_NAME: dict[LanguageType, str] = {
-    LanguageType.CHINESE: dedent(
-        r"""
-            ## 任务
-            根据用户目标生成描述性的工作流程名称。
-
-            ## 要求
-            - **简洁明了**：准确表达达成目标的过程，长度控制在20字以内
-            - **包含关键操作**：体现核心步骤（如"扫描"、"分析"、"调优"等）
-            - **通俗易懂**：避免过于专业的术语
-
-            ## 示例
-            **用户目标**：我需要扫描当前mysql数据库，分析性能瓶颈，并调优
-
-            **输出**：扫描MySQL数据库并分析性能瓶颈，进行调优
-
-            ---
-            **用户目标**：{{goal}}
-        """,
-    ).strip("\n"),
-    LanguageType.ENGLISH: dedent(
-        r"""
-            ## Task
-            Generate a descriptive workflow name based on the user's goal.
-
-            ## Requirements
-            - **Concise and clear**: Accurately express the process, keep under 20 words
-            - **Include key operations**: Reflect core steps (e.g., "scan", "analyze", "optimize")
-            - **Easy to understand**: Avoid overly technical terminology
-
-            ## Example
-            **User Goal**: I need to scan the current MySQL database, analyze performance bottlenecks, and optimize it.
-
-            **Output**: Scan MySQL database, analyze performance bottlenecks, and optimize
-
-            ---
-            **User Goal**: {{goal}}
-        """,
-    ).strip("\n"),
-}
-
 GET_FLOW_NAME_FUNCTION: dict[LanguageType, dict] = {
     LanguageType.CHINESE: {
         "name": "get_flow_name",
@@ -61,11 +20,6 @@ GET_FLOW_NAME_FUNCTION: dict[LanguageType, dict] = {
             },
             "required": ["flow_name"],
         },
-        "examples": [
-            {
-                "flow_name": "扫描MySQL数据库并分析性能瓶颈,进行调优",
-            },
-        ],
     },
     LanguageType.ENGLISH: {
         "name": "get_flow_name",
@@ -81,11 +35,6 @@ GET_FLOW_NAME_FUNCTION: dict[LanguageType, dict] = {
             },
             "required": ["flow_name"],
         },
-        "examples": [
-            {
-                "flow_name": "Scan MySQL database, analyze performance bottlenecks, and optimize",
-            },
-        ],
     },
 }
 
@@ -108,12 +57,6 @@ CREATE_NEXT_STEP_FUNCTION: dict[LanguageType, dict] = {
             },
             "required": ["tool_name", "description"],
         },
-        "examples": [
-            {
-                "tool_name": "mcp_tool_1",
-                "description": "扫描ip为192.168.1.1的MySQL数据库,端口为3306,用户名为root,密码为password的数据库性能",
-            },
-        ],
     },
     LanguageType.ENGLISH: {
         "name": "create_next_step",
@@ -136,107 +79,7 @@ CREATE_NEXT_STEP_FUNCTION: dict[LanguageType, dict] = {
             },
             "required": ["tool_name", "description"],
         },
-        "examples": [
-            {
-                "tool_name": "mcp_tool_1",
-                "description": "Scan MySQL database performance at 192.168.1.1:3306 with user root",
-            },
-        ],
     },
-}
-
-GEN_STEP: dict[LanguageType, str] = {
-    LanguageType.CHINESE: dedent(
-        r"""
-        你的任务是分析对话历史和用户目标，然后**调用`create_next_step`函数**来规划下一个执行步骤。
-
-        ## 重要提醒
-        **你必须且只能调用名为`create_next_step`的函数**，该函数接受两个参数：
-        1. `tool_name`: 从下方可用工具列表中选择一个工具名称
-        2. `description`: 清晰描述本步骤要完成的具体任务
-
-        ## 可用工具列表
-        {% for tool in tools %}
-        - **工具名**: `{{tool.toolName}}`
-          **功能描述**: {{tool.description}}
-        {% endfor %}
-
-        ## 调用规范
-        - **函数名固定**: 必须调用`create_next_step`，不要使用工具名作为函数名
-        - **tool_name的值**: 必须是上述可用工具列表中的某个工具名称
-        - **description的值**: 描述本步骤的具体操作内容
-        - **任务完成时**: 如果用户目标已经完成，将`tool_name`参数设为`Final`
-
-        ## 错误示例❌（严禁模仿）
-        ```
-        # 错误：直接使用工具名作为函数名或返回工具名的字典
-        {'Final': '{"description": "任务完成"}'}
-        ```
-
-        ## 正确示例✅
-        ```
-        # 正确：调用create_next_step函数，tool_name参数的值才是工具名称
-        create_next_step(
-            tool_name="Final",
-            description="已完成所有分析任务，可以结束流程"
-        )
-        ```
-
-        ---
-        ## 当前任务
-        **用户目标**: {{goal}}
-
-        请根据上方对话历史中已执行步骤的结果，**调用`create_next_step`函数**规划下一步。
-        记住：函数名必须是`create_next_step`，`tool_name`参数的值才是具体的工具名称。
-        """,
-    ).strip(),
-    LanguageType.ENGLISH: dedent(
-        r"""
-        Your task is to analyze the conversation history and user goal, then **call the `create_next_step` \
-function** to plan the next execution step.
-
-        ## Important Reminder
-        **You must and can only call the function named `create_next_step`**, which accepts two parameters:
-        1. `tool_name`: Select a tool name from the available tools list below
-        2. `description`: Clearly describe the specific task this step will accomplish
-
-        ## Available Tools List
-        {% for tool in tools %}
-        - **Tool Name**: `{{tool.toolName}}`
-          **Description**: {{tool.description}}
-        {% endfor %}
-
-        ## Calling Specifications
-        - **Fixed function name**: Must call `create_next_step`, do not use tool names as function names
-        - **tool_name value**: Must be one of the tool names from the available tools list above
-        - **description value**: Describe the specific operations of this step
-        - **When task completes**: If the user goal is achieved, set `tool_name` parameter to `Final`
-
-        ## Incorrect Examples ❌ (Strictly Forbidden)
-        ```
-        # Error: Using tool name as function name or returning a dictionary with tool name as key
-        {'Final': '{"description": "Task completed"}'}
-        ```
-
-        ## Correct Examples ✅
-        ```
-        # Correct: Call create_next_step function, the tool_name parameter value is the tool name
-        create_next_step(
-            tool_name="Final",
-            description="All analysis tasks completed, workflow can be ended"
-        )
-        ```
-
-        ---
-        ## Current Task
-        **User Goal**: {{goal}}
-
-        Please **call the `create_next_step` function** to plan the next step based on the results of \
-executed steps in the conversation history above.
-        Remember: The function name must be `create_next_step`, and the `tool_name` parameter value is \
-the specific tool name.
-        """,
-    ).strip(),
 }
 
 EVALUATE_TOOL_RISK_FUNCTION: dict[LanguageType, dict] = {
@@ -259,15 +102,6 @@ EVALUATE_TOOL_RISK_FUNCTION: dict[LanguageType, dict] = {
             },
             "required": ["risk", "reason"],
         },
-        "examples": [
-            {
-                "risk": "medium",
-                "reason": (
-                    "当前工具将连接到MySQL数据库并分析性能，可能会对数据库性能产生一定影响。"
-                    "请确保在非生产环境中执行此操作。"
-                ),
-            },
-        ],
     },
     LanguageType.ENGLISH: {
         "name": "evaluate_tool_risk",
@@ -291,83 +125,7 @@ EVALUATE_TOOL_RISK_FUNCTION: dict[LanguageType, dict] = {
             },
             "required": ["risk", "reason"],
         },
-        "examples": [
-            {
-                "risk": "medium",
-                "reason": (
-                    "This tool will connect to a MySQL database and analyze performance, "
-                    "which may impact database performance. This operation should only be "
-                    "performed in a non-production environment."
-                ),
-            },
-        ],
     },
-}
-
-RISK_EVALUATE: dict[LanguageType, str] = {
-    LanguageType.CHINESE: dedent(
-        r"""
-            评估以下工具执行的安全风险等级，并说明风险原因。
-
-            ## 评估要求
-            - **风险等级**: 从 `low` (低)、`medium` (中)、`high` (高) 中选择
-            - **风险分析**: 说明可能的安全隐患、性能影响或操作风险
-            - **建议**: 如有必要，提供安全执行建议
-
-            ### 示例
-            假设评估MySQL性能分析工具（`mysql_analyzer`），该工具将连接到生产环境数据库（MySQL 8.0.26）并执行性能分析。
-            由于工具会执行查询和统计操作，可能短暂增加数据库负载，因此风险等级为**中等**。建议在业务低峰期执行此操作，避免影响生产服务的正常运行。
-
-            ---
-
-            ## 工具信息
-            **名称**: {{tool_name}}
-            **描述**: {{tool_description}}
-
-            ## 输入参数
-            ```json
-            {{input_param}}
-            ```
-
-            {% if additional_info %}
-            ## 上下文信息
-            {{additional_info}}
-            {% endif %}
-        """,
-    ),
-    LanguageType.ENGLISH: dedent(
-        r"""
-            Evaluate the security risk level for executing the following tool and explain the reasons.
-
-            ## Assessment Requirements
-            - **Risk Level**: Choose from `low`, `medium`, or `high`
-            - **Risk Analysis**: Explain potential security risks, performance impacts, or operational concerns
-            - **Recommendations**: Provide safe execution guidance if necessary
-
-            ### Example
-            Consider evaluating a MySQL performance analysis tool (`mysql_analyzer`) that will connect to a production \
-database (MySQL 8.0.26) and perform performance analysis.
-            Since the tool will execute queries and statistical operations, it may temporarily increase database load, \
-resulting in a **medium** risk level. It is recommended to execute this operation during off-peak business hours to \
-avoid impacting normal production services.
-
-            ---
-
-            ## Tool Information
-            **Name**: {{tool_name}}
-            **Description**: {{tool_description}}
-
-            ## Input Parameters
-            ```json
-            {{input_param}}
-            ```
-
-            {% if additional_info %}
-            ## Context Information
-            {{additional_info}}
-            {% endif %}
-        """,
-    ),
 }
 
 IS_PARAM_ERROR_FUNCTION: dict[LanguageType, dict] = {
@@ -401,62 +159,6 @@ IS_PARAM_ERROR_FUNCTION: dict[LanguageType, dict] = {
             "required": ["is_param_error"],
         },
     },
-}
-
-IS_PARAM_ERROR: dict[LanguageType, str] = {
-    LanguageType.CHINESE: dedent(
-        r"""
-            判断以下工具执行失败是否由参数错误导致,并调用 check_parameter_error 工具返回结果。
-
-            **判断标准**：
-            - **参数错误**：缺失必需参数、参数值不正确、参数格式/类型错误等
-            - **非参数错误**：权限问题、网络故障、系统异常、业务逻辑错误等
-
-            **示例**：当mysql_analyzer工具入参为 {"host": "192.0.0.1", ...}，报错"host is not correct"时，
-            错误明确指出host参数值不正确，属于**参数错误**,应调用工具返回 {"is_param_error": true}
-
-            ---
-
-            **用户目标**：{{goal}}
-
-            **当前失败步骤**（步骤{{step_id}}）：
-            - 工具：{{step_name}}
-            - 目标：{{step_goal}}
-            - 入参：{{input_params}}
-            - 报错：{{error_message}}
-
-            请基于报错信息和上下文综合判断，调用 check_parameter_error 工具返回判断结果。
-        """,
-    ),
-    LanguageType.ENGLISH: dedent(
-        r"""
-            Determine whether the following tool execution failure is caused by parameter errors, and call the \
-check_parameter_error tool to return the result.
-
-            **Judgment Criteria**:
-            - **Parameter errors**: missing required parameters, incorrect parameter values, parameter format/type \
-errors, etc.
-            - **Non-parameter errors**: permission issues, network failures, system exceptions, business logic \
-errors, etc.
-
-            **Example**: When the mysql_analyzer tool has input {"host": "192.0.0.1", ...} and error "host is not \
-correct", the error explicitly indicates the host parameter value is incorrect, which is a **parameter error**, \
-should call the tool to return {"is_param_error": true}
-
-            ---
-
-            **User Goal**: {{goal}}
-
-            **Current Failed Step** (Step {{step_id}}):
-            - Tool: {{step_name}}
-            - Goal: {{step_goal}}
-            - Input: {{input_params}}
-            - Error: {{error_message}}
-
-            Please make a comprehensive judgment based on the error message and context, and call the \
-check_parameter_error tool to return the result.
-        """,
-    ),
 }
 
 # 获取缺失的参数的json结构体

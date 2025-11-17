@@ -18,19 +18,20 @@ from apps.scheduler.pool.mcp.pool import mcp_pool
 from apps.schemas.mcp import MCPContext, MCPPlanItem
 from apps.services.mcp_service import MCPServiceManager
 
+from .base import MCPNodeBase
+
 logger = logging.getLogger(__name__)
 
 
-class MCPHost:
+class MCPHost(MCPNodeBase):
     """MCP宿主服务"""
 
     def __init__(self, user_id: str, task_id: uuid.UUID, llm: LLM, language: LanguageType) -> None:
         """初始化MCP宿主"""
+        super().__init__(llm, language)
         self._task_id = task_id
         self._user_id = user_id
         self._context_list = []
-        self._language = language
-        self._llm = llm
         self._env = SandboxedEnvironment(
             loader=BaseLoader(),
             autoescape=False,
@@ -131,11 +132,13 @@ class MCPHost:
     async def _fill_params(self, tool: MCPTools, query: str) -> dict[str, Any]:
         """填充工具参数"""
         # 使用Jinja2模板生成查询
-        template = self._env.from_string(FILL_PARAMS_QUERY[self._language])
+        template = self._env.from_string(await self._load_prompt("gen_params"))
         llm_query = template.render(
-            instruction=query,
+            current_goal=query,
+            goal=query,  # 当前实现中，总体目标和当前目标相同
             tool_name=tool.toolName,
             tool_description=tool.description,
+            input_schema=json.dumps(tool.inputSchema, ensure_ascii=False),
         )
 
         function_definition = {
@@ -144,18 +147,13 @@ class MCPHost:
             "parameters": tool.inputSchema,
         }
 
-        # 获取历史对话记录并添加当前查询
         memory_conversation = await self.assemble_memory()
-        conversation = [
-            *memory_conversation,
-            {"role": "user", "content": llm_query},
-        ]
-
-        # 使用全局json_generator实例
         return await json_generator.generate(
             function=function_definition,
-            conversation=conversation,
-            language=self._language,
+            conversation=[
+                *memory_conversation,
+            ],
+            prompt=llm_query,
         )
 
 

@@ -257,7 +257,7 @@ class MCPAgentExecutor(BaseExecutor):
             _logger.error(err)
             raise RuntimeError(err)
 
-        confirm_message = await self._planner.get_tool_risk(self._current_tool, self._current_input, "")
+        confirm_message = await self._planner.get_tool_risk(self._current_tool, self._current_input)
 
         # 先更新状态
         self.task.state.executorStatus = ExecutorStatus.WAITING

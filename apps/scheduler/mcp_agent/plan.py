@@ -16,14 +16,9 @@ from apps.scheduler.mcp_agent.prompt import (
     CREATE_NEXT_STEP_FUNCTION,
     EVALUATE_TOOL_RISK_FUNCTION,
     FINAL_ANSWER,
-    GEN_STEP,
-    GENERATE_FLOW_NAME,
     GET_FLOW_NAME_FUNCTION,
     GET_MISSING_PARAMS,
-    GET_MISSING_PARAMS_FUNCTION,
-    IS_PARAM_ERROR,
     IS_PARAM_ERROR_FUNCTION,
-    RISK_EVALUATE,
 )
 from apps.scheduler.slot.slot import Slot
 from apps.schemas.llm import LLMChunk
@@ -49,7 +44,7 @@ class MCPPlanner(MCPBase):
 
     async def get_flow_name(self) -> FlowName:
         """获取当前流程的名称"""
-        template = _env.from_string(GENERATE_FLOW_NAME[self._language])
+        template = _env.from_string(await self._load_prompt("gen_agent_name"))
         prompt = template.render(goal=self._goal)
 
         result = await json_generator.generate(
@@ -58,13 +53,13 @@ class MCPPlanner(MCPBase):
                 {"role": "system", "content": "You are a helpful assistant."},
                 {"role": "user", "content": prompt},
             ],
-            language=self._language,
+            prompt=prompt,
         )
         return FlowName.model_validate(result)
 
     async def create_next_step(self, tools: list[MCPTools], task: TaskData) -> Step:
         """创建下一步的执行步骤"""
-        template = _env.from_string(GEN_STEP[self._language])
+        template = _env.from_string(await self._load_prompt("gen_step"))
         prompt = template.render(goal=self._goal, tools=tools)
 
         function = deepcopy(CREATE_NEXT_STEP_FUNCTION[self._language])
@@ -72,16 +67,13 @@ class MCPPlanner(MCPBase):
 
         history = await self.assemble_memory(task)
 
-        conversation = [
-            {"role": "system", "content": "You are a helpful assistant."},
-            *history,
-            {"role": "user", "content": prompt},
-        ]
-
         step = await json_generator.generate(
             function=function,
-            conversation=conversation,
-            language=self._language,
+            conversation=[
+                {"role": "system", "content": "You are a helpful assistant."},
+                *history,
+            ],
+            prompt=prompt,
         )
         logger.info("[MCPPlanner] 创建下一步的执行步骤: %s", step)
         return Step.model_validate(step)
@@ -90,24 +82,21 @@ class MCPPlanner(MCPBase):
         self,
         tool: MCPTools,
         input_param: dict[str, Any],
-        additional_info: str = "",
     ) -> ToolRisk:
         """获取MCP工具的风险评估结果"""
-        template = _env.from_string(RISK_EVALUATE[self._language])
+        template = _env.from_string(await self._load_prompt("risk_evaluate"))
         prompt = template.render(
             tool_name=tool.toolName,
             tool_description=tool.description,
             input_param=input_param,
-            additional_info=additional_info,
         )
 
         risk = await json_generator.generate(
             function=EVALUATE_TOOL_RISK_FUNCTION[self._language],
             conversation=[
                 {"role": "system", "content": "You are a helpful assistant."},
-                {"role": "user", "content": prompt},
             ],
-            language=self._language,
+            prompt=prompt,
         )
 
         return ToolRisk.model_validate(risk)
@@ -121,7 +110,7 @@ class MCPPlanner(MCPBase):
         input_params: dict[str, Any],
     ) -> IsParamError:
         """判断错误信息是否是参数错误"""
-        tmplate = _env.from_string(IS_PARAM_ERROR[self._language])
+        tmplate = _env.from_string(await self._load_prompt("is_param_error"))
         prompt = tmplate.render(
             goal=self._goal,
             step_id=tool.toolName,
@@ -130,19 +119,15 @@ class MCPPlanner(MCPBase):
             input_params=input_params,
             error_message=error_message,
         )
-
         history = await self.assemble_memory(task)
-
-        conversation = [
-            {"role": "system", "content": "You are a helpful assistant."},
-            *history,
-            {"role": "user", "content": prompt},
-        ]
 
         is_param_error = await json_generator.generate(
             function=IS_PARAM_ERROR_FUNCTION[self._language],
-            conversation=conversation,
-            language=self._language,
+            conversation=[
+                {"role": "system", "content": "You are a helpful assistant."},
+                *history,
+            ],
+            prompt=prompt,
         )
         return IsParamError.model_validate(is_param_error)
 
