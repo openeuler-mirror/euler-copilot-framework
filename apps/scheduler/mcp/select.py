@@ -14,18 +14,18 @@ from apps.models import LanguageType, MCPTools
 from apps.schemas.mcp import MCPSelectResult
 from apps.services.mcp_service import MCPServiceManager
 
-from .prompt import MCP_FUNCTION_SELECT, SELECT_MCP_FUNCTION
+from .base import MCPNodeBase
+from .prompt import SELECT_MCP_FUNCTION
 
 logger = logging.getLogger(__name__)
 
 
-class MCPSelector:
+class MCPSelector(MCPNodeBase):
     """MCP选择器"""
 
     def __init__(self, llm: LLM, language: LanguageType = LanguageType.CHINESE) -> None:
         """初始化MCP选择器"""
-        self._llm = llm
-        self._language = language
+        super().__init__(llm, language)
         self._env = SandboxedEnvironment(
             loader=BaseLoader,
             autoescape=True,
@@ -52,7 +52,7 @@ class MCPSelector:
         function["parameters"]["properties"]["mcp_id"]["enum"] = mcp_ids
 
         # 使用jinja2格式化模板
-        template = self._env.from_string(MCP_FUNCTION_SELECT[self._language])
+        template = self._env.from_string(await self._load_prompt("mcp_select"))
         user_prompt = template.render(
             reasoning_result=reasoning_result,
             mcp_ids=mcp_ids,

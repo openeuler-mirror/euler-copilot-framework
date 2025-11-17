@@ -11,15 +11,17 @@ from apps.llm import LLM, json_generator
 from apps.models import LanguageType, MCPTools
 from apps.schemas.mcp import MCPPlan
 
+from .base import MCPNodeBase
 from .prompt import CREATE_MCP_PLAN_FUNCTION, CREATE_PLAN, FINAL_ANSWER
 
 _logger = logging.getLogger(__name__)
 
-class MCPPlanner:
+class MCPPlanner(MCPNodeBase):
     """MCP 用户目标拆解与规划"""
 
     def __init__(self, user_goal: str, language: LanguageType, llm: LLM) -> None:
         """初始化MCP规划器"""
+        super().__init__(llm, language)
         self._user_goal = user_goal
         self._env = SandboxedEnvironment(
             loader=BaseLoader,
@@ -27,8 +29,6 @@ class MCPPlanner:
             trim_blocks=True,
             lstrip_blocks=True,
         )
-        self._language = language
-        self._llm = llm
 
 
     async def create_plan(self, tool_list: list[MCPTools], max_steps: int = 6) -> MCPPlan:
