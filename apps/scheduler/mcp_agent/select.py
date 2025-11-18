@@ -8,6 +8,7 @@ from jinja2 import BaseLoader
 from jinja2.sandbox import SandboxedEnvironment
 
 from apps.llm.reasoning import ReasoningLLM
+from apps.llm.function import FunctionLLM
 from apps.llm.token import TokenCalculator
 from apps.scheduler.mcp_agent.base import MCPBase
 from apps.scheduler.mcp_agent.prompt import TOOL_SELECT
@@ -31,18 +32,24 @@ SELF_DESC_TOOL_ID = "SELF_DESC"
 class MCPSelector(MCPBase):
     """MCP选择器"""
 
-    @staticmethod
+    def __init__(
+        self,
+        reasoning_llm: ReasoningLLM = None,
+        function_llm: FunctionLLM = None,
+    ):
+        super().__init__(reasoning_llm, function_llm)
+
     async def select_top_tool(
+        self,
         goal: str,
         tool_list: list[MCPTool],
         additional_info: str | None = None,
         top_n: int | None = None,
-        reasoning_llm: ReasoningLLM | None = None,
         language: LanguageType = LanguageType.CHINESE,
     ) -> list[MCPTool]:
         """选择最合适的工具"""
         random.shuffle(tool_list)
-        max_tokens = reasoning_llm._config.max_tokens
+        max_tokens = self.reasoning_llm._config.max_tokens
         template = _env.from_string(TOOL_SELECT[language])
         token_calculator = TokenCalculator()
         if (
@@ -71,7 +78,8 @@ class MCPSelector(MCPBase):
                         {
                             "role": "user",
                             "content": template.render(
-                                goal=goal, tools=[tool], additional_info=additional_info
+                                goal=goal, tools=[
+                                    tool], additional_info=additional_info
                             ),
                         }
                     ],
@@ -103,12 +111,14 @@ class MCPSelector(MCPBase):
                 if "items" not in schema["properties"]["tool_ids"]:
                     schema["properties"]["tool_ids"]["items"] = {}
                 # 将enum添加到items中，限制数组元素的可选值
-                schema["properties"]["tool_ids"]["items"]["enum"] = [tool.id for tool in sub_tools]
-                result = await MCPSelector.get_resoning_result(
-                    template.render(goal=goal, tools=sub_tools, additional_info="请根据目标选择对应的工具"),
-                    reasoning_llm,
+                schema["properties"]["tool_ids"]["items"]["enum"] = [
+                    tool.id for tool in sub_tools]
+                result = await self.get_resoning_result(
+                    template.render(goal=goal, tools=sub_tools,
+                                    additional_info="请根据目标选择对应的工具"),
+                    self.reasoning_llm,
                 )
-                result = await MCPSelector._parse_result(result, schema)
+                result = await self._parse_result(result, schema)
                 try:
                     result = MCPToolIdsSelectResult.model_validate(result)
                     tool_ids.extend(result.tool_ids)
@@ -120,7 +130,8 @@ class MCPSelector(MCPBase):
         if top_n is not None:
             mcp_tools = mcp_tools[:top_n]
         mcp_tools.append(
-            MCPTool(id=FINAL_TOOL_ID, name="Final", description="终止", mcp_id=FINAL_TOOL_ID, input_schema={})
+            MCPTool(id=FINAL_TOOL_ID, name="Final", description="终止",
+                    mcp_id=FINAL_TOOL_ID, input_schema={})
         )
         # mcp_tools.append(MCPTool(id=SUMMARIZE_TOOL_ID, name="Summarize",
         #                  description="总结工具", mcp_id=SUMMARIZE_TOOL_ID, input_schema={}))

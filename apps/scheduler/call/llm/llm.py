@@ -11,7 +11,10 @@ from jinja2 import BaseLoader
 from jinja2.sandbox import SandboxedEnvironment
 from pydantic import Field
 
+from apps.services.llm import LLMManager
+from apps.llm.adapters import get_provider_from_endpoint
 from apps.llm.reasoning import ReasoningLLM
+from apps.llm.enum import DefaultModelId
 from apps.scheduler.call.core import CoreCall
 from apps.scheduler.call.llm.prompt import LLM_CONTEXT_PROMPT, LLM_DEFAULT_PROMPT
 from apps.scheduler.call.llm.schema import LLMInput, LLMOutput
@@ -22,6 +25,7 @@ from apps.schemas.scheduler import (
     CallOutputChunk,
     CallVars,
 )
+from apps.schemas.config import LLMConfig
 
 logger = logging.getLogger(__name__)
 
@@ -38,7 +42,8 @@ class LLM(CoreCall, input_model=LLMInput, output_model=LLMOutput):
     })
 
     # 模型配置
-    llmId: str = Field(description="大模型ID", default="")
+    llm_id: str = Field(description="大模型ID",
+                        default=DefaultModelId.DEFAULT_CHAT_MODEL_ID.value)
 
     # 大模型基础参数
     temperature: float = Field(description="大模型温度（随机化程度）", default=0.7)
@@ -146,27 +151,23 @@ class LLM(CoreCall, input_model=LLMInput, output_model=LLMOutput):
         full_reply = ""  # 用于累积完整回复
         try:
             # 根据llmId获取模型配置
-            llm_config = None
-            if self.llmId:
-                from apps.services.llm import LLMManager
-                from apps.llm.adapters import get_provider_from_endpoint
+            llm_info = await LLMManager.get_llm_by_id(self.llm_id)
+            if llm_info:
 
-                llm_info = await LLMManager.get_llm_by_id(self.llmId)
-                if llm_info:
-                    from apps.schemas.config import LLMConfig
+                # 获取provider，如果没有则从endpoint推断
+                provider = llm_info.provider or get_provider_from_endpoint(
+                    llm_info.openai_base_url)
 
-                    # 获取provider，如果没有则从endpoint推断
-                    provider = llm_info.provider or get_provider_from_endpoint(
-                        llm_info.openai_base_url)
-
-                    llm_config = LLMConfig(
-                        provider=provider,
-                        endpoint=llm_info.openai_base_url,
-                        api_key=llm_info.openai_api_key,
-                        model=llm_info.model_name,
-                        max_tokens=llm_info.max_tokens,
-                        temperature=self.temperature if self.enable_temperature else 0.7,
-                    )
+                llm_config = LLMConfig(
+                    provider=provider,
+                    endpoint=llm_info.openai_base_url,
+                    api_key=llm_info.openai_api_key,
+                    model=llm_info.model_name,
+                    max_tokens=llm_info.max_tokens,
+                    temperature=self.temperature if self.enable_temperature else 0.7,
+                )
+            else:
+                llm_config = None
 
             # 初始化LLM客户端（会自动加载适配器）
             llm = ReasoningLLM(llm_config) if llm_config else ReasoningLLM()

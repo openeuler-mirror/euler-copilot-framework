@@ -54,8 +54,10 @@ class CoreCall(BaseModel):
     """所有Call的父类，包含通用的逻辑"""
 
     name: SkipJsonSchema[str] = Field(description="Step的名称", exclude=True)
-    description: SkipJsonSchema[str] = Field(description="Step的描述", exclude=True)
-    node: SkipJsonSchema[NodePool | None] = Field(description="节点信息", exclude=True)
+    description: SkipJsonSchema[str] = Field(
+        description="Step的描述", exclude=True)
+    node: SkipJsonSchema[NodePool | None] = Field(
+        description="节点信息", exclude=True)
     enable_filling: SkipJsonSchema[bool] = Field(
         description="是否需要进行自动参数填充", default=False, exclude=True
     )
@@ -75,7 +77,8 @@ class CoreCall(BaseModel):
         frozen=True,
     )
     to_user: bool = Field(description="是否需要将输出返回给用户", default=False)
-    enable_variable_resolution: bool = Field(description="是否启用自动变量解析", default=True)
+    enable_variable_resolution: bool = Field(
+        description="是否启用自动变量解析", default=True)
     controlled_output: bool = Field(description="是否允许用户定义输出参数", default=False)
     i18n_info: ClassVar[SkipJsonSchema[dict[str, dict]]] = {}
 
@@ -92,7 +95,8 @@ class CoreCall(BaseModel):
         :return: Call的名称和描述
         :rtype: CallInfo
         """
-        lang_info = cls.i18n_info.get(language, cls.i18n_info[LanguageType.CHINESE])
+        lang_info = cls.i18n_info.get(
+            language, cls.i18n_info[LanguageType.CHINESE])
         return CallInfo(name=lang_info["name"], type=lang_info["type"], description=lang_info["description"])
 
     def __init_subclass__(
@@ -183,17 +187,17 @@ class CoreCall(BaseModel):
             "app_id": call_vars.ids.app_id,
             "conversation_id": call_vars.ids.conversation_id,
         }
-        
+
         await VariableIntegration.initialize_system_variables(context)
         return context
 
     async def _resolve_variables_in_config(self, config: Any, call_vars: CallVars) -> Any:
         """解析配置中的变量引用
-        
+
         Args:
             config: 配置值，可能包含变量引用
             call_vars: Call变量
-            
+
         Returns:
             解析后的配置值
         """
@@ -232,25 +236,25 @@ class CoreCall(BaseModel):
 
     async def _resolve_variables_in_text(self, text: str, call_vars: CallVars) -> str:
         """解析文本中的变量引用（{{...}} 语法）
-        
+
         Args:
             text: 包含变量引用的文本
             call_vars: Call变量
-            
+
         Returns:
             解析后的文本
         """
         if not isinstance(text, str):
             return text
-            
+
         # 检查是否包含变量引用语法
         if not re.search(r'\{\{.*?\}\}', text):
             return text
-        
+
         # 提取所有变量引用并逐一解析替换
         variable_pattern = r'\{\{(.*?)\}\}'
         matches = re.findall(variable_pattern, text)
-        
+
         resolved_text = text
         for match in matches:
             try:
@@ -263,21 +267,22 @@ class CoreCall(BaseModel):
                     current_step_id=getattr(self, '_step_id', None)
                 )
                 # 替换原始文本中的变量引用
-                resolved_text = resolved_text.replace(f'{{{{{match}}}}}', str(resolved_value))
+                resolved_text = resolved_text.replace(
+                    f'{{{{{match}}}}}', str(resolved_value))
             except Exception as e:
                 logger.warning(f"[CoreCall] 解析变量引用 '{match}' 失败: {e}")
                 # 如果解析失败，保留原始的变量引用
                 continue
-        
+
         return resolved_text
 
     async def _resolve_single_value(self, value, call_vars: CallVars):
         """解析单个变量引用
-        
+
         Args:
             value: Value对象，包含type和value字段
             call_vars: Call变量上下文
-            
+
         Returns:
             Value: 解析后的Value对象，如果是引用类型则解析为具体值和类型
         """
@@ -285,11 +290,11 @@ class CoreCall(BaseModel):
         from apps.schemas.parameters import ValueType
         from apps.scheduler.variable.type import VariableType as VarType
         from apps.scheduler.call.choice.schema import Value
-        
+
         # 如果不是引用类型，直接返回
         if value.type != ValueType.REFERENCE:
             return value
-            
+
         try:
             # 解析变量引用
             resolved_value, resolved_type = await VariableIntegration.resolve_variable_reference(
@@ -299,7 +304,7 @@ class CoreCall(BaseModel):
                 conversation_id=call_vars.ids.conversation_id,
                 current_step_id=getattr(self, '_step_id', None)
             )
-            
+
             # 🔑 关键修复：将VariableType转换为ValueType
             # VariableType到ValueType的映射
             type_mapping = {
@@ -315,29 +320,29 @@ class CoreCall(BaseModel):
                 VarType.ARRAY_BOOLEAN: ValueType.LIST,
                 VarType.ARRAY_SECRET: ValueType.LIST,
             }
-            
+
             # 转换类型
             if resolved_type in type_mapping:
                 converted_type = type_mapping[resolved_type]
             else:
                 # 如果没有映射，默认为STRING
                 converted_type = ValueType.STRING
-                
+
         except Exception as e:
             logger.warning(f"[CoreCall] 解析变量引用 '{value.value}' 失败: {e}")
             return value
-        
+
         return Value(value=resolved_value, type=converted_type)
 
     async def _set_input(self, executor: "StepExecutor") -> None:
         """获取Call的输入"""
         self._sys_vars = self._assemble_call_vars(executor)
         self._step_id = executor.step.step_id  # 存储 step_id 用于变量名构造
-        
+
         # 如果启用了变量解析，初始化变量上下文
         if self.enable_variable_resolution:
             await self._initialize_variable_context(self._sys_vars)
-        
+
         input_data = await self._init(self._sys_vars)
         self.input = input_data.model_dump(by_alias=True, exclude_none=True)
 
@@ -353,7 +358,6 @@ class CoreCall(BaseModel):
     async def _after_exec(self, input_data: dict[str, Any]) -> None:
         """Call类实例的执行后方法"""
 
-
     async def exec(
         self,
         executor: "StepExecutor",
@@ -362,13 +366,13 @@ class CoreCall(BaseModel):
     ) -> AsyncGenerator[CallOutputChunk, None]:
         """Call类实例的执行方法"""
         self._last_output_data = {}  # 初始化输出数据存储
-        
+
         async for chunk in self._exec(input_data):
             # 捕获最后的输出数据
             if chunk.type == CallOutputType.DATA and isinstance(chunk.content, dict):
                 self._last_output_data = chunk.content
             yield chunk
-            
+
         await self._after_exec(input_data)
 
     async def _llm(self, messages: list[dict[str, Any]]) -> str:

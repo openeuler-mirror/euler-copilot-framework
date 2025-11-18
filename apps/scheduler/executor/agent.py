@@ -8,7 +8,10 @@ import anyio
 from mcp.types import TextContent
 from pydantic import Field
 
+from apps.services.llm import LLMManager
 from apps.llm.reasoning import ReasoningLLM
+from apps.llm.function import FunctionLLM
+from apps.llm.enum import DefaultModelId
 from apps.scheduler.executor.base import BaseExecutor
 from apps.schemas.enum_var import LanguageType
 from apps.scheduler.mcp_agent.host import MCPHost
@@ -23,6 +26,8 @@ from apps.schemas.mcp import (
 )
 from apps.schemas.message import FlowParams
 from apps.schemas.task import FlowStepHistory
+from apps.schemas.config import LLMConfig
+from apps.schemas.config import FunctionCallConfig
 from apps.services.appcenter import AppCenterManager
 from apps.services.mcp_service import MCPServiceManager
 from apps.services.task import TaskManager
@@ -38,8 +43,10 @@ class MCPAgentExecutor(BaseExecutor):
     servers_id: list[str] = Field(description="MCP server id")
     agent_id: str = Field(default="", description="Agent ID")
     agent_description: str = Field(default="", description="Agent描述")
-    mcp_list: list[MCPCollection] = Field(description="MCP服务器列表", default_factory=list)
-    mcp_pool: MCPPool = Field(description="MCP池", default_factory=MCPPool, exclude=True)
+    mcp_list: list[MCPCollection] = Field(
+        description="MCP服务器列表", default_factory=list)
+    mcp_pool: MCPPool = Field(
+        description="MCP池", default_factory=MCPPool, exclude=True)
     tools: dict[str, MCPTool] = Field(
         description="MCP工具列表，key为tool_id",
         default_factory=dict,
@@ -53,13 +60,67 @@ class MCPAgentExecutor(BaseExecutor):
         description="流执行过程中的参数补充",
         alias="params",
     )
+    chat_llm_id: str = Field(
+        default=DefaultModelId.DEFAULT_CHAT_MODEL_ID.value,
+        description="聊天大模型ID",
+    )
+    enable_thinking: bool = Field(default=False, description="是否启用思考模式")
+    func_call_llm_id: str = Field(
+        default=DefaultModelId.DEFAULT_FUNCTION_CALL_MODEL_ID.value,
+        description="函数调用大模型ID",
+    )
     resoning_llm: ReasoningLLM = Field(
-        default_factory=ReasoningLLM,
         description="推理大模型",
-        exclude=True,
+        default=ReasoningLLM()
+    )
+    function_call_llm: FunctionLLM = Field(
+        description="函数调用大模型",
+        default=FunctionLLM()
     )
     app_owner: str = Field(default="", description="应用所有者")
     auto_execute: bool | None = Field(default=None, description="是否自动执行（来自请求）")
+    mcp_host: MCPHost = Field(
+        description="MCP主机",
+        default=MCPHost()
+    )
+    mcp_planner: MCPPlanner = Field(
+        description="MCP规划器",
+        default=MCPPlanner()
+    )
+
+    async def init_llms(self) -> None:
+        """初始化大模型"""
+        reasoning_llm = await LLMManager.get_llm_by_id(self.chat_llm_id)
+        reasoning_llm_config = LLMConfig(
+            provider=reasoning_llm.provider,
+            api_key=reasoning_llm.openai_api_key,
+            endpoint=reasoning_llm.openai_base_url,
+            model=reasoning_llm.model_name,
+            max_tokens=reasoning_llm.max_tokens,
+            temperature=0.7
+        )
+        self.resoning_llm = ReasoningLLM(config=reasoning_llm_config)
+        function_call_llm = await LLMManager.get_llm_by_id(self.func_call_llm_id)
+        function_call_llm_config = FunctionCallConfig(
+            provider=function_call_llm.provider,
+            api_key=function_call_llm.openai_api_key,
+            endpoint=function_call_llm.openai_base_url,
+            model=function_call_llm.model_name,
+            max_tokens=function_call_llm.max_tokens,
+            temperature=0.0
+        )
+        self.function_call_llm = FunctionLLM(config=function_call_llm_config)
+
+    async def init_mcp_plan_and_host(self) -> None:
+        """初始化MCP的Host和Planner"""
+        self.mcp_host = MCPHost(
+            reasoning_llm=self.resoning_llm,
+            function_llm=self.function_call_llm,
+        )
+        self.mcp_planner = MCPPlanner(
+            reasoning_llm=self.resoning_llm,
+            function_llm=self.function_call_llm,
+        )
 
     async def get_auto_execute(self) -> bool:
         """
@@ -69,7 +130,7 @@ class MCPAgentExecutor(BaseExecutor):
         # 如果请求中明确指定了，使用请求中的设置
         if self.auto_execute is not None:
             return self.auto_execute
-        
+
         # 否则使用用户的全局设置
         user_info = await UserManager.get_userinfo_by_user_sub(self.task.ids.user_sub)
         return user_info.auto_execute
@@ -102,7 +163,8 @@ class MCPAgentExecutor(BaseExecutor):
             # 尝试初始化MCP，只有成功才添加到列表
             client = await self.mcp_pool._init_mcp(mcp_id, self.app_owner)
             if client is None:
-                logger.warning("[MCPAgentExecutor] MCP服务 %s 初始化失败，跳过", mcp_service.name)
+                logger.warning(
+                    "[MCPAgentExecutor] MCP服务 %s 初始化失败，跳过", mcp_service.name)
                 continue
             self.mcp_list.append(mcp_service)
             for tool in mcp_service.tools:
@@ -164,8 +226,8 @@ class MCPAgentExecutor(BaseExecutor):
         if is_first:
             # 获取第一个输入参数
             mcp_tool = self.tools[self.task.state.tool_id]
-            self.task.state.current_input = await MCPHost._get_first_input_params(
-                mcp_tool, self.task.runtime.question, self.task.state.step_description, self.task, self.resoning_llm, self.enable_thinking
+            self.task.state.current_input = await self.mcp_host._get_first_input_params(
+                mcp_tool, self.task.runtime.question, self.task.state.step_description, self.task, self.resoning_llm
             )
         else:
             # 获取后续输入参数
@@ -176,7 +238,7 @@ class MCPAgentExecutor(BaseExecutor):
                 params = {}
                 params_description = ""
             mcp_tool = self.tools[self.task.state.tool_id]
-            self.task.state.current_input = await MCPHost._fill_params(
+            self.task.state.current_input = await self.mcp_host._fill_params(
                 mcp_tool,
                 self.task.runtime.question,
                 self.task.state.step_description,
@@ -191,7 +253,7 @@ class MCPAgentExecutor(BaseExecutor):
         """确认前步骤"""
         # 发送确认消息
         mcp_tool = self.tools[self.task.state.tool_id]
-        confirm_message = await MCPPlanner.get_tool_risk(
+        confirm_message = await self.mcp_planner.get_tool_risk(
             mcp_tool, self.task.state.current_input, "", self.resoning_llm, self.task.language
         )
         await self.update_tokens()
@@ -297,22 +359,20 @@ class MCPAgentExecutor(BaseExecutor):
     async def generate_params_with_null(self) -> None:
         """生成参数补充"""
         mcp_tool = self.tools[self.task.state.tool_id]
-        params_with_null = await MCPPlanner.get_missing_param(
+        params_with_null = await self.mcp_planner.get_missing_param(
             mcp_tool,
             self.task.state.current_input,
             self.task.state.error_message,
             self.resoning_llm,
             self.task.language,
-            self.enable_thinking,
         )
         await self.update_tokens()
-        error_message = await MCPPlanner.change_err_message_to_description(
+        error_message = await self.mcp_planner.change_err_message_to_description(
             error_message=self.task.state.error_message,
             tool=mcp_tool,
             input_params=self.task.state.current_input,
             reasoning_llm=self.resoning_llm,
             language=self.task.language,
-            enable_thinking=self.enable_thinking,
         )
         await self.push_message(
             EventType.STEP_WAITING_FOR_PARAM, data={
@@ -346,12 +406,12 @@ class MCPAgentExecutor(BaseExecutor):
         self.task.state.retry_times = 0
         if self.task.state.step_cnt < self.max_steps:
             self.task.state.step_cnt += 1
-            history = await MCPHost.assemble_memory(self.task)
+            history = await self.mcp_host.assemble_memory(self.task)
             max_retry = 3
             step = None
             for i in range(max_retry):
                 try:
-                    step = await MCPPlanner.create_next_step(self.task.runtime.question, history, self.tool_list, self.resoning_llm, self.task.language, self.enable_thinking)
+                    step = await self.mcp_planner.create_next_step(self.task.runtime.question, history, self.tool_list, self.resoning_llm, self.task.language)
                     if step.tool_id in self.tools.keys():
                         break
                 except Exception as e:
@@ -488,16 +548,15 @@ class MCPAgentExecutor(BaseExecutor):
                     await self.get_next_step()
                 else:
                     mcp_tool = self.tools[self.task.state.tool_id]
-                    is_param_error = await MCPPlanner.is_param_error(
+                    is_param_error = await self.mcp_planner.is_param_error(
                         self.task.runtime.question,
-                        await MCPHost.assemble_memory(self.task),
+                        await self.mcp_host.assemble_memory(self.task),
                         self.task.state.error_message,
                         mcp_tool,
                         self.task.state.step_description,
                         self.task.state.current_input,
                         self.resoning_llm,
-                        self.task.language,
-                        self.enable_thinking,
+                        self.task.language
                     )
                     if is_param_error.is_param_error:
                         # 如果是参数错误，生成参数补充
@@ -537,11 +596,12 @@ class MCPAgentExecutor(BaseExecutor):
 
     async def summarize(self) -> None:
         """总结"""
-        async for chunk in MCPPlanner.generate_answer(
+        async for chunk in self.mcp_planner.generate_answer(
             self.task.runtime.question,
-            (await MCPHost.assemble_memory(self.task)),
+            (await self.mcp_host.assemble_memory(self.task)),
             self.resoning_llm,
             self.task.language,
+            enable_thinking=self.enable_thinking
         ):
             await self.push_message(
                 EventType.TEXT_ADD,
@@ -552,6 +612,8 @@ class MCPAgentExecutor(BaseExecutor):
     async def run(self) -> None:
         """执行MCP Agent的主逻辑"""
         # 初始化MCP服务
+        await self.init_llms()
+        await self.init_mcp_plan_and_host()
         self.app_owner = (await AppCenterManager.fetch_app_data_by_id(self.agent_id)).author
         await self.load_state()
         await self.load_mcp()
@@ -560,10 +622,10 @@ class MCPAgentExecutor(BaseExecutor):
             # 初始化状态
             try:
                 self.task.state.flow_id = str(uuid.uuid4())
-                self.task.state.flow_name = (await MCPPlanner.get_flow_name(
+                self.task.state.flow_name = (await self.mcp_planner.get_flow_name(
                     self.task.runtime.question, self.resoning_llm, self.task.language
                 )).flow_name
-                flow_risk = await MCPPlanner.get_flow_excute_risk(
+                flow_risk = await self.mcp_planner.get_flow_excute_risk(
                     self.task.runtime.question, self.tool_list, self.resoning_llm, self.task.language
                 )
                 auto_execute = await self.get_auto_execute()

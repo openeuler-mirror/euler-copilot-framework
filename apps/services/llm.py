@@ -13,7 +13,7 @@ from apps.schemas.request_data import (
 )
 from apps.schemas.response_data import LLMProvider, LLMProviderInfo
 from apps.templates.generate_llm_operator_config import llm_provider_dict
-from apps.llm.schema import DefaultModelId
+from apps.llm.enum import DefaultModelId
 from apps.llm.model_registry import model_registry
 from apps.llm.adapters import get_provider_from_endpoint
 
@@ -32,15 +32,20 @@ class LLMManager:
         :return: LLMProviderInfo 对象
         """
         # 标准化type字段为列表格式
-        llm_type = llm.get("type", "chat")
-        if isinstance(llm_type, str):
-            llm_type = [llm_type]
-
+        llm_type = llm.get("type", None)
+        if llm_type is None:
+            llm_type = ["chat"]
+        # 将枚举类DefaultModelId转换为list
+        default_model_id_list = [item.value for item in DefaultModelId]
+        if llm["_id"] in default_model_id_list:
+            openai_api_key = ""  # 系统默认模型不返回api key
+        else:
+            openai_api_key = llm.get("openai_api_key", "")
         return LLMProviderInfo(
             llmId=llm["_id"],  # _id已经是UUID字符串
             icon=llm["icon"],
             openaiBaseUrl=llm["openai_base_url"],
-            openaiApiKey=llm["openai_api_key"],
+            openaiApiKey=openai_api_key,
             modelName=llm["model_name"],
             maxTokens=llm["max_tokens"],
             isEditable=bool(llm.get("user_sub")),  # 系统模型（user_sub=""）不可编辑

@@ -14,7 +14,7 @@ from apps.services.llm import LLMManager
 from apps.services.task import TaskManager
 from apps.templates.generate_llm_operator_config import llm_provider_dict
 from apps.llm.adapters import get_provider_from_endpoint
-from apps.llm.schema import DefaultModelId
+from apps.llm.enum import DefaultModelId
 
 logger = logging.getLogger(__name__)
 
