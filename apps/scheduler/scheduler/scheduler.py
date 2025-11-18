@@ -5,7 +5,7 @@ import asyncio
 import logging
 from datetime import UTC, datetime
 
-from apps.llm.schema import DefaultModelId
+from apps.llm.enum import DefaultModelId
 from apps.llm.reasoning import ReasoningLLM
 from apps.schemas.config import LLMConfig
 from apps.llm.patterns.rewrite import QuestionRewrite
@@ -231,40 +231,16 @@ class Scheduler:
         if not app_metadata:
             logger.error("[Scheduler] 未找到Agent应用")
             return
-        logger.info(
-            f"[Scheduler] 应用配置的模型ID: {app_metadata.llm_id}, 启用思维链: {app_metadata.enable_thinking if hasattr(app_metadata, 'enable_thinking') else 'N/A'}")
-        if not app_metadata.llm_id:
-            # 获取系统默认模型
-            llm = await LLMManager.get_llm_by_id(DefaultModelId.DEFAULT_CHAT_MODEL_ID.value)
-        else:
-            llm = await LLMManager.get_llm_by_id(app_metadata.llm_id)
-        if not llm:
-            logger.error("[Scheduler] 获取大模型失败")
-            await self.queue.close()
-            return
-        reasion_llm = ReasoningLLM(
-            LLMConfig(
-                provider=llm.provider,
-                endpoint=llm.openai_base_url,
-                api_key=llm.openai_api_key,
-                model=llm.model_name,
-                max_tokens=llm.max_tokens,
-            )
-        )
         if background.conversation and self.task.state.flow_status == FlowStatus.INIT:
+            chat_llm_id = app_metadata.llm_id
+            if not chat_llm_id:
+                chat_llm_id = DefaultModelId.DEFAULT_CHAT_MODEL_ID.value
+            func_call_llm_id = app_metadata.llm_id
+            if not func_call_llm_id:
+                func_call_llm_id = DefaultModelId.DEFAULT_FUNCTION_CALL_MODEL_ID.value
             try:
-                # 使用function call模型进行问题改写
-                # 降级顺序：应用配置模型 -> 用户偏好的function call模型 -> 系统默认function call模型 -> 系统默认chat模型
-                llm_id_for_rewrite = app_metadata.llm_id
-                if not llm_id_for_rewrite:
-                    llm_id_for_rewrite = DefaultModelId.DEFAULT_FUNCTION_CALL_MODEL_ID.value
-                enable_thinking_for_rewrite = app_metadata.enable_thinking if hasattr(
-                    app_metadata, 'enable_thinking') else False
-
-                logger.info(f"[Scheduler] 问题改写使用模型ID: {llm_id_for_rewrite}")
                 question_obj = QuestionRewrite(
-                    llm_id=llm_id_for_rewrite,
-                    enable_thinking=enable_thinking_for_rewrite,
+                    llm_id=func_call_llm_id
                 )
                 post_body.question = await question_obj.generate(
                     history=background.conversation,
@@ -314,10 +290,9 @@ class Scheduler:
                 msg_queue=queue,
                 question=post_body.question,
                 post_body_app=app_info,
-                enable_thinking=app_metadata.enable_thinking if hasattr(
-                    app_metadata, 'enable_thinking') else False,
-                llm_id=app_metadata.llm_id if hasattr(
-                    app_metadata, 'llm_id') and app_metadata.llm_id != "empty" else None,
+                chat_llm_id=chat_llm_id,
+                enable_thinking=app_metadata.enable_thinking,
+                func_call_llm_id=func_call_llm_id,
                 background=background,
             )
 
@@ -339,8 +314,9 @@ class Scheduler:
                 background=background,
                 agent_id=app_info.app_id,
                 params=post_body.params,
+                chat_llm_id=chat_llm_id,
                 enable_thinking=app_metadata.enable_thinking,
-                resoning_llm=reasion_llm,
+                func_call_llm_id=func_call_llm_id,
                 auto_execute=post_body.auto_execute
             )
             # 开始运行

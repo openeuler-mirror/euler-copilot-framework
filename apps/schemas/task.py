@@ -7,6 +7,7 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
+from apps.llm.enum import DefaultModelId
 from apps.schemas.enum_var import FlowStatus, StepStatus, LanguageType
 from apps.schemas.flow import Step
 from apps.schemas.mcp import MCPPlan
@@ -31,7 +32,8 @@ class FlowStepHistory(BaseModel):
     input_data: dict[str, Any] = Field(description="当前Step执行的输入", default={})
     output_data: dict[str, Any] = Field(description="当前Step执行后的结果", default={})
     ex_data: dict[str, Any] | None = Field(description="额外数据", default=None)
-    created_at: float = Field(default_factory=lambda: round(datetime.now(tz=UTC).timestamp(), 3))
+    created_at: float = Field(default_factory=lambda: round(
+        datetime.now(tz=UTC).timestamp(), 3))
 
 
 class ExecutorState(BaseModel):
@@ -41,18 +43,21 @@ class ExecutorState(BaseModel):
     flow_id: str = Field(description="Flow ID", default="")
     flow_name: str = Field(description="Flow名称", default="")
     description: str = Field(description="Flow描述", default="")
-    flow_status: FlowStatus = Field(description="Flow状态", default=FlowStatus.INIT)
+    flow_status: FlowStatus = Field(
+        description="Flow状态", default=FlowStatus.INIT)
     # 任务级数据
     step_cnt: int = Field(description="当前步骤数量", default=0)
     step_id: str = Field(description="当前步骤ID", default="")
     tool_id: str = Field(description="当前工具ID", default="")
     step_name: str = Field(description="当前步骤名称", default="")
-    step_status: StepStatus = Field(description="当前步骤状态", default=StepStatus.UNKNOWN)
+    step_status: StepStatus = Field(
+        description="当前步骤状态", default=StepStatus.UNKNOWN)
     step_description: str = Field(description="当前步骤描述", default="")
     app_id: str = Field(description="应用ID", default="")
     current_input: dict[str, Any] = Field(description="当前输入数据", default={})
     error_message: str = Field(description="错误信息", default="")
-    error_info: dict[str, Any] | None = Field(description="详细错误信息", default=None)
+    error_info: dict[str, Any] | None = Field(
+        description="详细错误信息", default=None)
     retry_times: int = Field(description="当前步骤重试次数", default=0)
 
 
@@ -62,9 +67,19 @@ class TaskIds(BaseModel):
     session_id: str = Field(description="会话ID")
     group_id: str = Field(description="组ID")
     conversation_id: str = Field(description="对话ID")
-    record_id: str = Field(description="记录ID", default_factory=lambda: str(uuid.uuid4()))
+    record_id: str = Field(
+        description="记录ID", default_factory=lambda: str(uuid.uuid4()))
     user_sub: str = Field(description="用户ID")
-    active_id: str = Field(description="活动ID", default_factory=lambda: str(uuid.uuid4()))
+    active_id: str = Field(
+        description="活动ID", default_factory=lambda: str(uuid.uuid4()))
+    func_call_llm_id: str = Field(
+        description="函数调用大模型ID", default=DefaultModelId.DEFAULT_FUNCTION_CALL_MODEL_ID.value)
+    chat_llm_id: str = Field(
+        description="聊天大模型ID", default=DefaultModelId.DEFAULT_CHAT_MODEL_ID.value)
+    embedding_llm_id: str = Field(
+        description="向量化大模型ID", default=DefaultModelId.DEFAULT_EMBEDDING_MODEL_ID.value)
+    reranker_llm_id: str = Field(
+        description="重排序大模型ID", default=DefaultModelId.DEFAULT_RERANKER_MODEL_ID.value)
 
 
 class TaskTokens(BaseModel):
@@ -98,12 +113,16 @@ class Task(BaseModel):
 
     id: str = Field(default_factory=lambda: str(uuid.uuid4()), alias="_id")
     ids: TaskIds = Field(description="任务涉及的各种ID")
-    context: list[FlowStepHistory] = Field(description="Flow的步骤执行信息", default=[])
-    state: ExecutorState = Field(description="Flow的状态", default=ExecutorState())
+    context: list[FlowStepHistory] = Field(
+        description="Flow的步骤执行信息", default=[])
+    state: ExecutorState = Field(
+        description="Flow的状态", default=ExecutorState())
     tokens: TaskTokens = Field(description="Token信息")
     runtime: TaskRuntime = Field(description="任务运行时数据")
-    created_at: float = Field(default_factory=lambda: round(datetime.now(tz=UTC).timestamp(), 3))
-    language: LanguageType = Field(description="语言", default=LanguageType.CHINESE)
+    created_at: float = Field(default_factory=lambda: round(
+        datetime.now(tz=UTC).timestamp(), 3))
+    language: LanguageType = Field(
+        description="语言", default=LanguageType.CHINESE)
 
 
 class StepQueueItem(BaseModel):

@@ -6,7 +6,7 @@ import logging
 import uuid
 from collections.abc import AsyncGenerator
 from datetime import UTC, datetime
-from typing import Any
+from typing import Any, Field
 import json
 import jsonschema
 from pydantic import ConfigDict
@@ -31,7 +31,7 @@ from apps.schemas.message import TextAddContent
 from apps.schemas.scheduler import CallError, CallOutputChunk
 from apps.schemas.task import FlowStepHistory, StepQueueItem
 from apps.services.node import NodeManager
-
+from apps.llm.enum import DefaultModelId
 logger = logging.getLogger(__name__)
 
 
@@ -40,6 +40,13 @@ class StepExecutor(BaseExecutor):
 
     step: StepQueueItem
 
+    chat_llm_id: str = Field(description="对话使用的大模型ID",
+                             default=DefaultModelId.DEFAULT_CHAT_MODEL_ID.value)
+    enable_thinking: bool = Field(description="是否启用思维链", default=False)
+    func_call_llm_id: str = Field(
+        description="Function Call使用的大模型ID",
+        default=DefaultModelId.DEFAULT_FUNCTION_CALL_MODEL_ID.value,
+    )
     model_config = ConfigDict(
         arbitrary_types_allowed=True,
         extra="allow",
@@ -127,7 +134,8 @@ class StepExecutor(BaseExecutor):
                 params.update(input_params)
 
         # 对于LLM调用，注入enable_thinking参数
-        if self._call_id == "LLM":
+        if self._call_id == SpecialCallType.LLM.value:
+            params["llm_id"] = self.chat_llm_id
             params['enable_thinking'] = self.background.enable_thinking
 
         try:
@@ -154,7 +162,8 @@ class StepExecutor(BaseExecutor):
         self.task.tokens.time = round(datetime.now(UTC).timestamp(), 2)
 
         # 初始化填参
-        slot_obj = await Slot.instance(
+        slot_obj = Slot()
+        await slot_obj.instance(
             self,
             self.node,
             data=self.obj.input,

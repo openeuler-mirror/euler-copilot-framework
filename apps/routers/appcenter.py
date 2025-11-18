@@ -9,7 +9,7 @@ from fastapi.responses import JSONResponse
 
 from apps.dependency.user import get_user, verify_user
 from apps.exceptions import InstancePermissionError
-from apps.llm.schema import DefaultModelId
+from apps.llm.enum import DefaultModelId
 from apps.schemas.appcenter import AppFlowInfo, AppPermissionData
 from apps.schemas.enum_var import AppFilterType, AppType
 from apps.schemas.request_data import CreateAppRequest, ModFavAppRequest

@@ -16,7 +16,7 @@ from apps.common.config import Config
 from apps.constants import JSON_GEN_MAX_TRIAL, REASONING_END_TOKEN
 from apps.llm.prompt import JSON_GEN_BASIC
 from apps.llm.adapters import AdapterFactory, get_provider_from_endpoint
-
+from apps.schemas.config import FunctionCallConfig
 # 导入异常处理相关模块
 import openai
 import httpx
@@ -30,7 +30,7 @@ logger = logging.getLogger(__name__)
 def infer_backend_from_capabilities(provider: str, model_name: str, explicit_backend: str | None = None) -> str:
     """
     根据模型能力推断最佳的backend
-    
+
     :param provider: 模型提供商
     :param model_name: 模型名称
     :param explicit_backend: 明确指定的backend（如果有），优先使用
@@ -40,34 +40,40 @@ def infer_backend_from_capabilities(provider: str, model_name: str, explicit_bac
     if explicit_backend:
         logger.info(f"[FunctionCall] 使用明确指定的backend: {explicit_backend}")
         return explicit_backend
-    
+
     # 从模型注册表获取模型能力
-    capabilities = model_registry.get_model_capabilities(provider, model_name, ModelType.CHAT)
-    
+    capabilities = model_registry.get_model_capabilities(
+        provider, model_name, ModelType.CHAT)
+
     if not capabilities or not isinstance(capabilities, ChatCapabilities):
-        logger.warning(f"[FunctionCall] 无法获取模型 {provider}:{model_name} 的能力信息，使用默认backend: json_mode")
+        logger.warning(
+            f"[FunctionCall] 无法获取模型 {provider}:{model_name} 的能力信息，使用默认backend: json_mode")
         return "json_mode"
-    
+
     # 根据能力优先级推断backend
     # 优先级: structured_output > function_call > json_mode
     if capabilities.supports_structured_output:
-        logger.info(f"[FunctionCall] 模型 {provider}:{model_name} 支持structured_output，自动选择")
+        logger.info(
+            f"[FunctionCall] 模型 {provider}:{model_name} 支持structured_output，自动选择")
         return "structured_output"
     elif capabilities.supports_function_calling:
-        logger.info(f"[FunctionCall] 模型 {provider}:{model_name} 支持function_calling，自动选择")
+        logger.info(
+            f"[FunctionCall] 模型 {provider}:{model_name} 支持function_calling，自动选择")
         return "function_call"
     elif capabilities.supports_json_mode:
-        logger.info(f"[FunctionCall] 模型 {provider}:{model_name} 支持json_mode，自动选择")
+        logger.info(
+            f"[FunctionCall] 模型 {provider}:{model_name} 支持json_mode，自动选择")
         return "json_mode"
     else:
-        logger.warning(f"[FunctionCall] 模型 {provider}:{model_name} 不支持任何JSON生成能力，回退到json_mode")
+        logger.warning(
+            f"[FunctionCall] 模型 {provider}:{model_name} 不支持任何JSON生成能力，回退到json_mode")
         return "json_mode"
 
 
 class FunctionLLM:
     """用于FunctionCall的模型"""
 
-    def __init__(self, llm_config=None) -> None:
+    def __init__(self, llm_config: FunctionCallConfig = None) -> None:
         """
         初始化用于FunctionCall的模型
 
@@ -77,32 +83,18 @@ class FunctionLLM:
         - function_call
         - json_mode
         - structured_output
-        
+
         backend会根据模型能力自动推断，也可以通过配置明确指定
-        
+
         :param llm_config: 可选的LLM配置，如果不提供则使用配置文件中的function_call配置
         """
         # 使用传入的配置或从配置文件获取
         if llm_config:
             self._config = llm_config
-            # 如果没有backend字段，根据模型特性推断
-            if not hasattr(self._config, 'backend'):
-                # 创建一个包含backend的配置对象
-                class ConfigWithBackend:
-                    def __init__(self, base_config):
-                        self.model = base_config.model
-                        self.endpoint = base_config.endpoint
-                        self.api_key = getattr(base_config, 'key', getattr(base_config, 'api_key', ''))
-                        self.max_tokens = getattr(base_config, 'max_tokens', 8192)
-                        self.temperature = getattr(base_config, 'temperature', 0.7)
-                        # backend将在后面通过推断设置
-                        self.backend = None
-                
-                self._config = ConfigWithBackend(llm_config)
         else:
             # 暂存config；这里可以替代为从其他位置获取
             self._config = Config().get_config().function_call
-            
+
         if not self._config.model:
             err_msg = "[FunctionCall] 未设置FuntionCall所用模型！"
             logger.error(err_msg)
@@ -114,20 +106,21 @@ class FunctionLLM:
             self._provider = self._config.provider
         else:
             self._provider = get_provider_from_endpoint(self._config.endpoint)
-        
-        self._adapter = AdapterFactory.create_adapter(self._provider, self._config.model)
-        
+
+        self._adapter = AdapterFactory.create_adapter(
+            self._provider, self._config.model)
+
         # 智能推断backend：如果配置中backend为None或空字符串，则根据模型能力推断
         explicit_backend = getattr(self._config, 'backend', None)
         if not explicit_backend or explicit_backend == 'null':
             explicit_backend = None
-        
+
         self._backend = infer_backend_from_capabilities(
-            self._provider, 
+            self._provider,
             self._config.model,
             explicit_backend
         )
-        
+
         self._params = {
             "model": self._config.model,
             "messages": [],
@@ -218,8 +211,9 @@ class FunctionLLM:
             ]
 
         # 使用适配器调整参数，对于JSON生成任务禁用thinking以避免解析问题
-        adapted_params = self._adapter.adapt_create_params(self._params, enable_thinking=False)
-        
+        adapted_params = self._adapter.adapt_create_params(
+            self._params, enable_thinking=False)
+
         try:
             # type: ignore[arg-type]
             response = await self._client.chat.completions.create(**adapted_params)
@@ -481,14 +475,14 @@ class JsonGenerator:
                 return tmp_js
             except Exception as e:
                 logger.error("[JsonGenerator] 解析结果失败: %s", e)
-        return None
+        return {}
 
-    def __init__(self, query: str, conversation: list[dict[str, str]], schema: dict[str, Any]) -> None:
+    def __init__(self, query: str, conversation: list[dict[str, str]], schema: dict[str, Any], func_call_llm: FunctionLLM = FunctionLLM()) -> None:
         """初始化JSON生成器"""
         self._query = query
         self._conversation = conversation
         self._schema = schema
-
+        self.func_call_llm = func_call_llm
         self._trial = {}
         self._count = 0
         self._env = SandboxedEnvironment(
@@ -524,8 +518,7 @@ class JsonGenerator:
             {"role": "system", "content": prompt},
             {"role": "user", "content": "please generate a JSON response based on the above information and schema./no_think"},
         ]
-        function = FunctionLLM()
-        return await function.call(messages, self._schema, max_tokens, temperature)
+        return await self.func_call_llm.call(messages, self._schema, max_tokens, temperature)
 
     async def generate(self) -> dict[str, Any]:
         """生成JSON"""
