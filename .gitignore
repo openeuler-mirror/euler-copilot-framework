@@ -18,3 +18,5 @@ uv.lock
 node_modules/
 package-lock.json
 package.json
+
+!mcp_center/config/
