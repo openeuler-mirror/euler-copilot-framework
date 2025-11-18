@@ -1,0 +1,9 @@
+{
+    "name": "端侧信息收集工具",
+    "overview": "端侧信息收集工具",
+    "description": "端侧信息收集工具",
+    "mcpType": "sse",
+    "config": {
+        "url": "http://127.0.0.1:12100/sse"
+    }
+}
