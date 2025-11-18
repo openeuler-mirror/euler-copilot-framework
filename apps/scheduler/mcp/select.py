@@ -63,9 +63,8 @@ class MCPSelector(MCPNodeBase):
             function=function,
             conversation=[
                 {"role": "system", "content": "You are a helpful assistant."},
-                {"role": "user", "content": user_prompt},
             ],
-            language=self._language,
+            prompt=user_prompt,
         )
 
         try:

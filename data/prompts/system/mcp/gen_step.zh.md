@@ -15,23 +15,16 @@
 3. **清晰性**：步骤描述简洁明确，说明具体操作内容
 4. **完整性**：确保每个步骤独立完整，可直接执行
 
-## 可用工具列表
+## 函数
 
-{% for tool in tools %}
-- **工具名**: `{{tool.toolName}}`
-  **功能描述**: {{tool.description}}
-{% endfor %}
-
-## 工具
-
-你可以调用以下工具来完成步骤规划任务。
+你可以调用以下函数来完成步骤规划任务。
 
 {% raw %}{% if use_xml_format %}{% endraw %}
 调用工具时，采用XML风格标签进行格式化。格式规范如下：
 
 ```xml
 <create_next_step>
-<tool_name>工具名称</tool_name>
+<tool_name>函数名称</tool_name>
 <description>步骤描述</description>
 </create_next_step>
 ```
@@ -44,13 +37,16 @@
 
 参数：
 
-- tool_name: 工具名称，必须从上述可用工具列表中选择
+- tool_name: 外置工具名称，必须从以下列表中选择
+  {% for tool in tools %}
+  - `{{tool.toolName}}`: {{tool.description}}
+  {% endfor %}
 - description: 步骤描述，清晰说明本步骤要做什么
 
 调用规范：
 
-- **函数名固定**: 必须调用 `create_next_step`，不要使用工具名作为函数名
-- **tool_name的值**: 必须是上述可用工具列表中的某个工具名称
+- **函数名固定**: 必须使用 `create_next_step`，不要使用外置工具名作为函数名
+- **tool_name的值**: 必须是外置工具列表中的某个工具名称
 - **description的值**: 描述本步骤的具体操作内容
 - **任务完成时**: 如果用户目标已经完成，将 `tool_name` 参数设为 `Final`
 

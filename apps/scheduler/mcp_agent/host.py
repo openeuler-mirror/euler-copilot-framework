@@ -62,7 +62,6 @@ class MCPHost(MCPBase):
             function=function,
             conversation=[
                 {"role": "system", "content": "You are a helpful assistant."},
-                {"role": "user", "content": prompt},
                 {"role": "user", "content": llm_query},
             ],
             prompt=prompt,
