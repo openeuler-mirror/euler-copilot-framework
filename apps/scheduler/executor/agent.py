@@ -71,21 +71,25 @@ class MCPAgentExecutor(BaseExecutor):
     )
     resoning_llm: ReasoningLLM = Field(
         description="推理大模型",
-        default=ReasoningLLM()
+        default_factory=ReasoningLLM,
+        exclude=True
     )
     function_call_llm: FunctionLLM = Field(
         description="函数调用大模型",
-        default=FunctionLLM()
+        default_factory=FunctionLLM,
+        exclude=True
     )
     app_owner: str = Field(default="", description="应用所有者")
     auto_execute: bool | None = Field(default=None, description="是否自动执行（来自请求）")
     mcp_host: MCPHost = Field(
         description="MCP主机",
-        default=MCPHost()
+        default_factory=MCPHost,
+        exclude=True
     )
     mcp_planner: MCPPlanner = Field(
         description="MCP规划器",
-        default=MCPPlanner()
+        default_factory=MCPPlanner,
+        exclude=True
     )
 
     async def init_llms(self) -> None:
