@@ -12,7 +12,7 @@ from mcp.types import TextContent
 
 from apps.llm import LLM, json_generator
 from apps.models import LanguageType, MCPTools
-from apps.scheduler.mcp.prompt import FILL_PARAMS_QUERY, MEMORY_TEMPLATE
+from apps.scheduler.mcp.prompt import MEMORY_TEMPLATE
 from apps.scheduler.pool.mcp.client import MCPClient
 from apps.scheduler.pool.mcp.pool import mcp_pool
 from apps.schemas.mcp import MCPContext, MCPPlanItem

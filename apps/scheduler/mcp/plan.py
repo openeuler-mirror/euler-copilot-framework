@@ -12,7 +12,7 @@ from apps.models import LanguageType, MCPTools
 from apps.schemas.mcp import MCPPlan
 
 from .base import MCPNodeBase
-from .prompt import CREATE_MCP_PLAN_FUNCTION, CREATE_PLAN, FINAL_ANSWER
+from .prompt import CREATE_MCP_PLAN_FUNCTION, FINAL_ANSWER
 
 _logger = logging.getLogger(__name__)
 

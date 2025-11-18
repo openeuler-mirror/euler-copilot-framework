@@ -51,7 +51,6 @@ class MCPPlanner(MCPBase):
             function=GET_FLOW_NAME_FUNCTION[self._language],
             conversation=[
                 {"role": "system", "content": "You are a helpful assistant."},
-                {"role": "user", "content": prompt},
             ],
             prompt=prompt,
         )

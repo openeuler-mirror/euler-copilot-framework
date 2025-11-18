@@ -14,6 +14,7 @@ from typing import TYPE_CHECKING, Any, ClassVar, Self
 from pydantic import BaseModel, ConfigDict, Field
 from pydantic.json_schema import SkipJsonSchema
 
+from apps.common.config import config
 from apps.models import ExecutorHistory, LanguageType, NodeInfo
 from apps.schemas.enum_var import CallOutputType
 from apps.schemas.scheduler import (
@@ -90,12 +91,10 @@ class CoreCall(BaseModel):
         :param prompt_id: 提示词ID，例如 "domain", "facts" 等
         :return: 提示词内容
         """
-        # 自动获取language
         language = self._sys_vars.language.value
 
-        # 组装Prompt文件路径: prompt_id.language.md (例如: domain.en.md)
         filename = f"{prompt_id}.{language}.md"
-        prompt_dir = Path(__file__).parent.parent.parent / "data" / "prompts" / "call"
+        prompt_dir = Path(config.deploy.data_dir) / "prompts" / "call"
         prompt_file = prompt_dir / filename
         return prompt_file.read_text(encoding="utf-8")
 

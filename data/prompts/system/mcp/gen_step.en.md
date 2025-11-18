@@ -15,23 +15,16 @@ Analyze the conversation history and user goal, then call the `create_next_step`
 3. **Clarity**: Step description should be concise and clear, explaining specific operations
 4. **Completeness**: Ensure each step is independent and complete, directly executable
 
-## Available Tools List
+## Functions
 
-{% for tool in tools %}
-- **Tool Name**: `{{tool.toolName}}`
-  **Description**: {{tool.description}}
-{% endfor %}
-
-## Tools
-
-You can call the following tools to complete the step planning task.
+You can call the following functions to complete the step planning task.
 
 {% raw %}{% if use_xml_format %}{% endraw %}
 When calling tools, use XML-style tags for formatting. The format specification is as follows:
 
 ```xml
 <create_next_step>
-<tool_name>Tool Name</tool_name>
+<tool_name>Function Name</tool_name>
 <description>Step Description</description>
 </create_next_step>
 ```
@@ -44,13 +37,16 @@ Description: Create the next execution step
 
 Parameters:
 
-- tool_name: Tool name, must be selected from the available tools list above
+- tool_name: External tool name, must be selected from the following list
+  {% for tool in tools %}
+  - `{{tool.toolName}}`: {{tool.description}}
+  {% endfor %}
 - description: Step description, clearly explain what this step will do
 
 Calling Specifications:
 
-- **Fixed function name**: Must call `create_next_step`, do not use tool names as function names
-- **tool_name value**: Must be one of the tool names from the available tools list above
+- **Fixed function name**: Must use `create_next_step`, do not use external tool names as function names
+- **tool_name value**: Must be one of the tool names from the external tools list
 - **description value**: Describe the specific operations of this step
 - **When task completes**: If the user goal is achieved, set `tool_name` parameter to `Final`
 

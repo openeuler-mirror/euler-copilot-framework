@@ -35,7 +35,6 @@ class JsonGenerator:
 
     def __init__(self, llm: LLM | None = None) -> None:
         """创建JsonGenerator实例"""
-        # Jinja2环境，可以复用
         self._env = SandboxedEnvironment(
             loader=BaseLoader(),
             autoescape=False,
@@ -43,7 +42,6 @@ class JsonGenerator:
             lstrip_blocks=True,
             extensions=["jinja2.ext.loopcontrols"],
         )
-        # 初始化时设为None，调用init后设置
         self._llm: LLM | None = llm
         self._support_function_call: bool = False
         if llm is not None:
@@ -67,51 +65,65 @@ class JsonGenerator:
         self,
         prompt: str,
         conversation: list[dict[str, str]],
+        retry_messages: list[dict[str, str]] | None = None,
     ) -> list[dict[str, str]]:
-        """构建messages，使用传入的prompt替换最后一条用户消息"""
-        if conversation[-1]["role"] == "user":
-            # 验证最后一项是用户消息
-            pass
-        else:
-            err = "[JSONGenerator] 对话历史中最后一项必须是用户消息"
-            raise RuntimeError(err)
+        """
+        构建messages，拼接顺序：真实对话记录 - Prompt - 重试记录
 
-        messages = [*conversation[:-1], {"role": "user", "content": prompt}]
+        Args:
+            prompt: 当前的prompt
+            conversation: 真实的对话记录
+            retry_messages: 重试过程中产生的记录（不会被裁剪）
 
-        # 计算Token数量
+        Returns:
+            拼接后的消息列表
+
+        """
+        retry_messages = retry_messages or []
+
+        messages = [*conversation, {"role": "user", "content": prompt}]
+
         if self._llm is not None:
             token_count = token_calculator.calculate_token_length(messages)
+            retry_token_count = token_calculator.calculate_token_length(retry_messages) if retry_messages else 0
             ctx_length = self._llm.config.ctxLength
 
-            # 进行消息裁剪
-            if token_count > ctx_length:
+            available_ctx = ctx_length - retry_token_count
+
+            if token_count > available_ctx:
                 _logger.warning(
-                    "[JSONGenerator] 当前对话 Token 数量 (%d) 超过模型上下文长度 (%d)，进行消息裁剪",
+                    "[JSONGenerator] 当前对话 Token 数量 (%d) 超过可用上下文长度 (%d)，"
+                    "进行消息裁剪（重试记录 Token: %d）",
                     token_count,
-                    ctx_length,
+                    available_ctx,
+                    retry_token_count,
                 )
 
-                trimmed_conversation = list(conversation[:-1])
+                while len(messages) > 1 and token_count > available_ctx:
+                    deleted = False
+                    for i, msg in enumerate(messages):
+                        if msg["role"] in ("user", "assistant"):
+                            messages = messages[:i] + messages[i + 1:]
+                            deleted = True
+                            break
 
-                while trimmed_conversation and token_count > ctx_length:
-                    if len(trimmed_conversation) >= 2 and \
-                       trimmed_conversation[0]["role"] == "user" and \
-                       trimmed_conversation[1]["role"] == "assistant":  # noqa: PLR2004
-                        trimmed_conversation = trimmed_conversation[2:]
-                    elif trimmed_conversation:
-                        trimmed_conversation = trimmed_conversation[1:]
-                    else:
-                        break
+                    if not deleted:
+                        err = (
+                            f"[JSONGenerator] 无法裁剪消息以满足上下文长度限制，"
+                            f"当前 Token 数量: {token_count}，可用上下文长度: {available_ctx}"
+                        )
+                        raise RuntimeError(err)
 
-                    # 重新构建 messages 并计算 token，添加原始最后一条用户消息以保持完整对话
-                    messages = [*trimmed_conversation, conversation[-1], {"role": "user", "content": prompt}]
                     token_count = token_calculator.calculate_token_length(messages)
 
                 _logger.info(
-                    "[JSONGenerator] 裁剪后对话 Token 数量: %d，移除了 %d 条消息",
+                    "[JSONGenerator] 裁剪后对话 Token 数量: %d（重试记录 Token: %d，总计: %d）",
                     token_count,
-                    len(conversation) - len(trimmed_conversation) - 1,
+                    retry_token_count,
+                    token_count + retry_token_count,
                 )
+
+        messages.extend(retry_messages)
 
         return messages
 
@@ -120,6 +132,7 @@ class JsonGenerator:
         function: dict[str, Any],
         prompt: str,
         conversation: list[dict[str, str]],
+        retry_messages: list[dict[str, str]] | None = None,
     ) -> dict[str, Any]:
         """单次尝试，包含校验逻辑；function使用OpenAI标准Function格式"""
         if self._llm is None:
@@ -129,15 +142,17 @@ class JsonGenerator:
         schema = function["parameters"]
         validator = Draft7Validator(schema)
 
-        # 执行生成
         if self._support_function_call:
-            # 如果支持FunctionCall
-            result = await self._call_with_function(function, prompt, conversation)
+            use_xml_format = False
+            template = self._env.from_string(prompt)
+            formatted_prompt = template.render(use_xml_format=use_xml_format)
+            result = await self._call_with_function(function, formatted_prompt, conversation, retry_messages)
         else:
-            # 如果不支持FunctionCall
-            result = await self._call_without_function(function, prompt, conversation)
+            use_xml_format = True
+            template = self._env.from_string(prompt)
+            formatted_prompt = template.render(use_xml_format=use_xml_format)
+            result = await self._call_without_function(function, formatted_prompt, conversation, retry_messages)
 
-        # 校验结果
         try:
             validator.validate(result)
         except Exception as err:
@@ -145,7 +160,6 @@ class JsonGenerator:
             err_info = err_info.split("\n\n")[0]
             _logger.info("[JSONGenerator] 验证失败：%s", err_info)
 
-            # 创建带结果的验证异常
             validation_error = JsonValidationError(err_info, result)
             raise validation_error from err
         else:
@@ -156,13 +170,14 @@ class JsonGenerator:
         function: dict[str, Any],
         prompt: str,
         conversation: list[dict[str, str]],
+        retry_messages: list[dict[str, str]] | None = None,
     ) -> dict[str, Any]:
         """使用FunctionCall方式调用"""
         if self._llm is None:
             err = "[JSONGenerator] 未初始化，请先调用init()方法"
             raise RuntimeError(err)
 
-        messages = self._build_messages(prompt, conversation)
+        messages = self._build_messages(prompt, conversation, retry_messages)
 
         tool = LLMFunctions(
             name=function["name"],
@@ -183,25 +198,23 @@ class JsonGenerator:
 
     async def _call_without_function(
         self,
-        function: dict[str, Any],
+        _function: dict[str, Any],
         prompt: str,
         conversation: list[dict[str, str]],
+        retry_messages: list[dict[str, str]] | None = None,
     ) -> dict[str, Any]:
         """不使用FunctionCall方式调用"""
         if self._llm is None:
             err = "[JSONGenerator] 未初始化，请先调用init()方法"
             raise RuntimeError(err)
 
-        messages = self._build_messages(prompt, conversation)
+        messages = self._build_messages(prompt, conversation, retry_messages)
 
-        # 使用LLM的call方法获取响应
         full_response = ""
         async for chunk in self._llm.call(messages, include_thinking=False, streaming=False):
             if chunk.content:
                 full_response += chunk.content
 
-        # 从响应中提取JSON
-        # 查找第一个 { 和最后一个 }
         json_match = re.search(r"\{.*\}", full_response, re.DOTALL)
         if json_match:
             return json.loads(json_match.group(0))
@@ -220,18 +233,19 @@ class JsonGenerator:
             err = "[JSONGenerator] 未初始化，请先调用init()方法"
             raise RuntimeError(err)
 
-        # 检查schema格式是否正确
         schema = function["parameters"]
         Draft7Validator.check_schema(schema)
 
         count = 0
 
-        retry_conversation = conversation.copy() if conversation else []
+        retry_messages: list[dict[str, str]] = []
+        if conversation is None:
+            conversation = []
+
         while count < JSON_GEN_MAX_TRIAL:
             count += 1
             try:
-                # 如果_single_trial没有抛出异常，直接返回结果，不进行重试
-                return await self._single_trial(function, prompt, retry_conversation)
+                return await self._single_trial(function, prompt, conversation, retry_messages)
             except JsonValidationError as e:
                 _logger.exception(
                     "[JSONGenerator] 第 %d/%d 次尝试失败",
@@ -239,20 +253,18 @@ class JsonGenerator:
                     JSON_GEN_MAX_TRIAL,
                 )
                 if count < JSON_GEN_MAX_TRIAL:
-                    # 将错误信息添加到retry_conversation中，模拟完整的对话流程
                     err_info = str(e)
                     err_info = err_info.split("\n\n")[0]
 
-                    # 模拟assistant调用了函数但失败，包含实际获得的参数
                     function_name = function["name"]
                     result_json = json.dumps(e.result, ensure_ascii=False)
-                    retry_conversation.append({
+
+                    retry_messages.append({
                         "role": "assistant",
                         "content": f"I called function {function_name} with parameters: {result_json}",
                     })
 
-                    # 模拟user要求重新调用函数并给出错误原因
-                    retry_conversation.append({
+                    retry_messages.append({
                         "role": "user",
                         "content": (
                             f"The previous function call failed with validation error: {err_info}. "
@@ -271,5 +283,4 @@ class JsonGenerator:
         return {}
 
 
-# 全局单例实例
 json_generator = JsonGenerator()
