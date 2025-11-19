@@ -61,8 +61,7 @@ class FactsCall(CoreCall, input_model=FactsInput, output_model=FactsOutput):
             name=executor.step.step.name,
             description=executor.step.step.description,
             node=node,
-            llm_id=llm_id,
-            enable_thinking=enable_thinking,
+            llm_id=executor.func_call_llm_id,
             **kwargs,
         )
 
