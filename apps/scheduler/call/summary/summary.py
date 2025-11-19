@@ -46,16 +46,13 @@ class Summary(CoreCall, input_model=DataBase, output_model=SummaryOutput):
     async def instance(cls, executor: "StepExecutor", node: NodePool | None, **kwargs: Any) -> Self:
         """实例化工具"""
         # 提取 llm_id 和 enable_thinking，避免重复传递
-        llm_id = kwargs.pop("llm_id", None)
-        enable_thinking = kwargs.pop("enable_thinking", False)
 
         obj = cls(
             context=executor.background,
             name=executor.step.step.name,
             description=executor.step.step.description,
             node=node,
-            llm_id=llm_id,
-            enable_thinking=enable_thinking,
+            llm_id=executor.func_call_llm_id,
             **kwargs,
         )
         await obj._set_input(executor)
