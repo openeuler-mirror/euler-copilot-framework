@@ -132,6 +132,7 @@ class QuestionRewrite(CorePattern):
                 2. 若用户当前提问内容与对话上文不相关，或你认为用户的提问内容已足够完整，请直接输出用户的提问内容。
                 3. 补全内容必须精准、恰当，不要编造任何内容。
                 4. 请输出补全后的问题，不要输出其他内容。
+                5. 要保留问题中的关键信息例如 代码片段、专业术语、数字、专有名词等。
                 输出格式样例：
                 ```json
                 {
@@ -188,6 +189,7 @@ class QuestionRewrite(CorePattern):
                 2. If the user's current question is unrelated to the previous dialogue or you believe the user's question is already complete enough, directly output the user's question.
                 3. The completed content must be precise and appropriate; do not fabricate any content.
                 4. Output only the completed question; do not include any other content.
+                5. Key information in the question such as code snippets, technical terms, numbers, proper nouns, etc. must be retained.
                 Example output format:
                 ```json
                 {
@@ -326,10 +328,10 @@ class QuestionRewrite(CorePattern):
             if leave_tokens >= 0:
                 qa = sub_qa + qa
             index += 2
-        # 想判断是否需要重写问题
-        need_rewrite = await self.is_need_rewrite(llm, qa, question, language)
-        if not need_rewrite:
-            return question
+        # # 想判断是否需要重写问题
+        # need_rewrite = await self.is_need_rewrite(llm, qa, question, language)
+        # if not need_rewrite:
+        #     return question
         messages = [{"role": "system", "content": _env.from_string(self.system_prompt[language]).render(
             history=qa, question=question)}, {"role": "user", "content": _env.from_string(self.user_prompt[language]).render()}]
         result = ""
