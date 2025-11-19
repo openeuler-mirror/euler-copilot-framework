@@ -23,6 +23,12 @@ from apps.schemas.config import FunctionCallConfig
 logger = logging.getLogger(__name__)
 
 
+class IsQuestionNeedRewrite(BaseModel):
+    """是否需要进行问题重写"""
+
+    need_rewrite: bool = Field(description="是否需要重写问题")
+
+
 class QuestionRewriteResult(BaseModel):
     """问题补全与重写结果"""
 
@@ -39,6 +45,65 @@ _env = SandboxedEnvironment(
 
 class QuestionRewrite(CorePattern):
     """问题补全与重写"""
+    is_need_rewrite_system_prompt: dict[LanguageType, str] = {
+        LanguageType.CHINESE: dedent(r"""
+        <instructions>
+          <instruction>
+            判断用户的提问内容是否需要根据历史对话进行补全与重写，历史对话被包含在<history>标签中，用户意图被包含在<question>标签中。
+            要求：
+              1. 若用户当前提问内容与对话上文不相关，或你认为用户的提问内容已足够完整，返回false；
+              2. 若用户当前提问内容需要根据历史对话进行补全与重写，返回true； 
+              3. 请使用JSON格式输出，参考下面给出的样例；不要包含任何XML标签，不要包含任何解释说明；
+            输出格式样例：
+            ```json
+            {
+              "need_rewrite": true/false
+            }
+            ```
+          </instruction>
+        </instructions>
+        <history>
+          {{history}}
+        </history>
+        <question>
+          {{question}}
+        </question>
+    """),
+        LanguageType.ENGLISH: dedent(r"""
+        <instructions>
+          <instruction>
+            Determine whether the user's question needs to be completed and rewritten based on the historical dialogue. The historical dialogue is contained within the <history> tags, and the user's intent is contained within the <question> tags.
+            Requirements:
+              1. If the user's current question is unrelated to the previous dialogue or you believe the user's question is already complete enough, return false;
+              2. If the user's current question needs to be completed and rewritten based on the historical dialogue, return true;
+              3. Please output in JSON format, referring to the example provided below; do not include any XML tags or any explanatory notes;
+            Example output format:
+            ```json
+            {
+              "need_rewrite": true/false
+            }
+            ```
+          </instruction>
+        </instructions>
+        <history>
+          {{history}}
+        </history>
+        <question>
+          {{question}}
+        </question>
+    """)
+    }
+    is_need_rewrite_user_prompt: dict[LanguageType, str] = {
+        LanguageType.CHINESE: r"""
+      <instructions>
+        请输出是否需要进行问题重写
+      </instructions>
+    """,
+        LanguageType.ENGLISH: r"""
+      <instructions>
+        Please output whether question rewriting is needed
+      </instructions>
+    """}
 
     def __init__(
         self,
@@ -185,6 +250,29 @@ class QuestionRewrite(CorePattern):
       """}
         return system_prompt, user_prompt
 
+    async def is_need_rewrite(self, llm: ReasoningLLM, history: list[dict], question: str, language: LanguageType) -> bool:
+        """判断是否需要重写问题"""
+        messages = [{"role": "system", "content": _env.from_string(self.is_need_rewrite_system_prompt[language]).render(
+            history=history, question=question)}, {"role": "user", "content": _env.from_string(self.is_need_rewrite_user_prompt[language]).render()}]
+        result = ""
+        async for chunk in llm.call(messages, streaming=False):
+            result += chunk
+        tmp_js = await JsonGenerator._parse_result_by_stack(result, IsQuestionNeedRewrite.model_json_schema())
+        if tmp_js is not None:
+            return tmp_js['need_rewrite']
+        json_gen = JsonGenerator(
+            query="判断是否需要进行问题重写",
+            conversation=messages,
+            schema=IsQuestionNeedRewrite.model_json_schema(),
+            func_call_llm=None
+        )
+        try:
+            is_need_rewrite_dict = IsQuestionNeedRewrite.model_validate(await json_gen.generate())
+            return is_need_rewrite_dict.need_rewrite
+        except Exception:
+            logger.exception("[QuestionRewrite] 是否需要重写问题判断失败，默认不重写")
+            return False
+
     async def generate(self, **kwargs) -> str:  # noqa: ANN003
         """问题补全与重写"""
         history = kwargs.get("history", [])
@@ -205,6 +293,15 @@ class QuestionRewrite(CorePattern):
             temperature=0.7,
         )
         llm = ReasoningLLM(llm_config)
+        func_call_llm_config = FunctionCallConfig(
+            provider=llm_info.provider,
+            endpoint=llm_info.openai_base_url,
+            api_key=llm_info.openai_api_key,
+            model=llm_info.model_name,
+            max_tokens=llm_info.max_tokens,
+            temperature=0.7,
+        )
+        func_call_llm = FunctionLLM(func_call_llm_config)
 
         leave_tokens = llm_info.max_tokens
         leave_tokens -= TokenCalculator().calculate_token_length(
@@ -229,10 +326,14 @@ class QuestionRewrite(CorePattern):
             if leave_tokens >= 0:
                 qa = sub_qa + qa
             index += 2
+        # 想判断是否需要重写问题
+        need_rewrite = await self.is_need_rewrite(llm, qa, question, language)
+        if not need_rewrite:
+            return question
         messages = [{"role": "system", "content": _env.from_string(self.system_prompt[language]).render(
             history=qa, question=question)}, {"role": "user", "content": _env.from_string(self.user_prompt[language]).render()}]
         result = ""
-        async for chunk in llm.call(messages, streaming=False, enable_thinking=self.enable_thinking):
+        async for chunk in llm.call(messages, streaming=False):
             result += chunk
         self.input_tokens = llm.input_tokens
         self.output_tokens = llm.output_tokens
@@ -241,16 +342,6 @@ class QuestionRewrite(CorePattern):
         if tmp_js is not None:
             return tmp_js['question']
         messages += [{"role": "assistant", "content": result}]
-        # 使用Function LLM进行JSON生成
-        func_call_llm_config = FunctionCallConfig(
-            provider=llm_info.provider,
-            endpoint=llm_info.openai_base_url,
-            api_key=llm_info.openai_api_key,
-            model=llm_info.model_name,
-            max_tokens=llm_info.max_tokens,
-            temperature=0.7,
-        )
-        func_call_llm = FunctionLLM(func_call_llm_config)
         json_gen = JsonGenerator(
             query="根据给定的背景信息，生成预测问题",
             conversation=messages,

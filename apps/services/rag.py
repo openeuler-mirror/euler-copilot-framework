@@ -374,23 +374,7 @@ Please generate a detailed, well-structured, and clearly formatted answer based 
         # 用于问题改写的LLM
         if history:
             try:
-                # 🔑 对于无应用对话（RAG场景），使用用户preference或系统默认的函数调用模型
-                # 降级顺序：用户偏好的function call模型 -> 系统默认function call模型 -> 系统默认chat模型
-                from apps.services.llm import LLMManager
-                function_call_model_id = await LLMManager.get_function_call_model_id(
-                    user_sub,
-                    app_llm_id=None  # 无应用对话不传递应用模型ID，使用用户preference或系统默认
-                )
-
-                # 如果没有找到函数调用模型，使用对话模型作为降级方案
-                if not function_call_model_id:
-                    logger.warning("[RAG] 未找到函数调用模型，使用对话模型进行问题改写")
-                    function_call_model_id = llm.id
-                else:
-                    logger.info(f"[RAG] 问题改写使用模型: {function_call_model_id}")
-
-                question_obj = QuestionRewrite(
-                    llm_id=function_call_model_id, enable_thinking=False)
+                question_obj = QuestionRewrite()
                 data.query = await question_obj.generate(
                     history=history, question=data.query, language=language
                 )
