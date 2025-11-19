@@ -84,7 +84,8 @@ async def get_context(user_sub: str, post_body: RequestData, n: int) -> tuple[li
     context = []
     facts = []
     for record in records:
-        record_data = RecordContent.model_validate_json(Security.decrypt(record.content, record.key))
+        record_data = RecordContent.model_validate_json(
+            Security.decrypt(record.content, record.key))
         context.append({"role": "user", "content": record_data.question})
         context.append({"role": "assistant", "content": record_data.answer})
         facts.extend(record_data.facts)
@@ -108,7 +109,7 @@ async def generate_facts(task: Task, question: str) -> tuple[Task, list[str]]:
 
 async def save_data(task: Task, user_sub: str, post_body: RequestData) -> str:
     """保存当前Executor、Task、Record等的数据
-    
+
     Returns:
         str: record_id
     """
@@ -126,7 +127,8 @@ async def save_data(task: Task, user_sub: str, post_body: RequestData) -> str:
                 extension=docs.get("extension", ""),
                 size=docs.get("size", 0),
                 associated="answer",
-                created_at=docs.get("created_at", round(datetime.now(UTC).timestamp(), 3)),
+                created_at=docs.get("created_at", round(
+                    datetime.now(UTC).timestamp(), 3)),
             )
         )
         if docs.get("order") is not None:
@@ -155,7 +157,8 @@ async def save_data(task: Task, user_sub: str, post_body: RequestData) -> str:
             offset += len(match.group(0))
 
     # 最后统一移除所有脚注
-    task.runtime.answer = foot_note_pattern.sub("", task.runtime.answer).strip()
+    task.runtime.answer = foot_note_pattern.sub(
+        "", task.runtime.answer).strip()
     record_content = RecordContent(
         question=task.runtime.question,
         answer=task.runtime.answer,
@@ -165,7 +168,8 @@ async def save_data(task: Task, user_sub: str, post_body: RequestData) -> str:
 
     try:
         # 加密Record数据
-        encrypt_data, encrypt_config = Security.encrypt(record_content.model_dump_json(by_alias=True))
+        encrypt_data, encrypt_config = Security.encrypt(
+            record_content.model_dump_json(by_alias=True))
     except Exception:
         logger.exception("[Scheduler] 问答对加密错误")
         return ""
@@ -205,7 +209,7 @@ async def save_data(task: Task, user_sub: str, post_body: RequestData) -> str:
     if not await RecordManager.check_group_id(task.ids.group_id, user_sub):
         record_group_id = await RecordManager.create_record_group(
             task.ids.group_id, user_sub, post_body.conversation_id
-         )
+        )
         if not record_group_id:
             logger.error("[Scheduler] 创建问答组失败")
             return ""
@@ -224,10 +228,12 @@ async def save_data(task: Task, user_sub: str, post_body: RequestData) -> str:
         await AppCenterManager.update_recent_app(user_sub, post_body.app.app_id)
 
     # 若状态为成功，删除Task
-    if not task.state or task.state.flow_status == FlowStatus.SUCCESS or task.state.flow_status == FlowStatus.ERROR or task.state.flow_status == FlowStatus.CANCELLED:
+    if not task.state or task.state.flow_status == FlowStatus.SUCCESS \
+        or task.state.flow_status == FlowStatus.ERROR \
+            or task.state.flow_status == FlowStatus.CANCELLED:
         await TaskManager.delete_task_by_task_id(task.id)
     else:
         await TaskManager.save_task(task.id, task)
-    
+
     # 返回 record_id
     return task.ids.record_id

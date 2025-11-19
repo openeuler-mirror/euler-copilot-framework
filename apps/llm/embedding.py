@@ -17,7 +17,6 @@ class Embedding:
         embedding = await cls.get_embedding(["测试文本"])
         return len(embedding[0])
 
-
     @classmethod
     async def _get_openai_embedding(cls, text: list[str]) -> list[list[float]]:
         """访问OpenAI兼容的Embedding API，获得向量化数据"""
@@ -79,11 +78,14 @@ class Embedding:
         """
         try:
             _provider = Config().get_config().embedding.provider
+            vector = None
             if _provider == "mindie":
-                return await cls._get_tei_embedding(text)
+                vector = await cls._get_tei_embedding(text)
             else:
-                return await cls._get_openai_embedding(text)
-
+                vector = await cls._get_openai_embedding(text)
+            while len(vector) < 1024:
+                vector.append(0.0)
+            return vector[:1024]
         except Exception as e:
             err = f"获取Embedding失败: {e}"
             logger.error(err)

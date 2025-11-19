@@ -60,15 +60,6 @@ class MCPAgentExecutor(BaseExecutor):
         description="流执行过程中的参数补充",
         alias="params",
     )
-    chat_llm_id: str = Field(
-        default=DefaultModelId.DEFAULT_CHAT_MODEL_ID.value,
-        description="聊天大模型ID",
-    )
-    enable_thinking: bool = Field(default=False, description="是否启用思考模式")
-    func_call_llm_id: str = Field(
-        default=DefaultModelId.DEFAULT_FUNCTION_CALL_MODEL_ID.value,
-        description="函数调用大模型ID",
-    )
     resoning_llm: ReasoningLLM = Field(
         description="推理大模型",
         default_factory=ReasoningLLM,

@@ -9,6 +9,9 @@ from jinja2 import BaseLoader
 from jinja2.sandbox import SandboxedEnvironment
 from pydantic import BaseModel, Field
 
+from apps.services.llm import LLMManager
+from apps.llm.function import FunctionLLM
+from apps.llm.adapters import get_provider_from_endpoint
 from apps.scheduler.call.core import CoreCall
 from apps.scheduler.call.facts.prompt import DOMAIN_PROMPT, FACTS_PROMPT
 from apps.scheduler.call.facts.schema import (
@@ -20,6 +23,7 @@ from apps.scheduler.call.facts.schema import (
 from apps.schemas.enum_var import CallOutputType, CallType, LanguageType
 from apps.schemas.pool import NodePool
 from apps.schemas.scheduler import CallInfo, CallOutputChunk, CallVars
+from apps.schemas.config import FunctionCallConfig
 from apps.services.user_domain import UserDomainManager
 
 if TYPE_CHECKING:
@@ -146,31 +150,24 @@ class FactsCall(CoreCall, input_model=FactsInput, output_model=FactsOutput):
         enable_thinking: bool = False,
     ) -> BaseModel:
         """使用配置的模型进行JSON生成"""
-        from apps.llm.function import FunctionLLM
 
         # 根据llm_id获取模型配置
-        llm_config = None
-        if llm_id:
-            from apps.services.llm import LLMManager
-            from apps.llm.adapters import get_provider_from_endpoint
-            from apps.schemas.config import LLMConfig
+        llm_info = await LLMManager.get_llm_by_id(llm_id)
+        if llm_info:
+            provider = llm_info.provider or get_provider_from_endpoint(
+                llm_info.openai_base_url)
 
-            llm_info = await LLMManager.get_llm_by_id(llm_id)
-            if llm_info:
-                provider = llm_info.provider or get_provider_from_endpoint(
-                    llm_info.openai_base_url)
-
-                llm_config = LLMConfig(
-                    provider=provider,
-                    endpoint=llm_info.openai_base_url,
-                    api_key=llm_info.openai_api_key,
-                    model=llm_info.model_name,
-                    max_tokens=llm_info.max_tokens,
-                    temperature=0.7,
-                )
+            llm_config = FunctionCallConfig(
+                provider=provider,
+                endpoint=llm_info.openai_base_url,
+                api_key=llm_info.openai_api_key,
+                model=llm_info.model_name,
+                max_tokens=llm_info.max_tokens,
+                temperature=0.7,
+            )
 
         # 初始化Function LLM
-        json_gen = FunctionLLM(llm_config) if llm_config else FunctionLLM()
+        json_gen = FunctionLLM(config=llm_config)
         result = await json_gen.call(
             messages=messages,
             schema=schema.model_json_schema(),

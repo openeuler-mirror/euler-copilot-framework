@@ -3,9 +3,12 @@
 
 from typing import TYPE_CHECKING, Any
 
+from apps.services.llm import LLMManager
+from apps.llm.adapters import get_provider_from_endpoint
 from apps.llm.patterns.core import CorePattern
 from apps.llm.reasoning import ReasoningLLM
 from apps.llm.snippet import convert_context_to_prompt, facts_to_prompt
+from apps.schemas.config import LLMConfig
 from apps.schemas.enum_var import LanguageType
 if TYPE_CHECKING:
     from apps.schemas.scheduler import ExecutorBackground
@@ -222,9 +225,6 @@ class ExecutorSummary(CorePattern):
         # 根据llm_id获取模型配置
         llm_config = None
         if self.llm_id:
-            from apps.services.llm import LLMManager
-            from apps.llm.adapters import get_provider_from_endpoint
-            from apps.schemas.config import LLMConfig
 
             llm_info = await LLMManager.get_llm_by_id(self.llm_id)
             logger.info(
