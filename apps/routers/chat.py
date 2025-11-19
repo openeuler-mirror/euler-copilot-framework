@@ -40,51 +40,54 @@ router = APIRouter(
 
 async def check_required_file_variables(flow_id: str, conversation_id: str, user_sub: str) -> list[str]:
     """检查必填文件变量是否已上传
-    
+
     Args:
         flow_id: 工作流ID
         conversation_id: 对话ID
         user_sub: 用户ID
-        
+
     Returns:
         list[str]: 缺失的必填文件变量名称列表
     """
     try:
         pool_manager = await get_pool_manager()
         missing_variables = []
-        
+
         # 获取对话变量模板（从flow pool获取）
         flow_pool = await pool_manager.get_flow_pool(flow_id)
         if not flow_pool:
             logger.warning(f"无法获取工作流池: flow_id={flow_id}")
             return missing_variables
-            
+
         # 获取所有对话变量模板
         conversation_templates = await flow_pool.list_conversation_templates()
         required_file_variables = []
-        
-        logger.info(f"检查工作流 {flow_id} 中的对话变量模板，总数: {len(conversation_templates)}")
-        
+
+        logger.info(
+            f"检查工作流 {flow_id} 中的对话变量模板，总数: {len(conversation_templates)}")
+
         # 筛选出必填的文件类型变量
         for template in conversation_templates:
-            logger.info(f"检查变量: {template.metadata.name}, 类型: {template.metadata.var_type}, 作用域: {template.metadata.scope}")
-            if (template.metadata.scope == VariableScope.CONVERSATION and 
-                template.metadata.var_type in [VariableType.FILE, VariableType.ARRAY_FILE]):
-                
-                logger.info(f"发现文件类型变量: {template.metadata.name}, 值: {template.value}")
+            logger.info(
+                f"检查变量: {template.metadata.name}, 类型: {template.metadata.var_type}, 作用域: {template.metadata.scope}")
+            if (template.metadata.scope == VariableScope.CONVERSATION and
+                    template.metadata.var_type in [VariableType.FILE, VariableType.ARRAY_FILE]):
+
+                logger.info(
+                    f"发现文件类型变量: {template.metadata.name}, 值: {template.value}")
                 # 检查是否为必填
                 if isinstance(template.value, dict) and template.value.get("required", False):
                     required_file_variables.append(template.metadata.name)
                     logger.info(f"变量 {template.metadata.name} 标记为必填")
                 else:
                     logger.info(f"变量 {template.metadata.name} 不是必填或值格式不正确")
-        
+
         if not required_file_variables:
             # 没有必填的文件变量
             return missing_variables
-            
+
         logger.info(f"发现必填文件变量: {required_file_variables}")
-        
+
         # 获取实际的对话变量池
         conversation_pool = await pool_manager.get_conversation_pool(conversation_id)
         if not conversation_pool:
@@ -96,19 +99,21 @@ async def check_required_file_variables(flow_id: str, conversation_id: str, user
                 flow_id = await DocumentManager._get_flow_id_for_conversation(conversation_id)
                 if flow_id:
                     conversation_pool = await pool_manager.create_conversation_pool(conversation_id, flow_id)
-                    logger.info(f"为检查创建了对话池: {conversation_id}, flow_id: {flow_id}")
+                    logger.info(
+                        f"为检查创建了对话池: {conversation_id}, flow_id: {flow_id}")
                 else:
-                    logger.warning(f"无法获取conversation {conversation_id} 的flow_id")
+                    logger.warning(
+                        f"无法获取conversation {conversation_id} 的flow_id")
                     return required_file_variables
             except Exception as e:
                 logger.error(f"创建对话池失败: {conversation_id} - {e}")
                 return required_file_variables
-            
+
         if not conversation_pool:
             # 如果仍然无法获取对话池，说明所有必填文件变量都缺失
             logger.warning(f"无法获取或创建对话池: {conversation_id}")
             return required_file_variables
-            
+
         # 检查每个必填文件变量是否已上传
         for var_name in required_file_variables:
             try:
@@ -135,10 +140,10 @@ async def check_required_file_variables(flow_id: str, conversation_id: str, user
                 logger.warning(f"检查必填文件变量 {var_name} 时出错: {e}")
                 # 出错时也认为是缺失的
                 missing_variables.append(var_name)
-        
+
         logger.info(f"缺失的必填文件变量: {missing_variables}")
         return missing_variables
-        
+
     except Exception as e:
         logger.error(f"检查必填文件变量失败: {e}")
         # 出错时返回空列表，允许继续执行
@@ -159,23 +164,19 @@ async def init_task(post_body: RequestData, user_sub: str, session_id: str) -> T
         )
         if not conversation:
             err = "[Chat] 用户没有权限访问该对话！"
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=err)
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN, detail=err)
         task_ids = await TaskManager.delete_tasks_by_conversation_id(post_body.conversation_id)
         await RecordManager.update_record_flow_status_to_cancelled_by_task_ids(task_ids)
         task = await TaskManager.init_new_task(user_sub=user_sub, session_id=session_id, post_body=post_body)
         task.runtime.question = post_body.question
         task.ids.group_id = post_body.group_id
         task.state.app_id = post_body.app.app_id if post_body.app else ""
-        
-        # 🔑 新增：如果请求中包含模型ID，使用该模型
-        if post_body.llm_id:
-            logger.info(f"[Chat] 使用请求中指定的模型: {post_body.llm_id}")
-            # 这里可能需要根据实际的Task结构来设置模型信息
-            # task.llm_id = post_body.llm_id  # 根据实际Task结构调整
     else:
         if not post_body.task_id:
             err = "[Chat] task_id 不可为空！"
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="task_id cannot be empty")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST, detail="task_id cannot be empty")
         task = await TaskManager.get_task_by_task_id(post_body.task_id)
         post_body.app = RequestDataApp(appId=task.state.app_id)
         post_body.group_id = task.ids.group_id
@@ -200,7 +201,7 @@ async def chat_generator(post_body: RequestData, user_sub: str, session_id: str)
 
         task = await init_task(post_body, user_sub, session_id)
         task.ids.active_id = active_id
-        
+
         # 检查必填文件变量
         flow_id_for_check = None
         if post_body.app:
@@ -209,18 +210,21 @@ async def chat_generator(post_body: RequestData, user_sub: str, session_id: str)
                 flow_id_for_check = post_body.app.flow_id
             elif post_body.app.app_id:
                 # 如果没有flow_id但有app_id，获取默认flow_id
-                logger.info(f"[Chat] flow_id为空，尝试通过app_id获取默认flow_id: {post_body.app.app_id}")
+                logger.info(
+                    f"[Chat] flow_id为空，尝试通过app_id获取默认flow_id: {post_body.app.app_id}")
                 flow_id_for_check = await AppCenterManager.get_default_flow_id(post_body.app.app_id)
                 if flow_id_for_check:
                     logger.info(f"[Chat] 获取到默认flow_id: {flow_id_for_check}")
                 else:
-                    logger.warning(f"[Chat] 无法获取app {post_body.app.app_id} 的默认flow_id")
-        
+                    logger.warning(
+                        f"[Chat] 无法获取app {post_body.app.app_id} 的默认flow_id")
+
         if flow_id_for_check:
-            logger.info(f"[Chat] 开始检查必填文件变量 - flow_id: {flow_id_for_check}, conversation_id: {task.ids.conversation_id}")
+            logger.info(
+                f"[Chat] 开始检查必填文件变量 - flow_id: {flow_id_for_check}, conversation_id: {task.ids.conversation_id}")
             missing_required_files = await check_required_file_variables(
-                flow_id_for_check, 
-                task.ids.conversation_id, 
+                flow_id_for_check,
+                task.ids.conversation_id,
                 user_sub
             )
             logger.info(f"[Chat] 必填文件检查结果 - 缺失变量: {missing_required_files}")
@@ -278,7 +282,7 @@ async def chat_generator(post_body: RequestData, user_sub: str, session_id: str)
         # 发送 record_id 给前端
         if record_id:
             yield f"data: [RECORD_ID]{record_id}\n\n"
-        
+
         yield "data: [DONE]\n\n"
 
     except Exception:
@@ -296,12 +300,14 @@ async def chat(
     session_id: Annotated[str, Depends(get_session)],
 ) -> StreamingResponse:
     """LLM流式对话接口"""
-    post_body.language = LanguageType.CHINESE if post_body.language in {"zh", LanguageType.CHINESE} else LanguageType.ENGLISH # 前端 Flow-Debug 传输为“zh"
+    post_body.language = LanguageType.CHINESE if post_body.language in {
+        "zh", LanguageType.CHINESE} else LanguageType.ENGLISH  # 前端 Flow-Debug 传输为“zh"
     # 问题黑名单检测
     if post_body.question is not None and not await QuestionBlacklistManager.check_blacklisted_questions(input_question=post_body.question):
         # 用户扣分
         await UserBlacklistManager.change_blacklisted_users(user_sub, -10)
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="question is blacklisted")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="question is blacklisted")
 
     res = chat_generator(post_body, user_sub, session_id)
     return StreamingResponse(

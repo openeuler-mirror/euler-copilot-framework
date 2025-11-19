@@ -106,7 +106,6 @@ async def push_rag_message(
 
         # 推送错误消息到前端
         try:
-            from apps.schemas.message import TextAddContent
             await queue.push_output(
                 task=task,
                 event_type=EventType.TEXT_ADD.value,
