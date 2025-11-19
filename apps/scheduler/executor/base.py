@@ -5,9 +5,10 @@ import logging
 from abc import ABC, abstractmethod
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 from apps.common.queue import MessageQueue
+from apps.llm.enum import DefaultModelId
 from apps.schemas.enum_var import EventType
 from apps.schemas.message import FlowStartContent, TextAddContent
 from apps.schemas.scheduler import ExecutorBackground
@@ -23,7 +24,15 @@ class BaseExecutor(BaseModel, ABC):
     msg_queue: MessageQueue
     background: ExecutorBackground
     question: str
-
+    chat_llm_id: str = Field(
+        default=DefaultModelId.DEFAULT_CHAT_MODEL_ID.value,
+        description="聊天大模型ID",
+    )
+    enable_thinking: bool = Field(default=False, description="是否启用思考模式")
+    func_call_llm_id: str = Field(
+        default=DefaultModelId.DEFAULT_FUNCTION_CALL_MODEL_ID.value,
+        description="函数调用大模型ID",
+    )
     model_config = ConfigDict(
         arbitrary_types_allowed=True,
         extra="allow",
@@ -43,12 +52,13 @@ class BaseExecutor(BaseModel, ABC):
 
         :param event_type: 事件类型
         :param data: 消息数据，如果是FLOW_START事件且data为None，则自动构建FlowStartContent
-        """        
+        """
         if event_type == EventType.TEXT_ADD.value and isinstance(data, str):
             # 处理空字符串的情况，避免TextAddContent验证失败
             if not data:
                 data = " "  # 使用一个空格作为占位符
-            data = TextAddContent(text=data).model_dump(exclude_none=True, by_alias=True)
+            data = TextAddContent(text=data).model_dump(
+                exclude_none=True, by_alias=True)
 
         if data is None:
             data = {}
@@ -56,18 +66,22 @@ class BaseExecutor(BaseModel, ABC):
             # 处理空字符串的情况，避免TextAddContent验证失败
             if not data:
                 data = " "  # 使用一个空格作为占位符
-            data = TextAddContent(text=data).model_dump(exclude_none=True, by_alias=True)
+            data = TextAddContent(text=data).model_dump(
+                exclude_none=True, by_alias=True)
 
-        logger.info(f"[BaseExecutor] 调用msg_queue.push_output - event_type: {event_type}")
+        logger.info(
+            f"[BaseExecutor] 调用msg_queue.push_output - event_type: {event_type}")
         try:
             await self.msg_queue.push_output(
                 self.task,
                 event_type=event_type,
-                data=data, # type: ignore[arg-type]
+                data=data,  # type: ignore[arg-type]
             )
-            logger.info(f"[BaseExecutor] msg_queue.push_output调用成功 - event_type: {event_type}")
+            logger.info(
+                f"[BaseExecutor] msg_queue.push_output调用成功 - event_type: {event_type}")
         except Exception as e:
-            logger.error(f"[BaseExecutor] msg_queue.push_output调用失败 - event_type: {event_type}, error: {e}")
+            logger.error(
+                f"[BaseExecutor] msg_queue.push_output调用失败 - event_type: {event_type}, error: {e}")
             raise
 
     @abstractmethod

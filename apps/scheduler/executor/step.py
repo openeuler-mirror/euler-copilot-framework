@@ -39,14 +39,6 @@ class StepExecutor(BaseExecutor):
     """工作流中步骤相关函数"""
 
     step: StepQueueItem
-
-    chat_llm_id: str = Field(description="对话使用的大模型ID",
-                             default=DefaultModelId.DEFAULT_CHAT_MODEL_ID.value)
-    enable_thinking: bool = Field(description="是否启用思维链", default=False)
-    func_call_llm_id: str = Field(
-        description="Function Call使用的大模型ID",
-        default=DefaultModelId.DEFAULT_FUNCTION_CALL_MODEL_ID.value,
-    )
     model_config = ConfigDict(
         arbitrary_types_allowed=True,
         extra="allow",

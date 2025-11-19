@@ -69,10 +69,6 @@ class Summary(CoreCall, input_model=DataBase, output_model=SummaryOutput):
         self, _input_data: dict[str, Any], language: LanguageType = LanguageType.CHINESE
     ) -> AsyncGenerator[CallOutputChunk, None]:
         """执行工具"""
-        import logging
-        logger = logging.getLogger(__name__)
-        logger.info(
-            f"[Summary] 使用模型ID: {self.llm_id}, 启用思维链: {self.enable_thinking}")
         summary_obj = ExecutorSummary(
             llm_id=self.llm_id,
             enable_thinking=self.enable_thinking,
