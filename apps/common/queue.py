@@ -14,8 +14,8 @@ from apps.schemas.message import (
     HeartbeatData,
     MessageBase,
     MessageExecutor,
-    MessageMetadata,
 )
+from apps.schemas.record import RecordMetadata
 from apps.schemas.task import TaskData
 
 from .encoder import UUIDEncoder
@@ -48,7 +48,7 @@ class MessageQueue:
         step_time = round((datetime.now(UTC).timestamp() - task.runtime.time), 3)
         step_time = max(step_time, 0)
 
-        metadata = MessageMetadata(
+        metadata = RecordMetadata(
             timeCost=step_time,
             inputTokens=llm.input_tokens,
             outputTokens=llm.output_tokens,
@@ -79,7 +79,7 @@ class MessageQueue:
         )
 
         await self._queue.put(
-            json.dumps(message.model_dump(by_alias=True, exclude_none=True), ensure_ascii=False, cls=UUIDEncoder),
+            json.dumps(message.model_dump(by_alias=True), ensure_ascii=False, cls=UUIDEncoder),
         )
 
     async def get(self) -> AsyncGenerator[str, None]:

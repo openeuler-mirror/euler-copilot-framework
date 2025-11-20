@@ -63,7 +63,6 @@ class RecordMetadata(BaseModel):
     input_tokens: int = Field(default=0, alias="inputTokens")
     output_tokens: int = Field(default=0, alias="outputTokens")
     time_cost: float = Field(default=0, alias="timeCost")
-    feature: dict[str, Any] = {}
 
 
 class RecordComment(BaseModel):

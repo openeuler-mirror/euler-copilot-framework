@@ -34,18 +34,15 @@ class MCPPlanner(MCPNodeBase):
     async def create_plan(self, tool_list: list[MCPTools], max_steps: int = 6) -> MCPPlan:
         """规划下一步的执行流程，并输出"""
         # 格式化Prompt
-        template = self._env.from_string(CREATE_PLAN[self._language])
+        template = self._env.from_string(await self._load_prompt("create_plan"))
         prompt = template.render(
             goal=self._user_goal,
             tools=tool_list,
             max_num=max_steps,
         )
 
-        # 构造标准 OpenAI Function 格式，使用预定义的 schema 并替换最大条数
         function_def = CREATE_MCP_PLAN_FUNCTION[self._language].copy()
-        # 深拷贝 parameters 以避免修改原始定义
         function_def["parameters"] = copy.deepcopy(function_def["parameters"])
-        # 替换最大条数限制
         function_def["parameters"]["properties"]["plans"]["maxItems"] = max_steps
 
         # 使用json_generator直接生成结构化plan
@@ -53,9 +50,8 @@ class MCPPlanner(MCPNodeBase):
             function=function_def,
             conversation=[
                 {"role": "system", "content": "You are a helpful assistant."},
-                {"role": "user", "content": prompt},
             ],
-            language=self._language,
+            prompt=prompt,
         )
         return MCPPlan.model_validate(plan)
 

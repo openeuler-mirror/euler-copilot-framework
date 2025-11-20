@@ -85,7 +85,7 @@ class QAExecutor(BaseExecutor):
         await self._load_history()
         self.task.state = ExecutorCheckpoint(
             taskId=self.task.metadata.id,
-            executorId=str(self.task.metadata.conversationId),
+            executorId="QAExecutor",
             executorName="QAExecutor",
             executorStatus=ExecutorStatus.RUNNING,
             stepStatus=StepStatus.RUNNING,
@@ -258,6 +258,10 @@ class QAExecutor(BaseExecutor):
         """运行QA"""
         _logger.info("[QAExecutor] 开始运行QA流程")
 
+        if not self.task.state:
+            error = Exception("[QAExecutor] task.state不存在，无法执行")
+            raise error
+
         rag_success = await self._execute_rag_step()
         if not rag_success:
             _logger.error("[QAExecutor] RAG检索步骤失败，终止执行")
@@ -274,4 +278,6 @@ class QAExecutor(BaseExecutor):
             return
 
         self.task.runtime.fullTime = round(datetime.now(UTC).timestamp(), 2) - self.task.runtime.time
+        self.task.state.executorStatus = ExecutorStatus.SUCCESS
+
         _logger.info("[QAExecutor] QA流程完成")

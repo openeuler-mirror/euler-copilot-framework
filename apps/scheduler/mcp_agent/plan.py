@@ -11,15 +11,6 @@ from jinja2.sandbox import SandboxedEnvironment
 
 from apps.llm import LLM, json_generator
 from apps.models import MCPTools
-from apps.scheduler.mcp_agent.base import MCPBase
-from apps.scheduler.mcp_agent.prompt import (
-    CREATE_NEXT_STEP_FUNCTION,
-    EVALUATE_TOOL_RISK_FUNCTION,
-    FINAL_ANSWER,
-    GET_FLOW_NAME_FUNCTION,
-    GET_MISSING_PARAMS,
-    IS_PARAM_ERROR_FUNCTION,
-)
 from apps.scheduler.slot.slot import Slot
 from apps.schemas.llm import LLMChunk
 from apps.schemas.mcp import (
@@ -29,6 +20,16 @@ from apps.schemas.mcp import (
     ToolRisk,
 )
 from apps.schemas.task import TaskData
+
+from .base import MCPBase
+from .func import (
+    CREATE_NEXT_STEP_FUNCTION,
+    EVALUATE_TOOL_RISK_FUNCTION,
+    FINAL_ANSWER,
+    GET_FLOW_NAME_FUNCTION,
+    GET_MISSING_PARAMS_FUNCTION,
+    IS_PARAM_ERROR_FUNCTION,
+)
 
 _env = SandboxedEnvironment(
     loader=BaseLoader,
@@ -135,7 +136,7 @@ class MCPPlanner(MCPBase):
     ) -> dict[str, Any]:
         """获取缺失的参数"""
         slot = Slot(schema=tool.inputSchema)
-        template = _env.from_string(GET_MISSING_PARAMS[self._language])
+        template = _env.from_string(await self._load_prompt("get_missing_params"))
         schema_with_null = slot.add_null_to_basic_types()
         prompt = template.render(
             tool_name=tool.toolName,
@@ -152,9 +153,8 @@ class MCPPlanner(MCPBase):
             function=function,
             conversation=[
                 {"role": "system", "content": "You are a helpful assistant."},
-                {"role": "user", "content": prompt},
             ],
-            language=self._language,
+            prompt=prompt,
         )
 
     async def generate_answer(self, task: TaskData, llm: LLM) -> AsyncGenerator[LLMChunk, None]:

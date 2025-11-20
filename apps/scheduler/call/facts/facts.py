@@ -78,6 +78,17 @@ class FactsCall(CoreCall, input_model=FactsInput, output_model=FactsOutput):
 
     async def _exec(self, input_data: dict[str, Any]) -> AsyncGenerator[CallOutputChunk, None]:
         """执行工具"""
+        # 若answer为空，则跳过整个Facts逻辑
+        if not self.answer or not self.answer.strip():
+            yield CallOutputChunk(
+                type=CallOutputType.DATA,
+                content=FactsOutput(
+                    facts=[],
+                    domain=[],
+                ).model_dump(by_alias=True, exclude_none=True),
+            )
+            return
+
         data = FactsInput(**input_data)
 
         # 加载并组装facts提示词
@@ -98,10 +109,20 @@ class FactsCall(CoreCall, input_model=FactsInput, output_model=FactsOutput):
         all_tags = await TagManager.get_all_tag()
         tag_names = [tag.name for tag in all_tags]
 
+        # 若tag_names为空，跳过Domain部分逻辑
+        if not tag_names:
+            yield CallOutputChunk(
+                type=CallOutputType.DATA,
+                content=FactsOutput(
+                    facts=facts_obj.facts,
+                    domain=[],
+                ).model_dump(by_alias=True, exclude_none=True),
+            )
+            return
+
         # 加载domain提示词模板
         domain_prompt_template_str = self._load_prompt("domain")
 
-        # 使用jinja2渲染DOMAIN_PROMPT
         jinja_env = SandboxedEnvironment(
             loader=BaseLoader(),
             autoescape=False,

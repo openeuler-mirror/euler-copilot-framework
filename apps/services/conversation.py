@@ -9,7 +9,7 @@ from typing import Any
 from sqlalchemy import and_, func, select
 
 from apps.common.postgres import postgres
-from apps.models import Conversation, UserAppUsage
+from apps.models import App, Conversation, UserAppUsage
 
 from .task import TaskManager
 
@@ -72,20 +72,28 @@ class ConversationManager:
         debug: bool = False,
     ) -> Conversation | None:
         """通过用户ID新建对话"""
-        conv = Conversation(
-            userId=user_id,
-            appId=app_id,
-            isTemporary=debug,
-            title=title,
-        )
-        # 使用PostgreSQL实现新建对话，并根据debug和usage进行更新
+        # 使用PostgreSQL实现新建对话
         try:
             async with postgres.session() as session:
-                await session.merge(conv)
+                # 如果提供了app_id，验证其是否存在
+                if app_id:
+                    app_exists = (await session.scalars(
+                        select(App.id).where(App.id == app_id),
+                    )).one_or_none()
+                    if not app_exists:
+                        logger.error("[ConversationManager] App ID %s 不存在", app_id)
+                        return None
+
+                conv = Conversation(
+                    userId=user_id,
+                    appId=app_id,
+                    isTemporary=debug,
+                    title=title,
+                )
+                session.add(conv)
                 await session.commit()
                 await session.refresh(conv)
 
-                # 如果是非调试模式且app_id存在，更新App的使用情况
                 if app_id and not debug:
                     app_obj = (await session.scalars(
                         select(UserAppUsage).where(
@@ -96,8 +104,6 @@ class ConversationManager:
                         ),
                     )).one_or_none()
                     if app_obj:
-                        # 假设App模型有last_used和usage_count字段（如没有请根据实际表结构调整）
-                        # 这里只做示例，实际字段名和类型请根据实际情况修改
                         app_obj.usageCount += 1
                         app_obj.lastUsed = datetime.now(tz=UTC)
                         await session.merge(app_obj)

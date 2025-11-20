@@ -124,7 +124,7 @@ class InitMixin:
         *,
         debug: bool = False,
     ) -> Conversation:
-        """判断并创建新对话"""
+        """判断并创建新对话，并将conversation ID写入task"""
         if app_id and not await AppCenterManager.validate_user_app_access(user_id, app_id):
             err = "Invalid app_id."
             raise RuntimeError(err)
@@ -137,4 +137,9 @@ class InitMixin:
         if not new_conv:
             err = "Create new conversation failed."
             raise RuntimeError(err)
+
+        # 将conversation ID写入task
+        self.task.metadata.conversationId = new_conv.id
+        _logger.info("[Scheduler] Conversation ID已写入Task: %s", new_conv.id)
+
         return new_conv

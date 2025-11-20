@@ -42,12 +42,6 @@ class MessageExecutor(BaseModel):
     step_status: StepStatus = Field(description="当前步骤状态", alias="stepStatus")
 
 
-class MessageMetadata(RecordMetadata):
-    """消息的元数据"""
-
-    feature: None = None
-
-
 class TextAddContent(BaseModel):
     """text.add消息的content"""
 
@@ -61,4 +55,4 @@ class MessageBase(HeartbeatData):
     conversation_id: uuid.UUID | None = Field(alias="conversationId", default=None)
     flow: MessageExecutor | None = None
     content: Any | None = Field(default=None, description="消息内容")
-    metadata: MessageMetadata
+    metadata: RecordMetadata

@@ -406,7 +406,7 @@ class MCPAgentExecutor(BaseExecutor):
         await self._push_message(EventType.STEP_OUTPUT, data=error_output)
         await self._add_error_to_context(self.task.state.stepStatus)
 
-    async def work(self) -> None:  # noqa: C901, PLR0912
+    async def work(self) -> None:  # noqa: C901, PLR0912, PLR0915
         """执行当前步骤"""
         if not self.task.state:
             err = "[MCPAgentExecutor] 任务状态不存在"
@@ -574,10 +574,6 @@ class MCPAgentExecutor(BaseExecutor):
             await self._push_message(EventType.STEP_OUTPUT, data=error_output)
             await self._add_error_to_context(self.task.state.stepStatus)
         finally:
-            # 统一推送EXECUTOR_STOP消息
-            if self.task.state.executorStatus != ExecutorStatus.RUNNING:
-                await self._push_message(EventType.EXECUTOR_STOP, data={})
-
             # 清理MCP客户端
             for mcp_service in self._mcp_list:
                 try:

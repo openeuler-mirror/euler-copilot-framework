@@ -9,8 +9,9 @@ from jinja2.sandbox import SandboxedEnvironment
 
 from apps.llm import json_generator
 from apps.models import LanguageType, MCPTools
-from apps.scheduler.mcp_agent.base import MCPBase
 from apps.schemas.task import TaskData
+
+from .base import MCPBase
 
 _logger = logging.getLogger(__name__)
 _env = SandboxedEnvironment(

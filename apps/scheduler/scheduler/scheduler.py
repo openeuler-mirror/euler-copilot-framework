@@ -68,6 +68,8 @@ class Scheduler(
         if main_task is None:
             return
 
+        await self._push_executor_start_message()
+
         done, pending = await asyncio.wait(
             [main_task, monitor],
             return_when=asyncio.FIRST_COMPLETED,
@@ -76,5 +78,23 @@ class Scheduler(
         if kill_event.is_set():
             await self._handle_task_cancellation(main_task)
 
+        await self._check_and_handle_executor_result()
+
+        if not self.task.metadata.conversationId:
+            _logger.info("[Scheduler] 创建新对话")
+            title = self.task.runtime.userInput[:50] if self.task.runtime.userInput else "新对话"
+            app_id = self.post_body.app.app_id if self.post_body.app else None
+
+            try:
+                await self._create_new_conversation(
+                    title=title,
+                    user_id=self.task.metadata.userId,
+                    app_id=app_id,
+                    debug=False,
+                )
+            except Exception:
+                _logger.exception("[Scheduler] 创建Conversation失败")
+
+        await self._push_executor_stop_message()
         await self._push_done_message()
         await self.queue.close()
