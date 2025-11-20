@@ -53,8 +53,6 @@ class FactsCall(CoreCall, input_model=FactsInput, output_model=FactsOutput):
     async def instance(cls, executor: "StepExecutor", node: NodePool | None, **kwargs: Any) -> Self:
         """初始化工具"""
         # 提取 llm_id 和 enable_thinking，避免重复传递
-        llm_id = kwargs.pop("llm_id", None)
-        enable_thinking = kwargs.pop("enable_thinking", False)
 
         obj = cls(
             answer=executor.task.runtime.answer,

@@ -163,7 +163,7 @@ class Pool:
             # 对于Plugin类型的节点，返回API插件Call类
             from apps.scheduler.call.plugin import Plugin
             return Plugin
-        
+
         # 从MongoDB里拿到数据
         call_collection = MongoDB.get_collection("call")
         call_db_data = await call_collection.find_one({"_id": call_id})

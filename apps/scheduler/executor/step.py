@@ -12,6 +12,7 @@ import jsonschema
 from pydantic import ConfigDict, Field
 
 from apps.scheduler.call.core import CoreCall
+from apps.scheduler.call.llm.llm import LLM
 from apps.scheduler.call.empty import Empty
 from apps.scheduler.call.facts.facts import FactsCall
 from apps.scheduler.call.reply.direct_reply import DirectReply
@@ -98,7 +99,7 @@ class StepExecutor(BaseExecutor):
         self.task.state.step_id = self.step.step_id  # type: ignore[arg-type]
         # type: ignore[arg-type]
         self.task.state.step_name = self.step.step.name
-
+        logger.error(f"StepExecutor初始化时，step.step.node: {self.step}")
         # 获取并验证Call类
         node_id = self.step.step.node
         # 获取node详情并存储
@@ -110,11 +111,9 @@ class StepExecutor(BaseExecutor):
 
         if self.node:
             call_cls = await StepExecutor.get_call_cls(self.node.call_id)
-            self._call_id = self.node.call_id
         else:
             # 可能是特殊的内置Node
             call_cls = await StepExecutor.get_call_cls(node_id)
-            self._call_id = node_id
 
         # 初始化Call Class，用户参数会覆盖node的参数
         params: dict[str, Any] = (
@@ -126,10 +125,10 @@ class StepExecutor(BaseExecutor):
                 params.update(input_params)
 
         # 对于LLM调用，注入enable_thinking参数
-        if self._call_id == SpecialCallType.LLM.value:
+        if call_cls == LLM:
             params["llm_id"] = self.chat_llm_id
             params['enable_thinking'] = self.background.enable_thinking
-
+        
         try:
             self.obj = await call_cls.instance(self, self.node, **params)
         except Exception:
