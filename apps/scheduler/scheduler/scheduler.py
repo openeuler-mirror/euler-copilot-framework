@@ -231,13 +231,13 @@ class Scheduler:
         if not app_metadata:
             logger.error("[Scheduler] 未找到Agent应用")
             return
+        chat_llm_id = app_metadata.llm_id
+        if not chat_llm_id:
+            chat_llm_id = DefaultModelId.DEFAULT_CHAT_MODEL_ID.value
+        func_call_llm_id = app_metadata.llm_id
+        if not func_call_llm_id:
+            func_call_llm_id = DefaultModelId.DEFAULT_FUNCTION_CALL_MODEL_ID.value
         if background.conversation and self.task.state.flow_status == FlowStatus.INIT:
-            chat_llm_id = app_metadata.llm_id
-            if not chat_llm_id:
-                chat_llm_id = DefaultModelId.DEFAULT_CHAT_MODEL_ID.value
-            func_call_llm_id = app_metadata.llm_id
-            if not func_call_llm_id:
-                func_call_llm_id = DefaultModelId.DEFAULT_FUNCTION_CALL_MODEL_ID.value
             try:
                 question_obj = QuestionRewrite(
                     llm_id=func_call_llm_id

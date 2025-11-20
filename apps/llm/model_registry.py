@@ -23,38 +23,42 @@ logger = logging.getLogger(__name__)
 
 class ModelRegistryV2:
     """模型注册表 V2 - 支持供应商能力继承"""
-    
+
     def __init__(self, providers_config_path: Optional[str] = None, models_config_path: Optional[str] = None):
         self._providers: Dict[str, ProviderCapabilities] = {}
         self._models: Dict[str, ModelConfig] = {}
-        
+
         # 加载配置
         if providers_config_path:
             self.load_providers_from_file(providers_config_path)
         if models_config_path:
             self.load_models_from_file(models_config_path)
-    
+
     def register_provider(self, provider_config: Dict[str, Any]):
         """注册供应商配置"""
         provider_name = provider_config["provider_name"]
-        
+
         # 解析各类型模型能力
         chat_caps = None
         if "chat_capabilities" in provider_config:
-            chat_caps = ChatCapabilities(**provider_config["chat_capabilities"])
-        
+            chat_caps = ChatCapabilities(
+                **provider_config["chat_capabilities"])
+
         embedding_caps = None
         if "embedding_capabilities" in provider_config:
-            embedding_caps = EmbeddingCapabilities(**provider_config["embedding_capabilities"])
-        
+            embedding_caps = EmbeddingCapabilities(
+                **provider_config["embedding_capabilities"])
+
         rerank_caps = None
         if "rerank_capabilities" in provider_config:
-            rerank_caps = RerankCapabilities(**provider_config["rerank_capabilities"])
-        
+            rerank_caps = RerankCapabilities(
+                **provider_config["rerank_capabilities"])
+
         audio_caps = None
         if "audio_capabilities" in provider_config:
-            audio_caps = AudioCapabilities(**provider_config["audio_capabilities"])
-        
+            audio_caps = AudioCapabilities(
+                **provider_config["audio_capabilities"])
+
         # 创建供应商配置对象
         provider = ProviderCapabilities(
             provider_name=provider_name,
@@ -67,32 +71,35 @@ class ModelRegistryV2:
             audio_capabilities=audio_caps,
             notes=provider_config.get("notes", "")
         )
-        
+
         self._providers[provider_name] = provider
         logger.info(f"注册供应商: {provider_name}")
-    
+
     def register_model(self, model_config: Dict[str, Any]):
         """注册模型配置"""
         provider = model_config["provider"]
         model_name = model_config["model_name"]
         key = f"{provider}:{model_name}"
-        
+
         # 解析模型类型
         model_type = ModelType(model_config["model_type"])
-        
+
         # 解析能力配置（支持继承）
         capabilities = None
         if "capabilities" in model_config:
             caps_config = model_config["capabilities"]
-            
+
             # 处理继承
             if isinstance(caps_config, dict) and "_inherit" in caps_config:
-                inherit_from = caps_config["_inherit"]  # 格式: "siliconflow.chat_capabilities"
-                capabilities = self._inherit_capabilities(inherit_from, caps_config, model_type)
+                # 格式: "siliconflow.chat_capabilities"
+                inherit_from = caps_config["_inherit"]
+                capabilities = self._inherit_capabilities(
+                    inherit_from, caps_config, model_type)
             else:
                 # 直接创建能力对象
-                capabilities = self._create_capabilities(model_type, caps_config)
-        
+                capabilities = self._create_capabilities(
+                    model_type, caps_config)
+
         # 创建模型配置对象
         model = ModelConfig(
             provider=provider,
@@ -104,10 +111,10 @@ class ModelRegistryV2:
             context_window=model_config.get("context_window"),
             notes=model_config.get("notes", "")
         )
-        
+
         self._models[key] = model
         logger.debug(f"注册模型: {key}")
-    
+
     def _inherit_capabilities(self, inherit_from: str, override_config: Dict[str, Any], model_type: ModelType) -> Any:
         """从供应商配置继承能力"""
         # 解析继承路径: "siliconflow.chat_capabilities"
@@ -115,13 +122,13 @@ class ModelRegistryV2:
         if len(parts) != 2:
             logger.warning(f"无效的继承路径: {inherit_from}")
             return None
-        
+
         provider_name, capability_name = parts
         provider = self._providers.get(provider_name)
         if not provider:
             logger.warning(f"未找到供应商: {provider_name}")
             return None
-        
+
         # 获取基础能力
         base_capabilities = None
         if capability_name == "chat_capabilities" and provider.chat_capabilities:
@@ -132,20 +139,20 @@ class ModelRegistryV2:
             base_capabilities = asdict(provider.rerank_capabilities)
         elif capability_name == "audio_capabilities" and provider.audio_capabilities:
             base_capabilities = asdict(provider.audio_capabilities)
-        
+
         if not base_capabilities:
             logger.warning(f"未找到能力配置: {inherit_from}")
             return None
-        
+
         # 合并覆盖配置
         merged_config = copy.deepcopy(base_capabilities)
         for key, value in override_config.items():
             if key != "_inherit":
                 merged_config[key] = value
-        
+
         # 创建能力对象
         return self._create_capabilities(model_type, merged_config)
-    
+
     def _create_capabilities(self, model_type: ModelType, config: Dict[str, Any]) -> Any:
         """创建能力对象"""
         try:
@@ -160,19 +167,20 @@ class ModelRegistryV2:
         except Exception as e:
             logger.error(f"创建能力对象失败: {e}")
             return None
-    
+
     def get_model_config(self, provider: str, model_name: str) -> Optional[ModelConfig]:
         """获取模型配置，支持智能推断"""
         key = f"{provider}:{model_name}"
-        
+
         # 1. 直接匹配
         if key in self._models:
             return self._models[key]
-        
+
         # 2. 相同模型名不同供应商的能力匹配
         model_config = self._find_by_model_name(model_name)
         if model_config:
-            logger.debug(f"通过模型名匹配找到配置: {provider}:{model_name} -> {model_config.provider}:{model_config.model_name}")
+            logger.debug(
+                f"通过模型名匹配找到配置: {provider}:{model_name} -> {model_config.provider}:{model_config.model_name}")
             # 返回一个新的配置，使用当前provider但保留原有能力
             return ModelConfig(
                 provider=provider,
@@ -184,26 +192,26 @@ class ModelRegistryV2:
                 context_window=model_config.context_window,
                 notes=f"基于{model_config.provider}:{model_config.model_name}推断"
             )
-        
+
         # 3. 系列推断逻辑
         model_config = self._infer_by_series(provider, model_name)
         if model_config:
             logger.debug(f"通过系列推断找到配置: {provider}:{model_name}")
             return model_config
-        
+
         return None
-    
+
     def _find_by_model_name(self, model_name: str) -> Optional[ModelConfig]:
         """通过模型名查找相同模型的配置信息"""
         for model_config in self._models.values():
             if model_config.model_name == model_name:
                 return model_config
         return None
-    
+
     def _infer_by_series(self, provider: str, model_name: str) -> Optional[ModelConfig]:
         """通过系列推断模型配置"""
         model_lower = model_name.lower()
-        
+
         # 定义系列匹配规则
         series_rules = [
             # OpenAI系列
@@ -285,7 +293,7 @@ class ModelRegistryV2:
                 "series_name": "ERNIE-4"
             },
         ]
-        
+
         # 查找匹配的系列
         for rule in series_rules:
             for pattern in rule["patterns"]:
@@ -294,7 +302,8 @@ class ModelRegistryV2:
                     for ref_model in rule["reference_models"]:
                         ref_config = self._find_by_model_name(ref_model)
                         if ref_config:
-                            logger.debug(f"系列推断: {model_name} 匹配 {rule['series_name']} 系列，参考模型: {ref_model}")
+                            logger.debug(
+                                f"系列推断: {model_name} 匹配 {rule['series_name']} 系列，参考模型: {ref_model}")
                             # 创建新的ModelConfig，保持原有provider和model_name
                             return ModelConfig(
                                 provider=provider,
@@ -306,15 +315,15 @@ class ModelRegistryV2:
                                 context_window=ref_config.context_window,
                                 notes=f"基于{rule['series_name']}系列推断，参考模型: {ref_model}"
                             )
-        
+
         return None
-    
+
     def get_model_capabilities(self, provider: str, model_name: str, model_type: ModelType = ModelType.CHAT) -> Optional[Any]:
         """获取模型能力"""
         model_config = self.get_model_config(provider, model_name)
         if model_config:
             return model_config.get_capabilities(self._providers.get(provider))
-        
+
         # 如果没有找到模型配置，尝试返回供应商默认能力
         provider_config = self._providers.get(provider)
         if provider_config:
@@ -326,45 +335,47 @@ class ModelRegistryV2:
                 return provider_config.rerank_capabilities
             elif model_type == ModelType.AUDIO:
                 return provider_config.audio_capabilities
-        
+
         return None
-    
+
     def get_provider_config(self, provider: str) -> Optional[ProviderCapabilities]:
         """获取供应商配置"""
         return self._providers.get(provider)
-    
+
     def list_models_by_provider(self, provider: str, model_type: Optional[ModelType] = None) -> List[ModelConfig]:
         """按供应商列出模型"""
-        models = [model for model in self._models.values() if model.provider == provider]
+        models = [model for model in self._models.values()
+                  if model.provider == provider]
         if model_type:
             models = [model for model in models if model.model_type == model_type]
         return models
-    
+
     def list_models_by_type(self, model_type: ModelType) -> List[ModelConfig]:
         """按类型列出模型"""
         return [model for model in self._models.values() if model.model_type == model_type]
-    
+
     def load_providers_from_file(self, filepath: str):
         """从文件加载供应商配置"""
         try:
             with open(filepath, 'r', encoding='utf-8') as f:
                 config = json.load(f)
-            
+
             if "providers" in config:
                 for provider_name, provider_config in config["providers"].items():
                     self.register_provider(provider_config)
-                logger.info(f"从 {filepath} 加载了 {len(config['providers'])} 个供应商配置")
+                logger.info(
+                    f"从 {filepath} 加载了 {len(config['providers'])} 个供应商配置")
         except FileNotFoundError:
             logger.warning(f"供应商配置文件不存在: {filepath}")
         except Exception as e:
             logger.error(f"加载供应商配置失败: {e}")
-    
+
     def load_models_from_file(self, filepath: str):
         """从文件加载模型配置"""
         try:
             with open(filepath, 'r', encoding='utf-8') as f:
                 config = json.load(f)
-            
+
             if "models" in config:
                 for key, model_config in config["models"].items():
                     # 跳过注释键
@@ -376,7 +387,7 @@ class ModelRegistryV2:
             logger.warning(f"模型配置文件不存在: {filepath}")
         except Exception as e:
             logger.error(f"加载模型配置失败: {e}")
-    
+
     def export_config(self) -> Dict[str, Any]:
         """导出配置"""
         return {
@@ -409,19 +420,19 @@ class ModelRegistryV2:
             },
             "version": "2.0"
         }
-    
+
     def get_model_info(self, provider: str, model_name: str) -> Optional['ModelInfo']:
         """
         获取模型信息（兼容旧版API）
-        
+
         该方法用于兼容旧代码，返回一个类似旧版ModelInfo的对象
-        
+
         :param provider: 供应商名称
         :param model_name: 模型名称
         :return: ModelInfo对象（兼容格式）或None
         """
         from dataclasses import dataclass
-        
+
         # 定义兼容的ModelInfo类
         @dataclass
         class ModelInfo:
@@ -435,10 +446,10 @@ class ModelRegistryV2:
             supports_structured_output: bool = False
             max_tokens_param: str = "max_tokens"
             notes: str = ""
-        
+
         # 从V2注册表获取配置
         model_config = self.get_model_config(provider, model_name)
-        
+
         if not model_config:
             # 如果没有找到模型配置，尝试返回供应商默认能力
             provider_config = self._providers.get(provider)
@@ -456,10 +467,11 @@ class ModelRegistryV2:
                     notes=provider_config.notes
                 )
             return None
-        
+
         # 获取chat能力（如果有的话）
-        capabilities = model_config.get_capabilities(self._providers.get(provider))
-        
+        capabilities = model_config.get_capabilities(
+            self._providers.get(provider))
+
         if capabilities and isinstance(capabilities, ChatCapabilities):
             return ModelInfo(
                 provider=model_config.provider,
@@ -472,7 +484,7 @@ class ModelRegistryV2:
                 max_tokens_param=capabilities.max_tokens_param,
                 notes=model_config.notes
             )
-        
+
         # 如果模型不是chat类型或没有能力信息，返回基本信息
         return ModelInfo(
             provider=model_config.provider,
@@ -487,11 +499,12 @@ def get_model_thinking_support(provider: str, model_name: str, registry: Optiona
     if registry is None:
         # 如果没有提供registry，使用全局实例
         registry = global_model_registry_v2
-    
-    capabilities = registry.get_model_capabilities(provider, model_name, ModelType.CHAT)
+
+    capabilities = registry.get_model_capabilities(
+        provider, model_name, ModelType.CHAT)
     if capabilities and isinstance(capabilities, ChatCapabilities):
         return capabilities.supports_thinking
-    
+
     return False
 
 
@@ -499,11 +512,12 @@ def get_model_can_toggle_thinking(provider: str, model_name: str, registry: Opti
     """获取模型是否支持开关思维链"""
     if registry is None:
         registry = global_model_registry_v2
-    
-    capabilities = registry.get_model_capabilities(provider, model_name, ModelType.CHAT)
+
+    capabilities = registry.get_model_capabilities(
+        provider, model_name, ModelType.CHAT)
     if capabilities and isinstance(capabilities, ChatCapabilities):
         return capabilities.can_toggle_thinking
-    
+
     return False
 
 
@@ -511,22 +525,24 @@ def get_model_can_toggle_thinking(provider: str, model_name: str, registry: Opti
 def initialize_global_registry(providers_path: Optional[str] = None, models_path: Optional[str] = None) -> ModelRegistryV2:
     """初始化全局注册表"""
     import os
-    
+
     # 默认配置路径
     if providers_path is None:
         # 优先从环境变量PROVIDERS_CONFIG读取
         providers_path = os.getenv("PROVIDERS_CONFIG")
         if providers_path is None:
             # 默认使用 Path(__file__).parents[2] / "config" / "providers.conf"
-            providers_path = str(Path(__file__).parents[2] / "config" / "providers.conf")
-    
+            providers_path = str(
+                Path(__file__).parents[2] / "config" / "providers.conf")
+
     if models_path is None:
         # 优先从环境变量MODELS_CONFIG读取
         models_path = os.getenv("MODELS_CONFIG")
         if models_path is None:
             # 默认使用 Path(__file__).parents[2] / "config" / "models.conf"
-            models_path = str(Path(__file__).parents[2] / "config" / "models.conf")
-    
+            models_path = str(
+                Path(__file__).parents[2] / "config" / "models.conf")
+
     registry = ModelRegistryV2(providers_path, models_path)
     return registry
 
@@ -535,4 +551,3 @@ def initialize_global_registry(providers_path: Optional[str] = None, models_path
 global_model_registry_v2 = initialize_global_registry()
 # 向后兼容的别名
 model_registry = global_model_registry_v2
-

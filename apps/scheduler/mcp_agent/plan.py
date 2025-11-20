@@ -246,7 +246,7 @@ class MCPPlanner(MCPBase):
             schema["properties"]["tool_id"]["enum"] = []
         for tool in tools:
             schema["properties"]["tool_id"]["enum"].append(tool.id)
-        step = await MCPPlanner._parse_result(result, schema)
+        step = await self._parse_result(result, schema)
         logger.info("[MCPPlanner] 创建下一步的执行步骤: %s", step)
         # 使用Step模型解析结果
 

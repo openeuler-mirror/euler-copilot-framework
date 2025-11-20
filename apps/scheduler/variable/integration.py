@@ -218,7 +218,6 @@ class VariableIntegration:
         """
         try:
             # 直接委托给VariablePoolManager执行重置逻辑
-            from apps.scheduler.variable.pool_manager import get_pool_manager
             pool_manager = await get_pool_manager()
 
             return await pool_manager.reset_conversation_variables_to_defaults(conversation_id)

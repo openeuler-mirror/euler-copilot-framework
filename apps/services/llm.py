@@ -3,7 +3,7 @@
 
 import logging
 
-
+from apps.llm.model_types import ModelType
 from apps.common.config import Config
 from apps.common.mongo import MongoDB
 from apps.schemas.config import EmbeddingConfig, RerankerConfig, LLMConfig, FunctionCallConfig
@@ -439,94 +439,6 @@ class LLMManager:
         return conversation_id
 
     @staticmethod
-    async def list_embedding_models(user_sub: str = "") -> list[LLMProviderInfo]:
-        """
-        获取embedding模型列表
-
-        :param user_sub: 用户ID，为空时返回系统级别的模型
-        :return: embedding模型列表
-        """
-        llm_collection = MongoDB.get_collection("llm")
-
-        query = {"type": "embedding", "user_sub": user_sub}
-
-        result = await llm_collection.find(query).sort({"created_at": 1}).to_list(length=None)
-
-        llm_list = []
-        for llm in result:
-            llm_item = LLMManager._create_llm_provider_info(llm)
-            llm_list.append(llm_item)
-        return llm_list
-
-    @staticmethod
-    async def list_all_embedding_models(user_sub: str) -> list[LLMProviderInfo]:
-        """
-        获取用户可访问的所有embedding模型列表（包括系统模型和用户模型）
-
-        :param user_sub: 用户ID
-        :return: embedding模型列表
-        """
-        llm_collection = MongoDB.get_collection("llm")
-
-        # 使用$or查询同时获取系统模型和用户模型
-        query = {
-            "type": "embedding",
-            "$or": [{"user_sub": ""}, {"user_sub": user_sub}]
-        }
-
-        result = await llm_collection.find(query).sort({"created_at": 1}).to_list(length=None)
-
-        llm_list = []
-        for llm in result:
-            llm_item = LLMManager._create_llm_provider_info(llm)
-            llm_list.append(llm_item)
-        return llm_list
-
-    @staticmethod
-    async def list_reranker_models(user_sub: str = "") -> list[LLMProviderInfo]:
-        """
-        获取reranker模型列表
-
-        :param user_sub: 用户ID，为空时返回系统级别的模型
-        :return: reranker模型列表
-        """
-        llm_collection = MongoDB.get_collection("llm")
-
-        query = {"type": "reranker", "user_sub": user_sub}
-
-        result = await llm_collection.find(query).sort({"created_at": 1}).to_list(length=None)
-
-        llm_list = []
-        for llm in result:
-            llm_item = LLMManager._create_llm_provider_info(llm)
-            llm_list.append(llm_item)
-        return llm_list
-
-    @staticmethod
-    async def list_all_reranker_models(user_sub: str) -> list[LLMProviderInfo]:
-        """
-        获取用户可访问的所有reranker模型列表（包括系统模型和用户模型）
-
-        :param user_sub: 用户ID
-        :return: reranker模型列表
-        """
-        llm_collection = MongoDB.get_collection("llm")
-
-        # 使用$or查询同时获取系统模型和用户模型
-        query = {
-            "type": "reranker",
-            "$or": [{"user_sub": ""}, {"user_sub": user_sub}]
-        }
-
-        result = await llm_collection.find(query).sort({"created_at": 1}).to_list(length=None)
-
-        llm_list = []
-        for llm in result:
-            llm_item = LLMManager._create_llm_provider_info(llm)
-            llm_list.append(llm_item)
-        return llm_list
-
-    @staticmethod
     async def _init_system_model(model_id: str, model_type: str, model_config: EmbeddingConfig | RerankerConfig | LLMConfig | FunctionCallConfig, title: str):
         """
         初始化系统模型的通用方法
@@ -551,7 +463,6 @@ class LLMManager:
             model_config, 'backend', '') or get_provider_from_endpoint(model_config.endpoint)
 
         # 根据模型类型选择正确的ModelType
-        from apps.llm.model_types import ModelType
         model_type_map = {
             "chat": ModelType.CHAT,
             "embedding": ModelType.EMBEDDING,
