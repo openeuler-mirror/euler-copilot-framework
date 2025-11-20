@@ -80,12 +80,14 @@ class Embedding:
             _provider = Config().get_config().embedding.provider
             vector = None
             if _provider == "mindie":
-                vector = await cls._get_tei_embedding(text)
+                vectors = await cls._get_tei_embedding(text)
             else:
-                vector = await cls._get_openai_embedding(text)
-            while len(vector) < 1024:
-                vector.append(0.0)
-            return vector[:1024]
+                vectors = await cls._get_openai_embedding(text)
+            for vector in vectors:
+                while len(vector) < 1024:
+                    vector.append(0.0)
+                vector = vector[:1024]
+            return vectors
         except Exception as e:
             err = f"获取Embedding失败: {e}"
             logger.error(err)

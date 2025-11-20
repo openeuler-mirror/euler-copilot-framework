@@ -10,6 +10,7 @@ from pydantic import Field
 
 from apps.llm.enum import DefaultModelId
 from apps.scheduler.call.llm.prompt import LLM_ERROR_PROMPT
+from apps.scheduler.variable.integration import VariableIntegration
 from apps.scheduler.executor.base import BaseExecutor
 from apps.scheduler.executor.step import StepExecutor
 from apps.scheduler.variable.integration import VariableIntegration
@@ -217,6 +218,25 @@ class FlowExecutor(BaseExecutor):
             for next_step in next_steps
         ]
 
+    async def reset_conv_var_to_defaults(self) -> None:
+        """重置对话变量池到默认值"""
+        try:
+            reset_success = await VariableIntegration.reset_conversation_variables_to_defaults(
+                conversation_id=self.task.ids.conversation_id,
+                flow_id=self.flow_id,
+                user_sub=self.task.ids.user_sub
+            )
+            if reset_success:
+                logger.info(
+                    f"[FlowExecutor] Flow {self.flow_id} 执行完成后，成功重置对话变量池到默认值")
+            else:
+                logger.warning(
+                    f"[FlowExecutor] Flow {self.flow_id} 执行完成后，重置对话变量池失败")
+        except Exception as e:
+            # 重置失败不应该影响Flow的正常完成
+            logger.error(
+                f"[FlowExecutor] Flow {self.flow_id} 执行完成后重置对话变量池时发生异常: {e}")
+
     async def run(self) -> None:
         """
         运行流，返回各步骤结果，直到无法继续执行
@@ -234,21 +254,6 @@ class FlowExecutor(BaseExecutor):
             step=self.flow.steps[self.task.state.step_id],
         )
 
-        # 🔑 获取function call场景使用的模型ID用于系统步骤（理解上下文、记忆存储）
-        # 降级顺序：应用配置模型 -> 用户偏好的function call模型 -> 系统默认function call模型 -> 系统默认chat模型
-        from apps.services.llm import LLMManager
-        function_call_model_id = await LLMManager.get_function_call_model_id(
-            self.task.ids.user_sub,
-            app_llm_id=self.llm_id  # 传递应用配置的模型ID（最高优先级）
-        )
-        # 如果仍然没有找到模型（极端情况），使用应用配置的模型
-        if not function_call_model_id:
-            function_call_model_id = self.llm_id
-            logger.warning("[FlowExecutor] 未找到任何模型，使用应用配置的模型用于系统步骤")
-        else:
-            logger.info(
-                f"[FlowExecutor] 系统步骤（理解上下文、记忆存储）使用模型: {function_call_model_id}")
-
         # 头插开始前的系统步骤，并执行
         for step in FIXED_STEPS_BEFORE_START:
             # 为系统步骤添加function call模型信息
@@ -256,10 +261,6 @@ class FlowExecutor(BaseExecutor):
                                  step[LanguageType.CHINESE])
             # 将llm_id和enable_thinking添加到step的params中
             step_data_with_params = step_data.model_copy()
-            step_data_with_params.params = {
-                "llm_id": function_call_model_id,  # 使用function call模型
-                "enable_thinking": self.enable_thinking,
-            }
             self.step_queue.append(
                 StepQueueItem(
                     step_id=str(uuid.uuid4()),
@@ -336,36 +337,12 @@ class FlowExecutor(BaseExecutor):
             # type: ignore[arg-type]
             self.task.state.flow_status = FlowStatus.SUCCESS
 
-        # 重置Conversation变量池
-        try:
-            from apps.scheduler.variable.integration import VariableIntegration
-            reset_success = await VariableIntegration.reset_conversation_variables_to_defaults(
-                conversation_id=self.task.ids.conversation_id,
-                flow_id=self.flow_id,
-                user_sub=self.task.ids.user_sub
-            )
-            if reset_success:
-                logger.info(
-                    f"[FlowExecutor] Flow {self.flow_id} 执行完成后，成功重置对话变量池到默认值")
-            else:
-                logger.warning(
-                    f"[FlowExecutor] Flow {self.flow_id} 执行完成后，重置对话变量池失败")
-        except Exception as e:
-            # 重置失败不应该影响Flow的正常完成
-            logger.error(
-                f"[FlowExecutor] Flow {self.flow_id} 执行完成后重置对话变量池时发生异常: {e}")
-
         # 尾插运行结束后的系统步骤
         for step in FIXED_STEPS_AFTER_END:
             # 为系统步骤添加function call模型信息
             step_data = step.get(self.task.language,
                                  step[LanguageType.CHINESE])
-            # 将llm_id和enable_thinking添加到step的params中
             step_data_with_params = step_data.model_copy()
-            step_data_with_params.params = {
-                "llm_id": function_call_model_id,  # 使用function call模型
-                "enable_thinking": self.enable_thinking,
-            }
             self.step_queue.append(
                 StepQueueItem(
                     step_id=str(uuid.uuid4()),
@@ -382,3 +359,5 @@ class FlowExecutor(BaseExecutor):
             await self.push_message(EventType.FLOW_FAILED.value)
         else:
             await self.push_message(EventType.FLOW_SUCCESS.value)
+
+        await self.reset_conv_var_to_defaults()

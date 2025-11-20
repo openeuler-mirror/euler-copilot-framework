@@ -101,7 +101,8 @@ class MetadataLoader:
         if isinstance(metadata, dict):
             try:
                 # 检查类型匹配
-                metadata_class: type[AppMetadata | ServiceMetadata] = class_dict[metadata_type]
+                metadata_class: type[AppMetadata |
+                                     ServiceMetadata] = class_dict[metadata_type]
                 data = metadata_class(**metadata)
             except Exception as e:
                 err = "[MetadataLoader] metadata.yaml格式错误"
@@ -117,4 +118,5 @@ class MetadataLoader:
             allow_unicode=True,
             sort_keys=False,
         )
-        await resource_path.write_text(yaml_dict)
+        with open(resource_path, "w", encoding="utf-8", errors="ignore") as f:
+            f.write(yaml_dict)

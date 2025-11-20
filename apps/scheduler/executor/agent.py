@@ -94,7 +94,7 @@ class MCPAgentExecutor(BaseExecutor):
             max_tokens=reasoning_llm.max_tokens,
             temperature=0.7
         )
-        self.resoning_llm = ReasoningLLM(config=reasoning_llm_config)
+        self.resoning_llm = ReasoningLLM(llm_config=reasoning_llm_config)
         function_call_llm = await LLMManager.get_llm_by_id(self.func_call_llm_id)
         function_call_llm_config = FunctionCallConfig(
             provider=function_call_llm.provider,
@@ -104,7 +104,8 @@ class MCPAgentExecutor(BaseExecutor):
             max_tokens=function_call_llm.max_tokens,
             temperature=0.0
         )
-        self.function_call_llm = FunctionLLM(config=function_call_llm_config)
+        self.function_call_llm = FunctionLLM(
+            llm_config=function_call_llm_config)
 
     async def init_mcp_plan_and_host(self) -> None:
         """初始化MCP的Host和Planner"""
@@ -222,7 +223,7 @@ class MCPAgentExecutor(BaseExecutor):
             # 获取第一个输入参数
             mcp_tool = self.tools[self.task.state.tool_id]
             self.task.state.current_input = await self.mcp_host._get_first_input_params(
-                mcp_tool, self.task.runtime.question, self.task.state.step_description, self.task, self.resoning_llm
+                mcp_tool, self.task.runtime.question, self.task.state.step_description, self.task
             )
         else:
             # 获取后续输入参数
@@ -249,7 +250,7 @@ class MCPAgentExecutor(BaseExecutor):
         # 发送确认消息
         mcp_tool = self.tools[self.task.state.tool_id]
         confirm_message = await self.mcp_planner.get_tool_risk(
-            mcp_tool, self.task.state.current_input, "", self.resoning_llm, self.task.language
+            mcp_tool, self.task.state.current_input, "", self.task.language
         )
         await self.update_tokens()
         await self.push_message(
@@ -358,7 +359,6 @@ class MCPAgentExecutor(BaseExecutor):
             mcp_tool,
             self.task.state.current_input,
             self.task.state.error_message,
-            self.resoning_llm,
             self.task.language,
         )
         await self.update_tokens()
@@ -366,7 +366,6 @@ class MCPAgentExecutor(BaseExecutor):
             error_message=self.task.state.error_message,
             tool=mcp_tool,
             input_params=self.task.state.current_input,
-            reasoning_llm=self.resoning_llm,
             language=self.task.language,
         )
         await self.push_message(
@@ -406,7 +405,7 @@ class MCPAgentExecutor(BaseExecutor):
             step = None
             for i in range(max_retry):
                 try:
-                    step = await self.mcp_planner.create_next_step(self.task.runtime.question, history, self.tool_list, self.resoning_llm, self.task.language)
+                    step = await self.mcp_planner.create_next_step(self.task.runtime.question, history, self.tool_list, self.task.language)
                     if step.tool_id in self.tools.keys():
                         break
                 except Exception as e:
@@ -550,7 +549,6 @@ class MCPAgentExecutor(BaseExecutor):
                         mcp_tool,
                         self.task.state.step_description,
                         self.task.state.current_input,
-                        self.resoning_llm,
                         self.task.language
                     )
                     if is_param_error.is_param_error:
@@ -594,7 +592,6 @@ class MCPAgentExecutor(BaseExecutor):
         async for chunk in self.mcp_planner.generate_answer(
             self.task.runtime.question,
             (await self.mcp_host.assemble_memory(self.task)),
-            self.resoning_llm,
             self.task.language,
             enable_thinking=self.enable_thinking
         ):
@@ -618,10 +615,10 @@ class MCPAgentExecutor(BaseExecutor):
             try:
                 self.task.state.flow_id = str(uuid.uuid4())
                 self.task.state.flow_name = (await self.mcp_planner.get_flow_name(
-                    self.task.runtime.question, self.resoning_llm, self.task.language
+                    self.task.runtime.question, self.task.language
                 )).flow_name
                 flow_risk = await self.mcp_planner.get_flow_excute_risk(
-                    self.task.runtime.question, self.tool_list, self.resoning_llm, self.task.language
+                    self.task.runtime.question, self.tool_list, self.task.language
                 )
                 auto_execute = await self.get_auto_execute()
                 if auto_execute:
