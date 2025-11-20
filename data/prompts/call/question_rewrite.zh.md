@@ -55,4 +55,6 @@
 
 ---
 
-现在开始响应用户指令，调用 `rewrite_question` 工具完成问题重写：
+现在开始响应用户指令，调用 `rewrite_question` 工具完成问题重写。
+
+用户问题：{{ question }}
