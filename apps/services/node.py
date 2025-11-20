@@ -29,7 +29,7 @@ class NodeManager:
             return SpecialCallType.EMPTY.value
         elif node_id == SpecialCallType.PLUGIN.value:
             return SpecialCallType.PLUGIN.value
-        
+
         # 其他节点类型：从数据库查询
         node_collection = MongoDB.get_collection("node")
         node = await node_collection.find_one({"_id": node_id}, {"call_id": 1})
@@ -72,12 +72,14 @@ class NodeManager:
                     # 如果在known_params中找到匹配的键，更新default值
                     properties[key]["default"] = known_params[key]
                 # 递归处理嵌套的schema
-                properties[key] = NodeManager.merge_params_schema(value, known_params)
+                properties[key] = NodeManager.merge_params_schema(
+                    value, known_params)
 
         elif params_schema.get("type") == "array":
             items = params_schema.get("items", {})
             # 递归处理数组项
-            params_schema["items"] = NodeManager.merge_params_schema(items, known_params)
+            params_schema["items"] = NodeManager.merge_params_schema(
+                items, known_params)
 
         return params_schema
 
@@ -89,7 +91,7 @@ class NodeManager:
         if node_id == SpecialCallType.EMPTY.value:
             # 如果是空节点，返回空Schema
             return {}, {}
-        
+
         if node_id == SpecialCallType.PLUGIN.value:
             # 如果是Plugin节点，返回API插件的默认Schema
             return {
@@ -123,7 +125,7 @@ class NodeManager:
                     "description": "HTTP状态码"
                 }
             }
-        
+
         # 查找Node信息
         logger.info("[NodeManager] 获取节点 %s", node_id)
         node_collection = MongoDB.get_collection("node")
@@ -147,7 +149,7 @@ class NodeManager:
         output_schema = call_class.output_model.model_json_schema(  # type: ignore[attr-defined]
             override=node_data.override_output if node_data.override_output else {},
         )
-        
+
         # 特殊处理：对于循环节点，直接返回扁平化的输出参数结构
         if call_id == "Loop":
             # 直接使用正确的扁平化格式，避免依赖JSON Schema转换
@@ -157,7 +159,7 @@ class NodeManager:
                     "description": "实际执行的循环次数"
                 },
                 "stop_reason": {
-                    "type": "string", 
+                    "type": "string",
                     "description": "停止原因"
                 },
                 "variables": {
@@ -173,9 +175,10 @@ class NodeManager:
                     "description": "提取的文本内容"
                 }
             }
-        
+
         # 返回参数Schema
         return (
-            NodeManager.merge_params_schema(call_class.model_json_schema(), node_data.known_params or {}),
+            NodeManager.merge_params_schema(
+                call_class.model_json_schema(), node_data.known_params or {}),
             output_schema,
         )

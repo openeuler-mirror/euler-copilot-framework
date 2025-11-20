@@ -79,8 +79,12 @@ class Suggestion(CoreCall, input_model=SuggestionInput, output_model=SuggestionO
                 "content": executor.task.runtime.answer,
             },
         ]
+        if "llm_id" in kwargs and kwargs["llm_id"]:
+            if not (await LLMManager.is_llm_exists(kwargs["llm_id"])):
+                kwargs["llm_id"] = executor.func_call_llm_id
+        else:
+            kwargs["llm_id"] = executor.func_call_llm_id
         obj = cls(
-            llm_id=executor.func_call_llm_id,
             name=executor.step.step.name,
             description=executor.step.step.description,
             node=node,
@@ -138,7 +142,7 @@ class Suggestion(CoreCall, input_model=SuggestionInput, output_model=SuggestionO
 
     async def get_func_llm_id(self) -> FunctionLLM:
         """获取用于函数调用的LLM ID"""
-        func_call_llm = await LLMManager.get_llm_by_id(self.func_llm_id)
+        func_call_llm = await LLMManager.get_llm_by_id(self.llm_id)
         func_call_llm_config = FunctionCallConfig(
             provider=func_call_llm.provider,
             endpoint=func_call_llm.openai_base_url,

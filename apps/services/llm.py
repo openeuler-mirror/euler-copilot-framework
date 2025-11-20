@@ -129,6 +129,18 @@ class LLMManager:
         return result.get("llm", {}).get("llm_id", "")
 
     @staticmethod
+    async def is_llm_exists(llm_id: str) -> bool:
+        """
+        检查大模型是否存在
+
+        :param llm_id: 大模型ID
+        :return: 是否存在
+        """
+        llm_collection = MongoDB.get_collection("llm")
+        result = await llm_collection.find_one({"_id": llm_id})
+        return result is not None
+
+    @staticmethod
     async def get_llm_by_id(llm_id: str) -> LLM:
         """
         通过ID获取大模型

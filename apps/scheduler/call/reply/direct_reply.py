@@ -141,7 +141,9 @@ class DirectReply(CoreCall, input_model=DirectReplyInput, output_model=DirectRep
             # 首先返回文本内容
             yield CallOutputChunk(
                 type=CallOutputType.TEXT,
-                content=final_answer
+                content=DirectReplyOutput(
+                    message=final_answer
+                ).model_dump(exclude_none=True, by_alias=True)
             )
 
             # 处理附件
