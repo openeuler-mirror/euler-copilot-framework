@@ -12,13 +12,13 @@ from mcp.types import TextContent
 
 from apps.llm import LLM, json_generator
 from apps.models import LanguageType, MCPTools
-from apps.scheduler.mcp.prompt import MEMORY_TEMPLATE
 from apps.scheduler.pool.mcp.client import MCPClient
 from apps.scheduler.pool.mcp.pool import mcp_pool
 from apps.schemas.mcp import MCPContext, MCPPlanItem
 from apps.services.mcp_service import MCPServiceManager
 
 from .base import MCPNodeBase
+from .prompt import MEMORY_TEMPLATE
 
 logger = logging.getLogger(__name__)
 

@@ -84,7 +84,7 @@ class FlowExecutor(BaseExecutor):
             self.task.state = ExecutorCheckpoint(
                 taskId=self.task.metadata.id,
                 appId=self.post_body_app.app_id,
-                executorId=str(self.flow_id),
+                executorId=self.flow_id,
                 executorName=self.flow.name,
                 executorStatus=ExecutorStatus.RUNNING,
                 stepStatus=StepStatus.RUNNING,

@@ -21,7 +21,7 @@ class Conversation(Base):
     userId: Mapped[str] = mapped_column(String(50), ForeignKey("framework_user.id"), nullable=False)  # noqa: N815
     """用户ID"""
     appId: Mapped[uuid.UUID | None] = mapped_column(  # noqa: N815
-        UUID(as_uuid=True), ForeignKey("framework_app.id"), nullable=True,
+        UUID(as_uuid=True), nullable=True,
     )
     """对话使用的App的ID"""
     title: Mapped[str] = mapped_column(String(255), default=NEW_CHAT, nullable=False)

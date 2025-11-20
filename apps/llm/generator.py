@@ -67,20 +67,7 @@ class JsonGenerator:
         conversation: list[dict[str, str]],
         retry_messages: list[dict[str, str]] | None = None,
     ) -> list[dict[str, str]]:
-        """
-        构建messages，拼接顺序：真实对话记录 - Prompt - 重试记录
-
-        Args:
-            prompt: 当前的prompt
-            conversation: 真实的对话记录
-            retry_messages: 重试过程中产生的记录（不会被裁剪）
-
-        Returns:
-            拼接后的消息列表
-
-        """
-        retry_messages = retry_messages or []
-
+        """构建messages，拼接顺序：真实对话记录 - Prompt - 重试记录"""
         messages = [*conversation, {"role": "user", "content": prompt}]
 
         if self._llm is not None:
@@ -123,8 +110,7 @@ class JsonGenerator:
                     token_count + retry_token_count,
                 )
 
-        messages.extend(retry_messages)
-
+        messages.extend(retry_messages or [])
         return messages
 
     async def _single_trial(
@@ -246,7 +232,7 @@ class JsonGenerator:
             count += 1
             try:
                 return await self._single_trial(function, prompt, conversation, retry_messages)
-            except JsonValidationError as e:
+            except (JsonValidationError, json.JSONDecodeError) as e:
                 _logger.exception(
                     "[JSONGenerator] 第 %d/%d 次尝试失败",
                     count,
@@ -257,7 +243,7 @@ class JsonGenerator:
                     err_info = err_info.split("\n\n")[0]
 
                     function_name = function["name"]
-                    result_json = json.dumps(e.result, ensure_ascii=False)
+                    result_json = json.dumps(e, ensure_ascii=False)
 
                     retry_messages.append({
                         "role": "assistant",

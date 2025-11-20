@@ -5,6 +5,7 @@ import asyncio
 import logging
 import uuid
 
+from apps.models import ExecutorStatus
 from apps.schemas.request_data import RequestData
 from apps.schemas.task import TaskData
 from apps.services.activity import Activity
@@ -68,3 +69,24 @@ class UtilMixin:
         except Exception:
             _logger.exception("[Scheduler] 活动监控过程中发生错误")
             kill_event.set()
+
+    async def _check_and_handle_executor_result(self) -> None:
+        """检查并处理executor执行结果"""
+        if not self.task.runtime.fullAnswer or self.task.runtime.fullAnswer.strip() == "":
+            _logger.warning("[Scheduler] fullAnswer为空，设置executor状态为ERROR")
+            if self.task.state:
+                self.task.state.executorStatus = ExecutorStatus.ERROR
+                if not self.task.state.errorMessage:
+                    self.task.state.errorMessage = {
+                        "err_msg": "执行完成但未生成任何答案",
+                        "data": {},
+                    }
+
+        if self.task.state and self.task.state.executorStatus == ExecutorStatus.ERROR:
+            error_msg = "Executor执行失败"
+            if self.task.state.errorMessage:
+                error_msg = f"Executor执行失败: {self.task.state.errorMessage.get('err_msg', '未知错误')}"
+            _logger.error("[Scheduler] %s", error_msg)
+            raise RuntimeError(error_msg)
+
+        _logger.info("[Scheduler] Executor执行成功")

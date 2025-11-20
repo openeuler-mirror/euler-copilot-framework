@@ -161,136 +161,24 @@ IS_PARAM_ERROR_FUNCTION: dict[LanguageType, dict] = {
     },
 }
 
-# 获取缺失的参数的json结构体
-GET_MISSING_PARAMS: dict[LanguageType, str] = {
-    LanguageType.CHINESE: dedent(
-        r"""
-            根据工具执行报错,识别缺失或错误的参数,并将其设置为null,保留正确参数的值。
-            **请调用 `get_missing_parameters` 工具返回结果**。
-
-            ## 任务要求
-            - **分析报错信息**:定位哪些参数导致了错误
-            - **标记问题参数**:将缺失或错误的参数值设为`null`
-            - **保留有效值**:未出错的参数保持原值
-            - **调用工具返回**:必须调用`get_missing_parameters`工具,将参数JSON作为工具入参返回
-
-            ## 示例
-
-            **工具**: `mysql_analyzer` - 分析MySQL数据库性能
-
-            **当前入参**:
-            ```json
-            {"host": "192.0.0.1", "port": 3306, "username": "root", "password": "password"}
-            ```
-
-            **参数Schema**:
-            ```json
-            {
-              "properties": {
-                "host": {"anyOf": [{"type": "string"}, {"type": "null"}], "description": "主机地址"},
-                "port": {"anyOf": [{"type": "integer"}, {"type": "null"}], "description": "端口号"},
-                "username": {"anyOf": [{"type": "string"}, {"type": "null"}], "description": "用户名"},
-                "password": {"anyOf": [{"type": "string"}, {"type": "null"}], "description": "密码"}
-              },
-              "required": ["host", "port", "username", "password"]
-            }
-            ```
-
-            **运行报错**: `password is not correct`
-
-            **应调用工具**:
-            ```
-            get_missing_parameters({"host": "192.0.0.1", "port": 3306, "username": null, "password": null})
-            ```
-
-            > 分析:报错提示密码错误,因此将`password`设为`null`;同时将`username`也设为`null`以便用户重新提供凭证
-
-            ---
-
-            ## 当前任务
-
-            **工具**: `{{tool_name}}` - {{tool_description}}
-
-            **当前入参**:
-            ```json
-            {{input_param}}
-            ```
-
-            **参数Schema**:
-            ```json
-            {{input_schema}}
-            ```
-
-            **运行报错**: {{error_message}}
-
-            **请调用 `get_missing_parameters` 工具返回分析结果**。
-        """,
-    ),
-    LanguageType.ENGLISH: dedent(
-        r"""
-            Based on tool execution errors, identify missing or incorrect parameters, set them to null, and retain \
-correct parameter values.
-            **Please call the `get_missing_parameters` tool to return the result**.
-
-            ## Task Requirements
-            - **Analyze error messages**: Identify which parameters caused the error
-            - **Mark problematic parameters**: Set missing or incorrect parameter values to `null`
-            - **Retain valid values**: Keep original values for parameters that didn't cause errors
-            - **Call tool to return**: Must call the `get_missing_parameters` tool with the parameter JSON as input
-
-            ## Example
-
-            **Tool**: `mysql_analyzer` - Analyze MySQL database performance
-
-            **Current Input**:
-            ```json
-            {"host": "192.0.0.1", "port": 3306, "username": "root", "password": "password"}
-            ```
-
-            **Parameter Schema**:
-            ```json
-            {
-              "properties": {
-                "host": {"anyOf": [{"type": "string"}, {"type": "null"}], "description": "Host address"},
-                "port": {"anyOf": [{"type": "integer"}, {"type": "null"}], "description": "Port number"},
-                "username": {"anyOf": [{"type": "string"}, {"type": "null"}], "description": "Username"},
-                "password": {"anyOf": [{"type": "string"}, {"type": "null"}], "description": "Password"}
-              },
-              "required": ["host", "port", "username", "password"]
-            }
-            ```
-
-            **Error**: `password is not correct`
-
-            **Should call tool**:
-            ```
-            get_missing_parameters({"host": "192.0.0.1", "port": 3306, "username": null, "password": null})
-            ```
-
-            > Analysis: Error indicates incorrect password, so set `password` to `null`; also set `username` to `null` \
-for user to provide credentials again
-
-            ---
-
-            ## Current Task
-
-            **Tool**: `{{tool_name}}` - {{tool_description}}
-
-            **Current Input**:
-            ```json
-            {{input_param}}
-            ```
-
-            **Parameter Schema**:
-            ```json
-            {{input_schema}}
-            ```
-
-            **Error**: {{error_message}}
-
-            **Please call the `get_missing_parameters` tool to return the analysis result**.
-        """,
-    ),
+GET_MISSING_PARAMS_FUNCTION: dict[LanguageType, dict] = {
+    LanguageType.CHINESE: {
+        "name": "get_missing_parameters",
+        "description": "根据工具执行报错，识别缺失或错误的参数，并将其设置为null。保留正确参数的值。",
+        "parameters": {
+            "type": "object",
+            "properties": {},
+        },
+    },
+    LanguageType.ENGLISH: {
+        "name": "get_missing_parameters",
+        "description": "Identify missing or incorrect parameters based on tool execution errors, set them to null, "
+                       "and retain correct parameter values",
+        "parameters": {
+            "type": "object",
+            "properties": {},
+        },
+    },
 }
 
 FINAL_ANSWER: dict[LanguageType, str] = {
