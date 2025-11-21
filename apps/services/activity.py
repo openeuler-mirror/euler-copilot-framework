@@ -51,6 +51,15 @@ class Activity:
             session.add(SessionActivity(userId=user_id, timestamp=time))
             await session.commit()
 
+    @staticmethod
+    async def is_active(user_id: str) -> bool:
+        """判断用户是否仍然活跃（即是否有活动记录）"""
+        async with postgres.session() as session:
+            count = (await session.scalars(
+                select(func.count(SessionActivity.id))
+                .where(SessionActivity.userId == user_id),
+            )).one()
+            return count > 0
 
     @staticmethod
     async def remove_active(user_id: str) -> None:

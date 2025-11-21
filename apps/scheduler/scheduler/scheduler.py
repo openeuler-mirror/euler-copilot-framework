@@ -2,6 +2,7 @@
 """调度器；负责任务的分发与执行"""
 
 import asyncio
+import contextlib
 import logging
 
 from apps.common.queue import MessageQueue
@@ -70,13 +71,27 @@ class Scheduler(
 
         await self._push_executor_start_message()
 
-        done, pending = await asyncio.wait(
-            [main_task, monitor],
-            return_when=asyncio.FIRST_COMPLETED,
-        )
+        while not main_task.done() and not monitor.done():
+            if kill_event.is_set():
+                await self._handle_task_cancellation(main_task)
+                monitor.cancel()
+                break
 
-        if kill_event.is_set():
+            done, _ = await asyncio.wait(
+                [main_task, monitor],
+                timeout=0.1,  # 100ms检查一次
+                return_when=asyncio.FIRST_COMPLETED,
+            )
+
+            if done:
+                break
+
+        if kill_event.is_set() and not main_task.done():
             await self._handle_task_cancellation(main_task)
+        if not monitor.done():
+            monitor.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await monitor
 
         await self._check_and_handle_executor_result()
 
