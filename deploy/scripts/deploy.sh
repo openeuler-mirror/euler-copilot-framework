@@ -52,9 +52,10 @@ show_restart_menu() {
     echo "9) rag-web"
     echo "10) redis"
     echo "11) web"
-    echo "12) 返回主菜单"
+    echo "12) sandbox"
+    echo "13) 返回主菜单"
     echo "=============================="
-    echo -n "请输入要重启的服务编号（1-12）: "
+    echo -n "请输入要重启的服务编号（1-13）: "
 }
 
 
@@ -333,7 +334,7 @@ while true; do
                     12) service="sandbox";;
                     13) break ;;
                     *)
-                        echo -e "${RED}无效的选项，请输入1-12之间的数字${NC}"
+                        echo -e "${RED}无效的选项，请输入1-13之间的数字${NC}"
                         continue
                         ;;
                 esac
