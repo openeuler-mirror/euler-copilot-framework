@@ -329,8 +329,8 @@ while true; do
                     8)  service="rag" ;;
                     9)  service="rag-web" ;;
                     10) service="redis" ;;
-                    11) service="web" ;
-                    12) service="sandbox"
+                    11) service="web" ;;
+                    12) service="sandbox";;
                     13) break ;;
                     *)
                         echo -e "${RED}无效的选项，请输入1-12之间的数字${NC}"
