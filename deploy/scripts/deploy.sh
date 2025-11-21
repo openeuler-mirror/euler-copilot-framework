@@ -279,20 +279,23 @@ restart_pod() {
     return 1
   fi
 
-  local deployment="${service}-deploy"
-  echo -e "${BLUE}正在验证部署是否存在...${NC}"
-  if ! kubectl get deployment "$deployment" -n euler-copilot &> /dev/null; then
-    echo -e "${RED}错误：在 euler-copilot 命名空间中找不到部署 $deployment${NC}"
+  echo -e "${BLUE}正在查找 Pod...${NC}"
+  local pod_name=$(kubectl get pods -n euler-copilot --selector=app="$service" -o jsonpath='{.items[0].metadata.name}' 2>/dev/null)
+
+  if [[ -z "$pod_name" ]]; then
+    echo -e "${RED}错误：在 euler-copilot 命名空间中找不到服务 $service 对应的 Pod${NC}"
     return 1
   fi
 
-  echo -e "${YELLOW}正在重启部署 $deployment ...${NC}"
-  if kubectl rollout restart deployment/"$deployment" -n euler-copilot; then
-    echo -e "${GREEN}成功触发滚动重启！${NC}"
-    echo -e "可以使用以下命令查看状态：\nkubectl rollout status deployment/$deployment -n euler-copilot"
+  echo -e "${YELLOW}找到 Pod: $pod_name${NC}"
+  echo -e "${YELLOW}正在删除 Pod $pod_name 以重启...${NC}"
+
+  if kubectl delete pod "$pod_name" -n euler-copilot; then
+    echo -e "${GREEN}成功删除 Pod！新的 Pod 将自动创建${NC}"
+    echo -e "可以使用以下命令查看新 Pod 状态：\nkubectl get pods -l app=$service -n euler-copilot -w"
     return 0
   else
-    echo -e "${RED}重启部署 $deployment 失败！${NC}"
+    echo -e "${RED}删除 Pod $pod_name 失败！${NC}"
     return 1
   fi
 }
@@ -326,8 +329,9 @@ while true; do
                     8)  service="rag" ;;
                     9)  service="rag-web" ;;
                     10) service="redis" ;;
-                    11) service="web" ;;
-                    12) break ;;
+                    11) service="web" ;
+                    12) service="sandbox"
+                    13) break ;;
                     *)
                         echo -e "${RED}无效的选项，请输入1-12之间的数字${NC}"
                         continue
