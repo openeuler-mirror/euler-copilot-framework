@@ -785,11 +785,29 @@ uninstall_eulercopilot() {
     # 删除 Secret: euler-copilot-system
     local secret_name="euler-copilot-system"
     if kubectl get secret "$secret_name" -n euler-copilot &>/dev/null; then
-        echo -e "${GREEN}找到Secret: ${secret_name}，开始清理...${NC}"
-        if ! kubectl delete secret "$secret_name" -n euler-copilot; then
-            echo -e "${RED}错误：删除Secret ${secret_name} 失败！${NC}" >&2
-            return 1
-        fi
+        echo -e "${GREEN}找到Secret: ${secret_name}${NC}"
+    
+        # 询问用户是否要删除
+        while true; do
+            read -p "是否要清除之前的会话? (y/n): " answer
+            case $answer in
+                [Yy]* )
+                    echo -e "${GREEN}开始清理...${NC}"
+                    if ! kubectl delete secret "$secret_name" -n euler-copilot; then
+                        echo -e "${RED}错误：删除Secret ${secret_name} 失败！${NC}" >&2
+                        return 1
+                    fi
+                    break
+                    ;;
+                [Nn]* )
+                    echo -e "${YELLOW}已跳过删除Secret: ${secret_name}${NC}"
+                    break
+                    ;;
+                * )
+                    echo "请输入 y 或 n"
+                    ;;
+            esac
+        done
     else
         echo -e "${YELLOW}未找到需要清理的Secret: ${secret_name}${NC}"
     fi
