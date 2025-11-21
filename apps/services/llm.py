@@ -193,11 +193,21 @@ class LLMManager:
 
         # 构建查询条件：包含用户模型和系统模型
         base_query = {"$or": [{"user_sub": user_sub}, {"user_sub": ""}]}
+        
         if llm_id:
-            base_query["llm_id"] = llm_id
+            base_query["_id"] = llm_id
+            
         if model_type:
             # 支持type字段既可以是字符串也可以是数组
-            base_query["type"] = model_type
+            # 使用 $or 来匹配字符串或数组中包含指定类型的情况
+            type_query = {
+                "$or": [
+                    {"type": model_type},  # 匹配字符串格式: type = "chat"
+                    {"type": {"$in": [model_type]}}  # 匹配数组格式: type = ["chat", "function_call"]
+                ]
+            }
+            # 将 type 条件与现有查询条件合并
+            base_query = {"$and": [base_query, type_query]}
 
         result = await llm_collection.find(base_query).sort({"created_at": 1}).to_list(length=None)
 
