@@ -12,6 +12,7 @@ from apps.schemas.collection import Conversation, KnowledgeBaseItem, LLMItem
 from apps.services.knowledge import KnowledgeBaseManager
 from apps.services.llm import LLMManager
 from apps.services.task import TaskManager
+from apps.services.user import UserManager
 from apps.templates.generate_llm_operator_config import llm_provider_dict
 from apps.llm.adapters import get_provider_from_endpoint
 from apps.llm.enum import DefaultModelId
@@ -48,7 +49,12 @@ class ConversationManager:
         """通过用户ID新建对话"""
         if not llm_id:
             # 获取系统默认模型的UUID
-            llm = await LLMManager.get_llm_by_id(DefaultModelId.DEFAULT_CHAT_MODEL_ID.value)
+            user_info = await UserManager.get_userinfo_by_user_sub(user_sub)
+            llm = None
+            if user_info.preferences.reasoning_model_preference:
+                llm = await LLMManager.get_llm_by_id(user_info.preferences.reasoning_model_preference.llm_id)
+            if llm is None:
+                llm = await LLMManager.get_llm_by_id(DefaultModelId.DEFAULT_CHAT_MODEL_ID.value)
             llm_item = LLMItem(
                 llm_id=llm.id,
                 model_name=llm.model_name,

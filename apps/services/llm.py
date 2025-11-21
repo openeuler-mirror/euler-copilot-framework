@@ -155,7 +155,7 @@ class LLMManager:
         if not result:
             err = f"[LLMManager] LLM {llm_id} 不存在"
             logger.error(err)
-            raise ValueError(err)
+            return None
 
         return LLM.model_validate(result)
 
