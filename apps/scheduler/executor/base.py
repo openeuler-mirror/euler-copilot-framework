@@ -1,6 +1,8 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2023-2025. All rights reserved.
 """Executor基类"""
 
+import asyncio
+import logging
 from abc import ABC, abstractmethod
 from typing import Any
 
@@ -15,6 +17,8 @@ from apps.schemas.record import RecordContent
 from apps.schemas.scheduler import ExecutorBackground
 from apps.schemas.task import TaskData
 from apps.services.record import RecordManager
+
+_logger = logging.getLogger(__name__)
 
 
 class BaseExecutor(BaseModel, ABC):
@@ -97,6 +101,18 @@ class BaseExecutor(BaseModel, ABC):
             event_type=event_type,
             data=data,
         )
+
+    async def _check_cancelled(self) -> None:
+        """
+        检查当前任务是否已被取消，如果已取消则抛出CancelledError
+
+        :raises asyncio.CancelledError: 当任务已被取消时
+        """
+        try:
+            await asyncio.sleep(0)
+        except asyncio.CancelledError:
+            _logger.warning("[%s] 检测到取消信号，终止执行", self.__class__.__name__)
+            raise
 
     @abstractmethod
     async def run(self) -> None:

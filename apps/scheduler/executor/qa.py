@@ -209,6 +209,8 @@ class QAExecutor(BaseExecutor):
     async def _execute_remaining_steps(self) -> bool:
         """执行剩余步骤：问题推荐和记忆存储"""
         _logger.info("[QAExecutor] 开始执行问题推荐步骤")
+
+        await self._check_cancelled()
         suggestion_exec = StepExecutor(
             msg_queue=self.msg_queue,
             task=self.task,
@@ -230,6 +232,7 @@ class QAExecutor(BaseExecutor):
             self.task.state.executorStatus = ExecutorStatus.ERROR
             return False
 
+        await self._check_cancelled()
         _logger.info("[QAExecutor] 开始执行记忆存储步骤")
         facts_exec = StepExecutor(
             msg_queue=self.msg_queue,
@@ -262,21 +265,25 @@ class QAExecutor(BaseExecutor):
             error = Exception("[QAExecutor] task.state不存在，无法执行")
             raise error
 
+        await self._check_cancelled()
         rag_success = await self._execute_rag_step()
         if not rag_success:
             _logger.error("[QAExecutor] RAG检索步骤失败，终止执行")
             return
 
+        await self._check_cancelled()
         llm_success = await self._execute_llm_step()
         if not llm_success:
             _logger.error("[QAExecutor] LLM问答步骤失败，终止执行")
             return
 
+        await self._check_cancelled()
         remaining_success = await self._execute_remaining_steps()
         if not remaining_success:
             _logger.error("[QAExecutor] 剩余步骤失败，终止执行")
             return
 
+        await self._check_cancelled()
         self.task.runtime.fullTime = round(datetime.now(UTC).timestamp(), 2) - self.task.runtime.time
         self.task.state.executorStatus = ExecutorStatus.SUCCESS
 

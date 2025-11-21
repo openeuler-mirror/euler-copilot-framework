@@ -128,6 +128,7 @@ class StepExecutor(BaseExecutor):
         # 判断是否需要进行自动参数填充
         if not self.obj.enable_filling:
             return
+        await self._check_cancelled()
 
         if not self.task.state:
             err = "[StepExecutor] 任务状态不存在"
@@ -158,6 +159,7 @@ class StepExecutor(BaseExecutor):
         # 运行填参
         iterator = slot_obj.exec(self, slot_obj.input)
         async for chunk in iterator:
+            await self._check_cancelled()
             result: SlotOutput = SlotOutput.model_validate(chunk.content)
 
         # 如果没有填全，则状态设置为待填参
@@ -183,8 +185,12 @@ class StepExecutor(BaseExecutor):
     ) -> str | dict[str, Any]:
         """处理Chunk"""
         content: str | dict[str, Any] = ""
+        chunk_count = 0
 
         async for chunk in iterator:
+            chunk_count += 1
+            if chunk_count % 10 == 0:
+                await self._check_cancelled()
             if not isinstance(chunk, CallOutputChunk):
                 err = "[StepExecutor] 返回结果类型错误"
                 logger.error(err)
@@ -210,6 +216,7 @@ class StepExecutor(BaseExecutor):
     async def run(self) -> None:
         """运行单个步骤"""
         logger.info("[StepExecutor] 运行步骤 %s", self.step.step.name)
+        await self._check_cancelled()
 
         if not self.task.state:
             err = "[StepExecutor] 任务状态不存在"
@@ -224,6 +231,7 @@ class StepExecutor(BaseExecutor):
         self.task.runtime.time = round(datetime.now(UTC).timestamp(), 2)
         # 推送输入
         await self._push_message(EventType.STEP_INPUT.value, self.obj.input)
+        await self._check_cancelled()
 
         # 执行步骤
         iterator = self.obj.exec(self, self.obj.input)
