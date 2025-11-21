@@ -206,7 +206,7 @@ uninstall_all() {
     fi
 
     # 删除指定的 Secrets
-    local secret_list=("authhub-secret" "euler-copilot-database" "euler-copilot-system")
+    local secret_list=("authhub-secret" "euler-copilot-database")
     for secret in "${secret_list[@]}"; do
         if kubectl get secret "$secret" -n euler-copilot &>/dev/null; then
             echo -e "${YELLOW}找到Secret: ${secret}，开始清理...${NC}"
