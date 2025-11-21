@@ -204,15 +204,43 @@ uninstall_all() {
     else
         echo -e "${YELLOW}未找到需要清理的PVC${NC}"
     fi
-
-    # 删除指定的 Secrets
-    local secret_list=("authhub-secret" "euler-copilot-database")
+    
+    # 清除secret 
+    local secret_list=("authhub-secret" "euler-copilot-database" "euler-copilot-system")
     for secret in "${secret_list[@]}"; do
         if kubectl get secret "$secret" -n euler-copilot &>/dev/null; then
-            echo -e "${YELLOW}找到Secret: ${secret}，开始清理...${NC}"
-            if ! kubectl delete secret "$secret" -n euler-copilot; then
-                echo -e "${RED}错误：删除Secret ${secret} 失败！${NC}" >&2
-                return 1
+            # 只有 euler-copilot-system 需要询问确认
+            if [ "$secret" = "euler-copilot-system" ]; then
+                echo -e "${YELLOW}找到Secret: ${secret}${NC}"
+    
+                # 询问用户是否要删除
+                while true; do
+                    read -p "是否要清除之前的会话? (y/n): " answer
+                    case $answer in
+                        [Yy]* )
+                            echo -e "${YELLOW}开始清理...${NC}"
+                            if ! kubectl delete secret "$secret" -n euler-copilot; then
+                                echo -e "${RED}错误：删除Secret ${secret} 失败！${NC}" >&2
+                                return 1
+                            fi
+                            break
+                            ;;
+                        [Nn]* )
+                            echo -e "${YELLOW}已跳过删除Secret: ${secret}${NC}"
+                            break
+                            ;;
+                        * )
+                            echo "请输入 y 或 n"
+                            ;;
+                    esac
+                done
+            else
+                # 其他 Secret 直接删除
+                echo -e "${YELLOW}找到Secret: ${secret}，开始清理...${NC}"
+                if ! kubectl delete secret "$secret" -n euler-copilot; then
+                    echo -e "${RED}错误：删除Secret ${secret} 失败！${NC}" >&2
+                    return 1
+                fi
             fi
         else
             echo -e "${YELLOW}未找到需要清理的Secret: ${secret}${NC}"
