@@ -267,9 +267,6 @@ class StepExecutor(BaseExecutor):
         # 更新context
         history = ExecutorHistory(
             taskId=self.task.metadata.id,
-            executorId=self.task.state.executorId,
-            executorName=self.task.state.executorName,
-            executorStatus=self.task.state.executorStatus,
             stepId=self.step.step_id,
             stepName=self.step.step.name,
             stepType=self.task.state.stepType,

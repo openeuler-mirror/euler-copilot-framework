@@ -94,7 +94,9 @@ class TaskRuntime(Base):
         primary_key=True,
     )
     """任务ID"""
-    time: Mapped[float] = mapped_column(Float, default=0.0, nullable=False)
+    time: Mapped[float] = mapped_column(
+        Float, default_factory=lambda: round(datetime.now(UTC).timestamp(), 2), nullable=False,
+    )
     """时间"""
     fullTime: Mapped[float] = mapped_column(Float, default=0.0, nullable=False)  # noqa: N815
     """完整时间成本"""
@@ -158,14 +160,8 @@ class ExecutorHistory(Base):
 
     __tablename__ = "framework_executor_history"
 
-    taskId: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("framework_task.id"), nullable=False)  # noqa: N815
+    taskId: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)  # noqa: N815
     """任务ID"""
-    executorId: Mapped[str] = mapped_column(String(255), nullable=False)  # noqa: N815
-    """执行器ID（例如工作流ID）"""
-    executorName: Mapped[str] = mapped_column(String(255))  # noqa: N815
-    """执行器名称（例如工作流名称）"""
-    executorStatus: Mapped[ExecutorStatus] = mapped_column(Enum(ExecutorStatus), nullable=False)  # noqa: N815
-    """执行器状态"""
     stepId: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)  # noqa: N815
     """步骤ID"""
     stepName: Mapped[str] = mapped_column(String(255), nullable=False)  # noqa: N815
