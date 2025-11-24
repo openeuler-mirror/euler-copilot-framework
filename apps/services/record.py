@@ -1,17 +1,19 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2023-2025. All rights reserved.
 """问答对Manager"""
 
+import json
 import logging
 import uuid
-from datetime import UTC, datetime
 from typing import Literal
 
 from sqlalchemy import and_, select
 
 from apps.common.postgres import postgres
-from apps.models import Conversation
+from apps.common.security import Security
+from apps.models import CommentType, Conversation
 from apps.models import Record as PgRecord
-from apps.schemas.record import RecordComment, RecordData, RecordMetadata
+from apps.models import RecordMetadata as PgRecordMetadata
+from apps.schemas.record import RecordContent, RecordData, RecordMetadata
 
 logger = logging.getLogger(__name__)
 
@@ -42,8 +44,13 @@ class RecordManager:
 
 
     @staticmethod
-    async def insert_record_data(user_id: str, conversation_id: uuid.UUID, record: RecordData) -> uuid.UUID | None:
-        """Record插入PostgreSQL"""
+    async def insert_record_data(
+        user_id: str,
+        conversation_id: uuid.UUID,
+        record: PgRecord,
+        metadata: PgRecordMetadata,
+    ) -> uuid.UUID | None:
+        """Record和RecordMetadata插入PostgreSQL"""
         async with postgres.session() as session:
             conv = (await session.scalars(
                 select(Conversation).where(
@@ -57,15 +64,8 @@ class RecordManager:
                 logger.error("[RecordManager] 对话不存在: %s", conversation_id)
                 return None
 
-            session.add(PgRecord(
-                id=record.id,
-                conversationId=conversation_id,
-                taskId=record.task_id,
-                userId=user_id,
-                content=record.content,
-                key=record.key,
-                createdAt=datetime.fromtimestamp(record.created_at, tz=UTC),
-            ))
+            session.add(record)
+            session.add(metadata)
             await session.commit()
 
         return record.id
@@ -93,16 +93,18 @@ class RecordManager:
 
             records = []
             for pg_record in pg_records:
+                # Decrypt and parse the content
+                decrypted_content = Security.decrypt(pg_record.content, pg_record.key)
+                record_content = RecordContent.model_validate(json.loads(decrypted_content))
+
                 record = RecordData(
                     id=pg_record.id,
                     conversationId=pg_record.conversationId,
-                    task_id=pg_record.taskId,
-                    user_id=pg_record.userId,
-                    content=pg_record.content,
-                    key=pg_record.key,
+                    taskId=pg_record.taskId,
+                    content=record_content,
                     createdAt=pg_record.createdAt.timestamp(),
                     metadata=RecordMetadata(),
-                    comment=RecordComment(),
+                    comment=CommentType.NONE,
                 )
                 records.append(record)
             return records

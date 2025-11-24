@@ -9,8 +9,9 @@ from jinja2 import BaseLoader
 from jinja2.sandbox import SandboxedEnvironment
 
 from apps.common.queue import MessageQueue
+from apps.constants import CONVERSATION_TITLE_MAX_LENGTH
 from apps.llm import LLM
-from apps.models import Conversation, Task, TaskRuntime, User
+from apps.models import LanguageType, Task, TaskRuntime, User
 from apps.schemas.request_data import RequestData
 from apps.schemas.task import TaskData
 from apps.services.appcenter import AppCenterManager
@@ -56,6 +57,7 @@ class InitMixin:
                 authHeader=auth_header,
                 userInput=self.post_body.question,
                 language=self.post_body.language,
+                time=round(datetime.now(UTC).timestamp(), 2),
             ),
             state=None,
             context=[],
@@ -119,18 +121,44 @@ class InitMixin:
             extensions=["jinja2.ext.loopcontrols"],
         )
 
-    async def _create_new_conversation(
-        self, title: str, user_id: str, app_id: uuid.UUID | None = None,
-        *,
-        debug: bool = False,
-    ) -> Conversation:
-        """判断并创建新对话，并将conversation ID写入task"""
-        if app_id and not await AppCenterManager.validate_user_app_access(user_id, app_id):
+    def _extract_conversation_title(self) -> str:
+        """从task runtime中提取对话标题"""
+        default_titles: dict[LanguageType, str] = {
+            LanguageType.CHINESE: "新对话",
+            LanguageType.ENGLISH: "New Conversation",
+        }
+        title = default_titles[self.task.runtime.language]
+
+        user_input = self.task.runtime.userInput.strip()
+        if user_input:
+            return (
+                user_input[:CONVERSATION_TITLE_MAX_LENGTH] + "..."
+                if len(user_input) > CONVERSATION_TITLE_MAX_LENGTH
+                else user_input
+            )
+
+        return title
+
+    async def _ensure_conversation_exists(self) -> None:
+        """确保存在conversation，如果不存在则创建"""
+        if self.task.metadata.conversationId:
+            return
+
+        _logger.info("[Scheduler] 当前无 conversation_id，创建新对话")
+        title = self._extract_conversation_title()
+        app_id: uuid.UUID | None = None
+        if self.post_body.app and self.post_body.app.app_id:
+            app_id = self.post_body.app.app_id
+
+        debug = getattr(self.post_body, "debug", False)
+
+        if app_id and not await AppCenterManager.validate_user_app_access(self.task.metadata.userId, app_id):
             err = "Invalid app_id."
             raise RuntimeError(err)
+
         new_conv = await ConversationManager.add_conversation_by_user(
             title=title,
-            user_id=user_id,
+            user_id=self.task.metadata.userId,
             app_id=app_id,
             debug=debug,
         )
@@ -138,8 +166,11 @@ class InitMixin:
             err = "Create new conversation failed."
             raise RuntimeError(err)
 
-        # 将conversation ID写入task
         self.task.metadata.conversationId = new_conv.id
-        _logger.info("[Scheduler] Conversation ID已写入Task: %s", new_conv.id)
+        self.post_body.conversation_id = new_conv.id
 
-        return new_conv
+        _logger.info(
+            "[Scheduler] 成功创建新对话，conversation_id: %s, title: %s",
+            new_conv.id,
+            title,
+        )

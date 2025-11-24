@@ -95,20 +95,15 @@ class Scheduler(
 
         await self._check_and_handle_executor_result()
 
-        if not self.task.metadata.conversationId:
-            _logger.info("[Scheduler] 创建新对话")
-            title = self.task.runtime.userInput[:50] if self.task.runtime.userInput else "新对话"
-            app_id = self.post_body.app.app_id if self.post_body.app else None
+        try:
+            await self._ensure_conversation_exists()
+        except Exception:
+            _logger.exception("[Scheduler] 确保Conversation存在失败")
 
-            try:
-                await self._create_new_conversation(
-                    title=title,
-                    user_id=self.task.metadata.userId,
-                    app_id=app_id,
-                    debug=False,
-                )
-            except Exception:
-                _logger.exception("[Scheduler] 创建Conversation失败")
+        try:
+            await self._save_data()
+        except Exception:
+            _logger.exception("[Scheduler] 保存数据失败")
 
         await self._push_executor_stop_message()
         await self._push_done_message()

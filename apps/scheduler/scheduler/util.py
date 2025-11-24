@@ -72,16 +72,6 @@ class UtilMixin:
 
     async def _check_and_handle_executor_result(self) -> None:
         """检查并处理executor执行结果"""
-        if not self.task.runtime.fullAnswer or self.task.runtime.fullAnswer.strip() == "":
-            _logger.warning("[Scheduler] fullAnswer为空，设置executor状态为ERROR")
-            if self.task.state:
-                self.task.state.executorStatus = ExecutorStatus.ERROR
-                if not self.task.state.errorMessage:
-                    self.task.state.errorMessage = {
-                        "err_msg": "执行完成但未生成任何答案",
-                        "data": {},
-                    }
-
         if self.task.state and self.task.state.executorStatus == ExecutorStatus.ERROR:
             error_msg = "Executor执行失败"
             if self.task.state.errorMessage:

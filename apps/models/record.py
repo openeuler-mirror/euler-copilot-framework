@@ -23,7 +23,7 @@ class Record(Base):
     )
     """对话ID"""
     taskId: Mapped[uuid.UUID | None] = mapped_column(  # noqa: N815
-        UUID(as_uuid=True), ForeignKey("framework_task.id"), nullable=True,
+        UUID(as_uuid=True), nullable=True,
     )
     """任务ID"""
     content: Mapped[str] = mapped_column(Text, nullable=False)

@@ -749,9 +749,6 @@ erDiagram
     ExecutorHistory {
         UUID id PK "历史记录ID"
         UUID taskId FK "任务ID"
-        string executorId "执行器ID"
-        string executorName "执行器名称"
-        ExecutorStatus executorStatus "执行器状态"
         UUID stepId "步骤ID"
         string stepName "步骤名称"
         string stepType "步骤类型"
