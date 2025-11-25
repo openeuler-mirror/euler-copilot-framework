@@ -61,7 +61,7 @@
 
 ---
 
-{% if history or generated %}
+{% if history|length > 0 or generated|length > 0 %}
 **已存在的问题：**
 
 {% for question in history -%}

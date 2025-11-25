@@ -7,7 +7,6 @@
     "tavily-mcp": {
       "type": "stdio",
       "autoInstall": true,
-      "iconPath": "",
       "command": "npx",
       "args": [
         "-y",
