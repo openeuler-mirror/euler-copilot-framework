@@ -29,7 +29,6 @@ class ServiceCardItem(BaseModel):
     service_id: uuid.UUID = Field(..., alias="serviceId", description="服务ID")
     name: str = Field(..., description="服务名称")
     description: str = Field(..., description="服务简介")
-    icon: str = Field(..., description="服务图标")
     author: str = Field(..., description="服务作者")
     favorited: bool = Field(..., description="是否已收藏")
 

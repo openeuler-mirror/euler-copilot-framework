@@ -15,7 +15,6 @@ class MCPServiceCardItem(BaseModel):
     mcpservice_id: str = Field(..., alias="mcpserviceId", description="mcp服务ID")
     name: str = Field(..., description="mcp服务名称")
     description: str = Field(..., description="mcp服务简介")
-    icon: str = Field(..., description="mcp服务图标")
     author: str = Field(..., description="mcp服务作者")
     is_active: bool = Field(default=False, alias="isActive", description="mcp服务是否激活")
     status: MCPInstallStatus = Field(default=MCPInstallStatus.INSTALLING, description="mcp服务状态")
@@ -53,24 +52,10 @@ class UpdateMCPServiceRsp(ResponseData):
     result: UpdateMCPServiceMsg = Field(..., title="Result")
 
 
-class UploadMCPServiceIconMsg(BaseModel):
-    """POST /api/mcp_service/icon Result数据结构"""
-
-    service_id: str = Field(..., alias="serviceId", description="MCP服务ID")
-    url: str = Field(..., description="图标URL")
-
-
-class UploadMCPServiceIconRsp(ResponseData):
-    """POST /api/mcp_service/icon 返回数据结构"""
-
-    result: UploadMCPServiceIconMsg = Field(..., title="Result")
-
-
 class GetMCPServiceDetailMsg(BaseModel):
     """GET /api/mcp_service/{serviceId} Result数据结构"""
 
     service_id: str = Field(..., alias="serviceId", description="MCP服务ID")
-    icon: str = Field(description="图标", default="")
     name: str = Field(..., description="MCP服务名称")
     description: str = Field(description="MCP服务描述")
     overview: str = Field(description="MCP服务概述")
@@ -85,7 +70,6 @@ class EditMCPServiceMsg(BaseModel):
     """编辑MCP服务"""
 
     service_id: str = Field(..., alias="serviceId", description="MCP服务ID")
-    icon: str = Field(description="图标", default="")
     name: str = Field(..., description="MCP服务名称")
     description: str = Field(description="MCP服务描述")
     overview: str = Field(description="MCP服务概述")
