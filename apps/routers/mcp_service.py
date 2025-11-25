@@ -4,7 +4,7 @@
 import logging
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Path, Query, Request, UploadFile, status
+from fastapi import APIRouter, Depends, Path, Query, Request, status
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
 
@@ -22,8 +22,6 @@ from apps.schemas.mcp_service import (
     GetMCPServiceListRsp,
     UpdateMCPServiceMsg,
     UpdateMCPServiceRsp,
-    UploadMCPServiceIconMsg,
-    UploadMCPServiceIconRsp,
 )
 from apps.schemas.response_data import ResponseData
 from apps.services.mcp_service import MCPServiceManager
@@ -194,7 +192,7 @@ async def get_service_detail(
     # 获取MCP服务详情
     try:
         data = await MCPServiceManager.get_mcp_service(service_id)
-        config, icon = await MCPServiceManager.get_mcp_config(service_id)
+        config = await MCPServiceManager.get_mcp_config(service_id)
     except Exception as e:
         err = f"[MCPService] 获取MCP服务API失败: {e}"
         _logger.exception(err)
@@ -209,7 +207,7 @@ async def get_service_detail(
             ),
         )
 
-    if data is None or config is None or icon is None:
+    if data is None or config is None:
         return JSONResponse(
             status_code=status.HTTP_404_NOT_FOUND,
             content=jsonable_encoder(
@@ -225,7 +223,6 @@ async def get_service_detail(
         # 组装编辑所需信息
         detail = EditMCPServiceMsg(
             serviceId=service_id,
-            icon=icon,
             name=data.name,
             description=data.description,
             overview=config.overview,
@@ -238,7 +235,6 @@ async def get_service_detail(
         tools = await MCPServiceManager.get_mcp_tools(service_id)
         detail = GetMCPServiceDetailMsg(
             serviceId=service_id,
-            icon=icon,
             name=data.name,
             description=data.description,
             overview=config.overview,
@@ -283,57 +279,6 @@ async def delete_service(serviceId: Annotated[str, Path()]) -> JSONResponse:  # 
                 code=status.HTTP_200_OK,
                 message="OK",
                 result=BaseMCPServiceOperationMsg(serviceId=serviceId),
-            ).model_dump(exclude_none=True, by_alias=True),
-        ),
-    )
-
-
-@admin_router.post("/icon", response_model=UpdateMCPServiceRsp)
-async def update_mcp_icon(
-    serviceId: Annotated[str, Path()],  # noqa: N803
-    icon: UploadFile,
-) -> JSONResponse:
-    """更新MCP服务图标"""
-    # 检查当前MCP是否存在
-    try:
-        await MCPServiceManager.get_mcp_service(serviceId)
-    except Exception as e:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=f"MCP服务未找到: {e!s}") from e
-
-    # 判断文件的size
-    if not icon.size or icon.size == 0 or icon.size > 1024 * 1024 * 1:
-        return JSONResponse(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            content=jsonable_encoder(
-                ResponseData(
-                    code=status.HTTP_400_BAD_REQUEST,
-                    message="图标文件为空或超过1MB",
-                    result={},
-                ).model_dump(exclude_none=True, by_alias=True),
-            ),
-        )
-    try:
-        url = await MCPServiceManager.save_mcp_icon(serviceId, icon)
-    except Exception as e:
-        err = f"[MCPServiceManager] 更新MCP服务图标失败: {e}"
-        _logger.exception(err)
-        return JSONResponse(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            content=jsonable_encoder(
-                ResponseData(
-                    code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                    message=err,
-                    result={},
-                ).model_dump(exclude_none=True, by_alias=True),
-            ),
-        )
-    return JSONResponse(
-        status_code=status.HTTP_200_OK,
-        content=jsonable_encoder(
-            UploadMCPServiceIconRsp(
-                code=status.HTTP_200_OK,
-                message="OK",
-                result=UploadMCPServiceIconMsg(serviceId=serviceId, url=url),
             ).model_dump(exclude_none=True, by_alias=True),
         ),
     )

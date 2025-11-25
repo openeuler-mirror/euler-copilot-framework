@@ -126,7 +126,7 @@ class ExecutorCheckpoint(Base):
     __tablename__ = "framework_executor_checkpoint"
 
     # 执行器级数据
-    taskId: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("framework_task.id"), nullable=False)  # noqa: N815
+    taskId: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)  # noqa: N815
     """任务ID"""
     appId: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)  # noqa: N815
     """应用ID"""
