@@ -69,7 +69,6 @@ class MetadataBase(BaseModel):
 
     type: MetadataType = Field(description="元数据类型")
     id: uuid.UUID = Field(description="元数据ID")
-    icon: str = Field(description="图标", default="")
     name: str = Field(description="元数据名称")
     description: str = Field(description="元数据描述")
     author: str = Field(description="创建者的用户名")

@@ -31,8 +31,6 @@ class Service(Base):
         nullable=False,
     )
     """插件更新时间"""
-    iconPath: Mapped[str] = mapped_column(String(255), default="", nullable=False)  # noqa: N815
-    """插件图标路径"""
     permission: Mapped[PermissionType] = mapped_column(
         Enum(PermissionType), default=PermissionType.PUBLIC, nullable=False,
     )

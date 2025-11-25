@@ -93,7 +93,6 @@ class RecordManager:
 
             records = []
             for pg_record in pg_records:
-                # Decrypt and parse the content
                 decrypted_content = Security.decrypt(pg_record.content, pg_record.key)
                 record_content = RecordContent.model_validate(json.loads(decrypted_content))
 

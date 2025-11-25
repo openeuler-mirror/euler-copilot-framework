@@ -50,8 +50,6 @@ class App(Base):
         nullable=False,
     )
     """应用更新时间"""
-    icon: Mapped[str] = mapped_column(String(255), default="", nullable=False)
-    """应用图标路径"""
     isPublished: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)  # noqa: N815
     """是否发布"""
     permission: Mapped[PermissionType] = mapped_column(

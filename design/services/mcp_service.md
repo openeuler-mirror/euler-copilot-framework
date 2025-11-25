@@ -26,7 +26,6 @@ SSE（Server-Sent Events）和STDIO（标准输入输出），
 ```json
 {
   "mcpserviceId": "filesystem-service",
-  "icon": "/static/mcp/filesystem-service.png",
   "name": "文件系统服务",
   "description": "提供文件读写和目录操作能力",
   "author": "admin@example.com",
@@ -42,7 +41,6 @@ SSE（Server-Sent Events）和STDIO（标准输入输出），
 ```json
 {
   "serviceId": "filesystem-service",
-  "icon": "/static/mcp/filesystem-service.png",
   "name": "文件系统服务",
   "description": "提供文件读写和目录操作能力",
   "overview": "这是一个功能强大的文件系统服务，支持常见的文件操作，包括读取、写入、删除和目录管理。",
@@ -95,7 +93,6 @@ SSE（Server-Sent Events）和STDIO（标准输入输出），
 ```json
 {
   "serviceId": "database-connector",
-  "icon": "/static/mcp/database-connector.png",
   "name": "数据库连接器",
   "description": "提供数据库查询和操作能力",
   "overview": "支持MySQL、PostgreSQL等主流数据库的连接和查询",
@@ -144,7 +141,6 @@ SSE（Server-Sent Events）和STDIO（标准输入输出），
     "services": [
       {
         "mcpserviceId": "filesystem-service",
-        "icon": "/static/mcp/filesystem-service.png",
         "name": "文件系统服务",
         "description": "提供文件读写和目录操作能力",
         "author": "admin@example.com",
@@ -153,7 +149,6 @@ SSE（Server-Sent Events）和STDIO（标准输入输出），
       },
       {
         "mcpserviceId": "database-connector",
-        "icon": "/static/mcp/database-connector.png",
         "name": "数据库连接器",
         "description": "提供数据库查询和操作能力",
         "author": "admin@example.com",
@@ -200,7 +195,6 @@ GET /api/mcp?searchType=NAME&keyword=文件&page=1&isActive=true
     "services": [
       {
         "mcpserviceId": "filesystem-service",
-        "icon": "/static/mcp/filesystem-service.png",
         "name": "文件系统服务",
         "description": "提供文件读写和目录操作能力",
         "author": "admin@example.com",
@@ -409,65 +403,7 @@ DELETE /api/admin/mcp/filesystem-service
 }
 ```
 
-### 6. 上传服务图标
-
-**端点**: `POST /api/admin/mcp/icon`
-
-**权限**: 需要管理员权限
-
-**请求参数**:
-
-- `serviceId` (string, 路径参数): 服务ID
-- `icon` (UploadFile, 表单数据): 图标文件
-
-**请求示例**:
-
-```http
-POST /api/admin/mcp/icon?serviceId=filesystem-service
-Content-Type: multipart/form-data
-
---boundary
-Content-Disposition: form-data; name="icon"; filename="icon.png"
-Content-Type: image/png
-
-[binary data]
---boundary--
-```
-
-**响应示例**:
-
-```json
-{
-  "code": 200,
-  "message": "OK",
-  "result": {
-    "serviceId": "filesystem-service",
-    "url": "/static/mcp/filesystem-service.png"
-  }
-}
-```
-
-**错误响应（文件大小超限）**:
-
-```json
-{
-  "code": 400,
-  "message": "图标文件为空或超过1MB",
-  "result": {}
-}
-```
-
-**错误响应（服务不存在）**:
-
-```json
-{
-  "code": 403,
-  "message": "MCP服务未找到: filesystem-service",
-  "result": {}
-}
-```
-
-### 7. 激活/取消激活MCP服务
+### 6. 激活/取消激活MCP服务
 
 **端点**: `POST /api/mcp/{mcpId}`
 
@@ -794,16 +730,6 @@ stateDiagram-v2
 - **返回值**: 存在记录返回True，否则返回False
 - **使用场景**: 服务列表展示时标注激活状态，权限验证
 
-### get_icon_path
-
-获取MCP服务图标的访问路径。
-
-- **功能描述**: 生成服务图标的URL路径
-- **查找逻辑**: 检查图标存储目录下是否存在以服务ID命名的PNG文件
-- **路径格式**: `/static/mcp/{mcp_id}.png`
-- **返回值**: 图标存在返回完整路径，否则返回空字符串
-- **注意事项**: 仅检查PNG格式图标
-
 ### get_service_status
 
 获取MCP服务的当前安装状态。
@@ -822,7 +748,7 @@ stateDiagram-v2
 - **执行步骤**:
   1. 调用内部搜索方法获取数据库记录
   2. 遍历每条记录并构建MCPServiceCardItem对象
-  3. 为每个服务加载图标、激活状态和安装状态
+  3. 为每个服务加载激活状态和安装状态
 - **过滤维度**:
   - **搜索类型**: 全部字段、名称、描述、作者
   - **关键字**: 模糊匹配相应字段
@@ -846,7 +772,7 @@ stateDiagram-v2
 
 - **功能描述**: 从配置文件加载服务的详细配置
 - **执行步骤**: 调用MCPLoader的get_config方法读取JSON配置文件
-- **返回数据**: MCPServerConfig对象和图标路径的元组
+- **返回数据**: MCPServerConfig对象
 - **配置类型**: 根据mcpType字段可能是SSEConfig或StdioConfig
 - **使用场景**: 服务编辑、服务安装时获取配置
 
@@ -965,22 +891,6 @@ stateDiagram-v2
 - **替换规则**: 将 `\ / : * ? " < > |` 等特殊字符替换为下划线
 - **正则表达式**: `r'[\\\/:*?"<>|]'`
 - **使用场景**: 创建服务时处理用户输入的名称，确保可以作为文件名使用
-
-### save_mcp_icon
-
-上传并保存MCP服务的图标文件。
-
-- **功能描述**: 处理图标上传、验证和存储
-- **执行步骤**:
-  1. 检查MIME类型是否在允许列表中
-  2. 使用PIL打开图像并转换为RGB模式
-  3. 调整图像尺寸为64x64像素
-  4. 压缩并保存为PNG格式
-- **验证规则**:
-  - 文件大小: 不超过1MB
-  - 格式类型: 必须在ALLOWED_ICON_MIME_TYPES中
-- **存储路径**: `{MCP_ICON_PATH}/{mcp_id}.png`
-- **返回值**: 图标的访问URL路径
 
 ### is_user_actived
 
@@ -1131,7 +1041,6 @@ stateDiagram-v2
 - 更新MCP服务配置
 - 删除MCP服务
 - 安装/卸载服务
-- 上传服务图标
 - 获取服务详情（含编辑模式）
 
 #### 作者权限
@@ -1178,22 +1087,6 @@ stateDiagram-v2
 - 如果存在同名服务，自动在名称后添加6位随机字符
 - 格式：`{原名称}-{6位hex}`
 - 确保服务名称在系统中的唯一性
-
-### 图标管理规则
-
-#### 文件限制
-
-- 文件大小：不超过1MB
-- 文件格式：仅支持ALLOWED_ICON_MIME_TYPES中的MIME类型
-- 图片尺寸：自动调整为64x64像素
-- 存储格式：统一转换为PNG格式
-
-#### 存储策略
-
-- 文件名：使用服务ID作为文件名
-- 存储路径：`{ICON_PATH}/mcp/{mcp_id}.png`
-- 访问路径：`/static/mcp/{mcp_id}.png`
-- 覆盖策略：上传新图标会覆盖旧图标
 
 ---
 
@@ -1302,11 +1195,6 @@ Server-Sent Events类型的MCP服务通过HTTP连接实现：
     │   ├── {mcp_id}.json       # 用户专属配置
     │   └── ...
     └── ...
-
-{ICON_PATH}/
-└── mcp/                         # MCP图标目录
-    ├── {mcp_id}.png            # 服务图标文件
-    └── ...
 ```
 
 ### 目录说明
@@ -1318,10 +1206,6 @@ Server-Sent Events类型的MCP服务通过HTTP连接实现：
 - **user目录**: 存储用户激活服务时的个性化配置
   - 每个用户一个子目录
   - 配置文件包含合并后的环境变量
-
-- **mcp图标目录**: 统一存储所有MCP服务的图标文件
-  - 64x64像素的PNG格式
-  - 文件名为服务ID
 
 ---
 

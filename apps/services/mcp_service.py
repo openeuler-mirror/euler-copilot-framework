@@ -6,15 +6,10 @@ import re
 import uuid
 from typing import Any
 
-import magic
-from fastapi import UploadFile
-from PIL import Image
 from sqlalchemy import and_, delete, or_, select
 
 from apps.common.postgres import postgres
 from apps.constants import (
-    ALLOWED_ICON_MIME_TYPES,
-    ICON_PATH,
     MCP_PATH,
     SERVICE_PAGE_SIZE,
 )
@@ -39,7 +34,6 @@ from apps.schemas.mcp_service import MCPServiceCardItem
 from apps.services.user import UserManager
 
 logger = logging.getLogger(__name__)
-MCP_ICON_PATH = ICON_PATH / "mcp"
 
 
 class MCPServiceManager:
@@ -56,15 +50,6 @@ class MCPServiceManager:
                 ),
             ))).one_or_none()
             return bool(mcp_info)
-
-
-    @staticmethod
-    async def get_icon_path(mcp_id: str) -> str:
-        """获取MCP服务图标路径"""
-        if (MCP_ICON_PATH / f"{mcp_id}.png").exists():
-            return f"/static/mcp/{mcp_id}.png"
-        return ""
-
 
     @staticmethod
     async def get_service_status(mcp_id: str) -> MCPInstallStatus:
@@ -97,7 +82,6 @@ class MCPServiceManager:
         return [
             MCPServiceCardItem(
                 mcpserviceId=item.id,
-                icon=await MCPServiceManager.get_icon_path(item.id),
                 name=item.name,
                 description=item.description,
                 author=author_names.get(item.authorId, item.authorId),
@@ -116,11 +100,10 @@ class MCPServiceManager:
 
 
     @staticmethod
-    async def get_mcp_config(mcp_id: str) -> tuple[MCPServerConfig, str]:
+    async def get_mcp_config(mcp_id: str) -> MCPServerConfig:
         """获取MCP服务配置"""
-        icon_path = ""
         config = await MCPLoader.get_config(mcp_id)
-        return config, icon_path
+        return config
 
 
     @staticmethod
@@ -373,30 +356,6 @@ class MCPServiceManager:
         """移除MCP服务名称中的特殊字符"""
         invalid_chars = r'[\\\/:*?"<>|]'
         return re.sub(invalid_chars, "_", name)
-
-
-    @staticmethod
-    async def save_mcp_icon(
-            mcp_id: str,
-            icon: UploadFile,
-    ) -> str:
-        """保存MCP服务图标"""
-        mime = magic.from_buffer(icon.file.read(), mime=True)
-        icon.file.seek(0)
-
-        if mime not in ALLOWED_ICON_MIME_TYPES:
-            err = "[MCPServiceManager] 不支持的图标格式"
-            raise ValueError(err)
-
-        image = Image.open(icon.file)
-        image = image.convert("RGB")
-        image = image.resize((64, 64), resample=Image.Resampling.LANCZOS)
-        if not await MCP_ICON_PATH.exists():
-            await MCP_ICON_PATH.mkdir(parents=True, exist_ok=True)
-        image.save(MCP_ICON_PATH / f"{mcp_id}.png", format="PNG", optimize=True, compress_level=9)
-
-        return f"/static/mcp/{mcp_id}.png"
-
 
     @staticmethod
     async def is_user_actived(user_id: str, mcp_id: str) -> bool:

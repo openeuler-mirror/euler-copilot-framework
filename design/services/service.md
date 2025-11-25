@@ -23,7 +23,6 @@
 ```json
 {
   "serviceId": "550e8400-e29b-41d4-a716-446655440000",
-  "icon": "",
   "name": "天气查询服务",
   "description": "提供实时天气查询和预报功能",
   "author": "user@example.com",
@@ -118,7 +117,6 @@
     "services": [
       {
         "serviceId": "550e8400-e29b-41d4-a716-446655440000",
-        "icon": "",
         "name": "天气查询服务",
         "description": "提供实时天气查询和预报功能",
         "author": "user@example.com",
@@ -126,7 +124,6 @@
       },
       {
         "serviceId": "660e8400-e29b-41d4-a716-446655440001",
-        "icon": "",
         "name": "地图导航服务",
         "description": "提供地图搜索和路线规划功能",
         "author": "admin@example.com",
@@ -216,7 +213,6 @@ GET /api/service?createdByMe=false&favorited=true&searchType=NAME&keyword=天气
     "services": [
       {
         "serviceId": "550e8400-e29b-41d4-a716-446655440000",
-        "icon": "",
         "name": "天气查询服务",
         "description": "提供实时天气查询和预报功能",
         "author": "user@example.com",
