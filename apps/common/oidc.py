@@ -10,7 +10,7 @@ from apps.constants import OIDC_ACCESS_TOKEN_EXPIRE_TIME, OIDC_REFRESH_TOKEN_EXP
 from apps.models import Session, SessionType
 
 from .config import config
-from .oidc_provider import AutheliaOIDCProvider, AuthhubOIDCProvider, OpenEulerOIDCProvider
+from .oidc_provider import AuthhubOIDCProvider
 
 logger = logging.getLogger(__name__)
 
@@ -20,12 +20,8 @@ class OIDCProvider:
 
     def __init__(self) -> None:
         """初始化OIDC Provider"""
-        if config.login.provider == "openeuler":
-            self.provider = OpenEulerOIDCProvider()
-        elif config.login.provider == "authhub":
+        if config.login.provider == "authhub":
             self.provider = AuthhubOIDCProvider()
-        elif config.login.provider == "authelia":
-            self.provider = AutheliaOIDCProvider()
         else:
             err = f"[OIDC] 未知OIDC提供商: {config.login.provider}"
             logger.error(err)
