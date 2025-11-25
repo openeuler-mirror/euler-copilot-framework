@@ -177,7 +177,7 @@ validate_config() {
     
     # 检查登录提供者配置
     local provider
-    provider=$(grep "provider:" "$VALUES_FILE" | head -1 | sed 's/.*provider: *//' | tr -d ' "')
+    provider=$(grep -A 10 '^login:' "$VALUES_FILE" | grep 'provider:' | awk '{print $2}')
     
     if [[ -z "$provider" ]]; then
         echo -e "${YELLOW}警告：登录提供者未配置，将在部署EulerCopilot时自动设置${NC}"
