@@ -27,23 +27,10 @@ JSON_GEN_MAX_TRIAL = 3
 APP_DEFAULT_HISTORY_LEN = 3
 # 插件中心每页卡片数量
 SERVICE_PAGE_SIZE = 16
-# 图标允许的MIME类型
-ALLOWED_ICON_MIME_TYPES = [
-    "image/png",
-    "image/jpeg",
-    "image/avif",
-    "image/heic",
-    "image/heif",
-    "image/webp",
-    "image/bmp",
-    "image/tiff",
-]
 # MCP路径
 MCP_PATH = Path(config.deploy.data_dir) / "semantics" / "mcp"
 # 项目路径
 PROJ_PATH = Path(__file__).parent.parent
-# 图标存储位置
-ICON_PATH = PROJ_PATH / "static" / "icons"
 # MCP Agent 最大重试次数
 AGENT_MAX_RETRY_TIMES = 3
 # MCP Agent 最大步骤数

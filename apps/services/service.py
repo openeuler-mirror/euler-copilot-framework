@@ -117,7 +117,6 @@ class ServiceCenterManager:
         services = [
             ServiceCardItem(
                 serviceId=service_pool.id,
-                icon="",
                 name=service_pool.name,
                 description=service_pool.description,
                 author=author_map[service_pool.authorId],
@@ -157,7 +156,6 @@ class ServiceCenterManager:
         services = [
             ServiceCardItem(
                 serviceId=service_pool.id,
-                icon="",
                 name=service_pool.name,
                 description=service_pool.description,
                 author=author_map[service_pool.authorId],
@@ -206,7 +204,6 @@ class ServiceCenterManager:
         services = [
             ServiceCardItem(
                 serviceId=service_pool.id,
-                icon="",
                 name=service_pool.name,
                 description=service_pool.description,
                 author=author_map[service_pool.authorId],
