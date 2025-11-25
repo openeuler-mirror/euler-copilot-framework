@@ -5,6 +5,8 @@ globals:
   arch:
   # 镜像拉取策略，默认为IfNotPresent
   imagePullPolicy:
+  # 副本数，默认为1
+  replicaCount:
   # 存储类；默认为local-path
   storageClass:
 
@@ -21,23 +23,12 @@ domain:
 # Authelia 身份认证服务配置
 authelia:
   # [必填] 是否启用 Authelia
-  enabled: true
-  
+  enabled: true 
   # 镜像配置
+  # 镜像仓库；默认为hub.oepkgs.net/neocopilot/authelia
   image:
-    # 镜像仓库；默认为authelia/authelia
-    repository: authelia/authelia
-    # 镜像标签；默认为4.39.13
-    tag: "4.39.13"
-    # 镜像拉取策略；默认继承globals.imagePullPolicy
-    pullPolicy:
-  
-  # 副本数量；默认为1
-  replicaCount:
-  
   # 性能限制设置
   resourceLimits: {}
-  
   # Service设置
   service:
     # Service类型，例如NodePort；默认为NodePort

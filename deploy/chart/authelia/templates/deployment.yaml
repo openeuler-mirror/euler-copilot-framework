@@ -23,8 +23,8 @@ spec:
         fsGroup: 1000
       containers:
       - name: authelia
-        image: "{{ .Values.authelia.image.repository | default "authelia/authelia" }}:{{ .Values.authelia.image.tag | default "4.39.13" }}"
-        imagePullPolicy: {{ .Values.authelia.image.pullPolicy | default (.Values.globals.imagePullPolicy | default "IfNotPresent") }}
+        image: {{ .Values.authelia.image | default (printf "%s/neocopilot/authelia:4.39.13-%s" (.Values.globals.imageRegistry | default "hub.oepkgs.net") (.Values.globals.arch | default "x86")) }}
+        imagePullPolicy: {{ default "IfNotPresent" .Values.globals.imagePullPolicy }}
         ports:
         - name: http
           containerPort: 9091
