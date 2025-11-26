@@ -128,6 +128,7 @@ class CoreCall(BaseModel):
             step_order=history_order,
             background=executor.background,
             thinking=executor.task.runtime.reasoning,
+            app_metadata=executor.app_metadata,
         )
 
 

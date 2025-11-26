@@ -48,6 +48,7 @@ class CallVars(BaseModel):
     background: ExecutorBackground = Field(description="Executor的背景信息")
     ids: CallIds = Field(description="Call的ID")
     language: LanguageType = Field(description="语言", default=LanguageType.CHINESE)
+    app_metadata: Any = Field(description="应用元数据", default=None)
 
 
 class CallError(Exception):

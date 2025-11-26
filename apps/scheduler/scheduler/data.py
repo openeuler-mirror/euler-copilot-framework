@@ -60,6 +60,10 @@ class DataMixin:
         user_id = task.metadata.userId
         record_id = task.metadata.id
 
+        if task.metadata.conversationId is None:
+            msg = "conversationId cannot be None"
+            raise ValueError(msg)
+
         pg_record = PgRecord(
             id=record_id,
             conversationId=task.metadata.conversationId,

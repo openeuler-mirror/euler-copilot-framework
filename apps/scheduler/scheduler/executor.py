@@ -12,6 +12,7 @@ from apps.scheduler.executor.agent import MCPAgentExecutor
 from apps.scheduler.executor.flow import FlowExecutor
 from apps.scheduler.executor.qa import QAExecutor
 from apps.scheduler.pool.pool import pool
+from apps.schemas.flow import AgentAppMetadata, FlowAppMetadata
 from apps.schemas.request_data import RequestData
 from apps.schemas.task import TaskData
 from apps.services.appcenter import AppCenterManager
@@ -26,6 +27,7 @@ class ExecutorMixin:
     post_body: RequestData
     queue: MessageQueue
     llm: LLM
+    app_metadata: FlowAppMetadata | AgentAppMetadata | None
 
     async def get_top_flow(self) -> str:
         """获取Top1 Flow (由FlowMixin实现)"""
@@ -35,6 +37,7 @@ class ExecutorMixin:
         """根据 app_id 创建对应的执行器任务"""
         if final_app_id is None:
             _logger.info("[Scheduler] 运行智能问答模式")
+            self.app_metadata = None
             return asyncio.create_task(self._run_qa())
 
         try:
@@ -44,6 +47,7 @@ class ExecutorMixin:
             await self.queue.close()
             return None
 
+        self.app_metadata = app_data
         context_num = app_data.history_len
         _logger.info("[Scheduler] App上下文窗口: %d", context_num)
 
@@ -84,6 +88,7 @@ class ExecutorMixin:
             msg_queue=self.queue,
             question=self.post_body.question,
             llm=self.llm,
+            app_metadata=self.app_metadata,
         )
         _logger.info("[Scheduler] 开始智能问答")
         await qa_executor.init()
@@ -123,6 +128,7 @@ class ExecutorMixin:
             question=self.post_body.question,
             post_body_app=self.post_body.app,
             llm=self.llm,
+            app_metadata=self.app_metadata,
         )
 
         _logger.info("[Scheduler] 运行工作流执行器")
@@ -143,6 +149,7 @@ class ExecutorMixin:
             agent_id=self.post_body.app.app_id,
             params=self.post_body.app.params,
             llm=self.llm,
+            app_metadata=self.app_metadata,
         )
         _logger.info("[Scheduler] 运行MCP执行器")
         await agent_exec.init()

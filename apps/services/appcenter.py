@@ -189,7 +189,6 @@ class AppCenterManager:
                 app_cards += [AppCenterCardItem(
                     appId=row.id,
                     appType=row.appType,
-                    icon=row.icon,
                     name=row.name,
                     description=row.description,
                     author=author_names[row.authorId],
@@ -548,7 +547,6 @@ class AppCenterManager:
             "type": MetadataType.APP,
             "id": app_id,
             "author": user_id,
-            "icon": source.icon,
             "name": source.name,
             "description": source.description,
             "history_len": data.history_len if data else APP_DEFAULT_HISTORY_LEN,

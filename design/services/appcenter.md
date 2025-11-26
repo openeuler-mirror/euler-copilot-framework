@@ -24,7 +24,6 @@
 {
   "appId": "550e8400-e29b-41d4-a716-446655440000",
   "appType": "flow",
-  "icon": "/icons/app-icon.png",
   "name": "文档处理助手",
   "description": "智能化文档分析与处理工具",
   "author": "user123",
@@ -44,7 +43,6 @@
   "published": true,
   "name": "文档处理助手",
   "description": "智能化文档分析与处理工具",
-  "icon": "/icons/app-icon.png",
   "links": [
     {
       "title": "使用文档",
@@ -81,7 +79,6 @@
   "published": false,
   "name": "代码审查助手",
   "description": "自动化代码审查与建议",
-  "icon": "/icons/code-review.png",
   "links": [],
   "recommendedQuestions": [],
   "dialogRounds": 3,
@@ -152,7 +149,6 @@ GET /api/app?keyword=文档&appType=flow&page=1
       {
         "appId": "550e8400-e29b-41d4-a716-446655440000",
         "appType": "flow",
-        "icon": "/icons/app-icon.png",
         "name": "文档处理助手",
         "description": "智能化文档分析与处理工具",
         "author": "user123",
@@ -175,7 +171,6 @@ GET /api/app?keyword=文档&appType=flow&page=1
   "appType": "flow",
   "name": "新应用",
   "description": "这是一个新创建的应用",
-  "icon": "/icons/new-app.png",
   "links": [
     {
       "title": "帮助文档",
@@ -198,7 +193,6 @@ GET /api/app?keyword=文档&appType=flow&page=1
   "appType": "flow",
   "name": "更新后的应用名称",
   "description": "更新后的描述",
-  "icon": "/icons/updated-icon.png",
   "links": [],
   "recommendedQuestions": [],
   "dialogRounds": 5,
@@ -707,7 +701,7 @@ stateDiagram-v2
 
 - **功能描述**: 创建应用元数据对象
 - **验证步骤**: 验证是否提供了必要的数据源(新建数据或现有数据)
-- **通用参数**: 构建参数集合，包括ID、作者、图标、名称、描述、对话轮次和权限配置
+- **通用参数**: 构建参数集合，包括ID、作者、名称、描述、对话轮次和权限配置
 - **类型分派**:
   - 工作流应用 → 调用`_create_flow_metadata`
   - 智能体应用 → 调用`_create_agent_metadata`
@@ -776,7 +770,6 @@ erDiagram
         string author "FK"
         enum appType
         datetime updatedAt
-        string icon
         boolean isPublished
         enum permission
     }
