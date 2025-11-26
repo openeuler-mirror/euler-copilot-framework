@@ -1607,10 +1607,6 @@ components:
           type: string
           title: Appid
           description: 应用ID
-        icon:
-          type: string
-          title: Icon
-          description: 应用图标
         name:
           type: string
           title: Name
@@ -1635,7 +1631,6 @@ components:
       type: object
       required:
         - appId
-        - icon
         - name
         - description
         - author
@@ -1955,11 +1950,6 @@ components:
       description: GET /api/conversation 返回数据结构
     CreateAppRequest:
       properties:
-        icon:
-          type: string
-          title: Icon
-          description: 图标
-          default: ''
         name:
           type: string
           maxLength: 20
@@ -2333,11 +2323,6 @@ components:
       description: GET /api/app 返回数据结构
     GetAppPropertyMsg:
       properties:
-        icon:
-          type: string
-          title: Icon
-          description: 图标
-          default: ''
         name:
           type: string
           maxLength: 20
@@ -3413,10 +3398,6 @@ components:
           type: string
           title: Description
           description: 服务简介
-        icon:
-          type: string
-          title: Icon
-          description: 服务图标
         author:
           type: string
           title: Author
@@ -3430,7 +3411,6 @@ components:
         - serviceId
         - name
         - description
-        - icon
         - author
         - favorited
       title: ServiceCardItem
