@@ -21,7 +21,6 @@ from apps.schemas.scheduler import (
     CallVars,
 )
 
-from .prompt import LLM_CONTEXT_PROMPT, LLM_DEFAULT_PROMPT
 from .schema import LLMInput, LLMOutput
 
 if TYPE_CHECKING:
@@ -38,9 +37,9 @@ class LLM(CoreCall, input_model=LLMInput, output_model=LLMOutput):
     # 大模型参数
     temperature: float = Field(description="大模型温度（随机化程度）", default=0.7)
     step_history_size: int = Field(description="上下文信息中包含的步骤历史数量", default=3, ge=0, le=10)
-    history_length: int = Field(description="历史对话记录数量", default=0, ge=0)
+    history_length: int | None = Field(description="历史对话记录数量", default=None, ge=0)
     system_prompt: str = Field(description="大模型系统提示词", default="You are a helpful assistant.")
-    user_prompt: str = Field(description="大模型用户提示词", default=LLM_DEFAULT_PROMPT)
+    user_prompt: str | None = Field(description="大模型用户提示词", default=None)
 
 
     @classmethod
@@ -84,20 +83,15 @@ class LLM(CoreCall, input_model=LLMInput, output_model=LLMOutput):
         else:
             context_prompt = "无背景信息。"
 
-        # 历史对话记录
         history_messages = []
-        if self.history_length > 0:
-            # 从 conversation 中提取历史记录
+        history_len = self.history_length
+        if history_len is None and call_vars.app_metadata is not None:
+            history_len = call_vars.app_metadata.history_len
+
+        if history_len is not None and history_len > 0:
             conversation = self._sys_vars.background.conversation
-            # 取最后 history_length 条记录
-            recent_conversation = conversation[-self.history_length:]
-            # 将历史记录转换为消息格式
-            for item in recent_conversation:
-                if "question" in item and "answer" in item:
-                    history_messages.extend([
-                        {"role": "user", "content": item["question"]},
-                        {"role": "assistant", "content": item["answer"]},
-                    ])
+            # 每对消息包含 2 条记录（user + assistant）
+            history_messages = conversation[-history_len * 2:]
 
         # 参数
         time = datetime.now(tz=pytz.timezone("Asia/Shanghai")).strftime("%Y-%m-%d %H:%M:%S")
@@ -114,18 +108,16 @@ class LLM(CoreCall, input_model=LLMInput, output_model=LLMOutput):
             system_input = system_tmpl.render(**formatter)
 
             # 准备用户提示词
-            user_tmpl = env.from_string(self.user_prompt)
+            user_prompt = self.user_prompt if self.user_prompt is not None else self._load_prompt("llm")
+            user_tmpl = env.from_string(user_prompt)
             user_input = user_tmpl.render(**formatter)
         except Exception as e:
             raise CallError(message=f"用户提示词渲染失败：{e!s}", data={}) from e
 
         # 构建消息列表，将历史消息放在前面
-        messages = []
+        messages = [{"role": "system", "content": system_input}]
         messages.extend(history_messages)
-        messages.extend([
-            {"role": "system", "content": system_input},
-            {"role": "user", "content": user_input},
-        ])
+        messages.append({"role": "user", "content": user_input})
 
         return messages
 

@@ -142,7 +142,7 @@ class Suggestion(CoreCall, input_model=SuggestionInput, output_model=SuggestionO
         """通过LLM生成问题"""
         prompt = prompt_tpl.render(
             history=self._history_questions,
-            generated=list(generated_questions) if generated_questions else None,
+            generated=list(generated_questions) if generated_questions else [],
             tool=tool_info,
             preference=user_domain,
             target_num=target_num,

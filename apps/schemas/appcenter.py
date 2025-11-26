@@ -15,7 +15,6 @@ class AppCenterCardItem(BaseModel):
 
     app_id: uuid.UUID = Field(..., alias="appId", description="应用ID")
     app_type: AppType = Field(..., alias="appType", description="应用类型")
-    icon: str = Field(..., description="应用图标")
     name: str = Field(..., description="应用名称")
     description: str = Field(..., description="应用简介")
     author: str = Field(..., description="应用作者")
@@ -58,7 +57,6 @@ class AppData(BaseModel):
     """应用信息数据结构"""
 
     app_type: AppType = Field(..., alias="appType", description="应用类型")
-    icon: str = Field(default="", description="图标")
     name: str = Field(..., max_length=20, description="应用名称")
     description: str = Field(..., max_length=150, description="应用简介")
     links: list[AppLink] = Field(default=[], description="相关链接", max_length=5)
