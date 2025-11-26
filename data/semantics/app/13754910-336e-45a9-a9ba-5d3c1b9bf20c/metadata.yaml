@@ -2,8 +2,6 @@
 type: app
 # 应用ID
 id: 13754910-336e-45a9-a9ba-5d3c1b9bf20c
-# 应用图标（前端访问URI）
-icon: /static/apps/13754910-336e-45a9-a9ba-5d3c1b9bf20c.png
 # 应用种类
 app_type: flow
 # 应用的名称（展示用）
