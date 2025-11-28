@@ -5,19 +5,17 @@ import asyncio
 import logging
 from collections.abc import AsyncGenerator
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, Request, status
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse, StreamingResponse
 
 from apps.common.queue import MessageQueue
-from apps.common.wordscheck import words_check
 from apps.dependency import verify_personal_token, verify_session
 from apps.models import ExecutorStatus
 from apps.scheduler.scheduler import Scheduler
 from apps.schemas.request_data import RequestData
 from apps.schemas.response_data import ResponseData
 from apps.services.activity import Activity
-from apps.services.blacklist import QuestionBlacklistManager, UserBlacklistManager
 from apps.services.flow import FlowManager
 
 _logger = logging.getLogger(__name__)
@@ -33,12 +31,6 @@ router = APIRouter(
 async def chat_generator(post_body: RequestData, user_id: str, auth_header: str) -> AsyncGenerator[str, None]:
     """进行实际问答，并从MQ中获取消息"""
     try:
-        # 敏感词检查
-        if await words_check.check(post_body.question) != 1:
-            yield "data: [SENSITIVE]\n\n"
-            _logger.info("[Chat] 问题包含敏感词！")
-            return
-
         # 创建queue；由Scheduler进行关闭
         queue = MessageQueue()
         await queue.init()
@@ -71,13 +63,6 @@ async def chat_generator(post_body: RequestData, user_id: str, auth_header: str)
             await Activity.remove_active(user_id)
             return
 
-        # 对结果进行敏感词检查
-        if await words_check.check(task.runtime.fullAnswer) != 1:
-            yield "data: [SENSITIVE]\n\n"
-            _logger.info("[Chat] 答案包含敏感词！")
-            await Activity.remove_active(user_id)
-            return
-
         if post_body.app and post_body.app.flow_id:
             await FlowManager.update_flow_debug_by_app_and_flow_id(
                 post_body.app.app_id,
@@ -100,13 +85,6 @@ async def chat(request: Request, post_body: RequestData) -> StreamingResponse:
     """LLM流式对话接口"""
     auth_header = request.headers.get("Authorization", "").replace("Bearer ", "")
     user_id = request.state.user_id
-    # 问题黑名单检测
-    if (post_body.question is not None) and (
-        not await QuestionBlacklistManager.check_blacklisted_questions(input_question=post_body.question)
-    ):
-        # 用户扣分
-        await UserBlacklistManager.change_blacklisted_users(user_id, -10)
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="question is blacklisted")
 
     res = chat_generator(post_body, user_id, auth_header)
     return StreamingResponse(

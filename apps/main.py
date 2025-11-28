@@ -17,7 +17,6 @@ from .common.postgres import postgres
 from .routers import (
     appcenter,
     auth,
-    blacklist,
     chat,
     comment,
     conversation,
@@ -65,8 +64,6 @@ app.add_middleware(
 app.include_router(appcenter.router)
 app.include_router(auth.admin_router)
 app.include_router(auth.router)
-app.include_router(blacklist.admin_router)
-app.include_router(blacklist.router)
 app.include_router(chat.router)
 app.include_router(comment.router)
 app.include_router(conversation.router)

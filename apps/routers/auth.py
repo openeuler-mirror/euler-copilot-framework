@@ -10,7 +10,7 @@ from fastapi.encoders import jsonable_encoder
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 
-from apps.common.oidc import oidc_provider
+from apps.common.auth import oidc_provider
 from apps.dependency import verify_personal_token, verify_session
 from apps.schemas.personal_token import PostPersonalTokenMsg, PostPersonalTokenRsp
 from apps.schemas.response_data import (
