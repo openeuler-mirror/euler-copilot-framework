@@ -38,6 +38,10 @@ class MCPAgentExecutor(BaseExecutor):
 
     async def init(self) -> None:
         """初始化MCP Agent"""
+        # 若question为空，则使用task中的userInput
+        if not self.question:
+            self.question = self.task.runtime.userInput
+
         # 初始化必要变量
         self._step_cnt: int = 0
         self._retry_times: int = 0
