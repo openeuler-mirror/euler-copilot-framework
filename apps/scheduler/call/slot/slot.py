@@ -24,6 +24,11 @@ if TYPE_CHECKING:
     from apps.scheduler.executor.step import StepExecutor
 
 
+def _tojson_filter(value: Any, ensure_ascii: bool = True, indent: int | None = None) -> str:
+    """自定义JSON过滤器，支持ensure_ascii和indent参数"""
+    return json.dumps(value, ensure_ascii=ensure_ascii, indent=indent)
+
+
 class Slot(CoreCall, input_model=SlotInput, output_model=SlotOutput):
     """参数填充工具"""
 
@@ -55,6 +60,7 @@ class Slot(CoreCall, input_model=SlotInput, output_model=SlotOutput):
             trim_blocks=True,
             lstrip_blocks=True,
         )
+        env.filters["tojson"] = _tojson_filter
         language = self._sys_vars.language
 
         query_template = env.from_string(SLOT_GEN_PROMPT[language])
