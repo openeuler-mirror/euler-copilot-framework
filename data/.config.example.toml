@@ -8,6 +8,7 @@ provider = 'authhub'
 admin_user = [
     "admin"
 ]
+
 [login.settings]
 host = 'http://127.0.0.1:8000'
 host_inner = 'http://127.0.0.1:11120'
@@ -15,30 +16,11 @@ login_api = 'http://127.0.0.1:8080/api/auth/login'
 app_id = ''
 app_secret = ''
 
-[fastapi]
-domain = '127.0.0.1'
-
-[security]
-half_key1 = ''
-half_key2 = ''
-half_key3 = ''
-jwt_key = ''
-
-[embedding]
-type = 'openai'
-endpoint = 'https://api.openai.com/v1'
-api_key = ''
-model = 'bge-m3'
-
 [rag]
 rag_service = 'http://127.0.0.1:9988'
 
-[mongodb]
-host = '127.0.0.1'
-port = 27017
-user = 'euler_copilot'
-password = ''
-database = 'euler_copilot'
+[fastapi]
+domain = '127.0.0.1'
 
 [minio]
 endpoint = '127.0.0.1:9000'
@@ -46,24 +28,18 @@ access_key = 'minioadmin'
 secret_key = ''
 secure = false
 
-[llm]
-endpoint = 'https://api.openai.com/v1'
-key = ''
-model = 'gpt-4o-mini'
-max_tokens = 8192
-temperature = 0.7
+[postgres]
+host = '127.0.0.1'
+port = 5432
+user = 'euler_copilot'
+password = ''
+database = 'euler_copilot'
 
-[function_call]
-backend = 'ollama'
-endpoint = 'http://localhost:11434'
-model = 'qwen2.5:7b'
-api_key = ''
-max_tokens = 8192
-temperature = 0.7
-
-[check]
-enable = false
-words_list = ''
+[security]
+half_key1 = ''
+half_key2 = ''
+half_key3 = ''
+jwt_key = ''
 
 [extra]
 sql_url = 'http://127.0.0.1:9015'

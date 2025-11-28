@@ -14,7 +14,7 @@
 提供给工具的参数为：
 
 ```json
-{{ input_data | tojson }}
+{{ input_data | tojson(ensure_ascii=False, indent=2) }}
 ```
 
 {% elif role == "assistant" %}
@@ -31,7 +31,7 @@
 工具执行后得到的数据为：
 
 ```json
-{{ output_data | tojson }}
+{{ output_data | tojson(ensure_ascii=False, indent=2) }}
 ```
 
 这些数据将作为后续步骤的输入或参考信息使用。

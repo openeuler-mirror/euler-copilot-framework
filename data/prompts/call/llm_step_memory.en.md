@@ -14,7 +14,7 @@ To complete this step, we invoked the tool `{{ step_name }}`.
 The parameters provided to the tool are:
 
 ```json
-{{ input_data | tojson }}
+{{ input_data | tojson(ensure_ascii=False, indent=2) }}
 ```
 
 {% elif role == "assistant" %}
@@ -31,7 +31,7 @@ Execution status: {{ step_status }}
 The data obtained from the tool execution is:
 
 ```json
-{{ output_data | tojson }}
+{{ output_data | tojson(ensure_ascii=False, indent=2) }}
 ```
 
 This data will be used as input or reference information for subsequent steps.
