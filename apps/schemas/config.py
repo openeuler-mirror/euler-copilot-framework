@@ -80,13 +80,6 @@ class SecurityConfig(BaseModel):
     jwt_key: str = Field(description="JWT key")
 
 
-class CheckConfig(BaseModel):
-    """敏感词检测配置"""
-
-    enable: bool = Field(description="是否启用敏感词检测")
-    words_list: str = Field(description="敏感词列表文件路径")
-
-
 class ExtraConfig(BaseModel):
     """额外配置"""
 
@@ -103,5 +96,4 @@ class ConfigModel(BaseModel):
     minio: MinioConfig
     postgres: PostgresConfig
     security: SecurityConfig
-    check: CheckConfig
     extra: ExtraConfig

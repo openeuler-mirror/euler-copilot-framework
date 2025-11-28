@@ -5,7 +5,7 @@ import unittest
 from unittest.mock import patch, MagicMock
 from http import HTTPStatus
 from fastapi.exceptions import HTTPException
-from apps.common.oidc import get_oidc_token, get_oidc_user
+from apps.common.auth import get_oidc_token, get_oidc_user
 from apps.common.config import config
 
 
