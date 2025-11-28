@@ -59,7 +59,6 @@ class BaseExecutor(BaseModel, ABC):
         history_questions = []
         for i, record in enumerate(records):
             if i < n:
-                # 因为要reverse，所以这里要先answer后question
                 context.extend([
                     {
                         "role": "user",

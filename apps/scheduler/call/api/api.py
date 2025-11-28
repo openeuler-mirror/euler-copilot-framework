@@ -12,7 +12,7 @@ from fastapi import status
 from pydantic import Field
 from pydantic.json_schema import SkipJsonSchema
 
-from apps.common.oidc import oidc_provider
+from apps.common.auth import oidc_provider
 from apps.models import LanguageType
 from apps.scheduler.call.core import CoreCall
 from apps.schemas.enum_var import CallOutputType, ContentType, HTTPMethod
