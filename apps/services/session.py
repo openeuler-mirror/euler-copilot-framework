@@ -10,8 +10,6 @@ from apps.common.postgres import postgres
 from apps.constants import SESSION_TTL
 from apps.models import Session, SessionType
 
-from .blacklist import UserBlacklistManager
-
 logger = logging.getLogger(__name__)
 
 
@@ -63,12 +61,6 @@ class SessionManager:
                 await session.scalars(select(Session.userId).where(Session.id == session_id))
             ).one_or_none()
             if not user_id:
-                return None
-
-            # 查询黑名单
-            if user_id and await UserBlacklistManager.check_blacklisted_users(user_id):
-                logger.error("[SessionManager] 用户在Session黑名单中")
-                await SessionManager.delete_session(session_id)
                 return None
 
         return user_id

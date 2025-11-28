@@ -10,7 +10,7 @@ from fastapi import status
 from sqlalchemy import and_, select
 
 from apps.common.config import config
-from apps.common.oidc import oidc_provider
+from apps.common.auth import oidc_provider
 from apps.common.postgres import postgres
 from apps.constants import OIDC_ACCESS_TOKEN_EXPIRE_TIME
 from apps.models import Session, SessionType

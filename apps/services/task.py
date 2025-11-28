@@ -44,11 +44,13 @@ class TaskManager:
             )).one_or_none()
             if not task:
                 # 任务不存在，新建Task
-                return Task(
+                new_task = Task(
                     conversationId=conversation_id,
                     userId=user_id,
                 )
-            logger.info("[TaskManager] 新建任务 %s", task.id)
+                logger.info("[TaskManager] 创建新任务对象 (未保存)")
+                return new_task
+            logger.info("[TaskManager] 找到已存在的任务 %s", task.id)
             return task
 
 
