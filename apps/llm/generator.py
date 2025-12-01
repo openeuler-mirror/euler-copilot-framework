@@ -243,7 +243,7 @@ class JsonGenerator:
                     err_info = err_info.split("\n\n")[0]
 
                     function_name = function["name"]
-                    result_json = json.dumps(e, ensure_ascii=False)
+                    result_json = json.dumps(err_info, ensure_ascii=False)
 
                     retry_messages.append({
                         "role": "assistant",

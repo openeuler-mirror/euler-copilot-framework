@@ -22,6 +22,48 @@ class RecordManager:
     """问答对相关操作"""
 
     @staticmethod
+    async def get_conversation_and_record(
+        user_id: str,
+        conversation_id: uuid.UUID,
+        record_id: uuid.UUID | None = None,
+    ) -> tuple[bool, PgRecord | None]:
+        """
+        验证对话是否存在且获取已存在的记录
+
+        :param user_id: 用户ID
+        :param conversation_id: 会话ID
+        :param record_id: 记录ID（可选）
+        :return: (对话是否存在, 已存在的记录或None)
+        """
+        async with postgres.session() as session:
+            # 验证对话是否存在
+            conv = (await session.scalars(
+                select(Conversation).where(
+                    and_(
+                        Conversation.id == conversation_id,
+                        Conversation.userId == user_id,
+                    ),
+                ),
+            )).one_or_none()
+
+            if not conv:
+                return False, None
+
+            # 如果提供了record_id，则查找已存在的记录
+            if record_id:
+                existing_record = (await session.scalars(
+                    select(PgRecord).where(
+                        and_(
+                            PgRecord.id == record_id,
+                            PgRecord.conversationId == conversation_id,
+                        ),
+                    ),
+                )).one_or_none()
+                return True, existing_record
+
+            return True, None
+
+    @staticmethod
     async def verify_record_in_conversation(record_id: uuid.UUID, user_id: str, conversation_id: uuid.UUID) -> bool:
         """
         校验指定record_id是否属于指定用户和会话（PostgreSQL实现）
@@ -51,18 +93,28 @@ class RecordManager:
         metadata: PgRecordMetadata,
     ) -> uuid.UUID | None:
         """Record和RecordMetadata插入PostgreSQL"""
+        # 验证对话存在并检查是否有同ID的记录
+        conv_exists, existing_record = await RecordManager.get_conversation_and_record(
+            user_id,
+            conversation_id,
+            record.id,
+        )
+
+        if not conv_exists:
+            logger.error("[RecordManager] 对话不存在: %s", conversation_id)
+            return None
+
         async with postgres.session() as session:
-            conv = (await session.scalars(
-                select(Conversation).where(
-                    and_(
-                        Conversation.id == conversation_id,
-                        Conversation.userId == user_id,
-                    ),
-                ),
-            )).one_or_none()
-            if not conv:
-                logger.error("[RecordManager] 对话不存在: %s", conversation_id)
-                return None
+            if existing_record:
+                logger.warning("[RecordManager] 记录已存在,删除旧记录后重新保存: %s", record.id)
+                # 删除已存在的记录及其元数据
+                existing_metadata = (await session.scalars(
+                    select(PgRecordMetadata).where(PgRecordMetadata.recordId == record.id),
+                )).one_or_none()
+                if existing_metadata:
+                    await session.delete(existing_metadata)
+                await session.delete(existing_record)
+                await session.flush()
 
             session.add(record)
             session.add(metadata)
@@ -79,6 +131,16 @@ class RecordManager:
         order: Literal["desc", "asc"] = "desc",
     ) -> list[RecordData]:
         """查询ConversationID的最后n条问答对"""
+        # 验证对话是否存在
+        conv_exists, _ = await RecordManager.get_conversation_and_record(
+            user_id,
+            conversation_id,
+        )
+
+        if not conv_exists:
+            logger.error("[RecordManager] 对话不存在: %s", conversation_id)
+            return []
+
         async with postgres.session() as session:
             sql = select(PgRecord).where(
                 and_(

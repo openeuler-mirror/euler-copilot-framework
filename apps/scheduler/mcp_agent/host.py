@@ -35,7 +35,7 @@ class MCPHost(MCPBase):
         task: TaskData,
         current_input: dict[str, Any],
         params: dict[str, Any] | None = None,
-        params_description: str = "",
+        current_goal: str = "",
     ) -> dict[str, Any]:
         """生成工具参数"""
         llm_query = _LLM_QUERY_FIX[task.runtime.language]
@@ -43,13 +43,12 @@ class MCPHost(MCPBase):
         prompt = _env.from_string(await self._load_prompt("gen_params")).render(
             tool_name=mcp_tool.toolName,
             goal=task.runtime.userInput,
-            current_goal=task.runtime.userInput,
+            current_goal=current_goal,
             tool_description=mcp_tool.description,
             input_schema=mcp_tool.inputSchema,
             input_params=current_input,
             error_message=error_message,
             params=params,
-            params_description=params_description,
         )
 
         # 组装OpenAI Function标准的Function结构

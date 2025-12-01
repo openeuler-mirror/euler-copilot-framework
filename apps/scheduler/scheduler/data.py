@@ -2,6 +2,7 @@
 """数据管理相关的Mixin类"""
 
 import logging
+import uuid
 from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID
@@ -56,19 +57,27 @@ class DataMixin:
         current_time: float,
     ) -> tuple[PgRecord, PgRecordMetadata]:
         """构建记录对象和元数据对象"""
-        task = self.task
-        user_id = task.metadata.userId
-        record_id = task.metadata.id
+        # 若Executor状态为WAITING，则使用task中的recordId；否则生成新UUID
+        if (
+            self.task.state
+            and self.task.state.executorStatus == ExecutorStatus.WAITING
+            and self.task.metadata.recordId
+        ):
+            record_id = self.task.metadata.recordId
+        else:
+            record_id = uuid.uuid4()
+            # 更新task中的recordId
+            self.task.metadata.recordId = record_id
 
-        if task.metadata.conversationId is None:
+        if self.task.metadata.conversationId is None:
             msg = "conversationId cannot be None"
             raise ValueError(msg)
 
         pg_record = PgRecord(
             id=record_id,
-            conversationId=task.metadata.conversationId,
-            taskId=task.metadata.id,
-            userId=user_id,
+            conversationId=self.task.metadata.conversationId,
+            taskId=self.task.metadata.id,
+            userId=self.task.metadata.userId,
             content=encrypt_data,
             key=encrypt_config,
             createdAt=datetime.fromtimestamp(current_time, tz=UTC),

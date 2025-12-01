@@ -3,6 +3,7 @@
 
 import logging
 import uuid
+from typing import Any
 
 from mcp.types import TextContent
 from pydantic import Field, ValidationError
@@ -17,8 +18,7 @@ from apps.scheduler.pool.mcp.pool import mcp_pool
 from apps.schemas.enum_var import EventType
 from apps.schemas.flow import AgentAppMetadata
 from apps.schemas.mcp import MCPRiskConfirm, Step
-from apps.schemas.message import FlowParams
-from apps.schemas.task import AgentHistoryExtra
+from apps.schemas.task import AgentCheckpointExtra, AgentHistoryExtra
 from apps.services.appcenter import AppCenterManager
 from apps.services.mcp_service import MCPServiceManager
 from apps.services.user import UserManager
@@ -30,7 +30,7 @@ class MCPAgentExecutor(BaseExecutor):
 
     agent_id: uuid.UUID = Field(default=uuid.uuid4(), description="App ID作为Agent ID")
     agent_description: str = Field(default="", description="Agent描述")
-    params: FlowParams | bool | None = Field(
+    params: dict[str, Any] | None = Field(
         default=None,
         description="流执行过程中的参数补充",
         alias="params",
@@ -76,6 +76,30 @@ class MCPAgentExecutor(BaseExecutor):
                 stepType="",
             )
 
+        # 从state.extraData恢复状态（如果存在）
+        self._restore_extra_data()
+
+    def _restore_extra_data(self) -> None:
+        """从 task.state.extraData 恢复所有状态"""
+        if not self.task.state or not self.task.state.extraData:
+            return
+
+        try:
+            checkpoint_extra = AgentCheckpointExtra.model_validate(self.task.state.extraData)
+            self._current_input = checkpoint_extra.current_input
+            self._retry_times = checkpoint_extra.retry_times
+            self._current_goal = checkpoint_extra.step_goal
+            self._step_cnt = checkpoint_extra.step_cnt
+            _logger.info(
+                "[MCPAgentExecutor] 从checkpoint恢复extraData - "
+                "retry_times: %s, step_goal: %s, step_cnt: %s",
+                self._retry_times,
+                self._current_goal,
+                self._step_cnt,
+            )
+        except (ValidationError, KeyError, TypeError) as e:
+            _logger.warning("[MCPAgentExecutor] 从checkpoint恢复extraData失败: %s", e)
+
     async def load_mcp(self) -> None:
         """加载MCP服务器列表"""
         _logger.info("[MCPAgentExecutor] 加载MCP服务器列表")
@@ -116,12 +140,6 @@ class MCPAgentExecutor(BaseExecutor):
             raise RuntimeError(err)
 
         # 获取输入参数
-        if isinstance(self.params, FlowParams):
-            params = self.params.content
-            params_description = self.params.description
-        else:
-            params = {}
-            params_description = ""
         self._current_tool = self._tool_list[self.task.state.stepName]
 
         # 对于首次调用,使用空的current_input
@@ -131,8 +149,8 @@ class MCPAgentExecutor(BaseExecutor):
             self._current_tool,
             self.task,
             current_input,
-            params,
-            params_description,
+            self.params,
+            self._current_goal,
         )
 
     def _get_error_message_str(self, error_message: dict | str | None) -> str:
@@ -217,6 +235,30 @@ class MCPAgentExecutor(BaseExecutor):
         if len(self.task.context) and self.task.context[-1].stepId == self.task.state.stepId:
             del self.task.context[-1]
 
+    def _update_checkpoint_extra_data(self) -> None:
+        """更新checkpoint的extraData"""
+        if not self.task.state:
+            err = "[MCPAgentExecutor] 任务状态不存在"
+            _logger.error(err)
+            raise RuntimeError(err)
+
+        # 使用AgentCheckpointExtra数据结构保存checkpoint的extra_data
+        checkpoint_extra = AgentCheckpointExtra(
+            current_input=self._current_input,
+            error_message=self._get_error_message_str(self.task.state.errorMessage),
+            retry_times=self._retry_times,
+            step_goal=self._current_goal,
+            step_cnt=self._step_cnt,
+        )
+        self.task.state.extraData = checkpoint_extra.model_dump()
+        _logger.info(
+            "[MCPAgentExecutor] 更新checkpoint extraData - "
+            "retry_times: %s, step_goal: %s, step_cnt: %s",
+            self._retry_times,
+            self._current_goal,
+            self._step_cnt,
+        )
+
     async def _handle_step_error_and_continue(self) -> None:
         """处理步骤错误并继续下一步"""
         if not self.task.state:
@@ -227,6 +269,8 @@ class MCPAgentExecutor(BaseExecutor):
 
         # 先更新stepStatus
         self.task.state.stepStatus = StepStatus.ERROR
+        # 增加重试次数
+        self._retry_times += 1
 
         await self._push_message(
             EventType.STEP_OUTPUT,
@@ -273,6 +317,8 @@ class MCPAgentExecutor(BaseExecutor):
                 step_goal=self._current_goal,
             ),
         )
+        # 进入等待状态前保存checkpoint
+        self._update_checkpoint_extra_data()
 
     async def run_step(self) -> None:
         """执行步骤"""
@@ -360,6 +406,8 @@ class MCPAgentExecutor(BaseExecutor):
                 step_goal=self._current_goal,
             ),
         )
+        # 进入等待状态前保存checkpoint
+        self._update_checkpoint_extra_data()
 
     async def get_next_step(self) -> None:
         """获取下一步"""
@@ -389,6 +437,10 @@ class MCPAgentExecutor(BaseExecutor):
             self.task.state.stepStatus = StepStatus.INIT
             # 保存步骤目标
             self._current_goal = step.description
+            # 重置重试次数
+            self._retry_times = 0
+            # 更新checkpoint的extraData
+            self._update_checkpoint_extra_data()
         else:
             # 没有下一步了，结束流程
             self.task.state.stepName = AGENT_FINAL_STEP_NAME
@@ -438,6 +490,7 @@ class MCPAgentExecutor(BaseExecutor):
                     if risk_confirm.confirm:
                         # 用户确认继续执行
                         self._remove_last_context_if_same_step()
+                        await self.get_tool_input_param(is_first=False)
                     else:
                         # 用户拒绝执行
                         should_cancel = True
@@ -575,6 +628,8 @@ class MCPAgentExecutor(BaseExecutor):
             await self._push_message(EventType.STEP_OUTPUT, data=error_output)
             await self._add_error_to_context(self.task.state.stepStatus)
         finally:
+            # 更新checkpoint的extraData（统一在执行结束时更新）
+            self._update_checkpoint_extra_data()
             # 清理MCP客户端
             for mcp_service in self._mcp_list:
                 try:
