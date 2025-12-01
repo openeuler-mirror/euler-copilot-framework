@@ -98,14 +98,16 @@ class TaskManager:
     async def delete_task_by_task_id(task_id: uuid.UUID) -> None:
         """通过task_id删除Task信息"""
         async with postgres.session() as session:
-            await session.execute(
-                delete(Task).where(Task.id == task_id),
-            )
+            # Delete child tables first to avoid foreign key constraint violations
             await session.execute(
                 delete(TaskRuntime).where(TaskRuntime.taskId == task_id),
             )
             await session.execute(
                 delete(ExecutorCheckpoint).where(ExecutorCheckpoint.taskId == task_id),
+            )
+            # Delete parent table last
+            await session.execute(
+                delete(Task).where(Task.id == task_id),
             )
             await session.commit()
 

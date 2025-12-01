@@ -26,6 +26,8 @@ class AgentCheckpointExtra(BaseModel):
     current_input: dict[str, Any] = Field(description="当前输入数据", default={})
     error_message: str = Field(description="错误信息", default="")
     retry_times: int = Field(description="当前步骤重试次数", default=0)
+    step_goal: str = Field(description="当前步骤目标", default="")
+    step_cnt: int = Field(description="已执行步骤数", default=0)
 
 
 class AgentHistoryExtra(BaseModel):

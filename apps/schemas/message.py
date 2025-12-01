@@ -12,13 +12,6 @@ from apps.schemas.enum_var import EventType
 from .record import RecordMetadata
 
 
-class FlowParams(BaseModel):
-    """流执行过程中的参数补充"""
-
-    content: dict[str, Any] = Field(default={}, description="流执行过程中的参数补充内容")
-    description: str = Field(default="", description="流执行过程中的参数补充描述")
-
-
 class HeartbeatData(BaseModel):
     """心跳事件的数据结构"""
 
