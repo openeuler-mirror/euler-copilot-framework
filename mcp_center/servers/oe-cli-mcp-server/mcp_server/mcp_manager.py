@@ -1,18 +1,18 @@
 # mcp_server/server.py
-import json
 import os.path
-import threading
 from functools import wraps
-from typing import Dict, Any, Optional
 from mcp.server import FastMCP
 from config.base_config_loader import BaseConfig
 from mcp_server.manager.manager import ToolManager, logger
 from mcp_tools.tool_type import ToolType
 from util.get_project_root import get_project_root
 from util.zip_tool_util import unzip_tool
+import threading
+import uvicorn
+from fastapi import FastAPI
 
 # -------------------------- 导入独立的 FastAPI 启动函数 --------------------------
-from mcp_server.api_server import start_fastapi_server
+
 
 PUBLIC_CONFIG_PATH = os.path.join(get_project_root(), "config/public_config.toml")
 PERSIST_FILE = os.path.join(get_project_root(), "data/tool_state.json")
@@ -49,6 +49,8 @@ class McpServer(ToolManager):
         self.port = port
         self.language = BaseConfig().get_config().public_config.language
         self.PERSIST_FILE = PERSIST_FILE
+        self.fastapi_app = None  # 存储 FastAPI 实例
+        self.fastapi_thread = None  # 存储 FastAPI 线程
 
     # -------------------------- 原有核心业务方法不变 --------------------------
     def _mcp_register(self, packages=None):
@@ -138,13 +140,109 @@ class McpServer(ToolManager):
         self._reset()
         self.start()
 
-    # -------------------------- 简化 start 方法：调用独立的 FastAPI 启动函数 --------------------------
     def start(self):
-        # 1. 启动独立的 FastAPI 服务（线程不阻塞）
-        start_fastapi_server(host="0.0.0.0", port=8003)
-        # 2. 启动 FastMCP 主服务（原有逻辑不变）
+
+        # 1. 先初始化 MCP 核心逻辑（确保 self.list_packages 等方法可用）
         self._reset()
+        logger.info(f"MCP 实例初始化完成，已加载 {len(self.list_packages())} 个工具包")
+
+        # 2. 启动 FastAPI 服务（直接调用实例方法，绑定 self）
+        self._start_fastapi(host="0.0.0.0", port=12556)
+
+        # 3. 最后启动 FastMCP 主服务（阻塞主线程）
+        logger.info("启动 FastMCP 主服务...")
         self.mcp.run(transport='sse')
+
+    # -------------------------- 简化 start 方法：调用独立的 FastAPI 启动函数 --------------------------
+
+    def _create_fastapi_app(self):
+        """创建 FastAPI 应用（内部方法，绑定当前实例 self）"""
+        app = FastAPI(title="MCP Tool API", version="1.0")
+
+        # -------------------------- FastAPI 接口（完全对齐 Socket 版本逻辑）--------------------------
+        @app.get("/tool/list", summary="查询所有已加载工具包")
+        def list_tools():
+            """查询工具包（直接用 self 调用 list_packages/list_funcs，与 Socket list 逻辑一致）"""
+            try:
+                # 直接用 self 调用实例方法（和 Socket 版本 _exec_socket_action 的 list 逻辑完全一致）
+                pkg_funcs = {}
+                for pkg in self.list_packages():
+                    pkg_funcs[pkg] = self.list_funcs(pkg)
+                return {
+                    "success": True,
+                    "data": {
+                        "pkg_funcs": pkg_funcs,
+                        "total_packages": len(pkg_funcs)  # 适配 handle.py 预期的返回结构
+                    }
+                }
+            except Exception as e:
+                logger.error(f"查询工具包失败：{str(e)}", exc_info=True)
+                return {"success": False, "message": f"查询失败：{str(e)}"}
+
+        @app.post("/tool/add", summary="添加工具包")
+        def add_tool(type: str, value: str):
+            """添加系统/自定义工具包（与 Socket add 逻辑完全一致）"""
+            try:
+                # 完全对齐 _exec_socket_action 的 add 逻辑
+                if type == "system":
+                    self.load(ToolType(value))  # 系统包：按 ToolType 加载
+                else:  # custom 类型
+                    self.load(value)  # 自定义包：按 zip 路径加载
+                return {"success": True, "message": f"新增{value}成功"}
+            except Exception as e:
+                logger.error(f"添加工具包 {value} 失败：{str(e)}", exc_info=True)
+                return {"success": False, "message": f"添加失败：{str(e)}"}
+
+        @app.post("/tool/remove", summary="删除工具包")
+        def remove_tool(type: str, value: str):
+            """删除工具包（与 Socket remove 逻辑完全一致，重启后生效）"""
+            try:
+                # 完全对齐 _exec_socket_action 的 remove 逻辑
+                if type == "system":
+                    self.remove(ToolType(value))  # 系统包：按 ToolType 删除
+                else:  # custom 类型
+                    self.remove(value)  # 自定义包：按包名/路径删除
+                return {"success": True, "message": f"删除{value}成功,重启后生效"}
+            except Exception as e:
+                logger.error(f"删除工具包 {value} 失败：{str(e)}", exc_info=True)
+                return {"success": False, "message": f"删除失败：{str(e)}"}
+
+        @app.post("/tool/init", summary="初始化工具包")
+        def init_tool():
+            """初始化工具包（与 Socket init 逻辑完全一致，仅保留基础运维包）"""
+            try:
+                self.init()  # 直接调用实例的 init 方法（和 Socket 版本一致）
+                return {"success": True, "message": "初始化成功（仅保留基础运维包）"}
+            except Exception as e:
+                logger.error(f"初始化工具包失败：{str(e)}", exc_info=True)
+                return {"success": False, "message": f"初始化失败：{str(e)}"}
+
+        return app
+
+    def _start_fastapi(self, host: str = "0.0.0.0", port: int = 12556):
+        """启动 FastAPI 服务（实例方法，直接绑定 self）"""
+        # 1. 创建 FastAPI 应用（绑定当前实例）
+        self.fastapi_app = self._create_fastapi_app()
+        logger.info(f"FastAPI 应用创建完成，接口文档：http://{host}:{port}/docs")
+
+        # 2. 定义线程内运行的服务逻辑
+        def run_server():
+            try:
+                uvicorn.run(
+                    self.fastapi_app,
+                    host=host,
+                    port=port,
+                    log_level="warning",
+                    access_log=False
+                )
+            except Exception as e:
+                logger.error(f"FastAPI 服务启动失败：{str(e)}", exc_info=True)
+
+        # 3. 启动独立线程（不阻塞主服务）
+        self.fastapi_thread = threading.Thread(target=run_server, daemon=True)
+        self.fastapi_thread.start()
+        logger.info(f"FastAPI 服务线程启动成功（线程ID：{self.fastapi_thread.ident}）")
+
 
 # -------------------------- 启动服务（原有逻辑不变）--------------------------
 if __name__ == "__main__":

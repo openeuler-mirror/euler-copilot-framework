@@ -4,11 +4,13 @@
 import asyncio
 import logging
 from contextlib import AsyncExitStack
-from typing import Union
+from typing import TYPE_CHECKING, Union
+from pydantic import BaseModel, Field
 from enum import Enum
-from mcp import ClientSession
+from mcp import ClientSession, StdioServerParameters
 from mcp.client.sse import sse_client
-from numpy.f2py.crackfortran import reset_global_f2py_vars
+from mcp.client.stdio import stdio_client
+
 
 logger = logging.getLogger(__name__)
 
@@ -32,7 +34,7 @@ class MCPClient:
         self.status = MCPStatus.UNINITIALIZED
 
     async def _main_loop(
-            self
+        self
     ) -> None:
         """
         创建MCP Client
@@ -122,7 +124,6 @@ async def main() -> None:
     headers = {}
     client = MCPClient(url, headers)
     await client.init()
-    #result = await client.call_tool("list_knowledge_bases", {})
     result = await client.call_tool("nvidia_smi_status", {})
     print(result)
     await client.stop()

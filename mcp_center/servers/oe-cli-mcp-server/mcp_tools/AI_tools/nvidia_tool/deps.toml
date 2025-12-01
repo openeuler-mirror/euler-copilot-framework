@@ -1,0 +1,23 @@
+# deps.toml 简化版（仅保留 Python+系统依赖，文档2-64节核心需求）
+# 说明：用于自定义mcptool，定义运行必需的系统级工具和Python库
+
+
+# ===================== 1. 系统依赖（system_deps）=====================
+# 用途：安装mcptool依赖的系统级工具（需通过yum/apt安装）
+# 格式：{依赖名 = ["openEuler/CentOS安装命令（yum）", "Ubuntu/Debian安装命令（apt）"]}
+# 备注：无需手动验证是否已安装，venv_util.py会自动检查并跳过已安装项
+
+[system]
+
+# 示例3：若mcptool是智算调优类（如GPU监控工具）
+#nvidia_driver = [
+#    "yum install -y nvidia-driver-latest-dkms" # openEuler 安装NVIDIA驱动
+#]
+
+# ===================== 2. Python依赖（pip_deps）=====================
+# 用途：安装mcptool依赖的Python库（会安装到mcp虚拟环境，文档2-144节）
+# 格式：{依赖名 = "版本约束"}（版本约束可选，如"==2.31.0"或">=2.25.0"）
+
+[pip]
+# 示例1：基础网络请求（若mcptool需调用远程API）
+requests = "==2.31.0"  # 固定版本，避免版本冲突

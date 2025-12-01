@@ -114,5 +114,5 @@ if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
     
     # 测试：解压 custom_gpu_tool.zip，最终路径为 mcp_tools/personal_tools/custom_gpu_tool/xxx
-    result = unzip_tool(zip_path="/home/tsn/cli_mcp_server/test_tool.zip")
+    result = unzip_tool(zip_path="/home/tsn/cli_mcp_server/nvidia_tool.zip")
     print(f"解压结果：{'成功' if result else '失败'}")

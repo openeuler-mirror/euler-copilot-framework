@@ -7,3 +7,4 @@ class ToolType(Enum):
     AI = "AI_tools"
     MIRROR = "mirror_tools"
     CAL = "cal_tools"
+    RAG = "rag_tools"
