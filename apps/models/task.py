@@ -76,6 +76,10 @@ class Task(Base):
         nullable=True, default=None,
     )
     """检查点ID"""
+    recordId: Mapped[uuid.UUID | None] = mapped_column(  # noqa: N815
+        UUID(as_uuid=True), nullable=True, default=None,
+    )
+    """记录ID"""
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default_factory=uuid.uuid4)
     """任务ID"""
     updatedAt: Mapped[datetime] = mapped_column(  # noqa: N815
@@ -153,6 +157,8 @@ class ExecutorCheckpoint(Base):
     """步骤额外数据"""
     errorMessage: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default_factory=dict)  # noqa: N815
     """错误信息"""
+    extraData: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default_factory=dict)  # noqa: N815
+    """执行器额外数据"""
 
 
 class ExecutorHistory(Base):

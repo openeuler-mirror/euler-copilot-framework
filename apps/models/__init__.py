@@ -3,7 +3,6 @@
 
 from .app import App, AppACL, AppHashes, AppMCP, AppType, PermissionType
 from .base import Base
-from .blacklist import Blacklist
 from .comment import Comment, CommentType
 from .conversation import ConvDocAssociated, Conversation, ConversationDocument
 from .document import Document
@@ -35,7 +34,6 @@ __all__ = [
     "AppMCP",
     "AppType",
     "Base",
-    "Blacklist",
     "Comment",
     "CommentType",
     "ConvDocAssociated",
