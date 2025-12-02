@@ -2,15 +2,42 @@ import logging
 import os
 import subprocess
 import toml
+import requests  # 新增：导入 requests 库（用于 HTTP 调用）
 from mcp_tools.tool_type import ToolType
 from util.get_project_root import get_project_root
 from util.test_llm_valid import is_llm_config_valid
-from .socket import send_socket_request
+
+# 新增：FastAPI 服务地址（和 api_server.py 配置一致，端口 12556）
+FASTAPI_BASE_URL = "http://127.0.0.1:12556"
 
 # 路径配置（直接硬编码，简化）
 PUBLIC_CONFIG_PATH = os.path.join(get_project_root(), "config/public_config.toml")
 
 logger = logging.getLogger(__name__)
+
+# 新增：替代 send_socket_request 的 HTTP 调用函数
+def send_http_request(action: str, params: dict = None):
+    """调用 FastAPI 接口（替代原 Socket 调用）"""
+    try:
+        if action == "add":
+            url = f"{FASTAPI_BASE_URL}/tool/add"
+            response = requests.post(url, params=params)
+        elif action == "remove":
+            url = f"{FASTAPI_BASE_URL}/tool/remove"
+            response = requests.post(url, params=params)
+        elif action == "list":
+            url = f"{FASTAPI_BASE_URL}/tool/list"
+            response = requests.get(url)
+        elif action == "init":
+            url = f"{FASTAPI_BASE_URL}/tool/init"
+            response = requests.post(url)
+        else:
+            return {"success": False, "message": f"不支持的操作：{action}"}
+
+        response.raise_for_status()  # 抛出 HTTP 错误（如 404、500）
+        return response.json()
+    except requests.exceptions.RequestException as e:
+        return {"success": False, "message": f"接口调用失败：{str(e)}"}
 
 # -------------------------- 工具包操作 --------------------------
 def handle_add(pkg_input):
@@ -26,7 +53,8 @@ def handle_add(pkg_input):
         print(f"❌ 不支持的包类型：{pkg_input}")
         raise SystemExit(1)
 
-    result = send_socket_request("add", params)
+    # 替换：send_socket_request → send_http_request
+    result = send_http_request("add", params)
     print(f"✅ {result['message']}" if result["success"] else f"❌ {result['message']}")
     return result["success"]
 
@@ -37,25 +65,29 @@ def handle_remove(pkg_input):
 
     params = {"type": "system" if pkg_input in type_map else "custom",
               "value": type_map.get(pkg_input, pkg_input)}
-    result = send_socket_request("remove", params)
+    # 替换：send_socket_request → send_http_request
+    result = send_http_request("remove", params)
     print(f"✅ {result['message']}" if result["success"] else f"❌ {result['message']}")
     return result["success"]
 
 def handle_tool():
     """处理 -tool 命令"""
-    result = send_socket_request("list")
+    # 替换：send_socket_request → send_http_request
+    result = send_http_request("list")
     if not result["success"]:
         print(f"❌ {result['message']}")
         return False
 
-    print(f"\n📋 当前已加载工具包（共{result['total']}个）：")
-    for pkg, funcs in result["pkg_funcs"].items():
+    # 注意：FastAPI 接口返回的结构是 data.pkg_funcs 和 data.total_packages（需调整）
+    print(f"\n📋 当前已加载工具包（共{result['data']['total_packages']}个）：")
+    for pkg, funcs in result["data"]["pkg_funcs"].items():
         print(f"- {pkg}：{len(funcs)}个工具 → {', '.join(funcs)}")
     return True
 
 def handle_init():
     """处理 -init 命令"""
-    result = send_socket_request("init")
+    # 替换：send_socket_request → send_http_request
+    result = send_http_request("init")
     print(f"✅ {result['message']}" if result["success"] else f"❌ {result['message']}")
     return result["success"]
 

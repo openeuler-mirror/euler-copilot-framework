@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    "mcp_server": {
+      "headers": {},
+      "autoApprove": [],
+      "autoInstall": false,
+      "timeout": 60,
+      "url": "http://127.0.0.1:12555/sse"
+    }
+  },
+  "name": "mcptool集成管理工具",
+  "overview": "定制化的配置自己tool",
+  "description": "定制化的配置自己tool",
+  "mcpType": "sse",
+}

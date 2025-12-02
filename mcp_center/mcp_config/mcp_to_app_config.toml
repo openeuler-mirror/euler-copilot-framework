@@ -1,0 +1,9 @@
+[[applications]]
+appType = "agent"
+name = "OE-智能运维助手"
+description = "提供通用系统运维能力，含网络监控、性能分析、硬件信息查询、存储管理等功能"
+mcpPath = [
+    "remote_info_mcp",
+    "mcp_server_mcp",
+]
+published = true
