@@ -1,6 +1,6 @@
-cp mcp-server.service /etc/systemd/system/
+source /usr/lib/euler-copilot-framework/mcp_center/servers/oe-cli-mcp-server/venv/global/bin/activate
 
-source venv/global/bin/activate
+cp /usr/lib/euler-copilot-framework/mcp_center/servers/oe-cli-mcp-server/mcp-server.service /etc/systemd/system/
 
 pip install --upgrade pip
 pip install -r /usr/lib/euler-copilot-framework/mcp_center/servers/oe-cli-mcp-server/requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple
