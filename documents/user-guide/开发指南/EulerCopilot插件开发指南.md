@@ -48,17 +48,16 @@ test_plugin    # 插件文件夹，该文件夹的名称即为插件ID；
 ### 字段说明
 
 - ID：插件的ID，用于在EulerCopilot内唯一标识该插件。
-	- 要求：小写英文字母与符号的组合
+  - 要求：小写英文字母与符号的组合
 - name：插件的名字，用于提供给前端进行展示。
-	- 要求：任意字符串，长度小于15个字。
+  - 要求：任意字符串，长度小于15个字。
 - description：插件的描述，用户提供给大模型进行自动插件选择。
-	- 要求：精准、完整地描述插件的功能、输入与输出。
+  - 要求：精准、完整地描述插件的功能、输入与输出。
 - predefined_question：插件的预定义问题，用于在用户无输入时自动填充该问题。（建设中）
 - automatic_flow：是否将每个API自动拆分为Flow
 - auth：插件的鉴权信息
-	- type：插件的鉴权类型。可以为“param”、“header”和“cookie”和“oidc”四种类型。
-	- args：实际的鉴权字段（键值对）。
-
+  - type：插件的鉴权类型。可以为“param”、“header”和“cookie”三种类型。
+  - args：实际的鉴权字段（键值对）。
 
 ## openapi.yaml
 
@@ -133,12 +132,14 @@ curl -X POST http://example.com:port/suffix/url \
 
 > 由于YAML有诸多层级，因此此处使用如下方式描述YAML中特定的字段：
 > 有YAML文件如下
+>
 > ```yaml
 > a:
 >   b1:
 >     c: test1
 >   b2: ["test2"]
 >```
+>
 > 则：`a.b1.c`指值为`test1`的字段；`a.b2[]`指值为`["test2"]`的数组。
 
 #### 全局字段
@@ -169,7 +170,6 @@ curl -X POST http://example.com:port/suffix/url \
 上述全局字段中，`paths.post.requestBody.content.application/json.schema`与`paths.post.responses."200".content.application/json.schema`均为Schema字段，遵循JSON Schema规范。
 
 JSON Schema的全部规范内容可参照[JSON Schema官方文档](https://json-schema.org/understanding-json-schema/reference)。
-
 
 ##### Schema格式样例
 
@@ -257,7 +257,7 @@ YAML格式的Schema编写，可以参考[OpenAPI文档中的DataType章节](http
 
 - 正确工作流逻辑示例：
 
-```
+```text
 工作流功能：查询某一主机的所有CVE列表，并生成特定格式输出
 步骤1：调用API接口，获取某一主机的全部CVE ID
 步骤2：根据获得的CVE ID和给定的输出格式，生成自然语言结果
@@ -265,7 +265,7 @@ YAML格式的Schema编写，可以参考[OpenAPI文档中的DataType章节](http
 
 - 错误工作流逻辑示例：多个低耦合任务
 
-```
+```text
 工作流功能：根据用户输入，到特定的数据库中查询数据。再根据用户输入，查询输入对应的任务metadata。结合数据库中的数据和任务metadata，生成任务报告。
 ```
 
@@ -273,12 +273,11 @@ YAML格式的Schema编写，可以参考[OpenAPI文档中的DataType章节](http
 
 - 错误工作流逻辑示例：工作流耦合
 
-```
+```text
 工作流功能：需要先调用flow_1获取测试数据才能使用该工作流。该工作流的作用是将flow_1返回值中的data字段提取出来并存储在数据库的test_data表中，...
 ```
 
 工作流间的先后关系应通过用户问题和自然语言上下文进行实现；不同工作流之间暂时无法进行结构化数据的传递。
-
 
 ### 基本格式
 
