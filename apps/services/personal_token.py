@@ -50,7 +50,7 @@ class PersonalTokenManager:
         try:
             async with postgres.session() as session:
                 await session.execute(
-                    update(User).where(User.id == user_id).values(personal_token=personal_token_with_prefix),
+                    update(User).where(User.id == user_id).values(personalToken=personal_token_with_prefix),
                 )
                 await session.commit()
         except Exception:
