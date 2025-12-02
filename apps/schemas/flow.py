@@ -75,13 +75,6 @@ class MetadataBase(BaseModel):
     hashes: dict[str, str] | None = Field(description="资源（App、Service等）下所有文件的hash值", default=None)
 
 
-class ServiceApiAuthOidc(BaseModel):
-    """Service的API鉴权方式的OIDC配置"""
-
-    client_id: str = Field(description="OIDC客户端ID")
-    client_secret: str = Field(description="OIDC客户端密钥")
-
-
 class ServiceApiAuthKeyVal(BaseModel):
     """Service的API鉴权方式的键值对"""
 
@@ -95,7 +88,6 @@ class ServiceApiAuth(BaseModel):
     header: list[ServiceApiAuthKeyVal] = Field(description="HTTP头鉴权配置", default=[])
     cookie: list[ServiceApiAuthKeyVal] = Field(description="HTTP Cookie鉴权配置", default=[])
     query: list[ServiceApiAuthKeyVal] = Field(description="HTTP URL参数鉴权配置", default=[])
-    oidc: ServiceApiAuthOidc | None = Field(description="OIDC鉴权配置", default=None)
 
 
 class ServiceApiConfig(BaseModel):

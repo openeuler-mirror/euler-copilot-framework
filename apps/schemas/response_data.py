@@ -46,19 +46,6 @@ class RecordListRsp(ResponseData):
     result: RecordListMsg
 
 
-
-class OidcRedirectMsg(BaseModel):
-    """GET /api/auth/redirect Result数据结构"""
-
-    url: str
-
-
-class OidcRedirectRsp(ResponseData):
-    """GET /api/auth/redirect 返回数据结构"""
-
-    result: OidcRedirectMsg
-
-
 class ListTeamKnowledgeMsg(BaseModel):
     """GET /api/knowledge Result数据结构"""
 

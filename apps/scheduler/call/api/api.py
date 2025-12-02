@@ -12,7 +12,6 @@ from fastapi import status
 from pydantic import Field
 from pydantic.json_schema import SkipJsonSchema
 
-from apps.common.auth import oidc_provider
 from apps.models import LanguageType
 from apps.scheduler.call.core import CoreCall
 from apps.schemas.enum_var import CallOutputType, ContentType, HTTPMethod
@@ -23,7 +22,6 @@ from apps.schemas.scheduler import (
     CallVars,
 )
 from apps.services.service import ServiceCenterManager
-from apps.services.token import TokenManager
 
 from .schema import APIInput, APIOutput
 
@@ -173,7 +171,7 @@ class API(CoreCall, input_model=APIInput, output_model=APIOutput):
     async def _apply_auth(self) -> tuple[dict[str, str], dict[str, str], dict[str, str]]:
         """应用认证信息到请求参数中"""
         # self._auth可能是None或ServiceApiAuth类型
-        # ServiceApiAuth类型包含header、cookie、query和oidc属性
+        # ServiceApiAuth类型包含header、cookie、query属性
         req_header = {}
         req_cookie = {}
         req_params = {}
@@ -191,20 +189,6 @@ class API(CoreCall, input_model=APIInput, output_model=APIOutput):
             if self._auth.query:
                 for item in self._auth.query:
                     req_params[item.name] = item.value
-            # 如果oidc配置存在
-            if self._service_id and self._auth.oidc:
-                if not self._user_id:
-                    err = "[API] 未设置User ID"
-                    _logger.error(err)
-                    raise CallError(message=err, data={})
-
-                token = await TokenManager.get_plugin_token(
-                    self._service_id,
-                    self._user_id,
-                    await oidc_provider.get_access_token_url(),
-                    30,
-                )
-                req_header.update({"access-token": token})
 
         return req_header, req_cookie, req_params
 
