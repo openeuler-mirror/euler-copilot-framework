@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, Path, Query, Request, status
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
 
-from apps.dependency.user import verify_admin, verify_personal_token, verify_session
+from apps.dependency.user import verify_admin, verify_personal_token
 from apps.schemas.enum_var import SearchType
 from apps.schemas.mcp import ActiveMCPServiceRequest, UpdateMCPServiceRequest
 from apps.schemas.mcp_service import (
@@ -31,7 +31,6 @@ router = APIRouter(
     prefix="/api/mcp",
     tags=["mcp-service"],
     dependencies=[
-        Depends(verify_session),
         Depends(verify_personal_token),
     ],
 )
@@ -39,7 +38,6 @@ admin_router = APIRouter(
     prefix="/api/admin/mcp",
     tags=["mcp-service"],
     dependencies=[
-        Depends(verify_session),
         Depends(verify_personal_token),
         Depends(verify_admin),
     ],
