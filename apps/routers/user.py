@@ -5,8 +5,8 @@ from fastapi import APIRouter, Depends, Request, status
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
 
-from apps.common.config import config
-from apps.dependency import verify_personal_token, verify_session
+from apps.dependency import verify_personal_token
+from apps.dependency.user import is_admin
 from apps.schemas.request_data import UserUpdateRequest
 from apps.schemas.response_data import ResponseData
 from apps.schemas.tag import UserTagListResponse
@@ -17,7 +17,7 @@ from apps.services.user_tag import UserTagManager
 router = APIRouter(
     prefix="/api/user",
     tags=["user"],
-    dependencies=[Depends(verify_session), Depends(verify_personal_token)],
+    dependencies=[Depends(verify_personal_token)],
 )
 
 
@@ -59,7 +59,7 @@ async def get_user_info(request: Request) -> JSONResponse:
     user_info = UserInfoMsg(
         userId=user.id,
         userName=user.userName,
-        isAdmin=user.id in config.login.admin_user,
+        isAdmin=is_admin(user.userName),
         personalToken=user.personalToken,
         autoExecute=user.autoExecute or False,
     )

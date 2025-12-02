@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, status
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
 
-from apps.dependency import verify_admin, verify_personal_token, verify_session
+from apps.dependency import verify_admin, verify_personal_token
 from apps.schemas.request_data import (
     UpdateLLMReq,
 )
@@ -24,7 +24,6 @@ router = APIRouter(
     prefix="/api/llm",
     tags=["llm"],
     dependencies=[
-        Depends(verify_session),
         Depends(verify_personal_token),
     ],
 )
@@ -32,7 +31,6 @@ admin_router = APIRouter(
     prefix="/api/llm",
     tags=["llm"],
     dependencies=[
-        Depends(verify_session),
         Depends(verify_personal_token),
         Depends(verify_admin),
     ],

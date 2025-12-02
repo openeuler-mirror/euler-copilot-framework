@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, status
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
 
-from apps.dependency.user import verify_admin, verify_personal_token, verify_session
+from apps.dependency.user import verify_admin, verify_personal_token
 from apps.schemas.request_data import PostTagData
 from apps.schemas.response_data import ResponseData
 from apps.services.tag import TagManager
@@ -14,7 +14,6 @@ admin_router = APIRouter(
     prefix="/api/tag",
     tags=["tag"],
     dependencies=[
-        Depends(verify_session),
         Depends(verify_personal_token),
         Depends(verify_admin),
     ],

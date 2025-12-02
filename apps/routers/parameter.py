@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, Request, status
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
 
-from apps.dependency.user import verify_personal_token, verify_session
+from apps.dependency.user import verify_personal_token
 from apps.schemas.parameters import Type
 from apps.schemas.response_data import GetOperaRsp, GetParamsRsp
 from apps.services.appcenter import AppCenterManager
@@ -19,7 +19,6 @@ router = APIRouter(
     tags=["parameter"],
     dependencies=[
         Depends(verify_personal_token),
-        Depends(verify_session),
     ],
 )
 

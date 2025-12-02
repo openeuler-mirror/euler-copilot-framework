@@ -55,10 +55,10 @@ class MCPClient:
         """
         # 创建Client
         if isinstance(config, MCPServerSSEConfig):
-            env = config.env or {}
+            headers = config.headers or {}
             client = sse_client(
                 url=config.url,
-                headers=env,
+                headers=headers,
             )
         elif isinstance(config, MCPServerStdioConfig):
             if user_id:
@@ -73,11 +73,6 @@ class MCPClient:
                 env=config.env,
                 cwd=cwd.as_posix(),
             ))
-        else:
-            self.error_sign.set()
-            err = f"[MCPClient] MCP {mcp_id}：未知的MCP服务类型“{config.type}”"
-            logger.error(err)
-            raise TypeError(err)
 
         # 创建Client、Session
         try:

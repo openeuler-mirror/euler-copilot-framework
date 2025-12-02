@@ -12,7 +12,6 @@ from fastapi.responses import JSONResponse
 from apps.dependency.user import (
     verify_admin,
     verify_personal_token,
-    verify_session,
 )
 from apps.exceptions import InstancePermissionError
 from apps.schemas.enum_var import SearchType
@@ -38,7 +37,6 @@ router = APIRouter(
     prefix="/api/service",
     tags=["service-center"],
     dependencies=[
-        Depends(verify_session),
         Depends(verify_personal_token),
     ],
 )
@@ -46,7 +44,6 @@ admin_router = APIRouter(
     prefix="/api/admin/service",
     tags=["service-center"],
     dependencies=[
-        Depends(verify_session),
         Depends(verify_personal_token),
         Depends(verify_admin),
     ],

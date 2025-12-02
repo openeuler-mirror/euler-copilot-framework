@@ -32,7 +32,6 @@ class MCPContext(BaseModel):
 class MCPBasicConfig(BaseModel):
     """MCP 基本配置"""
 
-    env: dict[str, Any] = Field(description="MCP 服务器环境变量", default={})
     autoApprove: list[str] = Field(description="自动批准的MCP权限列表", default=[])  # noqa: N815
     autoInstall: bool = Field(description="是否自动安装MCP服务器", default=True)  # noqa: N815
     timeout: int = Field(description="MCP 服务器超时时间（秒）", default=60, alias="timeout")
@@ -41,6 +40,7 @@ class MCPBasicConfig(BaseModel):
 class MCPServerStdioConfig(MCPBasicConfig):
     """MCP 服务器配置"""
 
+    env: dict[str, Any] = Field(description="MCP 服务器环境变量", default={})
     command: str = Field(description="MCP 服务器命令")
     args: list[str] = Field(description="MCP 服务器命令参数")
 
@@ -49,6 +49,7 @@ class MCPServerSSEConfig(MCPBasicConfig):
     """MCP 服务器配置"""
 
     url: str = Field(description="MCP 服务器地址", default="http://example.com/sse", pattern=r"^https?://.*$")
+    headers: dict[str, Any] = Field(description="MCP 服务器请求头", default={})
 
 
 class MCPServerItem(BaseModel):

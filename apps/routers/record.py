@@ -10,8 +10,7 @@ from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
 
 from apps.common.security import Security
-from apps.dependency import verify_personal_token, verify_session
-from apps.models import ExecutorHistory
+from apps.dependency import verify_personal_token
 from apps.schemas.record import (
     RecordContent,
     RecordData,
@@ -33,7 +32,6 @@ router = APIRouter(
     prefix="/api/record",
     tags=["record"],
     dependencies=[
-        Depends(verify_session),
         Depends(verify_personal_token),
     ],
 )
