@@ -43,7 +43,7 @@ def send_http_request(action: str, params: dict = None):
 def handle_add(pkg_input):
     """处理 -add 命令"""
     type_map = {"智能运维": ToolType.BASE.value, "智算调优": ToolType.AI.value,
-                "通算调优": ToolType.CAL.value, "镜像运维": ToolType.MIRROR.value, "个性化": ToolType.PERSONAL.value}
+                "通算调优": ToolType.CAL.value, "镜像运维": ToolType.MIRROR.value, "个性化": ToolType.PERSONAL.value, "知识库": ToolType.RAG.value}
 
     if pkg_input in type_map:
         params = {"type": "system", "value": type_map[pkg_input]}
@@ -61,7 +61,7 @@ def handle_add(pkg_input):
 def handle_remove(pkg_input):
     """处理 -remove 命令"""
     type_map = {"智能运维": ToolType.BASE.value, "智算调优": ToolType.AI.value,
-                "通算调优": ToolType.CAL.value, "镜像运维": ToolType.MIRROR.value, "个性化": ToolType.PERSONAL.value}
+                "通算调优": ToolType.CAL.value, "镜像运维": ToolType.MIRROR.value, "个性化": ToolType.PERSONAL.value, "知识库": ToolType.RAG.value}
 
     params = {"type": "system" if pkg_input in type_map else "custom",
               "value": type_map.get(pkg_input, pkg_input)}
