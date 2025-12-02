@@ -1,156 +1,131 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2023-2025. All rights reserved.
 """FastAPI 用户认证相关路由"""
 
+import grp
 import logging
-from pathlib import Path
-from typing import Annotated
 
-from fastapi import APIRouter, Body, Depends, Request, status
+from fastapi import APIRouter, Depends, Request, status
 from fastapi.encoders import jsonable_encoder
-from fastapi.responses import HTMLResponse, JSONResponse
-from fastapi.templating import Jinja2Templates
+from fastapi.responses import JSONResponse
 
-from apps.common.auth import oidc_provider
-from apps.dependency import verify_personal_token, verify_session
+from apps.dependency import is_admin, verify_personal_token
 from apps.schemas.personal_token import PostPersonalTokenMsg, PostPersonalTokenRsp
-from apps.schemas.response_data import (
-    OidcRedirectMsg,
-    OidcRedirectRsp,
-    ResponseData,
-)
+from apps.schemas.response_data import ResponseData
 from apps.services.personal_token import PersonalTokenManager
-from apps.services.session import SessionManager
-from apps.services.token import TokenManager
 from apps.services.user import UserManager
 
-admin_router = APIRouter(
-    prefix="/api/auth",
-    tags=["auth"],
-)
 router = APIRouter(
     prefix="/api/auth",
     tags=["auth"],
-    dependencies=[Depends(verify_session), Depends(verify_personal_token)],
 )
 _logger = logging.getLogger(__name__)
-_templates = Jinja2Templates(directory=Path(__file__).parent.parent / "templates")
 
 
-@admin_router.get("/login")
-async def oidc_login(request: Request, code: str) -> HTMLResponse:
+def _check_user_group(username: str) -> bool:
     """
-    GET /auth/login?code=xxx: 用户登录EulerCopilot
+    检查用户是否允许登录
+
+    允许登录的条件:
+    1. 用户id为0 (root用户)
+    2. 用户在"wheel"组中
+    3. 用户在"oi"组中
+
+    :param username: Linux用户名
+    :return: 如果用户允许登录返回True，否则返回False
+    """
+    # 先检查是否是管理员（root用户或wheel组）
+    if is_admin(username):
+        return True
+
+    # 检查是否在oi组中
+    try:
+        oi_group = grp.getgrnam("oi")
+        if username in oi_group.gr_mem:
+            return True
+    except KeyError:
+        _logger.warning("[auth] 系统中未找到用户组 'oi'")
+    except OSError:
+        _logger.exception("[auth] 访问用户组 'oi' 信息时出错")
+
+    return False
+
+
+@router.get("/login")
+async def linux_login(request: Request) -> JSONResponse:
+    """
+    GET /auth/login: Linux用户登录EulerCopilot
+
+    通过检查X-Remote-User header和用户组验证用户身份
 
     :param request: Request object
-    :param code: OIDC code
-    :return: HTMLResponse
+    :return: JSONResponse
     """
-    try:
-        token = await oidc_provider.get_oidc_token(code)
-        user_info = await oidc_provider.get_oidc_user(token["access_token"])
-
-        user_id: str | None = user_info.get("user_sub", None)
-        if user_id:
-            await oidc_provider.set_token(user_id, token["access_token"], token["refresh_token"])
-    except Exception as e:
-        _logger.exception("User login failed")
-        status_code = status.HTTP_400_BAD_REQUEST if "auth error" in str(e) else status.HTTP_403_FORBIDDEN
-        return _templates.TemplateResponse(
-            "login_failed.html.j2",
-            {"request": request, "reason": "无法验证登录信息，请关闭本窗口并重试。"},
-            status_code=status_code,
-        )
-    # 获取用户信息
-    if not request.client:
-        return _templates.TemplateResponse(
-            "login_failed.html.j2",
-            {"request": request, "reason": "无法获取用户信息，请关闭本窗口并重试。"},
-            status_code=status.HTTP_403_FORBIDDEN,
-        )
-    user_host = request.client.host
-    # 获取用户sub
-    if not user_id:
-        _logger.error("OIDC no user_sub associated.")
-        return _templates.TemplateResponse(
-            "login_failed.html.j2",
-            {"request": request, "reason": "未能获取用户信息，请关闭本窗口并重试。"},
-            status_code=status.HTTP_403_FORBIDDEN,
-        )
-    # 创建或更新用户登录信息
-    user_name: str | None = user_info.get("user_name", None)
-    await UserManager.create_or_update_on_login(user_id, user_name)
-    # 创建会话
-    current_session = await SessionManager.create_session(user_id, user_host)
-    return _templates.TemplateResponse(
-        "login_success.html.j2",
-        {"request": request, "current_session": current_session},
-    )
-
-# 用户主动logout
-@router.get("/logout", response_model=ResponseData)
-async def logout(request: Request) -> JSONResponse:
-    """GET /auth/logout: 用户登出EulerCopilot"""
-    if not request.client:
+    # 检查X-Remote-User header是否存在
+    username = request.headers.get("X-Remote-User")
+    if not username:
+        _logger.warning("[auth] 未找到 X-Remote-User header")
         return JSONResponse(
-            status_code=status.HTTP_400_BAD_REQUEST,
+            status_code=status.HTTP_401_UNAUTHORIZED,
             content=jsonable_encoder(
                 ResponseData(
-                    code=status.HTTP_400_BAD_REQUEST,
-                    message="IP error",
+                    code=status.HTTP_401_UNAUTHORIZED,
+                    message="无法获取用户信息",
                     result={},
                 ).model_dump(exclude_none=True, by_alias=True),
             ),
         )
-    await TokenManager.delete_plugin_token(request.state.user_id)
 
-    if hasattr(request.state, "session_id"):
-        await SessionManager.delete_session(request.state.session_id)
+    # 检查用户是否在oi组中
+    if not _check_user_group(username):
+        _logger.warning("[auth] 用户 %s 不在 'oi' 组中，登录失败", username)
+        return JSONResponse(
+            status_code=status.HTTP_403_FORBIDDEN,
+            content=jsonable_encoder(
+                ResponseData(
+                    code=status.HTTP_403_FORBIDDEN,
+                    message="您没有权限访问此系统",
+                    result={},
+                ).model_dump(exclude_none=True, by_alias=True),
+            ),
+        )
 
+    # 使用username作为user_id
+    user_id = username
+
+    # 创建或更新用户登录信息
+    await UserManager.create_or_update_on_login(user_id, username)
+
+    # 创建PersonalToken
+    personal_token = await PersonalTokenManager.update_personal_token(user_id)
+    if not personal_token:
+        _logger.error("[auth] 用户 %s 创建PersonalToken失败", username)
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content=jsonable_encoder(
+                ResponseData(
+                    code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    message="创建Token失败",
+                    result={},
+                ).model_dump(exclude_none=True, by_alias=True),
+            ),
+        )
+
+    _logger.info("[auth] 用户 %s 登录成功", username)
     return JSONResponse(
         status_code=status.HTTP_200_OK,
         content=jsonable_encoder(
             ResponseData(
                 code=status.HTTP_200_OK,
-                message="success",
-                result={},
+                message="登录成功",
+                result={"token": personal_token},
             ).model_dump(exclude_none=True, by_alias=True),
         ),
     )
 
 
-@admin_router.get("/redirect", response_model=OidcRedirectRsp)
-async def oidc_redirect() -> JSONResponse:
-    """GET /auth/redirect: 前端获取OIDC重定向URL"""
-    redirect_url = await oidc_provider.get_redirect_url()
-    return JSONResponse(
-        status_code=status.HTTP_200_OK,
-        content=jsonable_encoder(
-            OidcRedirectRsp(
-                code=status.HTTP_200_OK,
-                message="success",
-                result=OidcRedirectMsg(url=redirect_url),
-            ).model_dump(exclude_none=True, by_alias=True),
-        ),
-    )
-
-
-# TODO(zwt): OIDC主动触发logout
-@admin_router.post("/logout", response_model=ResponseData)
-async def oidc_logout(token: Annotated[str, Body()]) -> JSONResponse:
-    """POST /auth/logout: OIDC主动告知后端用户已在其他SSO站点登出"""
-    return JSONResponse(
-        status_code=status.HTTP_200_OK,
-        content=jsonable_encoder(
-            ResponseData(
-                code=status.HTTP_200_OK,
-                message="success",
-                result={},
-            ).model_dump(exclude_none=True, by_alias=True),
-        ),
-    )
-
-
-@router.post("/key", responses={
+@router.post("/key",
+    dependencies=[Depends(verify_personal_token)],
+    responses={
     400: {"model": ResponseData},
 }, response_model=PostPersonalTokenRsp)
 async def change_personal_token(request: Request) -> JSONResponse:
