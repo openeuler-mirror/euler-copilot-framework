@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/lib/euler-copilot-framework/mcp_center/servers/oe-cli-mcp-server/venv/global/bin/python3
 import logging
 import os
 import sys
