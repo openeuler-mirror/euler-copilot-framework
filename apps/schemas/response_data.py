@@ -93,7 +93,7 @@ class LLMAdminInfo(BaseModel):
 class ListLLMAdminRsp(ResponseData):
     """GET /api/llm/config 返回数据结构"""
 
-    result: list[LLMAdminInfo] = Field(default=[], title="Result")
+    result: LLMAdminInfo | None = Field(default=None, title="Result")
 
 
 class ParamsNode(BaseModel):
