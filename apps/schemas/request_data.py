@@ -6,7 +6,7 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
-from apps.models import LanguageType, LLMProvider
+from apps.models import LanguageType, LLMProvider, LLMType
 
 from .flow_topology import FlowItem
 
@@ -58,6 +58,7 @@ class UpdateLLMReq(BaseModel):
     provider: LLMProvider = Field(description="大模型提供商", alias="provider")
     ctx_length: int = Field(description="上下文长度", alias="ctxLength")
     llm_description: str = Field(default="", description="大模型描述", alias="llmDescription")
+    llm_type: list[LLMType] | None = Field(default=None, description="大模型类型列表", alias="llmType")
     extra_data: dict[str, Any] | None = Field(default=None, description="额外数据", alias="extraData")
 
 
