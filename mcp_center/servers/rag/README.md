@@ -21,3 +21,116 @@
 | `export_database` | 导出整个kb.db数据库文件到指定路径 | - `export_path`：导出路径（绝对路径，必填） | 导出结果字典（含`source_path`源数据库路径、`export_path`导出路径） |
 | `import_database` | 导入一个.db数据库文件，将其中的内容合并到kb.db中，导入时会自动处理重名冲突，为知识库和文档名称添加时间戳 | - `source_db_path`：源数据库文件路径（绝对路径，必填） | 导入结果字典（含`source_path`源数据库路径、`imported_kb_count`导入的知识库数量、`imported_doc_count`导入的文档数量） |
 
+
+## 三、`rag-server` 命令行使用指南
+
+`rag-server` 是对 RAG 核心工具的命令行封装，适合在服务器上以 CLI 方式直接管理知识库、导入文档和执行检索。安装完成后，可直接在终端中使用 `rag-server <子命令> [参数]`。
+
+### 1. 基本用法
+
+- 查看帮助：
+
+```bash
+rag-server --help
+```
+
+- 命令通用格式：
+
+```bash
+rag-server <command> [--参数名 参数值...]
+```
+
+### 2. 知识库管理相关命令
+
+- **创建知识库**
+
+```bash
+rag-server create_kb --kb_name <名称> --chunk_size <chunk大小> [--embedding_model 模型名] [--embedding_endpoint URL] [--embedding_api_key KEY]
+```
+
+说明：
+- `--kb_name`：知识库名称（必填，必须唯一）
+- `--chunk_size`：chunk 大小（必填，单位 token，例如 512、1024）
+- `--embedding_model`：向量化模型名称（可选）
+- `--embedding_endpoint`：向量化服务端点 URL（可选）
+- `--embedding_api_key`：向量化服务 API Key（可选）
+
+- **删除知识库**
+
+```bash
+rag-server delete_kb --kb_name <名称>
+```
+
+- **列出知识库**
+
+```bash
+rag-server list_kb
+```
+
+- **选择当前知识库**
+
+```bash
+rag-server select_kb --kb_name <名称>
+```
+
+说明：选择成功后，当前知识库 ID 会持久化到 `database/state.json` 中，不同次 `rag-server` 调用会自动复用该状态。
+
+### 3. 文档管理相关命令
+
+- **导入文档**
+
+```bash
+rag-server import_doc --file_paths /abs/path/doc1.txt [/abs/path/doc2.txt ...] [--chunk_size <chunk大小>]
+```
+
+说明：
+- `--file_paths`：一个或多个**绝对路径**的文件列表（必填，至少 1 个）
+- `--chunk_size`：覆盖默认的 chunk 大小（可选）
+- 在调用前需要先通过 `select_kb` 选择当前知识库
+
+- **列出文档**
+
+```bash
+rag-server list_doc
+```
+
+- **删除文档**
+
+```bash
+rag-server delete_doc --doc_name <文档名称>
+```
+
+- **更新文档 chunk 大小并重建向量**
+
+```bash
+rag-server update_doc --doc_name <文档名称> --chunk_size <新的chunk大小>
+```
+
+### 4. 检索相关命令
+
+- **搜索**
+
+```bash
+rag-server search --query "<查询文本>" [--top_k <返回数量>]
+```
+
+说明：
+- `--query`：查询文本（必填）
+- `--top_k`：返回结果数量（可选，默认从配置中读取，通常为 5）
+
+### 5. 数据库导入导出相关命令
+
+- **导出数据库**
+
+```bash
+rag-server export_db --export_path /abs/path/kb_export.db
+```
+
+- **导入数据库**
+
+```bash
+rag-server import_db --source_db_path /abs/path/other_kb.db
+```
+
+说明：导入时会自动处理知识库和文档的重名冲突，为名称添加时间戳。
+

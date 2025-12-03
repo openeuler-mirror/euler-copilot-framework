@@ -21,3 +21,116 @@ This service is a comprehensive RAG (Retrieval-Augmented Generation) knowledge b
 | `export_database` | Exports the entire kb.db database file to the specified path | - `export_path`: Export path (absolute path, required) | Export result dictionary (including `source_path` source database path, `export_path` export path) |
 | `import_database` | Imports a .db database file and merges its contents into kb.db. Import will automatically handle name conflicts by adding timestamps to knowledge base and document names | - `source_db_path`: Source database file path (absolute path, required) | Import result dictionary (including `source_path` source database path, `imported_kb_count` number of imported knowledge bases, `imported_doc_count` number of imported documents) |
 
+
+## 3. `rag-server` CLI Usage Guide
+
+`rag-server` is a command-line wrapper around the core RAG tools, suitable for managing knowledge bases, importing documents, and performing searches directly from the terminal. After installation, you can run `rag-server <command> [options]` anywhere.
+
+### 3.1 Basic Usage
+
+- Show help:
+
+```bash
+rag-server --help
+```
+
+- General format:
+
+```bash
+rag-server <command> [--option value...]
+```
+
+### 3.2 Knowledge Base Management Commands
+
+- **Create knowledge base**
+
+```bash
+rag-server create_kb --kb_name <name> --chunk_size <size> [--embedding_model model] [--embedding_endpoint URL] [--embedding_api_key KEY]
+```
+
+Description:
+- `--kb_name`: Knowledge base name (required, must be unique)
+- `--chunk_size`: Chunk size in tokens (required, e.g., 512, 1024)
+- `--embedding_model`: Embedding model name (optional)
+- `--embedding_endpoint`: Embedding service endpoint URL (optional)
+- `--embedding_api_key`: Embedding service API Key (optional)
+
+- **Delete knowledge base**
+
+```bash
+rag-server delete_kb --kb_name <name>
+```
+
+- **List knowledge bases**
+
+```bash
+rag-server list_kb
+```
+
+- **Select current knowledge base**
+
+```bash
+rag-server select_kb --kb_name <name>
+```
+
+Note: After selection, the current knowledge base ID is persisted to `database/state.json`, so different `rag-server` invocations will share the same selected KB state.
+
+### 3.3 Document Management Commands
+
+- **Import documents**
+
+```bash
+rag-server import_doc --file_paths /abs/path/doc1.txt [/abs/path/doc2.txt ...] [--chunk_size <size>]
+```
+
+Description:
+- `--file_paths`: One or more **absolute file paths** (required, at least one)
+- `--chunk_size`: Override default chunk size (optional)
+- You must call `select_kb` first to choose an active knowledge base.
+
+- **List documents**
+
+```bash
+rag-server list_doc
+```
+
+- **Delete document**
+
+```bash
+rag-server delete_doc --doc_name <name>
+```
+
+- **Update document chunk size and rebuild vectors**
+
+```bash
+rag-server update_doc --doc_name <name> --chunk_size <new_size>
+```
+
+### 3.4 Search Commands
+
+- **Search**
+
+```bash
+rag-server search --query "<text>" [--top_k <n>]
+```
+
+Description:
+- `--query`: Query text (required)
+- `--top_k`: Number of results to return (optional, default from config, usually 5)
+
+### 3.5 Database Import/Export Commands
+
+- **Export database**
+
+```bash
+rag-server export_db --export_path /abs/path/kb_export.db
+```
+
+- **Import database**
+
+```bash
+rag-server import_db --source_db_path /abs/path/other_kb.db
+```
+
+Description: During import, name conflicts of knowledge bases and documents will be automatically resolved by appending timestamps.
+
