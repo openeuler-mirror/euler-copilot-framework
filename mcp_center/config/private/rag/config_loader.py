@@ -20,7 +20,7 @@ class RemoteInfoConfig(BaseConfig):
 
     def load_private_config(self) -> None:
         """加载私有配置文件"""
-        config_file = os.getenv("REMOTE_INFO_CONFIG")
+        config_file = os.getenv("RAG_CONFIG")
         if config_file is None:
             config_file = os.path.join("config", "private", "rag", "config.toml")
         self._config.private_config = RemoteInfoConfigModel.model_validate(toml.load(config_file))

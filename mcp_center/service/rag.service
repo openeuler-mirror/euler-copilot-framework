@@ -1,5 +1,5 @@
 [Unit]
-Description=Remote Info Server for MCP Center
+Description=Rag Server for MCP Center
 After=network.target
 
 [Service]
@@ -8,7 +8,7 @@ WorkingDirectory=/usr/lib/euler-copilot-framework/mcp_center
 # 关键：添加 PYTHONPATH，将工作目录加入模块搜索路径
 Environment=PYTHONUNBUFFERED=1
 Environment=PYTHONPATH=/usr/lib/euler-copilot-framework/mcp_center
-ExecStart=/usr/bin/python3 servers/remote_info/src/server.py
+ExecStart=/usr/bin/python3 servers/rag/src/server.py
 Restart=always
 RestartSec=5
 KillMode=control-group   
