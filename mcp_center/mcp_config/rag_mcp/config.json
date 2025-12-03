@@ -1,0 +1,15 @@
+{
+    "mcpServers": {
+        "mcp_server": {
+            "headers": {},
+            "autoApprove": [],
+            "autoInstall": false,
+            "timeout": 60,
+            "url": "http://127.0.0.1:12311/sse"
+        }
+    },
+    "name": "轻量化知识库",
+    "overview": "轻量化知识库",
+    "description": "轻量化知识库",
+    "mcpType": "sse"
+}
