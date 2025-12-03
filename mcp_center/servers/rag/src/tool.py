@@ -4,6 +4,7 @@ import uuid
 import shutil
 import logging
 import asyncio
+import json
 from typing import Optional, Dict, Any, List
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -25,6 +26,35 @@ logger = logging.getLogger(__name__)
 _db_instance: Optional[Database] = None
 _db_path = os.path.join(current_dir, "database", "kb.db")
 _current_kb_id: Optional[str] = None
+_state_file = os.path.join(current_dir, "database", "state.json")
+
+
+def _load_state() -> None:
+    """从状态文件加载当前知识库ID（用于在不同进程间共享选择状态）"""
+    global _current_kb_id
+    try:
+        if os.path.exists(_state_file):
+            with open(_state_file, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                _current_kb_id = data.get("current_kb_id")
+    except Exception as e:
+        logger.warning(f"[state] 加载当前知识库状态失败: {e}")
+
+
+def _save_state() -> None:
+    """将当前知识库ID写入状态文件"""
+    try:
+        state_dir = os.path.dirname(_state_file)
+        if not os.path.exists(state_dir):
+            os.makedirs(state_dir, exist_ok=True)
+        with open(_state_file, "w", encoding="utf-8") as f:
+            json.dump({"current_kb_id": _current_kb_id}, f, ensure_ascii=False)
+    except Exception as e:
+        logger.warning(f"[state] 保存当前知识库状态失败: {e}")
+
+
+# 模块导入时尝试加载之前保存的当前知识库状态
+_load_state()
 
 
 def _get_db() -> Database:
@@ -203,6 +233,7 @@ def select_knowledge_base(kb_name: str) -> Dict[str, Any]:
         
         global _current_kb_id
         _current_kb_id = kb.id
+        _save_state()
         
         session = db.get_session()
         try:
