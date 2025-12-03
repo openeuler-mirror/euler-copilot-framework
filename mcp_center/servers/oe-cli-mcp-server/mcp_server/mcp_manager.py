@@ -72,6 +72,7 @@ class McpServer(ToolManager):
         self.restore_tool_state()
         self.reload_package_functions()
         for pkg in self.list_packages():
+            logger.info(f"包名：{pkg}")
             self.load(pkg)
 
     def load(self, mcp_collection: ToolType | str):
@@ -118,15 +119,16 @@ class McpServer(ToolManager):
         self._reset()
 
     def init(self):
-        del self.mcp
+
         all_types = self.list_tool_types()
         for mcp_type in all_types:
             self.unload_tool_type(mcp_type)
         BaseConfig().update_config(default=True)
         self.reload_config()
+        del self.mcp
         self.mcp = FastMCP("mcp实例", host=self.host, port=self.port)
         self.load(ToolType.BASE)
-        logger.info(f"初始化完成：仅保留基础运维包")
+        logger.info(f"初始化完成：仅保留基础运维包,重启后生效")
 
     def reload_config(self):
         import toml
@@ -143,11 +145,15 @@ class McpServer(ToolManager):
     def start(self):
 
         # 1. 先初始化 MCP 核心逻辑（确保 self.list_packages 等方法可用）
-        self._reset()
+        self.restore_tool_state()
+        self.reload_package_functions()
+        for pkg in self.list_packages():
+            logger.info(f"包名：{pkg}")
+            self.load(pkg)
         logger.info(f"MCP 实例初始化完成，已加载 {len(self.list_packages())} 个工具包")
 
         # 2. 启动 FastAPI 服务（直接调用实例方法，绑定 self）
-        self._start_fastapi(host="0.0.0.0", port=12556)
+        self._start_fastapi(host="0.0.0.0", port=8003)
 
         # 3. 最后启动 FastMCP 主服务（阻塞主线程）
         logger.info("启动 FastMCP 主服务...")
@@ -195,7 +201,7 @@ class McpServer(ToolManager):
 
         @app.post("/tool/remove", summary="删除工具包")
         def remove_tool(type: str, value: str):
-            """删除工具包（与 Socket remove 逻辑完全一致，重启后生效）"""
+            """删除工具包"""
             try:
                 # 完全对齐 _exec_socket_action 的 remove 逻辑
                 if type == "system":
@@ -209,17 +215,17 @@ class McpServer(ToolManager):
 
         @app.post("/tool/init", summary="初始化工具包")
         def init_tool():
-            """初始化工具包（与 Socket init 逻辑完全一致，仅保留基础运维包）"""
+            """初始化工具包"""
             try:
                 self.init()  # 直接调用实例的 init 方法（和 Socket 版本一致）
-                return {"success": True, "message": "初始化成功（仅保留基础运维包）"}
+                return {"success": True, "message": "初始化成功（仅保留基础运维包）重启后生效"}
             except Exception as e:
                 logger.error(f"初始化工具包失败：{str(e)}", exc_info=True)
                 return {"success": False, "message": f"初始化失败：{str(e)}"}
 
         return app
 
-    def _start_fastapi(self, host: str = "0.0.0.0", port: int = 12556):
+    def _start_fastapi(self, host: str = "0.0.0.0", port: int = 8003):
         """启动 FastAPI 服务（实例方法，直接绑定 self）"""
         # 1. 创建 FastAPI 应用（绑定当前实例）
         self.fastapi_app = self._create_fastapi_app()
