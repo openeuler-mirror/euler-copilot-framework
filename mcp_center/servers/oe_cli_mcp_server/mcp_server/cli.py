@@ -1,6 +1,5 @@
-#!/usr/lib/euler-copilot-framework/mcp_center/servers/oe-cli-mcp-server/venv/global/bin/python3
+#!/usr/bin/env python3
 import logging
-import os
 import sys
 with open("/etc/systemd/system/mcp-server.service", "r") as f:
     for line in f:
@@ -10,10 +9,10 @@ with open("/etc/systemd/system/mcp-server.service", "r") as f:
 
 # 加入 sys.path
 sys.path.insert(0, PROJECT_ROOT)
-from mcp_server.cli.parse_args import parse_args
-from mcp_server.cli.handle import (
+from servers.oe_cli_mcp_server.mcp_server.cli.parse_args import parse_args
+from servers.oe_cli_mcp_server.mcp_server.cli.handle import (
     handle_add, handle_remove, handle_tool, handle_init,
-    handle_start, handle_log, handle_llm, handle_config, handle_stop
+    handle_start, handle_log, handle_llm, handle_config, handle_stop,handle_restart
 )
 
 # 日志极简配置
@@ -34,6 +33,8 @@ def main():
         success = handle_init()
     elif args.start:
         success = handle_start()
+    elif args.restart:
+        success = handle_restart()
     elif args.log:
         success = handle_log()
     elif args.llm:

@@ -3,15 +3,19 @@ import os
 import subprocess
 import toml
 import requests  # 新增：导入 requests 库（用于 HTTP 调用）
-from mcp_tools.tool_type import ToolType
-from util.get_project_root import get_project_root
-from util.test_llm_valid import is_llm_config_valid
+
+
+from config.private.mcp_server.config_loader import McpServerConfig
+from servers.oe_cli_mcp_server.mcp_tools.tool_type import ToolType
+from servers.oe_cli_mcp_server.server import config
+from servers.oe_cli_mcp_server.util.test_llm_valid import is_llm_config_valid
 
 # 新增：FastAPI 服务地址（和 api_server.py 配置一致，端口 12556）
-FASTAPI_BASE_URL = "http://127.0.0.1:12556"
+
+FASTAPI_BASE_URL = f"http://127.0.0.1:{config.fastapi_port}"
 
 # 路径配置（直接硬编码，简化）
-PUBLIC_CONFIG_PATH = os.path.join(get_project_root(), "config/public_config.toml")
+PUBLIC_CONFIG_PATH = "config/public/public_config.toml"
 
 logger = logging.getLogger(__name__)
 
@@ -62,14 +66,15 @@ def handle_add(pkg_input):
 def handle_remove(pkg_input):
     """处理 -remove 命令"""
     type_map = {"智能运维": ToolType.BASE.value, "智算调优": ToolType.AI.value,
-                "通算调优": ToolType.CAL.value, "镜像运维": ToolType.MIRROR.value,
-                "个性化": ToolType.PERSONAL.value,"知识库": ToolType.RAG.value}
+                "通算调优": ToolType.CAL.value, "镜像运维": ToolType.MIRROR.value, "个性化": ToolType.PERSONAL.value}
 
     params = {"type": "system" if pkg_input in type_map else "custom",
               "value": type_map.get(pkg_input, pkg_input)}
     # 替换：send_socket_request → send_http_request
     result = send_http_request("remove", params)
     print(f"✅ {result['message']}" if result["success"] else f"❌ {result['message']}")
+    handle_restart()
+
     return result["success"]
 
 def handle_tool():
@@ -91,6 +96,8 @@ def handle_init():
     # 替换：send_socket_request → send_http_request
     result = send_http_request("init")
     print(f"✅ {result['message']}" if result["success"] else f"❌ {result['message']}")
+    handle_restart()
+
     return result["success"]
 
 # -------------------------- 服务操作 --------------------------

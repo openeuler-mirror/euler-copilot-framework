@@ -1,6 +1,6 @@
 {
     "mcpServers": {
-        "mcp_server": {
+        "remote_info_mcp": {
             "headers": {},
             "autoApprove": [],
             "autoInstall": false,

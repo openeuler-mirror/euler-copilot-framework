@@ -1,5 +1,4 @@
 import os
-from asyncio.log import logger
 
 
 def tool_package_file_check(path: str) -> bool:

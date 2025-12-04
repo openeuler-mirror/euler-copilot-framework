@@ -4,7 +4,7 @@ import logging
 from typing import Optional
 import shutil
 
-from util.get_project_root import get_project_root
+from servers.oe_cli_mcp_server.util.get_project_root import get_project_root
 
 # 全局目标目录（转为绝对路径，避免相对路径混乱）
 target_dir = os.path.join(get_project_root(),"mcp_tools/personal_tools/")

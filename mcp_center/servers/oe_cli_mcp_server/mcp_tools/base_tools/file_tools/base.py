@@ -3,8 +3,8 @@ import subprocess
 import paramiko
 from typing import Dict, Optional
 
-from config.base_config_loader import BaseConfig
-from config.base_config_loader import LanguageEnum
+from servers.oe_cli_mcp_server.config.base_config_loader import BaseConfig, LanguageEnum
+
 # 初始化日志（保持原逻辑）
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)

@@ -1,8 +1,7 @@
 from typing import Any, Dict, Optional, Union
 import paramiko
-from config.base_config_loader import BaseConfig, LanguageEnum
-
-from mcp_tools.AI_tools.nvidia_tool.base import _format_gpu_info, _get_local_gpu_status, _get_remote_gpu_status_via_ssh
+from servers.oe_cli_mcp_server.config.base_config_loader import LanguageEnum,BaseConfig
+from servers.oe_cli_mcp_server.mcp_tools.AI_tools.nvidia_tool.base import _format_gpu_info, _get_local_gpu_status, _get_remote_gpu_status_via_ssh
 
 
 async def nvidia_smi_status(

@@ -5,7 +5,7 @@ import sys
 import logging
 from typing import Any, Optional, Dict
 from pkg_resources import get_distribution, DistributionNotFound
-from util.get_project_root import get_project_root
+from servers.oe_cli_mcp_server.util.get_project_root import get_project_root
 
 logger = logging.getLogger(__name__)
 class DepVenvManager:
@@ -28,10 +28,45 @@ class DepVenvManager:
         self.venv_root = os.path.join(self.project_root, "venv")
         self.global_venv_path = os.path.join(self.venv_root, "global")
         self.isolated_venv_root = os.path.join(self.venv_root, "isolated")
-        
+        self._check_venv_integrity(self.global_venv_path, is_global=True)
         # 2. 初始化目录（确保根目录存在）
         os.makedirs(self.venv_root, exist_ok=True)
         os.makedirs(self.isolated_venv_root, exist_ok=True)
+    def _check_venv_integrity(self, venv_path: str, is_global: bool = False) -> bool:
+        """
+        检测虚拟环境是否完整（核心检测项）
+        返回：True=完整，False=不完整（自动修复或报错）
+        """
+        self.logger.debug(f"检测虚拟环境完整性：{venv_path}")
+
+        # 检测项1：虚拟环境目录是否存在
+        if not os.path.exists(venv_path):
+            self.logger.warning(f"虚拟环境目录不存在：{venv_path}")
+            if is_global:
+                self.logger.info("全局环境缺失，将自动创建")
+            return False
+
+        # 检测项2：pip 可执行文件是否存在
+        pip_path = os.path.join(venv_path, "bin", "pip")
+        if not os.path.exists(pip_path) or not os.access(pip_path, os.X_OK):
+            self.logger.error(f"虚拟环境不完整：缺少可执行的 pip → {pip_path}")
+            if is_global:
+                self.logger.info("尝试重新创建全局虚拟环境...")
+                import shutil
+                shutil.rmtree(venv_path)  # 删除不完整环境
+                self.create_global_venv()  # 重新创建
+                return self._check_venv_integrity(venv_path, is_global)  # 重新检测
+            return False
+
+        # 检测项3：site-packages 目录是否存在（确保依赖能安装到正确位置）
+        site_packages = self._get_venv_site_packages(venv_path)
+        if not os.path.exists(site_packages):
+            self.logger.error(f"虚拟环境不完整：缺少 site-packages 目录 → {site_packages}")
+            return False
+
+        # 所有检测项通过
+        self.logger.debug(f"虚拟环境完整：{venv_path}")
+        return True
 
     def _get_installed_packages(self, venv_path: str) -> Dict[str, str]:
         """辅助方法：获取指定虚拟环境中已安装的Python包（包名→版本号）"""
@@ -254,7 +289,7 @@ class DepVenvManager:
         
         # 有依赖 → 先检查全局兼容性
         with open(deps_script_path, "r", encoding="utf-8") as f:
-            pip_deps = toml.load(f).get("pip_deps", {})
+            pip_deps = toml.load(f).get("pip", {})
         
         global_venv = self.create_global_venv()
         if self.check_pip_compatibility(pip_deps, global_venv):
