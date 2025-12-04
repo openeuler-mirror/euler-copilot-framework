@@ -9,7 +9,9 @@ from copy import deepcopy
 import sys
 import os
 # 从当前文件位置向上两级到达项目根目录
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../..')))
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '../..'))
+# 2. 添加到模块搜索路径（用于 import 模块）
+sys.path.append(project_root)
 can_import = True
 try:
     from apps.schemas.config import ConfigModel as FrameworkConfigModel
@@ -57,13 +59,13 @@ class BaseConfig():
 
     def __init__(self) -> None:
         """读取配置文件；当PROD环境变量设置时，配置文件将在读取后删除"""
-        config_file = os.path.join("config", "public", "public_config.toml")
+        config_file = os.path.join(project_root,"config", "public", "public_config.toml")
         self._config = ConfigModel()
         self._config.public_config = PublicConfigModel.model_validate(toml.load(config_file))
         framework_config_file = os.getenv("CONFIG")
         if framework_config_file is None:
             if can_import:
-                framework_config_file = os.path.join("..", "config", "config.toml")
+                framework_config_file = os.path.join(project_root,"..", "config", "config.toml")
         if framework_config_file and os.path.exists(framework_config_file):
             framework_config = FrameworkConfigModel.model_validate(toml.load(framework_config_file))
             self._config.public_config.llm_remote = framework_config.llm.endpoint
@@ -78,3 +80,8 @@ class BaseConfig():
     def get_config(self) -> ConfigModel:
         """获取配置文件内容"""
         return deepcopy(self._config)
+
+    def update_config(self):
+        config_file = os.path.join(project_root,"config", "public", "public_config.toml")
+        self._config = ConfigModel()
+        self._config.public_config = PublicConfigModel.model_validate(toml.load(config_file))

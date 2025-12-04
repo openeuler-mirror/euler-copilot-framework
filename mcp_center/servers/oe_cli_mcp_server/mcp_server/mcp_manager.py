@@ -2,19 +2,17 @@
 import os.path
 from functools import wraps
 from mcp.server import FastMCP
-from config.base_config_loader import BaseConfig
-from mcp_server.manager.manager import ToolManager, logger
-from mcp_tools.tool_type import ToolType
-from util.get_project_root import get_project_root
-from util.zip_tool_util import unzip_tool
+from config.private.mcp_server.config_loader import McpServerConfig
+from servers.oe_cli_mcp_server.mcp_server.manager.manager import ToolManager, logger
+from servers.oe_cli_mcp_server.mcp_tools.tool_type import ToolType
+from servers.oe_cli_mcp_server.util.get_project_root import get_project_root
+from servers.oe_cli_mcp_server.util.zip_tool_util import unzip_tool
 import threading
 import uvicorn
 from fastapi import FastAPI
 
 # -------------------------- 导入独立的 FastAPI 启动函数 --------------------------
 
-
-PUBLIC_CONFIG_PATH = os.path.join(get_project_root(), "config/public_config.toml")
 PERSIST_FILE = os.path.join(get_project_root(), "data/tool_state.json")
 
 def singleton(cls):
@@ -47,7 +45,7 @@ class McpServer(ToolManager):
         self.mcp = FastMCP(name, host=host, port=port)
         self.host = host
         self.port = port
-        self.language = BaseConfig().get_config().public_config.language
+        self.language = McpServerConfig().get_config().public_config.language
         self.PERSIST_FILE = PERSIST_FILE
         self.fastapi_app = None  # 存储 FastAPI 实例
         self.fastapi_thread = None  # 存储 FastAPI 线程
@@ -123,20 +121,10 @@ class McpServer(ToolManager):
         all_types = self.list_tool_types()
         for mcp_type in all_types:
             self.unload_tool_type(mcp_type)
-        BaseConfig().update_config(default=True)
-        self.reload_config()
         del self.mcp
         self.mcp = FastMCP("mcp实例", host=self.host, port=self.port)
         self.load(ToolType.BASE)
         logger.info(f"初始化完成：仅保留基础运维包,重启后生效")
-
-    def reload_config(self):
-        import toml
-        BaseConfig().update_config()
-        with open(PUBLIC_CONFIG_PATH, "r", encoding="utf-8") as f:
-            config = toml.load(f)
-        self.port = config["port"]
-        self.host = config["host"]
 
     def restart(self):
         self._reset()
@@ -153,10 +141,10 @@ class McpServer(ToolManager):
         logger.info(f"MCP 实例初始化完成，已加载 {len(self.list_packages())} 个工具包")
 
         # 2. 启动 FastAPI 服务（直接调用实例方法，绑定 self）
-        self._start_fastapi(host="0.0.0.0", port=8003)
+        self._start_fastapi(host="0.0.0.0", port=McpServerConfig().get_config().private_config.fastapi_port)
 
         # 3. 最后启动 FastMCP 主服务（阻塞主线程）
-        logger.info("启动 FastMCP 主服务...")
+        logger.info(f"启动 FastMCP 主服务...持久化于{PERSIST_FILE}")
         self.mcp.run(transport='sse')
 
     # -------------------------- 简化 start 方法：调用独立的 FastAPI 启动函数 --------------------------
@@ -225,7 +213,7 @@ class McpServer(ToolManager):
 
         return app
 
-    def _start_fastapi(self, host: str = "0.0.0.0", port: int = 8003):
+    def _start_fastapi(self, host: str = "0.0.0.0", port: int = McpServerConfig().get_config().private_config.fastapi_port):
         """启动 FastAPI 服务（实例方法，直接绑定 self）"""
         # 1. 创建 FastAPI 应用（绑定当前实例）
         self.fastapi_app = self._create_fastapi_app()
@@ -249,9 +237,3 @@ class McpServer(ToolManager):
         self.fastapi_thread.start()
         logger.info(f"FastAPI 服务线程启动成功（线程ID：{self.fastapi_thread.ident}）")
 
-
-# -------------------------- 启动服务（原有逻辑不变）--------------------------
-if __name__ == "__main__":
-    config = BaseConfig().get_config().public_config
-    mcp_server = McpServer("MCP_Tool_Service", config.host, config.port)
-    mcp_server.start()

@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 import logging
-import os
 import sys
 with open("/etc/systemd/system/mcp-server.service", "r") as f:
     for line in f:
@@ -10,8 +9,8 @@ with open("/etc/systemd/system/mcp-server.service", "r") as f:
 
 # 加入 sys.path
 sys.path.insert(0, PROJECT_ROOT)
-from mcp_server.cli.parse_args import parse_args
-from mcp_server.cli.handle import (
+from servers.oe_cli_mcp_server.mcp_server.cli.parse_args import parse_args
+from servers.oe_cli_mcp_server.mcp_server.cli.handle import (
     handle_add, handle_remove, handle_tool, handle_init,
     handle_start, handle_log, handle_llm, handle_config, handle_stop,handle_restart
 )

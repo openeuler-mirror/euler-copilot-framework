@@ -8,10 +8,10 @@
 """
 
 import logging
-from typing import Dict, List, Optional, Any
+from typing import Optional
 
-from mcp_server.dependency import DepVenvManager
-from mcp_server.manager.tool_repository import ToolRepository, tool_repository as default_repo
+from servers.oe_cli_mcp_server.mcp_server.dependency import DepVenvManager
+from servers.oe_cli_mcp_server.mcp_server.manager.tool_repository import ToolRepository, tool_repository as default_repo
 
 logger = logging.getLogger(__name__)
 

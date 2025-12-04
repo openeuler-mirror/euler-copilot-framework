@@ -14,10 +14,10 @@ import logging
 from typing import Dict, List, Optional, Any
 from importlib.util import spec_from_file_location, module_from_spec
 
-from mcp_server.dependency import DepVenvManager
-from util.get_project_root import get_project_root
-from util.tool_package_file_check import tool_package_file_check
-from mcp_server.manager.tool_repository import ToolRepository, tool_repository as default_repo
+from servers.oe_cli_mcp_server.mcp_server.dependency import DepVenvManager
+from servers.oe_cli_mcp_server.util.get_project_root import get_project_root
+from servers.oe_cli_mcp_server.util.tool_package_file_check import tool_package_file_check
+from servers.oe_cli_mcp_server.mcp_server.manager.tool_repository import ToolRepository, tool_repository as default_repo
 
 logger = logging.getLogger(__name__)
 

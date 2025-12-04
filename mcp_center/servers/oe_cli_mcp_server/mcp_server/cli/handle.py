@@ -3,15 +3,19 @@ import os
 import subprocess
 import toml
 import requests  # 新增：导入 requests 库（用于 HTTP 调用）
-from mcp_tools.tool_type import ToolType
-from util.get_project_root import get_project_root
-from util.test_llm_valid import is_llm_config_valid
 
-# 新增：FastAPI 服务地址（和 api_server.py 配置一致，端口 8003）
-FASTAPI_BASE_URL = "http://127.0.0.1:8003"
+
+from config.private.mcp_server.config_loader import McpServerConfig
+from servers.oe_cli_mcp_server.mcp_tools.tool_type import ToolType
+from servers.oe_cli_mcp_server.server import config
+from servers.oe_cli_mcp_server.util.test_llm_valid import is_llm_config_valid
+
+# 新增：FastAPI 服务地址（和 api_server.py 配置一致，端口 12556）
+
+FASTAPI_BASE_URL = f"http://127.0.0.1:{config.fastapi_port}"
 
 # 路径配置（直接硬编码，简化）
-PUBLIC_CONFIG_PATH = os.path.join(get_project_root(), "config/public_config.toml")
+PUBLIC_CONFIG_PATH = "config/public/public_config.toml"
 
 logger = logging.getLogger(__name__)
 

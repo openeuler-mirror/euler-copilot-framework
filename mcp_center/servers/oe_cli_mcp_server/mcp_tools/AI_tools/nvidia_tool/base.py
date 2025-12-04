@@ -1,7 +1,8 @@
 import subprocess
 from typing import Any, Dict, Optional
 import paramiko
-from config.base_config_loader import LanguageEnum
+
+from servers.oe_cli_mcp_server.config.base_config_loader import LanguageEnum
 
 
 def _format_gpu_info(raw_info: Dict[str, Any],

@@ -1,7 +1,6 @@
 from typing import Dict, Optional
-from config.base_config_loader import LanguageEnum
-from mcp_tools. base_tools. file_tools. base import (
-    get_language,
+from servers.oe_cli_mcp_server.config.base_config_loader import LanguageEnum
+from servers.oe_cli_mcp_server.mcp_tools. base_tools. file_tools. base import (
     get_remote_auth,
     run_local_command,
     run_remote_command,
