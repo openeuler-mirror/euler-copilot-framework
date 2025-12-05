@@ -1,90 +1,179 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2023-2025. All rights reserved.
 
 import unittest
-from unittest.mock import patch, MagicMock
+from typing import Any
+from unittest.mock import AsyncMock, MagicMock, patch
+
+from fastapi import FastAPI, status
 from fastapi.testclient import TestClient
 
-from jwt import encode
-
-from apps.routers.auth import admin_router
-
-access_token = encode({"sub": "user_id"}, "secret_key", algorithm="HS256")
+from apps.routers.auth import router
 
 
-class TestAuthorizeRouter(unittest.TestCase):
+class TestAuthRouter(unittest.TestCase):
+    """测试 auth 路由"""
 
-    @patch('apps.routers.authorize.get_oidc_token')
-    @patch('apps.routers.authorize.get_oidc_user')
-    @patch('apps.routers.authorize.RedisConnectionPool.get_redis_connection')
-    @patch('apps.routers.authorize.UserManager.update_userinfo_by_user_sub')
-    def test_oidc_login_success(self, mock_update_userinfo, mock_get_redis_connection, mock_get_oidc_user,
-                                mock_get_oidc_token):
-        client = TestClient(admin_router)
-        mock_update_userinfo.return_value = None
-        mock_get_oidc_token.return_value = "access_token"
-        mock_get_oidc_user.return_value = {'user_sub': '123'}
-        mock_redis = MagicMock()
-        mock_get_redis_connection.return_value = mock_redis
-        mock_redis.setex.return_value = None
-        response = client.get("/authorize/login?code=123")
-        assert response.status_code == 200
-        assert mock_update_userinfo.call_count == 1
-        assert mock_redis.setex.call_count == 2
+    def setUp(self) -> None:
+        """设置测试客户端"""
+        app = FastAPI()
+        app.include_router(router)
+        self.client = TestClient(app)
 
-    @patch('apps.routers.authorize.RedisConnectionPool.get_redis_connection')
-    def test_oidc_login_fail(self, mock_get_redis_connection):
-        client = TestClient(admin_router)
-        mock_redis = MagicMock()
-        mock_get_redis_connection.return_value = mock_redis
-        mock_redis.setex.return_value = None
-        response = client.get("/authorize/login?code=123")
-        assert response.status_code == 200
+    @patch("apps.routers.auth._check_user_group")
+    @patch("apps.routers.auth.UserManager.create_or_update_on_login", new_callable=AsyncMock)
+    @patch("apps.routers.auth.PersonalTokenManager.update_personal_token", new_callable=AsyncMock)
+    def test_linux_login_success(
+        self, mock_update_token: Any, mock_create_user: Any, mock_check_group: Any,
+    ) -> None:
+        """测试 Linux 用户登录成功"""
+        mock_check_group.return_value = True
+        mock_create_user.return_value = None
+        mock_update_token.return_value = "test_token_123"
+
+        response = self.client.get("/api/auth/login", headers={"X-Remote-User": "testuser"})
+
+        assert response.status_code == status.HTTP_200_OK
         assert response.json() == {
-            "code": 400,
-            "err_msg": "OIDC login failed."
+            "code": status.HTTP_200_OK,
+            "message": "登录成功",
+            "result": {"token": "test_token_123"},
         }
-        assert mock_redis.setex.call_count == 0
+        mock_check_group.assert_called_once_with("testuser")
+        mock_create_user.assert_called_once_with("testuser", "testuser")
+        mock_update_token.assert_called_once_with("testuser")
 
-    @patch('apps.routers.authorize.RedisConnectionPool.get_redis_connection')
-    def test_logout(self, mock_get_redis_connection):
-        client = TestClient(admin_router)
-        mock_redis = MagicMock()
-        mock_get_redis_connection.return_value = mock_redis
-        mock_redis.delete.return_value = None
-        response = client.get("/authorize/logout", cookies={"_t": access_token})
-        assert response.status_code == 200
-        assert response.json() == {
-            "code": 200,
-            "message": "success",
-            "result": {}
-        }
-        assert mock_redis.delete.call_count == 2
+    def test_linux_login_no_header(self) -> None:
+        """测试登录时缺少 X-Remote-User header"""
+        response = self.client.get("/api/auth/login")
 
-    @patch('apps.routers.authorize.UserManager.get_revision_number_by_user_sub')
-    def test_userinfo(self, mock_get_revision_number_by_user_sub):
-        client = TestClient(admin_router)
-        mock_get_revision_number_by_user_sub.return_value = "123"
-        response = client.get("/authorize/user", cookies={"_t": "access_token"})
-        assert response.status_code == 200
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
         assert response.json() == {
-            "code": 200,
-            "message": "success",
-            "result": {"user_sub": "123", "organization": "example", "revision_number": "123"}
+            "code": status.HTTP_401_UNAUTHORIZED,
+            "message": "无法获取用户信息",
+            "result": {},
         }
 
-    @patch('apps.routers.authorize.UserManager.update_userinfo_by_user_sub')
-    def test_update_revision_number(self, mock_update_userinfo_by_user_sub):
-        client = TestClient(admin_router)
-        mock_update_userinfo_by_user_sub.return_value = None
-        response = client.post("/authorize/update_revision_number", json={"revision_num": "123"},
-                               cookies={"_t": "access_token"})
-        assert response.status_code == 200
+    @patch("apps.routers.auth._check_user_group")
+    def test_linux_login_user_not_in_group(self, mock_check_group: Any) -> None:
+        """测试用户不在允许的用户组中"""
+        mock_check_group.return_value = False
+
+        response = self.client.get("/api/auth/login", headers={"X-Remote-User": "testuser"})
+
+        assert response.status_code == status.HTTP_403_FORBIDDEN
         assert response.json() == {
-            "code": 200,
-            "message": "success",
-            "result": {"user_sub": "123", "organization": "example", "revision_number": "123"}
+            "code": status.HTTP_403_FORBIDDEN,
+            "message": "您没有权限访问此系统",
+            "result": {},
+        }
+        mock_check_group.assert_called_once_with("testuser")
+
+    @patch("apps.routers.auth._check_user_group")
+    @patch("apps.routers.auth.UserManager.create_or_update_on_login", new_callable=AsyncMock)
+    @patch("apps.routers.auth.PersonalTokenManager.update_personal_token", new_callable=AsyncMock)
+    def test_linux_login_token_creation_failed(
+        self, mock_update_token: Any, mock_create_user: Any, mock_check_group: Any,
+    ) -> None:
+        """测试创建 PersonalToken 失败"""
+        mock_check_group.return_value = True
+        mock_create_user.return_value = None
+        mock_update_token.return_value = None
+
+        response = self.client.get("/api/auth/login", headers={"X-Remote-User": "testuser"})
+
+        assert response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
+        assert response.json() == {
+            "code": status.HTTP_500_INTERNAL_SERVER_ERROR,
+            "message": "创建Token失败",
+            "result": {},
         }
 
+    @patch("apps.routers.auth.is_admin")
+    @patch("apps.routers.auth.grp.getgrnam")
+    def test_check_user_group_admin(self, mock_getgrnam: Any, mock_is_admin: Any) -> None:
+        """测试 _check_user_group - 管理员用户"""
+        from apps.routers.auth import _check_user_group  # noqa: PLC0415
 
-if __name__ == '__main__':
+        mock_is_admin.return_value = True
+
+        result = _check_user_group("root")
+
+        assert result is True
+        mock_is_admin.assert_called_once_with("root")
+        mock_getgrnam.assert_not_called()
+
+    @patch("apps.routers.auth.is_admin")
+    @patch("apps.routers.auth.grp.getgrnam")
+    def test_check_user_group_oi_member(self, mock_getgrnam: Any, mock_is_admin: Any) -> None:
+        """测试 _check_user_group - oi 组成员"""
+        from apps.routers.auth import _check_user_group  # noqa: PLC0415
+
+        mock_is_admin.return_value = False
+        mock_group = MagicMock()
+        mock_group.gr_mem = ["testuser", "otheruser"]
+        mock_getgrnam.return_value = mock_group
+
+        result = _check_user_group("testuser")
+
+        assert result is True
+        mock_is_admin.assert_called_once_with("testuser")
+        mock_getgrnam.assert_called_once_with("oi")
+
+    @patch("apps.routers.auth.is_admin")
+    @patch("apps.routers.auth.grp.getgrnam")
+    def test_check_user_group_not_authorized(self, mock_getgrnam: Any, mock_is_admin: Any) -> None:
+        """测试 _check_user_group - 未授权用户"""
+        from apps.routers.auth import _check_user_group  # noqa: PLC0415
+
+        mock_is_admin.return_value = False
+        mock_group = MagicMock()
+        mock_group.gr_mem = ["otheruser"]
+        mock_getgrnam.return_value = mock_group
+
+        result = _check_user_group("testuser")
+
+        assert result is False
+
+    @patch("apps.routers.auth.is_admin")
+    @patch("apps.routers.auth.grp.getgrnam")
+    def test_check_user_group_oi_not_exists(self, mock_getgrnam: Any, mock_is_admin: Any) -> None:
+        """测试 _check_user_group - oi 组不存在"""
+        from apps.routers.auth import _check_user_group  # noqa: PLC0415
+
+        mock_is_admin.return_value = False
+        mock_getgrnam.side_effect = KeyError("oi")
+
+        result = _check_user_group("testuser")
+
+        assert result is False
+
+    @patch("apps.routers.auth.verify_personal_token")
+    @patch("apps.routers.auth.PersonalTokenManager.update_personal_token", new_callable=AsyncMock)
+    def test_change_personal_token_success(self, mock_update_token: Any) -> None:
+        """测试更新 API 密钥成功"""
+        mock_update_token.return_value = "new_api_key_456"
+
+        response = self.client.post("/api/auth/key")
+
+        assert response.status_code == status.HTTP_200_OK
+        response_data = response.json()
+        assert response_data["code"] == status.HTTP_200_OK
+        assert response_data["message"] == "success"
+        assert response_data["result"]["apiKey"] == "new_api_key_456"
+
+    @patch("apps.routers.auth.verify_personal_token")
+    @patch("apps.routers.auth.PersonalTokenManager.update_personal_token", new_callable=AsyncMock)
+    def test_change_personal_token_failed(self, mock_update_token: Any) -> None:
+        """测试更新 API 密钥失败"""
+        mock_update_token.return_value = None
+
+        response = self.client.post("/api/auth/key")
+
+        assert response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
+        response_data = response.json()
+        assert response_data["code"] == status.HTTP_500_INTERNAL_SERVER_ERROR
+        assert response_data["message"] == "failed to update personal token"
+
+
+if __name__ == "__main__":
     unittest.main()
