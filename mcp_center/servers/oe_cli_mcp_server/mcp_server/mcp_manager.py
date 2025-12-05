@@ -79,7 +79,7 @@ class McpServer(ToolManager):
             if os.path.basename(mcp_collection)[:-4] == ".zip":
                 unzip_tool(mcp_collection)
                 package_name = os.path.basename(mcp_collection)[:-4]
-                package_dir = os.path.join(get_project_root(), "mcp_tools/personal_tools", package_name)
+                package_dir = os.path.join(get_project_root(), "mcp_tools/personal_tools", package_name)#存放到个性化目录下
             else:
                 package_name = mcp_collection
                 package_dir = self.get_package_path(package_name)

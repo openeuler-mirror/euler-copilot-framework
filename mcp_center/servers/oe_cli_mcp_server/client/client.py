@@ -7,7 +7,7 @@ from contextlib import AsyncExitStack
 from typing import TYPE_CHECKING, Union
 from pydantic import BaseModel, Field
 from enum import Enum
-from mcp import ClientSession, StdioServerParameters
+from mcp import ClientSession
 from mcp.client.sse import sse_client
 from mcp.client.stdio import stdio_client
 
@@ -120,12 +120,181 @@ class MCPClient:
 
 async def main() -> None:
     """测试MCP Client"""
-    url = "http://0.0.0.0:8002/sse"
+    url = "http://0.0.0.0:12555/sse"
     headers = {}
     client = MCPClient(url, headers)
     await client.init()
-    result = await client.call_tool("nvidia_smi_status", {})
+
+    # 初始化时多余的调用移除，保留下方有序测试用例
+    # ==================================
+    # 1. sys_info_tool 测试用例（3个，修复无效枚举值）
+    # ==================================
+    print("\n" + "="*60)
+    print("1. sys_info_tool - 采集CPU+内存+磁盘+系统信息")
+    print("="*60)
+    result = await client.call_tool("sys_info_tool", {"info_types": ["cpu", "mem", "disk", "os"]})
     print(result)
+
+    print("\n" + "="*60)
+    print("2. sys_info_tool - 单独采集网络信息（IP/网卡）")
+    print("="*60)
+    result = await client.call_tool("sys_info_tool", {"info_types": ["net"]})
+    print(result)
+
+    print("\n" + "="*60)
+    print("3. sys_info_tool - 采集安全信息（SELinux+防火墙）")
+    print("="*60)
+    result = await client.call_tool("sys_info_tool", {"info_types": ["selinux", "firewall"]})
+    print(result)
+
+    # 移除无效的 "kernel" 和 "all" 类型测试（工具不支持）
+
+    # ==================================
+    # 2. file_tool 测试用例（4个，修复枚举值、参数名）
+    # ==================================
+    print("\n" + "="*60)
+    print("4. file_tool - 列出 /etc 目录下的 .conf 配置文件（过滤关键词）")
+    print("="*60)
+    # 用 ls + 后续过滤实现（工具无find枚举，参数名改为file_path）
+    result = await client.call_tool("file_tool", {
+        "action": "ls",
+        "file_path": "/etc",
+        "detail": False,
+        "encoding": "utf-8"
+    })
+    print(result)
+
+    print("\n" + "="*60)
+    print("5. file_tool - 读取 /etc/os-release 文件内容（系统版本）")
+    print("="*60)
+    # action改为cat，参数名改为file_path
+    result = await client.call_tool("file_tool", {
+        "action": "cat",
+        "file_path": "/etc/os-release",
+        "encoding": "utf-8"
+    })
+    print(result)
+
+    print("\n" + "="*60)
+    print("6. file_tool - 新建临时文件并写入内容")
+    print("="*60)
+    # 工具无find/mtime枚举，替换为add+edit实用场景
+    result = await client.call_tool("file_tool", {
+        "action": "add",
+        "file_path": "/tmp/file_tool_test.txt",
+        "overwrite": True
+    })
+    print("新建文件结果：", result)
+    result = await client.call_tool("file_tool", {
+        "action": "edit",
+        "file_path": "/tmp/file_tool_test.txt",
+        "content": "file_tool测试内容\n系统版本：Ubuntu 22.04",
+        "encoding": "utf-8"
+    })
+    print("写入内容结果：", result)
+
+    print("\n" + "="*60)
+    print("7. file_tool - 修改 /tmp/file_tool_test.txt 权限为755")
+    print("="*60)
+    # action改为chmod，参数名改为file_path
+    result = await client.call_tool("file_tool", {
+        "action": "chmod",
+        "file_path": "/tmp/file_tool_test.txt",
+        "mode": "755"
+    })
+    print(result)
+
+    # ==================================
+    # 3. pkg_tool 测试用例（4个，修复无效枚举、参数）
+    # ==================================
+    print("\n" + "="*60)
+    print("8. pkg_tool - 列出已安装的所有 nginx 相关包")
+    print("="*60)
+    result = await client.call_tool("pkg_tool", {
+        "action": "list",
+        "filter_key": "nginx"
+    })
+    print(result)
+
+    print("\n" + "="*60)
+    print("9. pkg_tool - 查询 openssh-server 包详情（版本/依赖）")
+    print("="*60)
+    result = await client.call_tool("pkg_tool", {
+        "action": "info",
+        "pkg_name": "openssh-server"
+    })
+    print(result)
+
+    print("\n" + "="*60)
+    print("10. pkg_tool - 仅更新系统安全补丁（替代check-update）")
+    print("="*60)
+    # 工具无check-update枚举，替换为update-sec（安全更新）
+    result = await client.call_tool("pkg_tool", {
+        "action": "update-sec",
+        "yes": True
+    })
+    print(result)
+
+    print("\n" + "="*60)
+    print("11. pkg_tool - 清理 yum/dnf 包缓存（all类型）")
+    print("="*60)
+    result = await client.call_tool("pkg_tool", {
+        "action": "clean",
+        "cache_type": "all",
+        "yes": True
+    })
+    print(result)
+
+    # ==================================
+    # 4. proc_tool 测试用例（4个，修复无效枚举、参数）
+    # ==================================
+    print("\n" + "="*60)
+    print("12. proc_tool - 查找所有 systemd 相关进程")
+    print("="*60)
+    result = await client.call_tool("proc_tool", {
+        "proc_actions": ["find"],
+        "proc_name": "systemd"
+    })
+    print(result)
+
+    print("\n" + "="*60)
+    print("13. proc_tool - 查询 PID=1 进程（systemd）资源占用")
+    print("="*60)
+    result = await client.call_tool("proc_tool", {
+        "proc_actions": ["stat"],
+        "pid": 1
+    })
+    print(result)
+
+    print("\n" + "="*60)
+    print("14. proc_tool - 列出所有进程（后续可筛选CPU占用前5）")
+    print("="*60)
+    # 工具无top枚举，用list获取所有进程（业务层可筛选）
+    result = await client.call_tool("proc_tool", {
+        "proc_actions": ["list"]
+    })
+    print(result)
+
+    print("\n" + "="*60)
+    print("15. proc_tool - 重启 sshd 服务（systemd服务）")
+    print("="*60)
+    # 工具无tree枚举，替换为restart实用场景
+    result = await client.call_tool("proc_tool", {
+        "proc_actions": ["restart"],
+        "service_name": "ssh"  # Ubuntu中sshd服务名为ssh
+    })
+    print(result)
+
+    # 清理临时文件
+    print("\n" + "="*60)
+    print("16. file_tool - 删除临时测试文件")
+    print("="*60)
+    result = await client.call_tool("file_tool", {
+        "action": "delete",
+        "file_path": "/tmp/file_tool_test.txt"
+    })
+    print(result)
+
     await client.stop()
 
 if __name__ == "__main__":
