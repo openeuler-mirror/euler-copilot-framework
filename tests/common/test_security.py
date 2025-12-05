@@ -10,6 +10,7 @@ from apps.common.security import Security
 
 
 def test_encrypt() -> None:
+    """测试加密功能"""
     plaintext = "test_plaintext"
     encrypted_plaintext, secret_dict = Security.encrypt(plaintext)
     assert isinstance(encrypted_plaintext, str)
@@ -17,6 +18,7 @@ def test_encrypt() -> None:
 
 
 def test_decrypt(mocker: MockerFixture) -> None:
+    """测试解密功能"""
     encrypted_plaintext = "encrypted_plaintext"
     secret_dict = {
         "encrypted_work_key": "encrypted_work_key",
