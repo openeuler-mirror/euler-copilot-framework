@@ -127,6 +127,7 @@ docker run命令的参数解释：
 现在可以部署vllm-gpu来提供推理服务了。注意：如果需要支持sysHAX的PD分离，必须在`vllm serve`命令中加上`enable_auto_pd_offload`来启动PD分离功能。
 
 ```shell
+
 # 部署vllm-gpu服务。注意默认是禁止pd分离的，要开启pd分离，要在vllm serve命令中添加--enable_auto_pd_offload启动参数
 vllm serve /home/models/DeepSeek-R1-Distill-Qwen-32B \
     --host 0.0.0.0 \
@@ -138,7 +139,9 @@ vllm serve /home/models/DeepSeek-R1-Distill-Qwen-32B \
     --tensor-parallel-size 2 \
     --gpu_memory_utilization=0.8 \
     --enable_auto_pd_offload
+
 ```
+
 vllm serve的参数解释如下：
 
 |**参数**|**解释**|
