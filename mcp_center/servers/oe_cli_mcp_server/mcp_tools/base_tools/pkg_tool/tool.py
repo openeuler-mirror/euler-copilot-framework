@@ -8,7 +8,7 @@ from servers.oe_cli_mcp_server.mcp_tools.base_tools.pkg_tool.base import (
     PkgCacheTypeEnum,
     parse_pkg_action,
     parse_cache_type,
-    logger, lang
+    logger, lang, safe_split_log
 )
 
 def pkg_tool(
@@ -66,7 +66,7 @@ def pkg_tool(
             log = pm.install(pkg_name.strip(), yes=yes)
             result["success"] = True
             result["message"] = f"包{pkg_name}在线安装成功" if is_zh else f"Package {pkg_name} installed successfully"
-            result["result"] = log.splitlines()
+            result["result"] = safe_split_log(log)
 
         elif action_enum == PkgActionEnum.LOCAL_INSTALL:
             # 离线安装RPM
@@ -75,7 +75,7 @@ def pkg_tool(
             log = pm.local_install(rpm_path.strip(), yes=yes)
             result["success"] = True
             result["message"] = f"RPM包{rpm_path}安装成功" if is_zh else f"RPM package {rpm_path} installed successfully"
-            result["result"] = log.splitlines()
+            result["result"] = safe_split_log(log)
 
         elif action_enum == PkgActionEnum.UPDATE:
             # 更新包
@@ -83,14 +83,14 @@ def pkg_tool(
             target = pkg_name or "所有包" if is_zh else pkg_name or "all packages"
             result["success"] = True
             result["message"] = f"{target}更新完成" if is_zh else f"{target} updated successfully"
-            result["result"] = log.splitlines()
+            result["result"] = safe_split_log(log)
 
         elif action_enum == PkgActionEnum.UPDATE_SEC:
             # 仅更新安全补丁
             log = pm.update_sec(yes=yes)
             result["success"] = True
             result["message"] = "安全补丁更新完成" if is_zh else "Security patches updated successfully"
-            result["result"] = log.splitlines()
+            result["result"] = safe_split_log(log)
 
         elif action_enum == PkgActionEnum.REMOVE:
             # 卸载包
@@ -99,14 +99,14 @@ def pkg_tool(
             log = pm.remove(pkg_name.strip(), yes=yes)
             result["success"] = True
             result["message"] = f"包{pkg_name}卸载完成" if is_zh else f"Package {pkg_name} removed successfully"
-            result["result"] = log.splitlines()
+            result["result"] = safe_split_log(log)
 
         elif action_enum == PkgActionEnum.CLEAN:
             # 清理缓存
             log = pm.clean(cache_type=cache_type_enum)
             result["success"] = True
             result["message"] = f"{cache_type_enum.value}缓存清理完成" if is_zh else f"{cache_type_enum.value} cache cleaned successfully"
-            result["result"] = log.splitlines()
+            result["result"] = safe_split_log(log)
 
     except Exception as e:
         result["message"] = f"操作失败：{str(e)}" if is_zh else f"Operation failed: {str(e)}"

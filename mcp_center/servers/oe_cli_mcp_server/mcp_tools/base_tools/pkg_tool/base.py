@@ -64,6 +64,10 @@ def parse_cache_type(cache_type_str: str) -> PkgCacheTypeEnum:
         valid_values = [e.value for e in PkgCacheTypeEnum]
         raise ValueError(f"无效的缓存类型，可选枚举值：{','.join(valid_values)}")
 
+def safe_split_log(log):
+    # 兼容：字符串→splitlines()，其他类型（字典/None）→转为列表
+    return log.splitlines() if isinstance(log, str) else [str(log) if log else "无执行日志"]
+
 # ========== 核心命令工具（极简实现，解决命令不存在问题） ==========
 def get_cmd_path(cmd: str) -> Optional[str]:
     """获取命令绝对路径（仅遍历OpenEuler常见路径）"""
@@ -266,3 +270,4 @@ class PackageManager:
             return {"message": self._msg(f"缓存清理成功（类型：{cache_type.value}）", f"Cache cleaned successfully (type: {cache_type.value})")}
         else:
             return {"error": self._msg(f"缓存清理失败：{output or '未知错误'}", f"Failed to clean cache: {output or 'Unknown error'}")}
+
