@@ -1,9 +1,9 @@
 #!/bin/bash
 
-SERVICE_DIR="/usr/lib/euler-copilot-framework/mcp_center/service"
+SERVICE_DIR="/usr/lib/sysagent/mcp_center/service"
 SYSTEMD_TARGET_DIR="/etc/systemd/system"
-/usr/lib/euler-copilot-framework/mcp_center/servers/oe_cli_mcp_server/run.sh
-/usr/lib/euler-copilot-framework/mcp_center/servers/rag/run.sh
+/usr/lib/s y sa gen t/mcp_center/servers/oe_cli_mcp_server/run.sh
+/usr/lib/sysagent/mcp_center/servers/rag/run.sh
 
 systemctl daemon-reload
 
@@ -22,7 +22,7 @@ for service_file in "$SERVICE_DIR"/*.service; do
   fi
 done
 
-pip install -r /usr/lib/euler-copilot-framework/mcp_center/requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple
+pip install -r /usr/lib/sysagent/mcp_center/requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple
 
 SCRIPT_PATH=$(cd $(dirname $0) && pwd)
 echo "当前脚本所在目录: $SCRIPT_PATH"
