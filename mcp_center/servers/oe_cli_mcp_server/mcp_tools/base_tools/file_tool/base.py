@@ -4,7 +4,6 @@ import shutil
 from enum import Enum
 from typing import Dict, List
 from pydantic import Field
-
 from config.public.base_config_loader import BaseConfig, LanguageEnum
 
 # 初始化日志

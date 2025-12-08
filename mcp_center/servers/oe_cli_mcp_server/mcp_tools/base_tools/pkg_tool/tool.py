@@ -1,7 +1,6 @@
 from typing import Dict, Optional
 from pydantic import Field
-
-from servers.oe_cli_mcp_server.config.base_config_loader import LanguageEnum
+from config.public.base_config_loader import LanguageEnum
 from servers.oe_cli_mcp_server.mcp_tools.base_tools.pkg_tool.base import (
     init_result_dict,
     PackageManager,

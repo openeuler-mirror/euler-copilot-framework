@@ -5,8 +5,7 @@ import re
 from enum import Enum
 from typing import Dict, List, Optional
 from pydantic import Field
-
-from servers.oe_cli_mcp_server.config.base_config_loader import BaseConfig, LanguageEnum
+from config.public.base_config_loader import BaseConfig, LanguageEnum
 
 # 初始化日志（保留基础配置）
 logger = logging.getLogger("pkg_tool")

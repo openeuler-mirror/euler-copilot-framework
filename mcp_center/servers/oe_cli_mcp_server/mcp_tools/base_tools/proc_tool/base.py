@@ -4,8 +4,7 @@ import subprocess
 import re
 from enum import Enum
 from typing import Dict, List, Optional, Union
-
-from servers.oe_cli_mcp_server.config.base_config_loader import BaseConfig, LanguageEnum
+from config.public.base_config_loader import LanguageEnum, BaseConfig
 
 # 初始化日志（仅保留基础配置）
 logger = logging.getLogger("proc_tool")
