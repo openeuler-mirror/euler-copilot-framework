@@ -5,7 +5,7 @@ User=root
 WorkingDirectory=/usr/lib/sysagent
 Environment="PYTHONPATH=/usr/lib/sysagent"
 Environment="CONFIG=/etc/sysagent/config.toml"
-ExecStart=/usr/bin/python3 apps/main.py
+ExecStart=/usr/bin/python3 -m apps.main
 ExecReload=/bin/kill -HUP $MAINPID
 Restart=on-failure
 RestartSec=10
