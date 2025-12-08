@@ -3,7 +3,7 @@
         "mcp_server": {
             "headers": {},
             "autoApprove": [],
-            "autoInstall": false,
+            "autoInstall": true,
             "timeout": 60,
             "url": "http://127.0.0.1:12311/sse"
         }
