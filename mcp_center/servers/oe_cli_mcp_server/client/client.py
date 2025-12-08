@@ -226,14 +226,29 @@ async def main() -> None:
     print(result)
 
     print("\n" + "="*60)
-    print("10. pkg_tool - 仅更新系统安全补丁（替代check-update）")
+    print("10. pkg_tool - 安装 nginx 包 + 验证安装结果")
     print("="*60)
-    # 工具无check-update枚举，替换为update-sec（安全更新）
-    result = await client.call_tool("pkg_tool", {
-        "action": "update-sec",
-        "yes": True
+
+    # 步骤1：安装 nginx 包（双系统兼容，自动适配 apt/dnf）
+    print("正在安装 nginx 包...")
+    install_result = await client.call_tool("pkg_tool", {
+        "action": "install",  # 安装动作（双系统兼容）
+        "pkg_name": "nginx",  # 要安装的包名
+        "yes": True           # 自动确认安装（避免交互）
     })
-    print(result)
+    print("安装执行结果：")
+    print(install_result)
+
+    # 步骤2：验证安装结果（用 list 方法过滤 nginx 相关包）
+    print("\n" + "-"*40)
+    print("验证：查询已安装的 nginx 相关包")
+    print("-"*40)
+    verify_result = await client.call_tool("pkg_tool", {
+        "action": "list",      # 列出已安装包
+        "filter_key": "nginx"  # 过滤关键词（只显示 nginx 相关）
+    })
+    print("验证结果：")
+    print(verify_result)
 
     print("\n" + "="*60)
     print("11. pkg_tool - 清理 yum/dnf 包缓存（all类型）")
@@ -281,7 +296,7 @@ async def main() -> None:
     # 工具无tree枚举，替换为restart实用场景
     result = await client.call_tool("proc_tool", {
         "proc_actions": ["restart"],
-        "service_name": "ssh"  # Ubuntu中sshd服务名为ssh
+        "service_name": "sshd"  # openEuler中sshd服务名为ssh
     })
     print(result)
 

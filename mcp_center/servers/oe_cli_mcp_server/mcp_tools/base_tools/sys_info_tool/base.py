@@ -5,7 +5,6 @@ import subprocess
 import re
 from enum import Enum
 from typing import Dict, List, Optional
-
 from config.public.base_config_loader import LanguageEnum, BaseConfig
 
 # 初始化日志
