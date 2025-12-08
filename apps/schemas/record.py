@@ -2,12 +2,11 @@
 """Record数据结构"""
 
 import uuid
-from datetime import UTC, datetime
 from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
-from apps.models import CommentType, StepStatus
+from apps.models import StepStatus
 
 
 class RecordDocument(BaseModel):
@@ -65,16 +64,6 @@ class RecordMetadata(BaseModel):
     time_cost: float = Field(default=0, alias="timeCost")
 
 
-class RecordComment(BaseModel):
-    """Record表子项：Record的评论信息"""
-
-    comment: CommentType = Field(default=CommentType.NONE)
-    feedback_type: list[str] = Field(default=[], alias="dislike_reason")
-    feedback_link: str = Field(default="", alias="reason_link")
-    feedback_content: str = Field(default="", alias="reason_description")
-    feedback_time: float = Field(default_factory=lambda: round(datetime.now(tz=UTC).timestamp(), 3))
-
-
 class RecordData(BaseModel):
     """GET /api/record/{conversation_id} Result内元素数据结构"""
 
@@ -85,5 +74,4 @@ class RecordData(BaseModel):
     flow: RecordExecutor | None = None
     content: RecordContent
     metadata: RecordMetadata
-    comment: CommentType = Field(default=CommentType.NONE)
     created_at: float = Field(alias="createdAt")

@@ -8,7 +8,7 @@ from fastapi import APIRouter, Body, Depends, Query, Request, status
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
 
-from apps.dependency import verify_personal_token, verify_session
+from apps.dependency import verify_personal_token
 from apps.schemas.flow import (
     FlowStructureDeleteMsg,
     FlowStructureDeleteRsp,
@@ -28,7 +28,6 @@ router = APIRouter(
     prefix="/api/flow",
     tags=["flow"],
     dependencies=[
-        Depends(verify_session),
         Depends(verify_personal_token),
     ],
 )

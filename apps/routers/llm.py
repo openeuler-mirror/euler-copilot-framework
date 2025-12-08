@@ -3,13 +3,14 @@
 
 from typing import cast
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Request, status
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
 
-from apps.dependency import verify_admin, verify_personal_token, verify_session
+from apps.dependency import verify_admin, verify_personal_token
 from apps.schemas.request_data import (
     UpdateLLMReq,
+    UpdateSpecialLlmReq,
 )
 from apps.schemas.response_data import (
     ListLLMAdminRsp,
@@ -19,12 +20,12 @@ from apps.schemas.response_data import (
     ResponseData,
 )
 from apps.services.llm import LLMManager
+from apps.services.settings import SettingsManager
 
 router = APIRouter(
     prefix="/api/llm",
     tags=["llm"],
     dependencies=[
-        Depends(verify_session),
         Depends(verify_personal_token),
     ],
 )
@@ -32,7 +33,6 @@ admin_router = APIRouter(
     prefix="/api/llm",
     tags=["llm"],
     dependencies=[
-        Depends(verify_session),
         Depends(verify_personal_token),
         Depends(verify_admin),
     ],
@@ -73,27 +73,38 @@ async def list_llm(llmId: str | None = None) -> JSONResponse:  # noqa: N803
     )
 
 
-@admin_router.get("/config", response_model=ListLLMAdminRsp,
+@admin_router.get("/config", response_model=ResponseData,
     responses={status.HTTP_404_NOT_FOUND: {"model": ResponseData}},
 )
-async def admin_list_llm(llmId: str | None = None) -> JSONResponse:  # noqa: N803
-    """GET /llm/config: 获取大模型配置列表（管理员视图）"""
-    llm_list_raw = await LLMManager.list_llm(llmId, admin_view=True)
+async def get_llm_config(llmId: str) -> JSONResponse:  # noqa: N803
+    """GET /llm/config: 获取单个大模型的详细配置信息（管理员视图）"""
+    llm = await LLMManager.get_llm(llmId)
 
-    # 检查返回类型是否符合预期
-    if llm_list_raw and not all(isinstance(item, LLMAdminInfo) for item in llm_list_raw):
+    if not llm:
         return JSONResponse(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            status_code=status.HTTP_404_NOT_FOUND,
             content=jsonable_encoder(
                 ResponseData(
-                    code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                    message="大模型配置列表数据类型不符合预期",
+                    code=status.HTTP_404_NOT_FOUND,
+                    message=f"大模型 {llmId} 不存在",
                     result=None,
                 ).model_dump(exclude_none=True, by_alias=True),
             ),
         )
 
-    llm_list = cast("list[LLMAdminInfo]", llm_list_raw)
+    llm_config = LLMAdminInfo(
+        llmId=llm.id,
+        llmDescription=llm.llmDescription,
+        llmType=llm.llmType,
+        baseUrl=llm.baseUrl,
+        apiKey=llm.apiKey,
+        modelName=llm.modelName,
+        maxTokens=llm.maxToken,
+        ctxLength=llm.ctxLength,
+        temperature=llm.temperature,
+        provider=llm.provider.value if llm.provider else None,
+        extraConfig=llm.extraConfig,
+    )
 
     return JSONResponse(
         status_code=status.HTTP_200_OK,
@@ -101,22 +112,54 @@ async def admin_list_llm(llmId: str | None = None) -> JSONResponse:  # noqa: N80
             ListLLMAdminRsp(
                 code=status.HTTP_200_OK,
                 message="success",
-                result=llm_list,
+                result=llm_config,
             ).model_dump(exclude_none=True, by_alias=True),
         ),
     )
+
+@admin_router.put("/setting", response_model=ResponseData,
+    responses={status.HTTP_404_NOT_FOUND: {"model": ResponseData}},
+)
+async def change_global_llm(request: Request, req: UpdateSpecialLlmReq) -> JSONResponse:
+    """PUT /llm/setting: 更改全局Function和Embedding模型设置（管理员）"""
+    try:
+        user_id = request.state.user_id
+
+        await SettingsManager.update_global_llm_settings(user_id, req)
+
+        return JSONResponse(
+            status_code=status.HTTP_200_OK,
+            content=jsonable_encoder(
+                ResponseData(
+                    code=status.HTTP_200_OK,
+                    message="success",
+                    result={
+                        "functionLLM": req.functionLLM,
+                        "embeddingLLM": req.embeddingLLM,
+                    },
+                ).model_dump(exclude_none=True, by_alias=True),
+            ),
+        )
+    except ValueError as e:
+        return JSONResponse(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            content=jsonable_encoder(
+                ResponseData(
+                    code=status.HTTP_400_BAD_REQUEST,
+                    message=str(e),
+                    result=None,
+                ).model_dump(exclude_none=True, by_alias=True),
+            ),
+        )
 
 
 @admin_router.put("",
     responses={status.HTTP_404_NOT_FOUND: {"model": ResponseData}},
 )
-async def create_llm(
-    req: UpdateLLMReq,
-    llmId: str,  # noqa: N803
-) -> JSONResponse:
+async def create_llm(req: UpdateLLMReq) -> JSONResponse:
     """PUT /llm: 创建或更新大模型配置"""
     try:
-        await LLMManager.update_llm(llmId, req)
+        await LLMManager.update_llm(req.llm_id, req)
     except ValueError as e:
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -134,7 +177,7 @@ async def create_llm(
             ResponseData(
                 code=status.HTTP_200_OK,
                 message="success",
-                result=llmId,
+                result=req.llm_id,
             ).model_dump(exclude_none=True, by_alias=True),
         ),
     )

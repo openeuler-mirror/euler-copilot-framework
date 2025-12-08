@@ -99,7 +99,7 @@ class LLMManager:
 
 
     @staticmethod
-    async def update_llm(llm_id: str, req: UpdateLLMReq) -> str:
+    async def update_llm(llm_id: str | None, req: UpdateLLMReq) -> str:
         """
         创建大模型
 
@@ -107,7 +107,7 @@ class LLMManager:
         :return: 大模型对象
         """
         async with postgres.session() as session:
-            if llm_id:
+            if llm_id is not None:
                 llm = (await session.scalars(
                     select(LLMData).where(
                         LLMData.id == llm_id,
@@ -123,20 +123,24 @@ class LLMManager:
                 llm.provider = req.provider
                 llm.ctxLength = req.ctx_length
                 llm.llmDescription = req.llm_description
+                if req.llm_type is not None:
+                    llm.llmType = req.llm_type
                 llm.extraConfig = req.extra_data or {}
                 await session.commit()
             else:
-                llm = LLMData(
-                    id=llm_id,
-                    baseUrl=req.base_url,
-                    apiKey=req.api_key,
-                    modelName=req.model_name,
-                    maxToken=req.max_tokens,
-                    provider=req.provider,
-                    ctxLength=req.ctx_length,
-                    llmDescription=req.llm_description,
-                    extraConfig=req.extra_data or {},
-                )
+                llm_data = {
+                    "id": llm_id,
+                    "baseUrl": req.base_url,
+                    "apiKey": req.api_key,
+                    "modelName": req.model_name,
+                    "maxToken": req.max_tokens,
+                    "provider": req.provider,
+                    "ctxLength": req.ctx_length,
+                    "llmDescription": req.llm_description,
+                    "llmType": req.llm_type or [],
+                    "extraConfig": req.extra_data or {},
+                }
+                llm = LLMData(**llm_data)
                 session.add(llm)
                 await session.commit()
             return llm.id

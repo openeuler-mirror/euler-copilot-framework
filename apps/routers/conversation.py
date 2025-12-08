@@ -9,7 +9,7 @@ from fastapi import APIRouter, Depends, Query, Request, status
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
 
-from apps.dependency import verify_personal_token, verify_session
+from apps.dependency import verify_personal_token
 from apps.schemas.conversation import (
     ChangeConversationData,
     ConversationListItem,
@@ -28,7 +28,6 @@ router = APIRouter(
     prefix="/api/conversation",
     tags=["conversation"],
     dependencies=[
-        Depends(verify_session),
         Depends(verify_personal_token),
     ],
 )

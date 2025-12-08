@@ -1,0 +1,10 @@
+{
+  "tools": {
+    "ssh_fix_tool": {
+      "zh": "整合的SSH修复工具：解决openEuler系统SSH连接失败问题。\n\n该工具按顺序自动执行以下步骤：\n1. ping SSH端口检查连通性（检测端口22是否可达）\n2. 检查sshd服务状态（执行systemctl status sshd）\n3. 修复/etc/ssh/sshd_config配置文件：\n   - 确保Port 22已启用（若不存在则追加，若被注释则解注释并改为22）\n   - 设置PermitRootLogin yes（允许root登录）\n   - 设置PasswordAuthentication yes（允许密码认证）\n4. 重启sshd服务（执行systemctl restart sshd）\n\n参数:\n    - target: 目标主机IP或主机名，None或\"127.0.0.1\"表示本机（必填）\n    - port: SSH端口，默认22\n    - lang: 语言设置（可选，保留以保持接口一致性）\n\n返回:\n    - success: 是否修复成功（True/False）\n    - message: 执行结果说明（总体修复结果）\n    - target: 目标主机\n    - result: 各步骤执行结果列表（包含步骤1-4的详细输出）\n\n使用场景:\n    - openEuler 24.03 SP2系统SSH连接失败问题\n    - sshd服务未正确配置导致无法连接\n    - 需要快速诊断和修复SSH服务配置",
+      "en": "Integrated SSH fix tool: Resolve SSH connection failures on openEuler systems.\n\nThe tool automatically performs the following steps in sequence:\n1. Ping SSH port to check connectivity (check if port 22 is reachable)\n2. Check sshd service status (execute systemctl status sshd)\n3. Fix /etc/ssh/sshd_config configuration:\n   - Ensure Port 22 is enabled (add if missing, uncomment and change to 22 if commented)\n   - Set PermitRootLogin yes (allow root login)\n   - Set PasswordAuthentication yes (allow password authentication)\n4. Restart sshd service (execute systemctl restart sshd)\n\nParameters:\n    - target: Target host IP or hostname, None or \"127.0.0.1\" for localhost (required)\n    - port: SSH port, default 22\n    - lang: Language setting (optional, kept for interface consistency)\n\nReturns:\n    - success: Whether the fix was successful (True/False)\n    - message: Result description (overall fix result)\n    - target: Target host\n    - result: List of execution results for each step (detailed output for steps 1-4)\n\nUse cases:\n    - SSH connection failures on openEuler 24.03 SP2 systems\n    - sshd service misconfiguration preventing connections\n    - Quick diagnosis and fix of SSH service configuration"
+    }
+  }
+}
+
+

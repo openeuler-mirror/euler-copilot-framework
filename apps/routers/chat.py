@@ -10,7 +10,7 @@ from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse, StreamingResponse
 
 from apps.common.queue import MessageQueue
-from apps.dependency import verify_personal_token, verify_session
+from apps.dependency import verify_personal_token
 from apps.models import ExecutorStatus
 from apps.scheduler.scheduler import Scheduler
 from apps.schemas.request_data import RequestData
@@ -23,7 +23,6 @@ router = APIRouter(
     prefix="/api",
     tags=["chat"],
     dependencies=[
-        Depends(verify_session),
         Depends(verify_personal_token),
     ],
 )
@@ -41,7 +40,7 @@ async def chat_generator(post_body: RequestData, user_id: str, auth_header: str)
 
         # 2. Scheduler初始化成功后，再设置用户处于活动状态
         await Activity.set_active(user_id)
-        _logger.info(f"[Chat] 用户是否活跃: {await Activity.can_active(user_id)}")
+        _logger.info("[Chat] 用户是否活跃: %s", await Activity.can_active(user_id))
 
         # 3. 最后判断并运行 Executor
         scheduler_task = asyncio.create_task(scheduler.run())

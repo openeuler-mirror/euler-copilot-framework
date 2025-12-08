@@ -1,0 +1,17 @@
+[system]
+# SSH/sshd 相关系统工具依赖（通常系统已自带，这里仅列出以便需要时安装）
+#ssh_tools = [
+#    "yum install -y openssh-clients openssh-server",
+#    "apt-get update && apt-get install -y openssh-client openssh-server"
+#]
+
+[pip]
+# Python 依赖（与其他 mcptool 保持一致的基础依赖）
+paramiko = "==4.0.0"
+typing_extensions = "==4.12.2"
+psutil = "==7.0.0"
+toml = "==0.10.2"
+mcp = "==1.9.4"
+scp = "==0.15.0"
+
+

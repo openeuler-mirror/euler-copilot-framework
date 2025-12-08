@@ -3,7 +3,6 @@
 
 from .app import App, AppACL, AppHashes, AppMCP, AppType, PermissionType
 from .base import Base
-from .comment import Comment, CommentType
 from .conversation import ConvDocAssociated, Conversation, ConversationDocument
 from .document import Document
 from .flow import Flow
@@ -12,7 +11,7 @@ from .mcp import MCPActivated, MCPInfo, MCPInstallStatus, MCPTools, MCPType
 from .node import NodeInfo
 from .record import Record, RecordMetadata
 from .service import Service, ServiceACL, ServiceHashes
-from .session import Session, SessionActivity, SessionType
+from .session import SessionActivity
 from .settings import GlobalSettings
 from .tag import Tag
 from .task import (
@@ -34,8 +33,6 @@ __all__ = [
     "AppMCP",
     "AppType",
     "Base",
-    "Comment",
-    "CommentType",
     "ConvDocAssociated",
     "Conversation",
     "ConversationDocument",
@@ -61,9 +58,7 @@ __all__ = [
     "Service",
     "ServiceACL",
     "ServiceHashes",
-    "Session",
     "SessionActivity",
-    "SessionType",
     "StepStatus",
     "StepType",
     "Tag",

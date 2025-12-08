@@ -1,0 +1,32 @@
+[deploy]
+mode = 'local'
+cookie = 'domain'
+data_dir = '/var/lib/euler_copilot'
+
+[rag]
+rag_service = 'http://127.0.0.1:9988'
+
+[fastapi]
+domain = '127.0.0.1'
+
+[minio]
+endpoint = '127.0.0.1:9000'
+access_key = 'minioadmin'
+secret_key = ''
+secure = false
+
+[postgres]
+host = '127.0.0.1'
+port = 5432
+user = 'euler_copilot'
+password = ''
+database = 'euler_copilot'
+
+[security]
+half_key1 = ''
+half_key2 = ''
+half_key3 = ''
+jwt_key = ''
+
+[extra]
+sql_url = 'http://127.0.0.1:9015'
