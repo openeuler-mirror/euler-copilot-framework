@@ -115,15 +115,6 @@ class SystemInfoCollector:
 
     def _find_cmd_absolute_path(self, cmd: str) -> Optional[str]:
         """辅助函数：查找命令的绝对路径（兼容特殊情况）"""
-        try:
-            # 用 which 命令查找（若 which 存在）
-            which_result = self._run_cmd_safe(["which", cmd])
-            if which_result:
-                return which_result.strip()
-        except Exception:
-            pass
-
-        # which 不存在时，遍历常见路径
         common_paths = ["/usr/bin", "/bin", "/usr/sbin", "/sbin", "/usr/local/bin"]
         for path in common_paths:
             cmd_path = os.path.join(path, cmd)
@@ -237,10 +228,8 @@ class SystemInfoCollector:
 
         try:
             # 用绝对路径执行 df 命令（避免 PATH 问题）
-            disk_output = self._run_cmd_safe([
-                df_cmd, "-h", "-T",
-                "--output=source,fstype,size,used,avail,pcent,mountpoint"
-            ])
+            disk_output = self._run_cmd_safe([df_cmd, "-h", "-T"])
+
             if not disk_output:
                 return [{"error": self._get_msg("df命令执行失败，无法获取磁盘信息", "df command execution failed")}]
 
