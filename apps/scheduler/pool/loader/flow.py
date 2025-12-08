@@ -211,9 +211,10 @@ class FlowLoader:
                         FlowInfo.id == flow_id,
                     ),
                 ))
-                await session.execute(
-                    delete(embedding.FlowPoolVector).where(embedding.FlowPoolVector.id == flow_id),
-                )
+                if embedding.FlowPoolVector is not None:
+                    await session.execute(
+                        delete(embedding.FlowPoolVector).where(embedding.FlowPoolVector.id == flow_id),
+                    )
                 await session.commit()
                 return
         logger.warning("[FlowLoader] 工作流文件不存在或不是文件：%s", flow_path)
@@ -257,6 +258,11 @@ class FlowLoader:
 
     async def _update_vector(self, app_id: uuid.UUID) -> None:
         """重新向量化指定App的所有工作流"""
+        # 检查 embedding 是否已初始化
+        if embedding.FlowPoolVector is None:
+            logger.warning("[FlowLoader] Embedding 未初始化，跳过向量化")
+            return
+
         # 从数据库加载该App的所有工作流
         async with postgres.session() as session:
             flows_query = select(FlowInfo).where(FlowInfo.appId == app_id)
@@ -288,6 +294,11 @@ class FlowLoader:
     @staticmethod
     async def set_vector() -> None:
         """将所有工作流的向量化数据存入数据库"""
+        # 检查 embedding 是否已初始化
+        if embedding.FlowPoolVector is None:
+            logger.warning("[FlowLoader] Embedding 未初始化，跳过向量化")
+            return
+
         flows = await FlowLoader._load_all_flows()
 
         # 为每个工作流更新向量数据

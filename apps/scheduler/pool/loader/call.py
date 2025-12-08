@@ -44,7 +44,7 @@ class CallLoader:
         """将数据插入数据库"""
         # 清除旧数据
         async with postgres.session() as session:
-            if await _table_exists(embedding.NodePoolVector.__tablename__):
+            if embedding.NodePoolVector is not None and await _table_exists(embedding.NodePoolVector.__tablename__):
                 await session.execute(
                     delete(embedding.NodePoolVector).where(embedding.NodePoolVector.serviceId == None),  # noqa: E711
                 )
@@ -70,6 +70,13 @@ class CallLoader:
 
     async def _add_vector_to_db(self, call_metadata: dict[str, CallInfo]) -> None:
         """将向量化数据存入数据库"""
+        # 检查 NodePoolVector 是否已初始化
+        if embedding.NodePoolVector is None:
+            _logger.warning(
+                "[CallLoader] Embedding 未初始化，跳过向量数据插入",
+            )
+            return
+
         # 检查表是否存在
         if not await _table_exists(embedding.NodePoolVector.__tablename__):
             _logger.warning(
