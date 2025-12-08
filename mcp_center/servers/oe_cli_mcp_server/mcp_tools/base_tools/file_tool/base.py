@@ -4,7 +4,8 @@ import shutil
 from enum import Enum
 from typing import Dict, List
 from pydantic import Field
-from servers.oe_cli_mcp_server.config.base_config_loader import BaseConfig, LanguageEnum
+
+from config.public.base_config_loader import BaseConfig, LanguageEnum
 
 # 初始化日志
 logger = logging.getLogger("file_tool")

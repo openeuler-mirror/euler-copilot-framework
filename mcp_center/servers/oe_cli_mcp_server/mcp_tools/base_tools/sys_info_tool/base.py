@@ -6,7 +6,7 @@ import re
 from enum import Enum
 from typing import Dict, List, Optional
 
-from servers.oe_cli_mcp_server.config.base_config_loader import BaseConfig, LanguageEnum
+from config.public.base_config_loader import LanguageEnum, BaseConfig
 
 # 初始化日志
 logger = logging.getLogger("sys_info_tool")
