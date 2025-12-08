@@ -112,14 +112,16 @@ class ServiceLoader:
             await session.execute(delete(ServiceACL).where(ServiceACL.serviceId == service_id))
             await session.execute(delete(ServiceHashes).where(ServiceHashes.serviceId == service_id))
 
-            await session.execute(
-                delete(embedding.ServicePoolVector).where(embedding.ServicePoolVector.id == service_id),
-            )
-            await session.execute(
-                delete(
-                    embedding.NodePoolVector,
-                ).where(embedding.NodePoolVector.serviceId == service_id),
-            )
+            if embedding.ServicePoolVector is not None:
+                await session.execute(
+                    delete(embedding.ServicePoolVector).where(embedding.ServicePoolVector.id == service_id),
+                )
+            if embedding.NodePoolVector is not None:
+                await session.execute(
+                    delete(
+                        embedding.NodePoolVector,
+                    ).where(embedding.NodePoolVector.serviceId == service_id),
+                )
             await session.commit()
 
         if not is_reload:
@@ -187,6 +189,13 @@ class ServiceLoader:
         service_description: str,
     ) -> None:
         """更新向量数据"""
+        # 检查 embedding 是否已初始化
+        if embedding.ServicePoolVector is None or embedding.NodePoolVector is None:
+            logger.warning(
+                "[ServiceLoader] Embedding 未初始化,跳过向量数据更新",
+            )
+            return
+
         # 检查表是否存在
         if not await _table_exists(embedding.ServicePoolVector.__tablename__):
             logger.warning(

@@ -77,6 +77,11 @@ class MCPSelector(MCPNodeBase):
 
     async def select_top_tool(self, query: str, mcp_list: list[str], top_n: int = 10) -> list[MCPTools]:
         """选择最合适的工具"""
+        # 检查 embedding 是否已初始化
+        if embedding.MCPToolVector is None:
+            logger.warning("[MCPSelector] Embedding 未初始化，返回空列表")
+            return []
+
         query_embedding = await embedding.get_embedding([query])
         async with postgres.session() as session:
             tool_vecs = await session.scalars(

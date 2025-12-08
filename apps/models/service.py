@@ -20,7 +20,7 @@ class Service(Base):
     """插件名称"""
     description: Mapped[str] = mapped_column(String(2000), nullable=False)
     """插件描述"""
-    authorId: Mapped[str] = mapped_column(String(50), ForeignKey("framework_user.id"), nullable=False)  # noqa: N815
+    authorId: Mapped[str] = mapped_column(String(50), nullable=False)  # noqa: N815
     """插件作者ID"""
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     """插件ID"""

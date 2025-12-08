@@ -36,7 +36,7 @@ class App(Base):
     """应用名称"""
     description: Mapped[str] = mapped_column(String(2000), nullable=False)
     """应用描述"""
-    authorId: Mapped[str] = mapped_column(String(50), ForeignKey("framework_user.id"), nullable=False)  # noqa: N815
+    authorId: Mapped[str] = mapped_column(String(50), nullable=False)  # noqa: N815
     """应用作者ID"""
     appType: Mapped[AppType] = mapped_column(Enum(AppType), nullable=False)  # noqa: N815
     """应用类型"""

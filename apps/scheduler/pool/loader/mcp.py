@@ -664,12 +664,14 @@ class MCPLoader:
 
         async with postgres.session() as session:
             for mcp_id in deleted_mcp_list:
-                await session.execute(
-                    delete(embedding.MCPVector).where(embedding.MCPVector.id == mcp_id),
-                )
-                await session.execute(
-                    delete(embedding.MCPToolVector).where(embedding.MCPToolVector.mcpId == mcp_id),
-                )
+                if embedding.MCPVector is not None:
+                    await session.execute(
+                        delete(embedding.MCPVector).where(embedding.MCPVector.id == mcp_id),
+                    )
+                if embedding.MCPToolVector is not None:
+                    await session.execute(
+                        delete(embedding.MCPToolVector).where(embedding.MCPToolVector.mcpId == mcp_id),
+                    )
             await session.commit()
             logger.info("[MCPLoader] 清除数据库中无效的MCP向量化数据")
 
