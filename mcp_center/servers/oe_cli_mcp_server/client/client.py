@@ -204,6 +204,96 @@ async def main() -> None:
     })
     print(result)
 
+    # ==================================
+    # 3. pkg_tool 测试用例（4个，修复无效枚举、参数）
+    # ==================================
+    print("\n" + "="*60)
+    print("8. pkg_tool - 列出已安装的所有 nginx 相关包")
+    print("="*60)
+    result = await client.call_tool("pkg_tool", {
+        "action": "list",
+        "filter_key": "nginx"
+    })
+    print(result)
+
+    print("\n" + "="*60)
+    print("9. pkg_tool - 查询 openssh-server 包详情（版本/依赖）")
+    print("="*60)
+    result = await client.call_tool("pkg_tool", {
+        "action": "info",
+        "pkg_name": "openssh-server"
+    })
+    print(result)
+
+    print("\n" + "="*60)
+    print("10. pkg_tool - 仅更新系统安全补丁（替代check-update）")
+    print("="*60)
+    # 工具无check-update枚举，替换为update-sec（安全更新）
+    result = await client.call_tool("pkg_tool", {
+        "action": "update-sec",
+        "yes": True
+    })
+    print(result)
+
+    print("\n" + "="*60)
+    print("11. pkg_tool - 清理 yum/dnf 包缓存（all类型）")
+    print("="*60)
+    result = await client.call_tool("pkg_tool", {
+        "action": "clean",
+        "cache_type": "all",
+        "yes": True
+    })
+    print(result)
+
+    # ==================================
+    # 4. proc_tool 测试用例（4个，修复无效枚举、参数）
+    # ==================================
+    print("\n" + "="*60)
+    print("12. proc_tool - 查找所有 systemd 相关进程")
+    print("="*60)
+    result = await client.call_tool("proc_tool", {
+        "proc_actions": ["find"],
+        "proc_name": "systemd"
+    })
+    print(result)
+
+    print("\n" + "="*60)
+    print("13. proc_tool - 查询 PID=1 进程（systemd）资源占用")
+    print("="*60)
+    result = await client.call_tool("proc_tool", {
+        "proc_actions": ["stat"],
+        "pid": 1
+    })
+    print(result)
+
+    print("\n" + "="*60)
+    print("14. proc_tool - 列出所有进程（后续可筛选CPU占用前5）")
+    print("="*60)
+    # 工具无top枚举，用list获取所有进程（业务层可筛选）
+    result = await client.call_tool("proc_tool", {
+        "proc_actions": ["list"]
+    })
+    print(result)
+
+    print("\n" + "="*60)
+    print("15. proc_tool - 重启 sshd 服务（systemd服务）")
+    print("="*60)
+    # 工具无tree枚举，替换为restart实用场景
+    result = await client.call_tool("proc_tool", {
+        "proc_actions": ["restart"],
+        "service_name": "ssh"  # Ubuntu中sshd服务名为ssh
+    })
+    print(result)
+
+    # 清理临时文件
+    print("\n" + "="*60)
+    print("16. file_tool - 删除临时测试文件")
+    print("="*60)
+    result = await client.call_tool("file_tool", {
+        "action": "delete",
+        "file_path": "/tmp/file_tool_test.txt"
+    })
+    print(result)
 
     await client.stop()
 
