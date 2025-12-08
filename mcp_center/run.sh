@@ -2,7 +2,7 @@
 
 SERVICE_DIR="/usr/lib/euler-copilot-framework/mcp_center/service"
 
-/usr/lib/euler-copilot-framework/mcp_center/servers/oe-cli-mcp-server/run.sh
+/usr/lib/euler-copilot-framework/mcp_center/servers/oe_cli_mcp_server/run.sh
 
 for service_file in "$SERVICE_DIR"/*.service; do
   if [ -f "$service_file" ]; then

@@ -15,10 +15,10 @@ pip install --upgrade pip -i https://pypi.tuna.tsinghua.edu.cn/simple
 pip install -r "$REQUIREMENTS" -i https://pypi.tuna.tsinghua.edu.cn/simple
 
 # 3. 部署systemd服务
-cp /home/tsn/framework-dev-with-mcp/mcp_center/servers/oe_cli_mcp_server/mcp-server.service /etc/systemd/system/
+cp /usr/lib/euler-copilot-framework/mcp_center/servers/oe_cli_mcp_server/mcp-server.service /etc/systemd/system/
 systemctl daemon-reload
 systemctl enable mcp-server --now
-systemctl status mcp-server
+
 
 # 4. 全局命令链接
 chmod +x /usr/lib/euler-copilot-framework/mcp_center/servers/oe_cli_mcp_server/mcp_server/cli.py
