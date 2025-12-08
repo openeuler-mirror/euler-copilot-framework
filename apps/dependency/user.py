@@ -1,60 +1,53 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2023-2025. All rights reserved.
 """用户鉴权"""
 
+import grp
 import logging
+import pwd
 
 from starlette import status
 from starlette.exceptions import HTTPException
 from starlette.requests import HTTPConnection
 
-from apps.common.config import config
 from apps.services.personal_token import PersonalTokenManager
-from apps.services.session import SessionManager
 from apps.services.user import UserManager
 
 logger = logging.getLogger(__name__)
 
 
-async def verify_session(request: HTTPConnection) -> None:
+def is_admin(username: str) -> bool:
     """
-    验证Session是否已鉴权；作为第一层鉴权检查
+    判断用户是否为管理员
 
-    - 如果Authorization头不存在或不以Bearer开头，抛出401
-    - 如果Bearer token以sk-开头，跳过（由verify_personal_token处理）
-    - 如果Bearer token不以sk-开头，则作为Session ID校验
-    - 如果是合法session则设置user_id
+    管理员条件:
+    1. 用户id为0 (root用户)
+    2. 用户在"wheel"组中
 
-    :param request: HTTP请求
-    :return:
+    :param username: Linux用户名
+    :return: 如果用户是管理员返回True，否则返回False
     """
-    auth_header = request.headers.get("Authorization")
-    if not auth_header:
-        logger.warning("鉴权失败：缺少Authorization头")
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="鉴权失败")
+    try:
+        user_info = pwd.getpwnam(username)
+        if user_info.pw_uid == 0:
+            return True
+    except KeyError:
+        logger.warning("系统中未找到用户 '%s'", username)
+        return False
+    except OSError:
+        logger.exception("访问用户 %s 的信息时出错", username)
+        return False
 
-    if not auth_header.startswith("Bearer "):
-        logger.warning("鉴权失败：Authorization格式错误，需要Bearer token")
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="鉴权失败：需要Bearer token",
-        )
+    # 检查是否在wheel组中
+    try:
+        wheel_group = grp.getgrnam("wheel")
+        if username in wheel_group.gr_mem:
+            return True
+    except KeyError:
+        logger.warning("系统中未找到用户组 'wheel'")
+    except OSError:
+        logger.exception("访问用户组 'wheel' 信息时出错")
 
-    token = auth_header.split(" ", 1)[1]
-
-    # 如果以sk-开头，说明是Personal Token，跳过由verify_personal_token处理
-    if token.startswith("sk-"):
-        return
-
-    # 作为Session ID校验
-    request.state.session_id = token
-    user_id = await SessionManager.get_user(token)
-    if not user_id:
-        logger.warning("Session ID鉴权失败：无效的session_id=%s", token)
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Session ID 鉴权失败",
-        )
-    request.state.user_id = user_id
+    return False
 
 
 async def verify_personal_token(request: HTTPConnection) -> None:
@@ -109,6 +102,6 @@ async def verify_admin(request: HTTPConnection) -> None:
     if not user:
         logger.warning("管理员鉴权失败：用户不存在，user_id=%s", user_id)
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="用户不存在")
-    if user.userName not in config.login.admin_user:
+    if not is_admin(user.userName):
         logger.warning("管理员鉴权失败：用户无管理员权限，user_id=%s", user_id)
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="用户无权限")

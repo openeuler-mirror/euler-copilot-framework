@@ -3,7 +3,10 @@
 SERVICE_DIR="/usr/lib/euler-copilot-framework/mcp_center/service"
 
 /usr/lib/euler-copilot-framework/mcp_center/servers/oe_cli_mcp_server/run.sh
+/usr/lib/euler-copilot-framework/mcp_center/servers/rag/run.sh
+
 systemctl daemon-reload
+
 for service_file in "$SERVICE_DIR"/*.service; do
   # 只保留「文件存在」的核心判断，其他验证全删
   if [ -f "$service_file" ]; then

@@ -9,7 +9,7 @@ from fastapi import APIRouter, Body, Depends, Path, Query, Request, status
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
 
-from apps.dependency.user import verify_personal_token, verify_session
+from apps.dependency.user import verify_personal_token
 from apps.exceptions import InstancePermissionError
 from apps.models import AppType, PermissionType
 from apps.schemas.appcenter import (
@@ -39,7 +39,6 @@ router = APIRouter(
     prefix="/api/app",
     tags=["appcenter"],
     dependencies=[
-        Depends(verify_session),
         Depends(verify_personal_token),
     ],
 )

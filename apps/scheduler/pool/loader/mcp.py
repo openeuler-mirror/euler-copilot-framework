@@ -533,8 +533,10 @@ class MCPLoader:
         )
 
         mcpsvc = mcp_config.mcpServers[mcp_id]
-        if mcp_env is not None:
-            mcp_config.mcpServers[mcp_id].env.update(mcp_env)
+        if mcp_env is not None and isinstance(mcpsvc, MCPServerStdioConfig):
+            mcpsvc.env.update(mcp_env)
+        elif mcp_env is not None and isinstance(mcpsvc, MCPServerSSEConfig):
+            mcpsvc.headers.update(mcp_env)
         if mcp_config.mcpType == MCPType.STDIO and isinstance(mcpsvc, MCPServerStdioConfig):
             index = None
             for i in range(len(mcpsvc.args)):

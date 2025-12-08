@@ -8,7 +8,6 @@ from contextlib import asynccontextmanager
 import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi_profiler import Profiler
 from rich.console import Console
 from rich.logging import RichHandler
 
@@ -18,7 +17,6 @@ from .routers import (
     appcenter,
     auth,
     chat,
-    comment,
     conversation,
     document,
     flow,
@@ -50,7 +48,6 @@ async def lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
 
 # 定义FastAPI app
 app = FastAPI(redoc_url=None, lifespan=lifespan)
-Profiler(app)
 
 # 定义FastAPI全局中间件
 app.add_middleware(
@@ -62,10 +59,8 @@ app.add_middleware(
 )
 # 关联API路由
 app.include_router(appcenter.router)
-app.include_router(auth.admin_router)
 app.include_router(auth.router)
 app.include_router(chat.router)
-app.include_router(comment.router)
 app.include_router(conversation.router)
 app.include_router(document.router)
 app.include_router(flow.router)

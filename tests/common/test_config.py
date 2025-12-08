@@ -7,59 +7,28 @@ from typing import Any
 
 import pytest
 import toml
+from pydantic import ValidationError
 from pytest_mock import MockerFixture
 
 from apps.common.config import Config
-from apps.common.singleton import SingletonMeta
 from apps.schemas.config import ConfigModel
 
 MOCK_CONFIG_DATA: dict[str, Any] = {
     "deploy": {"mode": "local", "cookie": "domain", "data_dir": "/app/data"},
-    "login": {
-        "provider": "authhub",
-        "settings": {
-            "host": "http://localhost",
-            "host_inner": "http://localhost",
-            "login_api": "http://localhost/api/auth/login",
-            "app_id": "test_id",
-            "app_secret": "test_secret",
-        },
-    },
-    "embedding": {
-        "type": "openai",
-        "endpoint": "http://localhost",
-        "api_key": "test_key",
-        "model": "test_model",
-    },
     "rag": {"rag_service": "http://localhost"},
-    "fastapi": {"domain": "localhost", "session_ttl": 30, "csrf": False},
+    "fastapi": {"domain": "localhost"},
     "minio": {
         "endpoint": "localhost:9000",
         "access_key": "test_key",
         "secret_key": "test_secret",
         "secure": False,
     },
-    "mongodb": {
+    "postgres": {
         "host": "localhost",
-        "port": 27017,
+        "port": 5432,
         "user": "test_user",
         "password": "test_password",
         "database": "test_db",
-    },
-    "llm": {
-        "key": "test_key",
-        "endpoint": "http://localhost",
-        "model": "test_model",
-        "max_tokens": 8192,
-        "temperature": 0.7,
-    },
-    "function_call": {
-        "backend": "test_backend",
-        "model": "test_model",
-        "endpoint": "http://localhost",
-        "api_key": "test_key",
-        "max_tokens": 8192,
-        "temperature": 0.7,
     },
     "security": {
         "half_key1": "test_key1",
@@ -67,7 +36,6 @@ MOCK_CONFIG_DATA: dict[str, Any] = {
         "half_key3": "test_key3",
         "jwt_key": "test_jwt_key",
     },
-    "check": {"enable": False, "words_list": ""},
     "extra": {"sql_url": "http://localhost"},
 }
 
@@ -75,55 +43,140 @@ MOCK_CONFIG_DATA: dict[str, Any] = {
 @pytest.fixture(autouse=True)
 def setup_teardown() -> Generator[None, None, None]:
     """测试前的准备工作和清理工作"""
-    # 清除单例实例
-    SingletonMeta._instances.clear()
+    # 保存原始环境变量
+    original_config = os.environ.get("CONFIG")
+    original_prod = os.environ.get("PROD")
+
     # 清除环境变量
     if "CONFIG" in os.environ:
         del os.environ["CONFIG"]
     if "PROD" in os.environ:
         del os.environ["PROD"]
+
     yield
-    # 测试后的清理工作
-    SingletonMeta._instances.clear()
+
+    # 测试后恢复环境变量
+    if original_config is not None:
+        os.environ["CONFIG"] = original_config
+    elif "CONFIG" in os.environ:
+        del os.environ["CONFIG"]
+
+    if original_prod is not None:
+        os.environ["PROD"] = original_prod
+    elif "PROD" in os.environ:
+        del os.environ["PROD"]
 
 
-def test_init_with_default_config(mocker: MockerFixture) -> None:
+def test_init_with_default_config(mocker: MockerFixture, tmp_path: Path) -> None:
     """测试使用默认配置文件路径初始化"""
-    mocker.patch("builtins.open", mocker.mock_open(read_data=toml.dumps(MOCK_CONFIG_DATA)))
-    config = Config()
-    assert isinstance(config._config, ConfigModel)
-    assert config._config.deploy.mode == "local"
+    # 创建临时配置文件
+    config_file = tmp_path / "config.toml"
+    config_file.write_text(toml.dumps(MOCK_CONFIG_DATA))
+
+    # Mock默认配置文件路径
+    mocker.patch.object(Path, "__truediv__", return_value=config_file)
+    mocker.patch("toml.load", return_value=MOCK_CONFIG_DATA)
+
+    config = Config.init_config()
+
+    assert isinstance(config, Config)
+    assert isinstance(config, ConfigModel)
+    assert config.deploy.mode == "local"
+    assert config.deploy.data_dir == "/app/data"
 
 
-def test_init_with_custom_config_path(mocker: MockerFixture) -> None:
+def test_init_with_custom_config_path(mocker: MockerFixture, tmp_path: Path) -> None:
     """测试使用自定义配置文件路径初始化"""
-    custom_path = "/custom/path/config.toml"
-    os.environ["CONFIG"] = custom_path
+    # 创建临时配置文件
+    config_file = tmp_path / "custom_config.toml"
+    config_file.write_text(toml.dumps(MOCK_CONFIG_DATA))
 
-    mocker.patch("builtins.open", mocker.mock_open(read_data=toml.dumps(MOCK_CONFIG_DATA)))
-    config = Config()
-    assert isinstance(config._config, ConfigModel)
-    assert config._config.deploy.mode == "local"
+    # 设置自定义配置文件路径
+    os.environ["CONFIG"] = str(config_file)
+
+    mock_load = mocker.patch("toml.load", return_value=MOCK_CONFIG_DATA)
+
+    config = Config.init_config()
+
+    assert isinstance(config, Config)
+    assert isinstance(config, ConfigModel)
+    assert config.deploy.mode == "local"
+    mock_load.assert_called_once_with(str(config_file))
 
 
-def test_init_with_prod_env(mocker: MockerFixture) -> None:
+def test_init_with_prod_env(mocker: MockerFixture, tmp_path: Path) -> None:
     """测试在PROD环境下初始化"""
-    os.environ["PROD"] = "true"
+    # 创建临时配置文件
+    config_file = tmp_path / "config.toml"
+    config_file.write_text(toml.dumps(MOCK_CONFIG_DATA))
 
-    mocker.patch("builtins.open", mocker.mock_open(read_data=toml.dumps(MOCK_CONFIG_DATA)))
+    # 设置PROD环境变量
+    os.environ["PROD"] = "true"
+    os.environ["CONFIG"] = str(config_file)
+
+    mocker.patch("toml.load", return_value=MOCK_CONFIG_DATA)
     mock_unlink = mocker.patch.object(Path, "unlink")
-    config = Config()
-    assert isinstance(config._config, ConfigModel)
+
+    config = Config.init_config()
+
+    assert isinstance(config, Config)
+    assert isinstance(config, ConfigModel)
     mock_unlink.assert_called_once()
 
 
-def test_get_config(mocker: MockerFixture) -> None:
-    """测试获取配置"""
-    mocker.patch("builtins.open", mocker.mock_open(read_data=toml.dumps(MOCK_CONFIG_DATA)))
-    config = Config()
-    config_copy = config.get_config()
-    assert isinstance(config_copy, ConfigModel)
-    assert config_copy is not config._config  # 确保返回的是深拷贝
+def test_config_immutability(mocker: MockerFixture, tmp_path: Path) -> None:
+    """测试配置对象的不可变性"""
+    # 创建临时配置文件
+    config_file = tmp_path / "config.toml"
+    config_file.write_text(toml.dumps(MOCK_CONFIG_DATA))
+
+    os.environ["CONFIG"] = str(config_file)
+    mocker.patch("toml.load", return_value=MOCK_CONFIG_DATA)
+
+    config = Config.init_config()
+
+    # 验证配置是frozen的，无法修改
+    with pytest.raises((ValidationError, AttributeError)):
+        config.deploy.mode = "cloud"  # type: ignore[misc]
+
+
+def test_config_fields(mocker: MockerFixture, tmp_path: Path) -> None:
+    """测试配置字段的正确性"""
+    # 创建临时配置文件
+    config_file = tmp_path / "config.toml"
+    config_file.write_text(toml.dumps(MOCK_CONFIG_DATA))
+
+    os.environ["CONFIG"] = str(config_file)
+    mocker.patch("toml.load", return_value=MOCK_CONFIG_DATA)
+
+    config = Config.init_config()
+
+    # 验证所有字段
+    assert config.deploy.mode == "local"
+    assert config.deploy.cookie == "domain"
+    assert config.deploy.data_dir == "/app/data"
+
+    assert config.rag.rag_service == "http://localhost"
+
+    assert config.fastapi.domain == "localhost"
+
+    assert config.minio.endpoint == "localhost:9000"
+    assert config.minio.access_key == "test_key"
+    assert config.minio.secret_key == "test_secret"
+    assert config.minio.secure is False
+
+    assert config.postgres.host == "localhost"
+    assert config.postgres.port == MOCK_CONFIG_DATA["postgres"]["port"]
+    assert config.postgres.user == "test_user"
+    assert config.postgres.password == "test_password"
+    assert config.postgres.database == "test_db"
+
+    assert config.security.half_key1 == "test_key1"
+    assert config.security.half_key2 == "test_key2"
+    assert config.security.half_key3 == "test_key3"
+    assert config.security.jwt_key == "test_jwt_key"
+
+    assert config.extra.sql_url == "http://localhost"
 
 
 if __name__ == "__main__":

@@ -1,8 +1,6 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2023-2025. All rights reserved.
 """配置文件数据结构"""
 
-from typing import Literal
-
 from pydantic import BaseModel, Field
 
 
@@ -12,32 +10,6 @@ class DeployConfig(BaseModel):
     mode: str = Field(description="部署方式", default="local")
     cookie: str = Field(description="COOKIE SET 方式", default="domain")
     data_dir: str = Field(description="数据存储路径")
-
-
-class OIDCConfig(BaseModel):
-    """AuthHub认证配置"""
-
-    host: str = Field(description="OIDC服务路径")
-    host_inner: str = Field(description="OIDC服务路径(内网)")
-    login_api: str = Field(description="EulerCopilot登录API")
-    app_id: str = Field(description="OIDC AppID")
-    app_secret: str = Field(description="OIDC App Secret")
-
-
-class FixedUserConfig(BaseModel):
-    """固定用户配置"""
-
-    user_id: str = Field(description="禁用登录后，默认的用户ID")
-
-
-class LoginConfig(BaseModel):
-    """OIDC配置"""
-
-    provider: Literal[
-        "authhub", "openeuler", "authelia", "disable",
-    ] = Field(description="OIDC Provider", default="authhub")
-    admin_user: list[str] = Field(description="管理员用户ID列表", default=[])
-    settings: OIDCConfig | FixedUserConfig = Field(description="OIDC 配置")
 
 
 class RAGConfig(BaseModel):
@@ -90,7 +62,6 @@ class ConfigModel(BaseModel):
     """配置文件的校验Class"""
 
     deploy: DeployConfig
-    login: LoginConfig
     rag: RAGConfig
     fastapi: FastAPIConfig
     minio: MinioConfig

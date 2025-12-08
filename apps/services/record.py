@@ -10,7 +10,7 @@ from sqlalchemy import and_, select
 
 from apps.common.postgres import postgres
 from apps.common.security import Security
-from apps.models import CommentType, Conversation
+from apps.models import Conversation
 from apps.models import Record as PgRecord
 from apps.models import RecordMetadata as PgRecordMetadata
 from apps.schemas.record import RecordContent, RecordData, RecordMetadata
@@ -165,7 +165,6 @@ class RecordManager:
                     content=record_content,
                     createdAt=pg_record.createdAt.timestamp(),
                     metadata=RecordMetadata(),
-                    comment=CommentType.NONE,
                 )
                 records.append(record)
             return records

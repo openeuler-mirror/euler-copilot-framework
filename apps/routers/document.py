@@ -9,7 +9,7 @@ from fastapi import APIRouter, Depends, Path, Request, UploadFile, status
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
 
-from apps.dependency import verify_personal_token, verify_session
+from apps.dependency import verify_personal_token
 from apps.schemas.document import (
     BaseDocumentItem,
     ConversationDocumentItem,
@@ -31,7 +31,6 @@ router = APIRouter(
     prefix="/api/document",
     tags=["document"],
     dependencies=[
-        Depends(verify_session),
         Depends(verify_personal_token),
     ],
 )
