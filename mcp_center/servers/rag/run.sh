@@ -3,8 +3,8 @@
 # RAG 服务部署脚本
 
 # 设置路径
-RAG_DIR="/usr/lib/euler-copilot-framework/mcp_center/servers/rag"
-SERVICE_FILE="/usr/lib/euler-copilot-framework/mcp_center/service/rag.service"
+RAG_DIR="/usr/lib/sysagent/mcp_center/servers/rag"
+SERVICE_FILE="/usr/lib/sysagent/mcp_center/service/rag.service"
 
 # 复制 service 文件
 if [ -f "$SERVICE_FILE" ]; then
