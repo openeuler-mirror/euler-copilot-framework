@@ -8,7 +8,7 @@ import sys
 
 # 从 systemd service 文件读取工作目录
 SERVICE_FILE = "/etc/systemd/system/rag.service"
-PROJECT_ROOT = "/usr/lib/euler-copilot-framework/mcp_center"
+PROJECT_ROOT = "/usr/lib/sysagent/mcp_center"
 if os.path.exists(SERVICE_FILE):
     with open(SERVICE_FILE, "r") as f:
         for line in f:

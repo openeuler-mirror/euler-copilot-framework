@@ -1,4 +1,4 @@
-#!/usr/lib/euler-copilot-framework/mcp_center/servers/oe_cli_mcp_server/venv/global/bin/python3
+#!/usr/lib/sysagent/mcp_center/servers/oe_cli_mcp_server/venv/global/bin/python3
 import logging
 import sys
 with open("/etc/systemd/system/mcp-server.service", "r") as f:

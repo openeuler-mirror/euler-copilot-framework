@@ -4,10 +4,10 @@ After=network.target
 
 [Service]
 User=root
-WorkingDirectory=/usr/lib/euler-copilot-framework/mcp_center
+WorkingDirectory=/usr/lib/sysagent/mcp_center
 # 关键：添加 PYTHONPATH，将工作目录加入模块搜索路径
 Environment=PYTHONUNBUFFERED=1
-Environment=PYTHONPATH=/usr/lib/euler-copilot-framework/mcp_center
+Environment=PYTHONPATH=/usr/lib/sysagent/mcp_center
 ExecStart=/usr/bin/python3 servers/rag/src/server.py
 Restart=always
 RestartSec=5

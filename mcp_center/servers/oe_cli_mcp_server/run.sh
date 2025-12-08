@@ -1,8 +1,8 @@
 set -e
 
 # 关键路径（只改这里就行）
-VENV_PATH="/usr/lib/euler-copilot-framework/mcp_center/servers/oe_cli_mcp_server/venv/global"
-REQUIREMENTS="/usr/lib/euler-copilot-framework/mcp_center/servers/oe_cli_mcp_server/requirements.txt"
+VENV_PATH="/usr/lib/sysagent/mcp_center/servers/oe_cli_mcp_server/venv/global"
+REQUIREMENTS="/usr/lib/sysagent/mcp_center/servers/oe_cli_mcp_server/requirements.txt"
 PIP_MIRROR="https://pypi.tuna.tsinghua.edu.cn/simple"  # 镜像源（保持原有）
 
 # 1. 没有虚拟环境就创建（新增：--system-site-packages 继承系统 RPM 依赖）
@@ -59,12 +59,12 @@ fi
 echo -e "\n=== 环境配置完成！==="
 
 # 3. 部署systemd服务
-cp /usr/lib/euler-copilot-framework/mcp_center/servers/oe_cli_mcp_server/mcp-server.service /etc/systemd/system/
+cp /usr/lib/sysagent/mcp_center/servers/oe_cli_mcp_server/mcp-server.service /etc/systemd/system/
 systemctl daemon-reload
 systemctl enable mcp-server --now
 
 
 # 4. 全局命令链接
-chmod +x /usr/lib/euler-copilot-framework/mcp_center/servers/oe_cli_mcp_server/mcp_server/cli.py
+chmod +x /usr/lib/sysagent/mcp_center/servers/oe_cli_mcp_server/mcp_server/cli.py
 rm -f /usr/local/bin/mcp-server
-ln -s /usr/lib/euler-copilot-framework/mcp_center/servers/oe_cli_mcp_server/mcp_server/cli.py /usr/local/bin/mcp-server
+ln -s /usr/lib/sysagent/mcp_center/servers/oe_cli_mcp_server/mcp_server/cli.py /usr/local/bin/mcp-server
