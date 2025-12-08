@@ -40,7 +40,7 @@ class MCPInfo(Base):
     """MCP 概述"""
     description: Mapped[str] = mapped_column(Text, nullable=False)
     """MCP 描述"""
-    authorId: Mapped[str] = mapped_column(String(50), ForeignKey("framework_user.id"), nullable=False)  # noqa: N815
+    authorId: Mapped[str] = mapped_column(String(50), nullable=False)  # noqa: N815
     """MCP 创建者ID"""
     id: Mapped[str] = mapped_column(String(255), primary_key=True)
     """MCP ID"""
