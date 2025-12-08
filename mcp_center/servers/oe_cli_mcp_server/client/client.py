@@ -296,7 +296,7 @@ async def main() -> None:
     # 工具无tree枚举，替换为restart实用场景
     result = await client.call_tool("proc_tool", {
         "proc_actions": ["restart"],
-        "service_name": "ssh"  # Ubuntu中sshd服务名为ssh
+        "service_name": "sshd"  # openEuler中sshd服务名为ssh
     })
     print(result)
 
