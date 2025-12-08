@@ -2,7 +2,7 @@
 
 SERVICE_DIR="/usr/lib/sysagent/mcp_center/service"
 SYSTEMD_TARGET_DIR="/etc/systemd/system"
-/usr/lib/s y sa gen t/mcp_center/servers/oe_cli_mcp_server/run.sh
+/usr/lib/sysagent/mcp_center/servers/oe_cli_mcp_server/run.sh
 /usr/lib/sysagent/mcp_center/servers/rag/run.sh
 
 systemctl daemon-reload
