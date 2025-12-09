@@ -138,6 +138,8 @@ class McpServer(ToolManager):
         for pkg in self.list_packages():
             logger.info(f"包名：{pkg}")
             self.load(pkg)
+        if len(self.list_packages()) == 0:
+            self.load(ToolType.BASE)
         logger.info(f"MCP 实例初始化完成，已加载 {len(self.list_packages())} 个工具包")
 
         # 2. 启动 FastAPI 服务（直接调用实例方法，绑定 self）
