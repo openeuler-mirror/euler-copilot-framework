@@ -17,7 +17,7 @@ fi
 
 # 安装依赖
 if [ -f "$RAG_DIR/src/requirements.txt" ]; then
-    pip install -r "$RAG_DIR/src/requirements.txt" -i https://pypi.tuna.tsinghua.edu.cn/simple
+    python3 -m pip install -r "$RAG_DIR/src/requirements.txt" -i https://pypi.tuna.tsinghua.edu.cn/simple
     echo "✅ 依赖安装完成"
 fi
 
