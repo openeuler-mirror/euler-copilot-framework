@@ -56,7 +56,11 @@ def get_tool_description(tool_name: str) -> str:
         return tool_desc.get("en", tool_desc.get("zh", ""))
 
 # 创建 MCP 服务器
-mcp = FastMCP("Copilot-0 Knowledge Base MCP Server")
+_config = RagConfig().get_config()
+port = _config.private_config.port  # 从配置读取端口 12311
+host = "0.0.0.0"  # 或从配置读取
+
+mcp = FastMCP("Copilot-0 Knowledge Base MCP Server", host=host, port=port)
 
 # 注册同步函数
 @mcp.tool(
