@@ -4,5 +4,8 @@ name = "OE-智能运维助手"
 description = "提供通用文件管理，软件包管理，系统信息查询，进程管理，系统调优功能"
 mcpPath = [
     "mcp_server_mcp",
+    "rag_mcp"
 ]
 published = true
+
+
