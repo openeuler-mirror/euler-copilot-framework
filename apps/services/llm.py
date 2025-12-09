@@ -99,23 +99,23 @@ class LLMManager:
 
 
     @staticmethod
-    async def update_llm(llm_id: str | None, req: UpdateLLMReq) -> str:
+    async def update_llm(llm_id: str, req: UpdateLLMReq) -> str:
         """
-        创建大模型
+        创建或更新大模型
 
-        :param req: 创建大模型请求体
-        :return: 大模型对象
+        :param llm_id: 大模型ID
+        :param req: 创建或更新大模型请求体
+        :return: 大模型ID
         """
         async with postgres.session() as session:
-            if llm_id is not None:
-                llm = (await session.scalars(
-                    select(LLMData).where(
-                        LLMData.id == llm_id,
-                    ),
-                )).one_or_none()
-                if not llm:
-                    err = f"[LLMManager] LLM {llm_id} 不存在"
-                    raise ValueError(err)
+            llm = (await session.scalars(
+                select(LLMData).where(
+                    LLMData.id == llm_id,
+                ),
+            )).one_or_none()
+
+            if llm:
+                # 更新现有条目
                 llm.baseUrl = req.base_url
                 llm.apiKey = req.api_key
                 llm.modelName = req.model_name
@@ -126,8 +126,8 @@ class LLMManager:
                 if req.llm_type is not None:
                     llm.llmType = req.llm_type
                 llm.extraConfig = req.extra_data or {}
-                await session.commit()
             else:
+                # 创建新条目
                 llm_data = {
                     "id": llm_id,
                     "baseUrl": req.base_url,
@@ -142,7 +142,8 @@ class LLMManager:
                 }
                 llm = LLMData(**llm_data)
                 session.add(llm)
-                await session.commit()
+
+            await session.commit()
             return llm.id
 
 

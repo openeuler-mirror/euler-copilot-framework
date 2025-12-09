@@ -1,6 +1,6 @@
 {
   "mcpServers": {
-    "mcp_server": {
+    "mcp_server_mcp": {
       "headers": {},
       "autoApprove": [],
       "autoInstall": true,

@@ -1,6 +1,7 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2023-2025. All rights reserved.
 """FastAPI 大模型相关接口"""
 
+import logging
 from typing import cast
 
 from fastapi import APIRouter, Depends, Request, status
@@ -37,6 +38,7 @@ admin_router = APIRouter(
         Depends(verify_admin),
     ],
 )
+_logger = logging.getLogger(__name__)
 
 
 @router.get("/provider", response_model=ListLLMRsp,
@@ -141,6 +143,7 @@ async def change_global_llm(request: Request, req: UpdateSpecialLlmReq) -> JSONR
             ),
         )
     except ValueError as e:
+        _logger.exception("[llm] 更改全局LLM设置失败")
         return JSONResponse(
             status_code=status.HTTP_400_BAD_REQUEST,
             content=jsonable_encoder(
@@ -161,6 +164,7 @@ async def create_llm(req: UpdateLLMReq) -> JSONResponse:
     try:
         await LLMManager.update_llm(req.llm_id, req)
     except ValueError as e:
+        _logger.exception("[llm] 创建或更新大模型配置失败")
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             content=jsonable_encoder(
@@ -191,6 +195,7 @@ async def delete_llm(llmId: str) -> JSONResponse:  # noqa: N803
     try:
         await LLMManager.delete_llm(llmId)
     except ValueError as e:
+        _logger.exception("[llm] 删除大模型配置失败")
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             content=jsonable_encoder(

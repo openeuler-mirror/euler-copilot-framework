@@ -21,8 +21,6 @@ class ProcessHandler:
     """存储进程的字典"""
     lock = multiprocessing.Lock()
     """锁对象"""
-    max_processes = max((os.cpu_count() or 1) // 2, 1)
-    """最大进程数"""
     timeout = 5
     """超时时间"""
     @staticmethod
@@ -63,10 +61,6 @@ class ProcessHandler:
             logger.warning("[ProcessHandler] 获取任务ID时锁超时。")
             return False
         logger.info("[ProcessHandler] 添加任务 %s", task_id)
-        if len(ProcessHandler.tasks) >= ProcessHandler.max_processes:
-            logger.warning("[ProcessHandler] 任务数量已达上限(%s)，请稍后再试。", ProcessHandler.max_processes)
-            ProcessHandler.lock.release()
-            return False
         try:
             if task_id not in ProcessHandler.tasks:
                 process = mp.Process(
