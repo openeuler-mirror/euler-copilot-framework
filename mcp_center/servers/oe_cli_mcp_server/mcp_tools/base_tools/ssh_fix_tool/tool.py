@@ -1,6 +1,6 @@
 from typing import Dict, Optional
 
-from config.base_config_loader import LanguageEnum
+from config.public.base_config_loader import LanguageEnum
 
 from mcp_tools.base_tools.ssh_fix_tool.base import fix_sshd_issue
 
