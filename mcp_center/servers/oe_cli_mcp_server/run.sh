@@ -2,9 +2,11 @@
 set -e
 
 # 关键路径（只改这里就行）
-VENV_PATH="/usr/lib/sysagent/mcp_center/servers/oe_cli_mcp_server/venv/global"# 镜像源（保持原有）
+VENV_PATH="/usr/lib/sysagent/mcp_center/servers/oe_cli_mcp_server/venv/global"
+
 
 # 新增1：安装创建虚拟环境的必需工具（解决隐性创建失败）
+echo "=== 安装 python3-venv ==="
 yum install -y python3-venv --skip-broken >/dev/null 2>&1
 
 # 新增2：创建虚拟环境父目录（避免二级目录创建失败）
@@ -24,9 +26,6 @@ fi
 # 2. 激活虚拟环境
 source "$VENV_PATH/bin/activate"
 echo "=== 虚拟环境激活成功：$VIRTUAL_ENV ==="
-
-
-
 
 
 # 3. 部署systemd服务
