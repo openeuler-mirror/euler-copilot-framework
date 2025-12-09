@@ -50,7 +50,7 @@ class PutFlowReq(BaseModel):
 class UpdateLLMReq(BaseModel):
     """更新大模型请求体"""
 
-    llm_id: str | None = Field(default=None, description="大模型ID", alias="id")
+    llm_id: str = Field(description="大模型ID", alias="id")
     base_url: str = Field(default="", description="OpenAI API Base URL", alias="baseUrl")
     api_key: str = Field(default="", description="OpenAI API Key", alias="apiKey")
     model_name: str | None = Field(default=None, description="模型名称", alias="modelName")
