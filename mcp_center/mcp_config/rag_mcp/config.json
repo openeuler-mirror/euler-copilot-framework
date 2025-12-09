@@ -1,6 +1,6 @@
 {
   "mcpServers": {
-    "mcp_server": {
+    "rag_mcp": {
       "headers": {},
       "autoApprove": [],
       "autoInstall": true,
