@@ -27,8 +27,8 @@ class GlobalSettings(Base):
     )
     """Embedding使用的大模型ID"""
 
-    updatedAt: Mapped[DateTime] = mapped_column(  # noqa: N815
-        DateTime,
+    updatedAt: Mapped[datetime] = mapped_column(  # noqa: N815
+        DateTime(timezone=True),
         default_factory=lambda: datetime.now(tz=UTC),
         onupdate=lambda: datetime.now(tz=UTC),
         nullable=False,
