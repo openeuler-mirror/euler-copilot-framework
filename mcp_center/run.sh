@@ -32,4 +32,3 @@ for service_file in "$SERVICE_DIR"/*.service; do
   fi
 done
 
-pip install -r /usr/lib/sysagent/mcp_center/requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple
