@@ -8,8 +8,8 @@
       "url": "http://127.0.0.1:12555/sse"
     }
   },
-  "name": "mcptool集成管理工具",
-  "overview": "定制化的配置自己tool",
-  "description": "定制化的配置自己tool",
+  "name": "oe-智能运维工具",
+  "overview": "文件管理，文件操作，软件包管理，系统信息查询，进程管理，网络修复，ssh修复",
+  "description": "文件管理，文件操作，软件包管理，系统信息查询，进程管理，网络修复，ssh修复",
   "mcpType": "sse",
 }
