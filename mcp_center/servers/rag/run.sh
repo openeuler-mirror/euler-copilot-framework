@@ -14,6 +14,7 @@ else
     echo "⚠️  警告：未找到 service 文件：$SERVICE_FILE"
 fi
 
+
 # 安装依赖
 if [ -f "$RAG_DIR/src/requirements.txt" ]; then
     python3 -m pip install -r "$RAG_DIR/src/requirements.txt" -i https://pypi.tuna.tsinghua.edu.cn/simple
