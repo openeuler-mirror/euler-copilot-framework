@@ -1,6 +1,6 @@
 from typing import Dict, Optional
 
-from config.base_config_loader import LanguageEnum
+from config.public.base_config_loader import LanguageEnum
 
 from mcp_tools.base_tools.network_tools.base import fix_network_bootproto_issue
 

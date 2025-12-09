@@ -4,8 +4,7 @@ from typing import Dict, Optional, List
 
 import paramiko
 
-from config.base_config_loader import BaseConfig, LanguageEnum
-
+from config.public.base_config_loader import BaseConfig, LanguageEnum
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
