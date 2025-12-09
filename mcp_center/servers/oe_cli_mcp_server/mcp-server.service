@@ -29,5 +29,7 @@ LimitCPU=4
 LimitMEMLOCK=infinity
 LimitNOFILE=65535
 
+MemoryMax=0.5G
+
 [Install]
 WantedBy=multi-user.target
