@@ -24,10 +24,5 @@ Environment="LOG_LEVEL=INFO"
 StandardOutput=journal+console
 StandardError=journal+console
 
-# 新增：限制服务资源（可选，避免占用过多CPU/内存）
-LimitCPU=4
-LimitMEMLOCK=infinity
-LimitNOFILE=65535
-
 [Install]
 WantedBy=multi-user.target
