@@ -304,7 +304,7 @@ class McpServer(ToolManager):
         for tool_type in all_types:
             self.unload_tool_type(tool_type)
         # 2. 清理模块缓存（彻底释放内存）
-        base_tools_dir = "/home/tsn/framework-dev-with-mcp/mcp_center/servers/oe_cli_mcp_server/mcp_tools/base_tools"
+        base_tools_dir = "/usr/lib/sysagent/mcp_center/servers/oe_cli_mcp_server/mcp_tools/base_tools"
         # 确保目录存在
         if os.path.exists(base_tools_dir):
             # 读取目录下的所有子目录（排除文件和隐藏目录）
@@ -339,7 +339,6 @@ class McpServer(ToolManager):
         global CONFIG
         CONFIG = McpServerConfig().get_config()
         self.language = CONFIG.public_config.language
-        self.host = CONFIG.private_config.host
         self.port = CONFIG.private_config.port
 
     def restart(self):
