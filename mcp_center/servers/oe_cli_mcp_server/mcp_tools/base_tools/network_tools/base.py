@@ -1,10 +1,12 @@
 import logging
+import os
 import subprocess
 from typing import Dict, Optional, List
 
 import paramiko
 
-from config.public.base_config_loader import BaseConfig, LanguageEnum
+from config.base_config_loader import BaseConfig, LanguageEnum
+
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -54,6 +56,16 @@ def _open_ssh(remote_auth: Dict) -> paramiko.SSHClient:
     return ssh
 
 
+def _find_cmd_absolute_path(cmd: str) -> Optional[str]:
+    """查找命令的绝对路径（兼容特殊情况）"""
+    common_paths = ["/usr/bin", "/bin", "/usr/sbin", "/sbin", "/usr/local/bin"]
+    for path in common_paths:
+        cmd_path = os.path.join(path, cmd)
+        if os.path.exists(cmd_path) and os.access(cmd_path, os.X_OK):
+            return cmd_path
+    return None
+
+
 def _build_fix_command() -> str:
     """
     构造修复 ifcfg-ens3 中 BOOTPROTO 并重启 NetworkManager 的命令
@@ -62,6 +74,11 @@ def _build_fix_command() -> str:
     2. 设置 BOOTPROTO=dhcp
     3. systemctl restart NetworkManager
     """
+    # 查找命令的绝对路径
+    sed_path = _find_cmd_absolute_path("sed") or "sed"
+    grep_path = _find_cmd_absolute_path("grep") or "grep"
+    systemctl_path = _find_cmd_absolute_path("systemctl") or "systemctl"
+    
     ifcfg_path = "/etc/sysconfig/network-scripts/ifcfg-ens3"
     parts: List[str] = []
     # 确认配置文件存在
@@ -74,14 +91,14 @@ def _build_fix_command() -> str:
     )
     # 规范化 BOOTPROTO 行：若存在则直接替换为 dhcp
     parts.append(
-        "sed -i -e 's/^[#]*[[:space:]]*BOOTPROTO=.*/BOOTPROTO=dhcp/' \"$IFCFG\""
+        f"{sed_path} -i -e 's/^[#]*[[:space:]]*BOOTPROTO=.*/BOOTPROTO=dhcp/' \"$IFCFG\""
     )
     # 若不存在 BOOTPROTO 行，则追加一行
     parts.append(
-        "grep -q '^[[:space:]]*BOOTPROTO=' \"$IFCFG\" || echo 'BOOTPROTO=dhcp' >> \"$IFCFG\""
+        f"{grep_path} -q '^[[:space:]]*BOOTPROTO=' \"$IFCFG\" || echo 'BOOTPROTO=dhcp' >> \"$IFCFG\""
     )
     # 重启 NetworkManager 服务
-    parts.append("systemctl restart NetworkManager")
+    parts.append(f"{systemctl_path} restart NetworkManager")
     return " && ".join(parts)
 
 

@@ -1,11 +1,12 @@
 import logging
+import os
 import socket
 import subprocess
 from typing import Dict, Optional, List
 
 import paramiko
 
-from config.public.base_config_loader import BaseConfig, LanguageEnum
+from config.base_config_loader import BaseConfig, LanguageEnum
 
 
 logger = logging.getLogger(__name__)
@@ -62,7 +63,26 @@ def ssh_port_ping(target: str, port: int = 22, timeout: int = 5) -> Dict:
     return result
 
 
+def _find_cmd_absolute_path(cmd: str) -> Optional[str]:
+    """查找命令的绝对路径（兼容特殊情况）"""
+    common_paths = ["/usr/bin", "/bin", "/usr/sbin", "/sbin", "/usr/local/bin"]
+    for path in common_paths:
+        cmd_path = os.path.join(path, cmd)
+        if os.path.exists(cmd_path) and os.access(cmd_path, os.X_OK):
+            return cmd_path
+    return None
+
+
 def _run_local(cmd: List[str]) -> subprocess.CompletedProcess:
+    """执行本地命令，自动查找命令的绝对路径"""
+    # 查找命令的绝对路径
+    cmd_name = cmd[0]
+    cmd_path = _find_cmd_absolute_path(cmd_name)
+    if not cmd_path:
+        raise FileNotFoundError(f"命令不存在：{cmd_name}")
+    
+    # 替换为绝对路径
+    cmd[0] = cmd_path
     return subprocess.run(
         cmd,
         check=True,
@@ -122,7 +142,9 @@ def check_sshd_status(target: Optional[str]) -> Dict:
     ssh: Optional[paramiko.SSHClient] = None
     try:
         ssh = _open_ssh(remote_auth)
-        stdin, stdout, stderr = ssh.exec_command("systemctl status sshd")
+        # 查找 systemctl 的绝对路径
+        systemctl_path = _find_cmd_absolute_path("systemctl") or "systemctl"
+        stdin, stdout, stderr = ssh.exec_command(f"{systemctl_path} status sshd")
         out = stdout.read().decode("utf-8", errors="replace").strip()
         err = stderr.read().decode("utf-8", errors="replace").strip()
         if err and "Active:" not in out:
@@ -178,22 +200,27 @@ def fix_sshd_config_and_restart(target: Optional[str]) -> Dict:
         - 若不存在目标键则追加
         - 最后重启 sshd
         """
+        # 查找命令的绝对路径
+        sed_path = _find_cmd_absolute_path("sed") or "sed"
+        grep_path = _find_cmd_absolute_path("grep") or "grep"
+        systemctl_path = _find_cmd_absolute_path("systemctl") or "systemctl"
+        
         sed_parts = []
         # 替换或解注释三项配置
         sed_parts.append(
-            r"sed -i -e 's/^[#]*[[:space:]]*Port[[:space:]].*/Port 22/' "
-            r"-e 's/^[#]*[[:space:]]*PermitRootLogin[[:space:]].*/PermitRootLogin yes/' "
-            r"-e 's/^[#]*[[:space:]]*PasswordAuthentication[[:space:]].*/PasswordAuthentication yes/' "
-            r"/etc/ssh/sshd_config"
+            f"{sed_path} -i -e 's/^[#]*[[:space:]]*Port[[:space:]].*/Port 22/' "
+            f"-e 's/^[#]*[[:space:]]*PermitRootLogin[[:space:]].*/PermitRootLogin yes/' "
+            f"-e 's/^[#]*[[:space:]]*PasswordAuthentication[[:space:]].*/PasswordAuthentication yes/' "
+            f"/etc/ssh/sshd_config"
         )
         # 若 key 不存在则追加
         for k, line in desired_lines.items():
             sed_parts.append(
-                f"grep -q '^{k}[[:space:]]' /etc/ssh/sshd_config || "
+                f"{grep_path} -q '^{k}[[:space:]]' /etc/ssh/sshd_config || "
                 f"echo '{line}' >> /etc/ssh/sshd_config"
             )
         # 重启 sshd
-        sed_parts.append("systemctl restart sshd")
+        sed_parts.append(f"{systemctl_path} restart sshd")
         # 组合为单条 shell 命令
         return " && ".join(sed_parts)
 
