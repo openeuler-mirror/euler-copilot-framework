@@ -78,7 +78,8 @@ spec:
               cpu: 0.5
               memory: 1024Mi
             limits:
-                {{ toYaml .Values.databases.opengauss.resourceLimits | indent 4 | trim }}
+              cpu: {{ .Values.databases.opengauss.resourceLimits.cpu | default "4" | quote }}
+              memory: {{ .Values.databases.opengauss.resourceLimits.memory | default "32Gi" | quote }}
       volumes:
         - name: opengauss-data
           persistentVolumeClaim:

@@ -34,7 +34,9 @@ databases:
     # 镜像版本：["empty-x86", "empty-arm"]
     image:
     # 性能限制设置
-    resourceLimits: {}
+    resourceLimits:
+      cpu: 
+      memory:
     # Service设置
     service:
       # Service类型，例如NodePort
