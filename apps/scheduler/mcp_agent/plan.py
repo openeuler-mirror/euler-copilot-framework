@@ -57,23 +57,39 @@ class MCPPlanner(MCPBase):
         )
         return FlowName.model_validate(result)
 
-    async def create_next_step(self, tools: list[MCPTools], task: TaskData) -> Step:
+    async def create_next_step(self, tools: list[MCPTools], task: TaskData, llm: LLM) -> Step:
         """创建下一步的执行步骤"""
-        template = _env.from_string(await self._load_prompt("gen_step"))
-        prompt = template.render(goal=self._goal, tools=tools)
+        history = await self.assemble_memory(task)
+
+        # 第一步：让大模型思考分析
+        thinking_template = _env.from_string(await self._load_prompt("agent_thinking"))
+        thinking_prompt = thinking_template.render(goal=self._goal, tools=tools)
+
+        thinking_messages = [
+            {"role": "system", "content": "You are a helpful assistant."},
+            *history,
+            {"role": "user", "content": thinking_prompt},
+        ]
+
+        thinking_content = ""
+        async for chunk in llm.call(thinking_messages, streaming=False):
+            thinking_content += chunk.content or ""
+        logger.info("[MCPPlanner] 思考分析: %s", thinking_content)
+
+        step_template = _env.from_string(await self._load_prompt("gen_step"))
+        step_prompt = step_template.render(goal=self._goal, tools=tools)
 
         function = deepcopy(CREATE_NEXT_STEP_FUNCTION[self._language])
         function["parameters"]["properties"]["tool_name"]["enum"] = [tool.toolName for tool in tools]
-
-        history = await self.assemble_memory(task)
 
         step = await json_generator.generate(
             function=function,
             conversation=[
                 {"role": "system", "content": "You are a helpful assistant."},
-                *history,
+                {"role": "user", "content": thinking_prompt},
+                {"role": "assistant", "content": thinking_content},
             ],
-            prompt=prompt,
+            prompt=step_prompt,
         )
         logger.info("[MCPPlanner] 创建下一步的执行步骤: %s", step)
         return Step.model_validate(step)
