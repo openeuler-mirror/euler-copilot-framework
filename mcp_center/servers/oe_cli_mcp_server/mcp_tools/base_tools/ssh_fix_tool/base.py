@@ -112,7 +112,7 @@ def check_sshd_status(target: Optional[str]) -> Dict:
     result = init_result(target_host)
     is_zh = get_language()
 
-    cmd = ["systemctl", "status", "sshd"]
+    cmd = ["/usr/bin/systemctl ", "status", "sshd"]
 
     # 本地
     if target_host == "127.0.0.1":
