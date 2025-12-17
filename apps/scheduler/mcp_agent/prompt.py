@@ -1133,7 +1133,7 @@ GEN_STEP: dict[LanguageType, str] = {
     ```json
     {
         "tool_id": "DuDlgP",
-        "description": "扫描ip为192.168.1.1的MySQL数据库，端口为3306，用户名为root，密码为password的数据库性能",
+        "description": "使用mysql分析工具扫描host为192.168.1.1端口为3306的mysql数据库性能"
     }
     ```
     # 样例二
@@ -1167,7 +1167,7 @@ GEN_STEP: dict[LanguageType, str] = {
     ```json
     {
         "tool_id": "pcSEsx",
-        "description": "规划从杭州到北京的综合公共交通方式的通勤方案"
+        "description": "使用路径规划工具，规划一条从杭州到北京的综合公共交通通勤方案，基于历史上下文获取杭州和北京的经纬度坐标"
     }
     ```
     # 现在开始生成步骤：
@@ -1208,16 +1208,16 @@ GEN_STEP: dict[LanguageType, str] = {
         - Result: `{"result": "success"}`
     # Tools
     <tools>
-        - <id>mcp_tool_1</id> <description>mysql_analyzer; used for analyzing database performance.
-        - <id>mcp_tool_2</id> <description>File storage tool; used for storing files.
-        - <id>mcp_tool_3</id> <description>MongoDB tool; used for operating MongoDB databases.
+        - <id>DuDlgP</id> <description>mysql_analyzer; used for analyzing database performance.
+        - <id>ADsxSX</id> <description>File storage tool; used for storing files.
+        - <id>ySASDZ</id> <description>MongoDB tool; used for operating MongoDB databases.
         - <id>Final</id> <description>This step completes the plan execution and the result is used as the final result. </description>
     </tools>
     # Output
     ```json
     {
-        "tool_id": "mcp_tool_1",
-        "description": "Scan the database performance of the MySQL database with IP address 192.168.1.1, port 3306, username root, and password password",
+        "tool_id": "DuDlgP",
+        "description": "Use the mysql_analyzer tool to scan the MySQL database performance with host as 192.168.1.1 on port 3306"
     }
     ```
     # Example 2
@@ -1242,16 +1242,16 @@ GEN_STEP: dict[LanguageType, str] = {
         - Result: `{"weather": "Sunny", "temperature": "25°C"}`
     # Tools
     <tools>
-        - <id>mcp_tool_4</id> <description>maps_geo_planner; Converts a detailed structured address into longitude and latitude coordinates. Supports parsing landmarks, scenic spots, and building names into longitude and latitude coordinates.</description>
-        - <id>mcp_tool_5</id> <description>weather_query; Weather query, used to query weather information.</description>
-        - <id>mcp_tool_6</id> <description>maps_direction_transit_integrated; Plans a commuting plan based on the user's starting and ending longitude and latitude coordinates, integrating various public transportation modes (train, bus, subway), and returns the commuting plan data. For cross-city scenarios, both the starting and ending cities must be provided.</description>
+        - <id>cSAads</id> <description>maps_geo_planner; Converts a detailed structured address into longitude and latitude coordinates. Supports parsing landmarks, scenic spots, and building names into longitude and latitude coordinates.</description>
+        - <id>sScseS</id> <description>weather_query; Weather query, used to query weather information.</description>
+        - <id>pcSEsx</id> <description>maps_direction_transit_integrated; Plans a commuting plan based on the user's starting and ending longitude and latitude coordinates, integrating various public transportation modes (train, bus, subway), and returns the commuting plan data. For cross-city scenarios, both the starting and ending cities must be provided.</description>
         - <id>Final</id> <description>Final; Final step. When this step is reached, plan execution is complete, and the resulting result is used as the final result. </description>
     </tools>
     # Output
     ```json
     {
-        "tool_id": "mcp_tool_6",
-        "description": "Plan a comprehensive public transportation commute from Hangzhou to Beijing"
+        "tool_id": "pcSEsx",
+        "description": "Use the maps_direction_transit_integrated tool to plan a comprehensive public transportation commuting plan from Hangzhou to Beijing, based on historical context to obtain the latitude and longitude coordinates of Hangzhou and Beijing"
     }
     ```
     # Now start generating steps:
@@ -1418,7 +1418,7 @@ RISK_EVALUATE: dict[LanguageType, str] = {
     ```json
     {
         "risk": "medium",
-        "reason": "当前工具将连接到MySQL数据库并分析性能，可能会对数据库性能产生一定影响。请确保在非生产环境中执行此操作。"
+        "reason": "当前使用的工具名称是mysql_analyzer，针对host为192.0.0.1端口为3306的MySQL数据库进行性能分析，该操作可能会对数据库性能产生影响，建议仅在非生产环境下执行该操作。"
     }
     ```
     # 工具
@@ -1467,7 +1467,7 @@ RISK_EVALUATE: dict[LanguageType, str] = {
     ```json
     {
         "risk": "medium",
-        "reason": "This tool will connect to a MySQL database and analyze performance, which may impact database performance. This operation should only be performed in a non-production environment."
+        "reason": "The current tool being used is mysql_analyzer, which analyzes the performance of the MySQL database at host 192.0.0.1 on port 3306. This operation may impact database performance, so it is recommended to perform it only in a non-production environment."
     }
     ```
     # Tool
