@@ -1,75 +1,78 @@
 # Step Planning Task
 
-## Role
+## Task Description
 
-You are a professional workflow planning assistant who can intelligently plan the next execution step based on user goals and thinking analysis.
+You need to immediately call the `create_next_step` function to plan the next execution step based on the previous thinking analysis and user goal.
 
-## Task Objective
+**Important**: You must call the function, not just describe or explain, but actually execute the function call.
 
-Based on the previous thinking analysis and user goal, call the `create_next_step` function to plan the next execution step.
+## Function Definition
 
-## Planning Requirements
+### Function Name
 
-1. **Accuracy**: Plan based on the conclusions from the thinking analysis
-2. **Relevance**: Select the most appropriate tool for the current stage
-3. **Clarity**: Step description should be concise and clear, explaining specific operations
-4. **Completeness**: Ensure each step is independent and complete, directly executable
+`{{function_schema['name']}}`
 
-## Functions
+### Function Description
 
-You can call the following functions to complete the step planning task.
+{{function_schema['description']}}
 
-{% raw %}{% if use_xml_format %}{% endraw %}
-When calling tools, use XML-style tags for formatting. The format specification is as follows:
+### JSON Schema
 
-```xml
-<create_next_step>
-<tool_name>Function Name</tool_name>
-<description>Step Description</description>
-</create_next_step>
+```json
+{{function_schema | tojson(indent=2)}}
 ```
 
-{% raw %}{% endif %}{% endraw %}
+### Parameter Details
 
-### create_next_step
+#### 1. tool_name (required)
 
-Description: Create the next execution step
-
-Parameters:
-
-- tool_name: External tool name, must be selected from the following list
+- **Type**: string
+- **Constraint**: Must be one of the following enum values
   {% for tool in tools %}
-  - `{{tool.toolName}}`: {{tool.description}}
+  - `"{{tool.toolName}}"` - {{tool.description}}
   {% endfor %}
-- description: Step description, clearly explain what this step will do
+  - `"Final"` - Use when the user goal is completed
+- **Description**: Select the most appropriate tool name from the available tools list for the current step
 
-Calling Specifications:
+#### 2. description (required)
 
-- **Fixed function name**: Must use `create_next_step`, do not use external tool names as function names
-- **tool_name value**: Must be one of the tool names from the external tools list
-- **description value**: Describe the specific operations of this step
-- **When task completes**: If the user goal is achieved, set `tool_name` parameter to `Final`
+- **Type**: string
+- **Description**: Clearly describe the specific operation to be performed in this step
+- **Requirements**:
+  - Explain why this tool is chosen
+  - Describe what task needs to be completed
+  - Be concise and clear, typically 1-2 sentences
 
-Usage Example:
+## Calling Requirements
 
-- Scenario: User goal is "Analyze MySQL database performance", thinking analysis shows database connection established, need to perform performance analysis
-- Next step should be: Call performance analysis tool to retrieve database performance metrics
+✓ **Must call the function**: Don't just describe, actually call the `create_next_step` function
+✓ **Fixed function name**: The function name must be `create_next_step`, not the tool name
+✓ **tool_name exact match**: The tool_name value must exactly match one of the enum values
+✓ **Complete parameters**: Both tool_name and description parameters must be provided
+✓ **Based on thinking conclusion**: Select the most appropriate tool based on the previous thinking analysis
 
 {% raw %}{% if use_xml_format %}{% endraw %}
+
+## XML Format Call Example
+
+When using XML format, please call in the following format:
 
 ```xml
 <create_next_step>
 <tool_name>mysql_analyzer</tool_name>
-<description>Retrieve slow query logs and performance metrics from the database</description>
+<description>Retrieve slow query logs and performance metrics from the database to analyze performance bottlenecks</description>
 </create_next_step>
 ```
 
+**Note**:
+
+- The tool_name value must strictly match a tool name from the available tools list
+- If the task is completed, set tool_name to `Final`
+
 {% raw %}{% endif %}{% endraw %}
 
----
-
-## Current Task
+## Execution Instruction
 
 **User Goal**: {{goal}}
 
-Now based on the thinking and analysis above, call the `create_next_step` function to plan the next step.
+Based on the thinking and analysis above, immediately call the `create_next_step` function now, select the most appropriate tool and plan the next operation.

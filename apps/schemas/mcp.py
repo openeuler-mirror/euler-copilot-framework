@@ -80,10 +80,10 @@ class Risk(str, Enum):
     HIGH = "high"
 
 
-class FlowName(BaseModel):
+class AgentName(BaseModel):
     """MCP 流程名称"""
 
-    flow_name: str = Field(description="MCP 流程名称", default="")
+    name: str = Field(description="MCP 流程名称", default="")
 
 class ToolRisk(BaseModel):
     """MCP工具风险评估结果"""

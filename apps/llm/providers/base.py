@@ -50,9 +50,9 @@ class BaseProvider:
 
     async def chat(
         self, messages: list[dict[str, str]],
+        tools: list[LLMFunctions] | None = None,
         *, include_thinking: bool = False,
         streaming: bool = True,
-        tools: list[LLMFunctions] | None = None,
     ) -> AsyncGenerator[LLMChunk, None]:
         """聊天"""
         yield LLMChunk(content="")

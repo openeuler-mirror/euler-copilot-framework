@@ -218,7 +218,7 @@ class OllamaProvider(BaseProvider):
             raise RuntimeError(err)
 
         # 构建请求参数
-        embed_kwargs = {"input": text}
+        embed_kwargs: dict[str, Any] = {"input": text}
 
         # 如果modelName存在，则传递该参数
         if self.config.modelName:

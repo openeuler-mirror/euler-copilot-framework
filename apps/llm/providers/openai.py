@@ -3,7 +3,7 @@
 
 import logging
 from collections.abc import AsyncGenerator
-from typing import cast
+from typing import Any, cast
 
 import httpx
 from openai import AsyncOpenAI, AsyncStream
@@ -298,7 +298,7 @@ class OpenAIProvider(BaseProvider):
             raise RuntimeError(err)
 
         # 构建请求参数
-        embedding_kwargs = {"input": text}
+        embedding_kwargs: dict[str, Any] = {"input": text}
 
         # 如果modelName存在，则传递该参数
         if self.config.modelName:

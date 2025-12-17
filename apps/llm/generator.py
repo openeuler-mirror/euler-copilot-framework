@@ -139,6 +139,8 @@ class JsonGenerator:
             formatted_prompt = template.render(use_xml_format=use_xml_format)
             result = await self._call_without_function(function, formatted_prompt, conversation, retry_messages)
 
+
+        _logger.info("[JSONGenerator] 函数调用结果: %s", result)
         try:
             validator.validate(result)
         except Exception as err:
