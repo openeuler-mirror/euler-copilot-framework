@@ -1,0 +1,17 @@
+# 虚拟环境（本地开发环境，无需提交）
+venv/
+env/
+ENV/
+.venv/
+virtualenv/
+*_venv/  # 匹配自定义虚拟环境名称（如 target_venv）
+
+# 编译产物
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+test_tool
+data/tool_state.json
