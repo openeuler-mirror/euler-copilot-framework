@@ -58,11 +58,16 @@ class MCPHost(MCPBase):
             "parameters": mcp_tool.inputSchema,
         }
 
+        # 组装对话历史，包含步骤上下文
+        conversation = [
+            {"role": "system", "content": "You are a helpful assistant."},
+        ]
+        memory = await self.assemble_memory(task)
+        conversation.extend(memory)
+        conversation.append({"role": "user", "content": llm_query})
+
         return await json_generator.generate(
             function=function,
-            conversation=[
-                {"role": "system", "content": "You are a helpful assistant."},
-                {"role": "user", "content": llm_query},
-            ],
+            conversation=conversation,
             prompt=prompt,
         )

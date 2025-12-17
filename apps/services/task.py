@@ -16,7 +16,7 @@ from apps.models import (
 )
 from apps.schemas.task import TaskData
 
-logger = logging.getLogger(__name__)
+_logger = logging.getLogger(__name__)
 
 
 class TaskManager:
@@ -48,9 +48,9 @@ class TaskManager:
                     conversationId=conversation_id,
                     userId=user_id,
                 )
-                logger.info("[TaskManager] 创建新任务对象 (未保存)")
+                _logger.info("[TaskManager] 创建新任务对象 (未保存)")
                 return new_task
-            logger.info("[TaskManager] 找到已存在的任务 %s", task.id)
+            _logger.info("[TaskManager] 找到已存在的任务 %s", task.id)
             return task
 
 
@@ -62,7 +62,7 @@ class TaskManager:
                 select(Task).where(Task.id == task_id),
             )).one_or_none()
             if not task_data:
-                logger.error("[TaskManager] 任务不存在 %s", task_id)
+                _logger.error("[TaskManager] 任务不存在 %s", task_id)
                 return None
 
             runtime = (await session.scalars(
@@ -174,21 +174,48 @@ class TaskManager:
 
     @staticmethod
     async def save_flow_context(context: list[ExecutorHistory]) -> None:
-        """保存Flow上下文信息到PostgreSQL"""
+        """保存Flow上下文信息到PostgreSQL，确保数据库与内存状态一致"""
+        if not context:
+            return
+
         async with postgres.session() as session:
+            task_id = context[0].taskId
+            memory_ids = {ctx.id for ctx in context}
+
+            existing_histories = list((await session.scalars(
+                select(ExecutorHistory).where(ExecutorHistory.taskId == task_id),
+            )).all())
+
+            existing_map = {history.id: history for history in existing_histories}
+
+            deleted_count = 0
+            for existing_id, existing_history in existing_map.items():
+                if existing_id not in memory_ids:
+                    await session.delete(existing_history)
+                    deleted_count += 1
+                    _logger.debug(
+                        "[TaskManager] 删除已从内存移除的History记录 - task_id: %s, history_id: %s, status: %s",
+                        task_id, existing_id, existing_history.stepStatus.value,
+                    )
+
+            updated_count = 0
+            inserted_count = 0
             for ctx in context:
-                # 查询是否存在该ExecutorHistory
-                existing_history = (await session.scalars(
-                    select(ExecutorHistory).where(ExecutorHistory.id == ctx.id),
-                )).one_or_none()
+                existing_history = existing_map.get(ctx.id)
 
                 if existing_history:
-                    # 更新现有History
                     for key, value in ctx.__dict__.items():
                         if not key.startswith("_"):
                             setattr(existing_history, key, value)
+                    updated_count += 1
                 else:
-                    # 插入新History
                     session.add(ctx)
+                    inserted_count += 1
 
             await session.commit()
+
+            if deleted_count > 0 or inserted_count > 0 or updated_count > 0:
+                _logger.info(
+                    "[TaskManager] 保存Flow上下文 - task_id: %s, 插入: %d, 更新: %d, 删除: %d",
+                    task_id, inserted_count, updated_count, deleted_count,
+                )
