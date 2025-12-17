@@ -3,3 +3,7 @@ psutil==7.0.0
 toml == 0.10.2
 mcp == 1.9.4
 scp == 0.15.0
+fastapi>=0.122.0
+uvicorn>=0.38.0
+requests==2.31.0
+pydantic==2.11.7

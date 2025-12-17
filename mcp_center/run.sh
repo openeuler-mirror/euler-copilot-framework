@@ -2,6 +2,7 @@
 
 SERVICE_DIR="/usr/lib/euler-copilot-framework/mcp_center/service"
 SYSTEMD_TARGET_DIR="/etc/systemd/system"
+pip install -r /usr/lib/euler-copilot-framework/mcp_center/requiremenets.txt -i https://pypi.tuna.tsinghua.edu.cn/simple
 
 # 添加可执行权限并运行 oe_cli_mcp_server 脚本
 chmod +x /usr/lib/euler-copilot-framework/mcp_center/servers/oe_cli_mcp_server/run.sh
