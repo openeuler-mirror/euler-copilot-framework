@@ -1,0 +1,10 @@
+{
+  "tools": {
+    "network_fix_bootproto_tool": {
+      "zh": "网络自动修复工具：解决NetworkManager启动后未自动获取IP的问题。\n\n该工具会自动执行以下步骤：\n1. 编辑网卡配置文件 /etc/sysconfig/network-scripts/ifcfg-ens3\n2. 检查并修正 BOOTPROTO 字段，确保其值为 \"dhcp\"（全小写，无拼写错误）\n3. 保存修改并重启 NetworkManager 服务（systemctl restart NetworkManager）\n\n参数:\n    - target: 目标主机IP或主机名，None或\"127.0.0.1\"表示本机\n    - lang: 语言设置（可选，当前根据全局配置自动切换中英文）\n\n返回:\n    - success: 是否修复成功（True/False）\n    - message: 执行结果说明（整体修复结果）\n    - target: 目标主机\n    - result: 执行过程中的详细步骤信息列表\n\n使用场景:\n    - openEuler 24.03 系统中 NetworkManager 正常运行但 ens3 未自动获取IP\n    - ifcfg-ens3 中 BOOTPROTO 拼写错误导致 DHCP 未生效\n    - 需要一键修复网卡DHCP配置并恢复自动获取IP功能",
+      "en": "Network auto-fix tool: resolve the issue where NetworkManager does not automatically obtain an IP address.\n\nThe tool performs the following steps:\n1. Edit NIC config file /etc/sysconfig/network-scripts/ifcfg-ens3\n2. Check and correct the BOOTPROTO field to \"dhcp\" (all lowercase, no typos)\n3. Save the change and restart NetworkManager (systemctl restart NetworkManager)\n\nParameters:\n    - target: Target host IP or hostname, None or \"127.0.0.1\" for localhost\n    - lang: Language setting (optional, currently determined by global configuration)\n\nReturns:\n    - success: Whether the fix succeeded (True/False)\n    - message: Overall result description\n    - target: Target host\n    - result: List of detailed step messages during execution\n\nUse cases:\n    - On openEuler 24.03, NetworkManager is running but ens3 does not get an IP via DHCP\n    - BOOTPROTO in ifcfg-ens3 is misspelled, causing DHCP not to be triggered\n    - Need a one-click fix for NIC DHCP configuration and restore automatic IP acquisition"
+    }
+  }
+}
+
+
