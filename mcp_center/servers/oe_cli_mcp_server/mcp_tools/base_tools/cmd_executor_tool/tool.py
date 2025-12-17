@@ -8,16 +8,13 @@ from config.public.base_config_loader import BaseConfig,LanguageEnum
 
 
 async def cmd_executor_tool(
-        host: Union[str, None] = None,
         command: str = "",
         timeout: Optional[int] = None,
 ) -> dict:
     """
     本地命令执行工具，支持按指令类型自动设置超时，返回结构化字典结果（多语言）
-    :param host: 兼容保留参数，无实际作用
     :param command: 需要执行的shell命令/脚本（必填）
     :param timeout: 手动指定超时时间（秒），可选
-    :param lang: 语言类型，可选，默认读取配置中的语言
     :return: 结构化字典结果，包含success、message、result、target、timeout_used
     """
     # -------------------------- 读取语言配置（优先级：传入参数 > 配置文件） --------------------------
