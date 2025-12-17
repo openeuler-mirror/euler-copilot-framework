@@ -1,0 +1,136 @@
+# RAG Knowledge Base Management MCP (Management Control Program) Specification Document
+
+## 1. Service Introduction
+
+This service is a comprehensive RAG (Retrieval-Augmented Generation) knowledge base management MCP (Management Control Program) based on SQLite database, FTS5 full-text search, and sqlite-vec vector search technologies. It provides full lifecycle management functions for knowledge bases including **creation, deletion, selection, document import, hybrid search, document management, and database import/export**. It supports multiple document formats such as TXT, DOCX, DOC, and PDF, uses asynchronous batch vectorization processing, and combines keyword search and vector search hybrid search strategies to provide a complete solution for knowledge base construction and intelligent retrieval. The service is adapted to both Chinese and English configurations to meet the needs of different scenarios.
+
+
+## 2. Core Tool Information
+
+| Tool Name | Tool Function | Core Input Parameters | Key Return Content |
+| ---- | ---- | ---- | ---- |
+| `create_knowledge_base` | Creates a new knowledge base. A knowledge base is a container for documents, and each knowledge base can have its own chunk_size and embedding configuration | - `kb_name`: Knowledge base name (required, must be unique)<br>- `chunk_size`: Chunk size in tokens (required, e.g., 512, 1024)<br>- `embedding_model`: Embedding model name (optional)<br>- `embedding_endpoint`: Embedding service endpoint URL (optional)<br>- `embedding_api_key`: Embedding service API Key (optional) | Creation result dictionary (including `kb_id` knowledge base ID, `kb_name` knowledge base name, `chunk_size` chunk size) |
+| `delete_knowledge_base` | Deletes the specified knowledge base. Cannot delete the currently active knowledge base. Deleting a knowledge base will cascade delete all documents and chunks under it | - `kb_name`: Knowledge base name (required) | Deletion result dictionary (including `kb_name` deleted knowledge base name) |
+| `list_knowledge_bases` | Lists all available knowledge bases. Returns detailed information about all knowledge bases, including the currently selected one | No parameters | Knowledge base list dictionary (including `knowledge_bases` list, `count` number of knowledge bases, `current_kb_id` currently selected knowledge base ID. Each knowledge base contains id, name, chunk_size, embedding_model, created_at, is_current, etc.) |
+| `select_knowledge_base` | Selects a knowledge base as the currently active one. After selection, subsequent operations such as document import and search will be performed in this knowledge base | - `kb_name`: Knowledge base name (required) | Selection result dictionary (including `kb_id` knowledge base ID, `kb_name` knowledge base name, `document_count` number of documents in this knowledge base) |
+| `import_document` | Imports documents into the currently selected knowledge base. Supports concurrent import of multiple files. Supports TXT, DOCX, DOC, and PDF formats. Documents will be parsed, split into chunks, and vectors will be generated asynchronously in batch and stored in the database | - `file_paths`: List of file paths (absolute paths), supports 1~n files (required)<br>- `chunk_size`: Chunk size in tokens (optional, defaults to knowledge base's chunk_size) | Import result dictionary (including `total` total number of files, `success_count` number of successfully imported files, `failed_count` number of failed files, `success_files` list of successfully imported files, `failed_files` list of failed files) |
+| `search` | Performs hybrid search in the currently selected knowledge base. Combines keyword search (FTS5) and vector search (sqlite-vec), merges results using weighted approach (keyword weight 0.3, vector weight 0.7), deduplicates, reranks using Jaccard similarity, and returns the top-k most relevant results | - `query`: Query text (required)<br>- `top_k`: Number of results to return (optional, default from config, usually 5) | Search result dictionary (including `chunks` chunk list, `count` number of results. Each chunk contains id, doc_id, content, tokens, chunk_index, doc_name, score, etc.) |
+| `list_documents` | Lists all documents in the currently selected knowledge base. Returns detailed information about the documents | No parameters | Document list dictionary (including `documents` document list, `count` number of documents. Each document contains id, name, file_path, file_type, chunk_size, created_at, updated_at, etc.) |
+| `delete_document` | Deletes the specified document from the currently selected knowledge base. Deleting a document will cascade delete all chunks of that document | - `doc_name`: Document name (required) | Deletion result dictionary (including `doc_name` deleted document name) |
+| `update_document` | Updates the document's chunk_size and re-parses the document. Will delete existing chunks, re-split the document using the new chunk_size, and asynchronously generate new vectors in batch | - `doc_name`: Document name (required)<br>- `chunk_size`: New chunk size in tokens (required) | Update result dictionary (including `doc_id` document ID, `doc_name` document name, `chunk_count` new number of chunks, `chunk_size` new chunk size) |
+| `export_database` | Exports the entire kb.db database file to the specified path | - `export_path`: Export path (absolute path, required) | Export result dictionary (including `source_path` source database path, `export_path` export path) |
+| `import_database` | Imports a .db database file and merges its contents into kb.db. Import will automatically handle name conflicts by adding timestamps to knowledge base and document names | - `source_db_path`: Source database file path (absolute path, required) | Import result dictionary (including `source_path` source database path, `imported_kb_count` number of imported knowledge bases, `imported_doc_count` number of imported documents) |
+
+
+## 3. `rag-server` CLI Usage Guide
+
+`rag-server` is a command-line wrapper around the core RAG tools, suitable for managing knowledge bases, importing documents, and performing searches directly from the terminal. After installation, you can run `rag-server <command> [options]` anywhere.
+
+### 3.1 Basic Usage
+
+- Show help:
+
+```bash
+rag-server --help
+```
+
+- General format:
+
+```bash
+rag-server <command> [--option value...]
+```
+
+### 3.2 Knowledge Base Management Commands
+
+- **Create knowledge base**
+
+```bash
+rag-server create_kb --kb_name <name> --chunk_size <size> [--embedding_model model] [--embedding_endpoint URL] [--embedding_api_key KEY]
+```
+
+Description:
+- `--kb_name`: Knowledge base name (required, must be unique)
+- `--chunk_size`: Chunk size in tokens (required, e.g., 512, 1024)
+- `--embedding_model`: Embedding model name (optional)
+- `--embedding_endpoint`: Embedding service endpoint URL (optional)
+- `--embedding_api_key`: Embedding service API Key (optional)
+
+- **Delete knowledge base**
+
+```bash
+rag-server delete_kb --kb_name <name>
+```
+
+- **List knowledge bases**
+
+```bash
+rag-server list_kb
+```
+
+- **Select current knowledge base**
+
+```bash
+rag-server select_kb --kb_name <name>
+```
+
+Note: After selection, the current knowledge base ID is persisted to `database/state.json`, so different `rag-server` invocations will share the same selected KB state.
+
+### 3.3 Document Management Commands
+
+- **Import documents**
+
+```bash
+rag-server import_doc --file_paths /abs/path/doc1.txt [/abs/path/doc2.txt ...] [--chunk_size <size>]
+```
+
+Description:
+- `--file_paths`: One or more **absolute file paths** (required, at least one)
+- `--chunk_size`: Override default chunk size (optional)
+- You must call `select_kb` first to choose an active knowledge base.
+
+- **List documents**
+
+```bash
+rag-server list_doc
+```
+
+- **Delete document**
+
+```bash
+rag-server delete_doc --doc_name <name>
+```
+
+- **Update document chunk size and rebuild vectors**
+
+```bash
+rag-server update_doc --doc_name <name> --chunk_size <new_size>
+```
+
+### 3.4 Search Commands
+
+- **Search**
+
+```bash
+rag-server search --query "<text>" [--top_k <n>]
+```
+
+Description:
+- `--query`: Query text (required)
+- `--top_k`: Number of results to return (optional, default from config, usually 5)
+
+### 3.5 Database Import/Export Commands
+
+- **Export database**
+
+```bash
+rag-server export_db --export_path /abs/path/kb_export.db
+```
+
+- **Import database**
+
+```bash
+rag-server import_db --source_db_path /abs/path/other_kb.db
+```
+
+Description: During import, name conflicts of knowledge bases and documents will be automatically resolved by appending timestamps.
+
