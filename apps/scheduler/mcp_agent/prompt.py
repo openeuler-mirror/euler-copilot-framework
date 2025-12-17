@@ -1108,7 +1108,7 @@ GEN_STEP: dict[LanguageType, str] = {
     3.不要选择不存在的工具。
     4.如果你认为当前已经达成了用户的目标，可以直接返回Final工具，表示计划执行结束。
     5.tool_id中的工具ID必须是当前工具集合中存在的工具ID，而不是工具的名称。
-    6.如果在历史记录中一个工具执行三次以上的连续失败或者是没有返回需要的信息，则在下一次步骤中不要再使用该工具。
+    6.如果在历史记录中一个工具执行三次连续失败或者是返回空信息（空字典、空列表和空字符串），则在下一次步骤中不要再使用该工具。
     7.工具在<tools> </tools> XML标签中给出,工具的id在<tools> </tools> 下的<id> </id> XML标签中给出。
 
     # 样例 1
@@ -1195,7 +1195,7 @@ GEN_STEP: dict[LanguageType, str] = {
     3. Do not choose non-existent tools.
     4. If you believe that the user's goal has already been achieved, you can directly return the Final tool, indicating that the plan execution is complete.
     5. The tool_id must be the tool ID that exists in the current tool set, not the name of the tool.
-    6. If a tool has failed more than three consecutive times in the history or has not returned the required information, do not use that tool in the next step.
+    6. If a tool has failed three consecutive times or returned empty information (empty dictionary, empty list, and empty string) in the history, do not use that tool in the next step.
     7. The tools are given in the <tools> </tools> XML tags, and the tool IDs are given in the <id> </id> XML tags under <tools>
 
     # Example 1
