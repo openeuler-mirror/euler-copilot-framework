@@ -79,12 +79,6 @@ class Risk(str, Enum):
     MEDIUM = "medium"
     HIGH = "high"
 
-
-class AgentName(BaseModel):
-    """MCP 流程名称"""
-
-    name: str = Field(description="MCP 流程名称", default="")
-
 class ToolRisk(BaseModel):
     """MCP工具风险评估结果"""
 

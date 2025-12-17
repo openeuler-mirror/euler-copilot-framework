@@ -591,7 +591,7 @@ class MCPAgentExecutor(BaseExecutor):
         if self.task.state.executorStatus == ExecutorStatus.INIT:
             # 初始化状态
             self.task.state.executorId = str(uuid.uuid4())
-            self.task.state.executorName = (await self._planner.get_flow_name()).name
+            self.task.state.executorName = await self._planner.get_flow_name(self.llm)
             await self.get_next_step()
 
         self.task.state.executorStatus = ExecutorStatus.RUNNING

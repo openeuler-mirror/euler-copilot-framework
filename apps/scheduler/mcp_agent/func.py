@@ -5,39 +5,6 @@ from textwrap import dedent
 
 from apps.models import LanguageType
 
-GET_AGENT_NAME_FUNCTION: dict[LanguageType, dict] = {
-    LanguageType.CHINESE: {
-        "name": "generate_agent_name",
-        "description": "根据用户目标生成Agent的描述性名称",
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "name": {
-                    "type": "string",
-                    "description": "Agent 描述性名称",
-                    "default": "",
-                },
-            },
-            "required": ["name"],
-        },
-    },
-    LanguageType.ENGLISH: {
-        "name": "generate_agent_name",
-        "description": "Generate a descriptive name for the Agent based on the user's goal",
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "name": {
-                    "type": "string",
-                    "description": "Agent descriptive name",
-                    "default": "",
-                },
-            },
-            "required": ["name"],
-        },
-    },
-}
-
 CREATE_NEXT_STEP_FUNCTION: dict[LanguageType, dict] = {
     LanguageType.CHINESE: {
         "name": "create_next_step",
