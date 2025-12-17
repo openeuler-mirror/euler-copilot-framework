@@ -2,7 +2,7 @@ import logging
 import os
 import shutil
 from enum import Enum
-from typing import Dict, List
+from typing import Dict, List, Optional
 from pydantic import Field
 from config.public.base_config_loader import BaseConfig, LanguageEnum
 
@@ -124,24 +124,38 @@ class FileManager:
 
     def add(self,
             file_path: str,
-            overwrite: bool = Field(False, description="是否覆盖已存在文件")) -> None:
+            overwrite: bool = Field(False, description="是否覆盖已存在文件"),
+            content: Optional[str] = Field(None, description="创建文件时写入的内容，为None则创建空文件"),
+            encoding: str = Field(FileEncodingEnum.UTF8.value, description="文件编码")
+            ) -> None:
         """
-        新建空文件（Python实现touch功能）
-        :param file_path: 文件路径（必填）
+        新建文件（支持创建空文件或写入指定内容，Python实现touch功能）
+        :param file_path: 文件路径（必填，绝对路径）
         :param overwrite: 已存在时是否覆盖（默认False）
+        :param content: 创建文件时写入的内容，为None则创建空文件（新增参数）
+        :param encoding: 文件编码（默认utf-8，新增参数用于内容写入）
         """
+        # 1. 检查文件是否存在，且不允许覆盖则跳过
         if os.path.exists(file_path) and not overwrite:
             logger.info(self._get_error_msg(f"文件已存在，跳过创建：{file_path}", f"File exists, skip creation: {file_path}"))
             return
 
-        # 确保父目录存在
+        # 2. 确保父目录存在
         parent_dir = os.path.dirname(file_path)
         if parent_dir and not os.path.exists(parent_dir):
             os.makedirs(parent_dir, exist_ok=True)
 
-        with open(file_path, "w", encoding=FileEncodingEnum.UTF8.value) as f:
-            pass
-        logger.info(self._get_error_msg(f"文件创建成功：{file_path}", f"File created successfully: {file_path}"))
+        # 3. 根据content参数决定写入内容还是创建空文件
+        with open(file_path, "w", encoding=encoding) as f:
+            if content is not None:
+                f.write(content)  # 写入指定内容
+            # content为None时，仅打开文件后关闭（创建空文件）
+
+        # 4. 日志提示（区分空文件和带内容文件）
+        if content is None:
+            logger.info(self._get_error_msg(f"空文件创建成功：{file_path}", f"Empty file created successfully: {file_path}"))
+        else:
+            logger.info(self._get_error_msg(f"文件创建并写入内容成功：{file_path}", f"File created and content written successfully: {file_path}"))
 
     def append(self,
                file_path: str,
