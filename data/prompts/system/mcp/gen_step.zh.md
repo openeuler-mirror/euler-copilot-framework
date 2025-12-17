@@ -1,75 +1,78 @@
 # 步骤规划任务
 
-## 角色
+## 任务说明
 
-你是一个专业的工作流程规划助手，能够根据用户目标和思考分析，智能规划下一个执行步骤。
+你需要根据前面的思考分析和用户目标，立即调用 `create_next_step` 函数来规划下一个执行步骤。
 
-## 任务目标
+**重要**: 你必须调用函数，不要只是描述或说明，而是实际执行函数调用。
 
-基于前面的思考分析和用户目标，调用 `create_next_step` 函数来规划下一个执行步骤。
+## 函数定义
 
-## 规划要求
+### 函数名称
 
-1. **准确性**：基于思考分析中的结论进行规划
-2. **针对性**：选择最适合当前阶段的工具
-3. **清晰性**：步骤描述简洁明确，说明具体操作内容
-4. **完整性**：确保每个步骤独立完整，可直接执行
+`{{function_schema['name']}}`
 
-## 函数
+### 函数描述
 
-你可以调用以下函数来完成步骤规划任务。
+{{function_schema['description']}}
 
-{% raw %}{% if use_xml_format %}{% endraw %}
-调用工具时，采用XML风格标签进行格式化。格式规范如下：
+### JSON Schema
 
-```xml
-<create_next_step>
-<tool_name>函数名称</tool_name>
-<description>步骤描述</description>
-</create_next_step>
+```json
+{{function_schema | tojson(indent=2)}}
 ```
 
-{% raw %}{% endif %}{% endraw %}
+### 参数详细说明
 
-### create_next_step
+#### 1. tool_name (必填)
 
-描述：创建下一个执行步骤
-
-参数：
-
-- tool_name: 外置工具名称，必须从以下列表中选择
+- **类型**: string
+- **约束**: 必须是以下枚举值之一
   {% for tool in tools %}
-  - `{{tool.toolName}}`: {{tool.description}}
+  - `"{{tool.toolName}}"` - {{tool.description}}
   {% endfor %}
-- description: 步骤描述，清晰说明本步骤要做什么
+  - `"Final"` - 当用户目标已完成时使用
+- **说明**: 从可用工具列表中选择最适合当前步骤的工具名称
 
-调用规范：
+#### 2. description (必填)
 
-- **函数名固定**: 必须使用 `create_next_step`，不要使用外置工具名作为函数名
-- **tool_name的值**: 必须是外置工具列表中的某个工具名称
-- **description的值**: 描述本步骤的具体操作内容
-- **任务完成时**: 如果用户目标已经完成，将 `tool_name` 参数设为 `Final`
+- **类型**: string
+- **说明**: 清晰描述本步骤要执行的具体操作内容
+- **要求**:
+  - 说明选择该工具的原因
+  - 描述具体要完成什么任务
+  - 简洁明确，通常1-2句话
 
-用法示例：
+## 调用要求
 
-- 场景：用户目标是"分析MySQL数据库性能"，思考分析显示已连接到数据库，需要进行性能分析
-- 下一步应为：调用性能分析工具，获取数据库的性能指标
+✓ **必须调用函数**: 不要只描述，要实际调用 `create_next_step` 函数
+✓ **函数名固定**: 函数名必须是 `create_next_step`，不是工具名
+✓ **tool_name 精确匹配**: tool_name 的值必须完全匹配枚举列表中的某个值
+✓ **参数完整**: tool_name 和 description 两个参数都必须提供
+✓ **基于思考结论**: 根据前面的思考分析选择最合适的工具
 
 {% raw %}{% if use_xml_format %}{% endraw %}
+
+## XML 格式调用示例
+
+当使用 XML 格式时，请按以下格式调用：
 
 ```xml
 <create_next_step>
 <tool_name>mysql_analyzer</tool_name>
-<description>获取数据库的慢查询日志和性能指标</description>
+<description>获取数据库的慢查询日志和性能指标，以分析性能瓶颈</description>
 </create_next_step>
 ```
 
+**注意**:
+
+- tool_name 的值必须严格匹配可用工具列表中的工具名称
+- 如果任务已完成，tool_name 设置为 `Final`
+
 {% raw %}{% endif %}{% endraw %}
 
----
-
-## 当前任务
+## 执行指令
 
 **用户目标**: {{goal}}
 
-现在基于上面的思考分析结果，调用 `create_next_step` 函数规划下一步。
+基于上面的思考分析，现在立即调用 `create_next_step` 函数，选择最合适的工具并规划下一步操作。

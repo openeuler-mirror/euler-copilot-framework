@@ -79,12 +79,6 @@ class Risk(str, Enum):
     MEDIUM = "medium"
     HIGH = "high"
 
-
-class FlowName(BaseModel):
-    """MCP 流程名称"""
-
-    flow_name: str = Field(description="MCP 流程名称", default="")
-
 class ToolRisk(BaseModel):
     """MCP工具风险评估结果"""
 

@@ -5,39 +5,6 @@ from textwrap import dedent
 
 from apps.models import LanguageType
 
-GET_FLOW_NAME_FUNCTION: dict[LanguageType, dict] = {
-    LanguageType.CHINESE: {
-        "name": "get_flow_name",
-        "description": "根据用户目标生成当前工作流程的描述性名称",
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "flow_name": {
-                    "type": "string",
-                    "description": "MCP 流程名称",
-                    "default": "",
-                },
-            },
-            "required": ["flow_name"],
-        },
-    },
-    LanguageType.ENGLISH: {
-        "name": "get_flow_name",
-        "description": "Generate a descriptive name for the current workflow based on the user's goal",
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "flow_name": {
-                    "type": "string",
-                    "description": "MCP workflow name",
-                    "default": "",
-                },
-            },
-            "required": ["flow_name"],
-        },
-    },
-}
-
 CREATE_NEXT_STEP_FUNCTION: dict[LanguageType, dict] = {
     LanguageType.CHINESE: {
         "name": "create_next_step",

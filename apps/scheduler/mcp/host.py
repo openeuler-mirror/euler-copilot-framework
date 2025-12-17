@@ -45,11 +45,6 @@ class MCPHost(MCPNodeBase):
 
     async def get_client(self, mcp_id: str) -> MCPClient | None:
         """获取MCP客户端"""
-        if not await MCPServiceManager.is_user_actived(self._user_id, mcp_id):
-            logger.warning("用户 %s 未启用MCP %s", self._user_id, mcp_id)
-            return None
-
-        # 获取MCP配置（如果失败会抛出RuntimeError）
         try:
             return await mcp_pool.get(mcp_id, self._user_id)
         except (KeyError, RuntimeError) as e:
@@ -182,10 +177,6 @@ class MCPHost(MCPNodeBase):
         # 获取工具列表
         tool_list = []
         for mcp_id in mcp_id_list:
-            # 检查用户是否启用了这个mcp
-            if not await MCPServiceManager.is_user_actived(self._user_id, mcp_id):
-                logger.warning("用户 %s 未启用MCP %s", self._user_id, mcp_id)
-                continue
             # 获取MCP工具配置
             try:
                 tool_list.extend(await MCPServiceManager.get_mcp_tools(mcp_id))

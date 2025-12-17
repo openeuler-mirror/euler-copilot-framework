@@ -14,7 +14,6 @@ from apps.models import MCPTools
 from apps.scheduler.slot.slot import Slot
 from apps.schemas.llm import LLMChunk
 from apps.schemas.mcp import (
-    FlowName,
     IsParamError,
     Step,
     ToolRisk,
@@ -26,7 +25,6 @@ from .func import (
     CREATE_NEXT_STEP_FUNCTION,
     EVALUATE_TOOL_RISK_FUNCTION,
     FINAL_ANSWER,
-    GET_FLOW_NAME_FUNCTION,
     GET_MISSING_PARAMS_FUNCTION,
     IS_PARAM_ERROR_FUNCTION,
 )
@@ -43,19 +41,23 @@ logger = logging.getLogger(__name__)
 class MCPPlanner(MCPBase):
     """MCP 用户目标拆解与规划"""
 
-    async def get_flow_name(self) -> FlowName:
+    async def get_flow_name(self, llm: LLM) -> str:
         """获取当前流程的名称"""
         template = _env.from_string(await self._load_prompt("gen_agent_name"))
         prompt = template.render(goal=self._goal)
 
-        result = await json_generator.generate(
-            function=GET_FLOW_NAME_FUNCTION[self._language],
-            conversation=[
-                {"role": "system", "content": "You are a helpful assistant."},
-            ],
-            prompt=prompt,
-        )
-        return FlowName.model_validate(result)
+        messages = [
+            {"role": "system", "content": "You are a helpful assistant."},
+            {"role": "user", "content": prompt},
+        ]
+
+        agent_name = ""
+        async for chunk in llm.call(messages, streaming=False):
+            agent_name += chunk.content or ""
+
+        result = agent_name.strip()
+        logger.info("[MCPPlanner] 生成流程名称: %s", result)
+        return result
 
     async def create_next_step(self, tools: list[MCPTools], task: TaskData, llm: LLM) -> Step:
         """创建下一步的执行步骤"""
@@ -76,11 +78,11 @@ class MCPPlanner(MCPBase):
             thinking_content += chunk.content or ""
         logger.info("[MCPPlanner] 思考分析: %s", thinking_content)
 
-        step_template = _env.from_string(await self._load_prompt("gen_step"))
-        step_prompt = step_template.render(goal=self._goal, tools=tools)
-
         function = deepcopy(CREATE_NEXT_STEP_FUNCTION[self._language])
         function["parameters"]["properties"]["tool_name"]["enum"] = [tool.toolName for tool in tools]
+
+        step_template = _env.from_string(await self._load_prompt("gen_step"))
+        step_prompt = step_template.render(goal=self._goal, tools=tools, function_schema=function)
 
         step = await json_generator.generate(
             function=function,

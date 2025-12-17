@@ -5,6 +5,7 @@ User=root
 WorkingDirectory=/usr/lib/sysagent
 Environment="PYTHONPATH=/usr/lib/sysagent"
 Environment="CONFIG=/etc/sysagent/config.toml"
+Environment="TIKTOKEN_CACHE_DIR=/var/lib/sysagent/tiktoken_cache"
 ExecStart=/usr/bin/python3 -m apps.main
 ExecReload=/bin/kill -HUP $MAINPID
 Restart=on-failure

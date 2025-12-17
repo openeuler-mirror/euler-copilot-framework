@@ -1,15 +1,21 @@
-Now let's review the step history context. My goal is: {{goal}}
+Please review the step history context. The current goal is: {{goal}}
 
-Available tools:
+You can use the following tools:
 
 {% for tool in tools %}
 - {{tool.toolName}}: {{tool.description}}
 {% endfor %}
 
-Please think step by step:
+Please provide a concise analysis and your thinking process, including the following points:
 
-- How far along is my goal now
-- What should be done next to achieve the goal
-- Which tool should be used and why
+- What is the progress towards completing the current goal
+- What action should be taken next to achieve the goal
+- Which tool should be used and the rationale for choosing that tool
 
-Think and analyze first, then provide a specific plan for the next step.
+**Important Notes**:
+
+- Please provide your analysis and thinking directly, without repeating or restating the results returned by tools
+- The tool outputs are already visible, you only need to reason and make decisions based on this information
+- Keep responses concise and focused on the next action plan
+
+Now, please begin thinking step by step:

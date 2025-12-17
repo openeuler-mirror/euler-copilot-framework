@@ -11,6 +11,7 @@ from jinja2.sandbox import SandboxedEnvironment
 
 from apps.common.config import config
 from apps.models import LanguageType
+from apps.models.task import StepStatus
 from apps.scheduler.mcp.prompt import MEMORY_TEMPLATE
 from apps.schemas.task import TaskData
 
@@ -61,8 +62,9 @@ class MCPBase:
         history = []
         template = MEMORY_TEMPLATE[task.runtime.language]
 
-        for index, item in enumerate(task.context, start=1):
-            # 用户消息：步骤描述和工具调用
+        filtered_context = [item for item in task.context if item.stepStatus != StepStatus.WAITING]
+
+        for index, item in enumerate(filtered_context, start=1):
             step_goal = item.extraData["step_goal"]
             user_content = _env.from_string(template).render(
                 msg_type="user",
@@ -76,7 +78,6 @@ class MCPBase:
                 "content": user_content,
             })
 
-            # 助手消息：步骤执行结果
             assistant_content = _env.from_string(template).render(
                 msg_type="assistant",
                 step_index=index,
