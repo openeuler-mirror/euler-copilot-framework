@@ -1,0 +1,11 @@
+[system]
+# NetworkManager / 网卡配置相关的系统工具（通常系统已自带，此处仅用于需要时安装）
+#network_tools = [
+#    "yum install -y NetworkManager",
+#    "apt-get update && apt-get install -y network-manager"
+#]
+
+[pip]
+# Python 依赖（与其他 mcptool 保持一致的基础依赖）
+
+
