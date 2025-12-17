@@ -10,6 +10,8 @@ from base.parser.txt import parse_txt
 from base.parser.doc import parse_docx, parse_doc
 from base.parser.pdf import parse_pdf
 
+
+
 _parsers: Dict[str, callable] = {}
 
 
@@ -30,11 +32,12 @@ def parse(file_path: str) -> Optional[str]:
     :return: 文件内容
     """
     file_ext = file_path.lower().split('.')[-1]
-    
+    if file_ext == "md":
+        file_ext = "txt"
     if file_ext not in _parsers:
         logger.error(f"[Parser] 不支持的文件类型: {file_ext}")
         return None
-    
+
     try:
         parser_func = _parsers[file_ext]
         return parser_func(file_path)
@@ -52,8 +55,7 @@ register_parser('pdf', parse_pdf)
 
 class Parser:
     """文档解析器类"""
-    
+
     @staticmethod
     def parse(file_path: str) -> Optional[str]:
         return parse(file_path)
-
