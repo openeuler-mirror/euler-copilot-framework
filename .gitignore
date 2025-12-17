@@ -15,3 +15,4 @@ logs
 .ruff_cache/
 config
 uv.lock
+!mcp_center/config
