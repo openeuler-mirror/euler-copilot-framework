@@ -92,7 +92,7 @@ def check_sshd_status(target: Optional[str]) -> Dict:
     result = init_result(target_host)
     is_zh = get_language()
 
-    cmd = ["systemctl", "status", "sshd"]
+    cmd = ["/usr/bin/systemctl ", "status", "sshd"]
 
     # 本地
     if target_host == "127.0.0.1":
@@ -122,7 +122,7 @@ def check_sshd_status(target: Optional[str]) -> Dict:
     ssh: Optional[paramiko.SSHClient] = None
     try:
         ssh = _open_ssh(remote_auth)
-        stdin, stdout, stderr = ssh.exec_command("systemctl status sshd")
+        stdin, stdout, stderr = ssh.exec_command("/usr/bin/systemctl  status sshd")
         out = stdout.read().decode("utf-8", errors="replace").strip()
         err = stderr.read().decode("utf-8", errors="replace").strip()
         if err and "Active:" not in out:
@@ -193,7 +193,7 @@ def fix_sshd_config_and_restart(target: Optional[str]) -> Dict:
                 f"echo '{line}' >> /etc/ssh/sshd_config"
             )
         # 重启 sshd
-        sed_parts.append("systemctl restart sshd")
+        sed_parts.append("/usr/bin/systemctl  restart sshd")
         # 组合为单条 shell 命令
         return " && ".join(sed_parts)
 

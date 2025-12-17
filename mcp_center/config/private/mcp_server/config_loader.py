@@ -9,6 +9,11 @@ class McpServerConfigModel(BaseModel):
     """顶层配置模型"""
     port: int = Field(default=12555, description="MCP服务端口")
     fastapi_port : int = Field(default=12556, description="fastapi服务端口")
+    llm_remote: str = Field(default="", description="LLM远程主机地址")
+    llm_model: str = Field(default="gpt-3.5-turbo", description="LLM模型名称")
+    llm_api_key: str = Field(default="", description="LLM API Key")
+    max_tokens: int = Field(default=2048, description="LLM最大Token数")
+    temperature: float = Field(default=0.7, description="LLM温度参数")
 
 class McpServerConfig(BaseConfig):
     """顶层配置文件读取和使用Class"""
