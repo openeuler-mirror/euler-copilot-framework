@@ -47,9 +47,20 @@ def file_tool(
             result["message"] = f"本地文件内容读取完成（路径：{file_path}）" if is_zh else f"Local file content read (path: {file_path})"
 
         elif action == FileActionEnum.ADD:
-            fm.add(file_path.strip(), overwrite=overwrite)
+            add_content = content.strip() if content is not None else None
+            fm.add(
+                file_path=file_path.strip(),
+                overwrite=overwrite,
+                content=add_content,
+                encoding=encoding.value  # 传递编码（枚举值转字符串）
+            )
             result["success"] = True
-            result["message"] = f"本地文件创建成功（路径：{file_path}）" if is_zh else f"Local file created (path: {file_path})"
+            # 优化提示：区分是否写入内容
+            if add_content:
+                result["message"] = f"本地文件创建并写入内容成功（路径：{file_path}）" if is_zh else f"Local file created and content written (path: {file_path})"
+            else:
+                result["message"] = f"本地文件创建成功（路径：{file_path}）" if is_zh else f"Local file created (path: {file_path})"
+
 
         elif action == FileActionEnum.APPEND:
             if not content:
