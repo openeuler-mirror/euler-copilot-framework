@@ -3,6 +3,7 @@
 
 import asyncio
 import logging
+import time
 from contextlib import AsyncExitStack
 from typing import TYPE_CHECKING, Union
 from pydantic import BaseModel, Field
@@ -312,71 +313,68 @@ async def main() -> None:
     # ==================================
     # 5. cmd_executor_tool 测试用例（4个，修复无效枚举、参数）
     # ==================================
-    """测试cmd_executor_tool的多个场景"""
-    # 场景1：执行普通ls命令（快速指令，自动匹配5秒超时）
+    # 场景1：执行普通ls命令（基础功能验证）
     print("\n" + "="*60)
     print("场景1：cmd_executor_tool - 执行本地ls命令（查看/tmp目录）")
     print("="*60)
     result = await client.call_tool("cmd_executor_tool", {
-        "command": "ls /tmp",
-        "lang": "ZH"
+        "command": "ls /tmp"
     })
     print(f"执行结果：{result}")
 
-    # 场景2：执行ping命令（中等耗时指令，自动匹配30秒超时）
+    # 场景2：重点验证超时终止能力（sleep 10秒，设置超时5秒）
     print("\n" + "="*60)
-    print("场景2：cmd_executor_tool - 执行ping命令（ping 127.0.0.1 -c 3）")
+    print("场景2：cmd_executor_tool - 验证超时终止能力（sleep 10秒，超时5秒）")
     print("="*60)
+    start_time = time.time()  # 记录命令开始执行时间
+    print(f"命令开始执行时间戳：{start_time:.2f}（当前时间：{time.ctime(start_time)}）")
+    # 执行sleep 10，超时设置为5秒
     result = await client.call_tool("cmd_executor_tool", {
-        "command": "ping 127.0.0.1 -c 3",
-        "lang": "EN"
+        "command": "sleep 10",  # 命令需要执行10秒
+        "timeout": 5            # 超时时间仅5秒，会触发超时终止
     })
-    print(f"执行结果：{result}")
+    end_time = time.time()  # 记录命令执行结束时间
+    print(f"命令执行结束时间戳：{end_time:.2f}（当前时间：{time.ctime(end_time)}）")
+    print(f"实际执行时长：{end_time - start_time:.2f}秒（预期超时时间：5秒）")
+    print(f"超时终止结果：{result}")
 
-    # 场景3：执行Shell脚本（创建临时脚本并执行，自动匹配600秒超时）
+    # 场景3：验证Shell脚本的超时终止（脚本内sleep 8秒，设置超时4秒）
     print("\n" + "="*60)
-    print("场景3：cmd_executor_tool - 执行本地Shell脚本（/tmp/test_script.sh）")
+    print("场景3：cmd_executor_tool - 验证Shell脚本的超时终止（脚本内sleep 8秒，超时4秒）")
     print("="*60)
-    # 第一步：先创建一个测试脚本（使用file_tool或直接执行命令）
+    # 第一步：创建一个包含sleep的测试脚本
     create_script_result = await client.call_tool("cmd_executor_tool", {
-        "command": "echo 'echo \"Hello from test script!\"' > /tmp/test_script.sh && chmod +x /tmp/test_script.sh",
+        "command": "echo 'echo \"脚本开始执行，将sleep 8秒...\"; sleep 8; echo \"脚本执行完成\"' > /tmp/timeout_test.sh && chmod +x /tmp/timeout_test.sh",
         "timeout": 10
     })
-    print(f"创建脚本结果：{create_script_result}")
-    # 第二步：执行脚本
+    print(f"创建超时测试脚本结果：{create_script_result}")
+    # 第二步：执行脚本，设置超时4秒（远小于脚本内的8秒）
+    start_time = time.time()
+    print(f"脚本开始执行时间戳：{start_time:.2f}（当前时间：{time.ctime(start_time)}）")
     result = await client.call_tool("cmd_executor_tool", {
-        "command": "/tmp/test_script.sh",
-        "lang": "ZH"
+        "command": "/tmp/timeout_test.sh",
+        "timeout": 4  # 超时4秒，触发脚本执行超时终止
     })
-    print(f"执行脚本结果：{result}")
+    end_time = time.time()
+    print(f"脚本执行结束时间戳：{end_time:.2f}（当前时间：{time.ctime(end_time)}）")
+    print(f"实际执行时长：{end_time - start_time:.2f}秒（预期超时时间：4秒）")
+    print(f"脚本超时终止结果：{result}")
 
-    # 场景4：执行超时命令（sleep 10，手动指定5秒超时）
+    # 场景4：空命令测试（参数校验验证）
     print("\n" + "="*60)
-    print("场景4：cmd_executor_tool - 执行超时命令（sleep 10，超时5秒）")
+    print("场景4：cmd_executor_tool - 空命令测试（验证参数校验）")
     print("="*60)
     result = await client.call_tool("cmd_executor_tool", {
-        "command": "sleep 10",
-        "timeout": 5,
-        "lang": "ZH"
-    })
-    print(f"执行结果：{result}")
-
-    # 场景5：空命令测试（验证参数校验）
-    print("\n" + "="*60)
-    print("场景5：cmd_executor_tool - 空命令测试（验证参数校验）")
-    print("="*60)
-    result = await client.call_tool("cmd_executor_tool", {
-        "command": "",
-        "lang": "ZH"
+        "command": ""
     })
     print(f"执行结果：{result}")
 
-    # 场景6：清理测试文件（可选：删除创建的临时脚本）
+    # 场景5：清理测试文件
     print("\n" + "="*60)
-    print("场景6：cmd_executor_tool - 清理测试脚本（/tmp/test_script.sh）")
+    print("场景5：cmd_executor_tool - 清理测试脚本（/tmp/timeout_test.sh）")
     print("="*60)
     result = await client.call_tool("cmd_executor_tool", {
-        "command": "rm -f /tmp/test_script.sh",
+        "command": "rm -f /tmp/timeout_test.sh",
         "timeout": 5
     })
     print(f"清理结果：{result}")
