@@ -112,14 +112,6 @@ class MCPAgentExecutor(BaseExecutor):
 
         mcp_ids = app_metadata.mcp_service
         for mcp_id in mcp_ids:
-            if not await MCPServiceManager.is_user_actived(self.task.metadata.userId, mcp_id):
-                _logger.warning(
-                    "[MCPAgentExecutor] 用户 %s 未启用MCP %s",
-                    self.task.metadata.userId,
-                    mcp_id,
-                )
-                continue
-
             mcp_service = await MCPServiceManager.get_mcp_service(mcp_id)
             if mcp_service:
                 self._mcp_list.append(mcp_service)
@@ -422,7 +414,7 @@ class MCPAgentExecutor(BaseExecutor):
             step = None
             for _ in range(max_retry):
                 try:
-                    step = await self._planner.create_next_step(list(self._tool_list.values()), self.task)
+                    step = await self._planner.create_next_step(list(self._tool_list.values()), self.task, self.llm)
                     if step.tool_name in self._tool_list:
                         break
                 except Exception:
