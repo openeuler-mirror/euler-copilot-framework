@@ -1,7 +1,5 @@
 [system]
 
-
 [pip]
 paramiko="==4.0.0"
-
-
+index_url="https://mirrors.aliyun.com/pypi/simple/"
