@@ -24,15 +24,6 @@ class FastAPIConfig(BaseModel):
     domain: str = Field(description="当前实例的域名")
 
 
-class MinioConfig(BaseModel):
-    """Minio配置"""
-
-    endpoint: str = Field(description="Minio主机名、端口号")
-    access_key: str = Field(description="MinIO访问密钥")
-    secret_key: str = Field(description="MinIO密钥")
-    secure: bool = Field(description="MinIO是否启用SSL", default=False)
-
-
 class PostgresConfig(BaseModel):
     """Postgres配置"""
 
@@ -64,7 +55,6 @@ class ConfigModel(BaseModel):
     deploy: DeployConfig
     rag: RAGConfig
     fastapi: FastAPIConfig
-    minio: MinioConfig
     postgres: PostgresConfig
     security: SecurityConfig
     extra: ExtraConfig

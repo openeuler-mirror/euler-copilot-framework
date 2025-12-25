@@ -1,16 +1,13 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2023-2025. All rights reserved.
 """文件Manager"""
 
-import base64
 import logging
 import uuid
 
-import asyncer
 import magic
 from fastapi import UploadFile
 from sqlalchemy import and_, func, select
 
-from apps.common.minio import MinioClient
 from apps.common.postgres import postgres
 from apps.models import (
     ConvDocAssociated,
@@ -29,31 +26,6 @@ class DocumentManager:
     """文件相关操作"""
 
     @staticmethod
-    def _storage_single_doc_minio(file_id: uuid.UUID, document: UploadFile) -> str:
-        """存储单个文件到MinIO"""
-        MinioClient.check_bucket("document")
-        file = document.file
-        # 获取文件MIME
-        mime = magic.from_buffer(file.read(), mime=True)
-        file.seek(0)
-
-        # 上传到MinIO
-        MinioClient.upload_file(
-            bucket_name="document",
-            object_name=str(file_id),
-            data=file,
-            content_type=mime,
-            length=-1,
-            part_size=10 * 1024 * 1024,
-            metadata={
-                "file_name": base64.b64encode(
-                    document.filename.encode("utf-8"),
-                ).decode("ascii") if document.filename else "",
-            },
-        )
-        return mime
-
-    @staticmethod
     async def storage_docs(
         user_id: str, conversation_id: uuid.UUID, documents: list[UploadFile],
     ) -> list[Document]:
@@ -65,13 +37,7 @@ class DocumentManager:
                 logger.error("[DocumentManager] 文件名或大小为空: %s, %s", document.filename, document.size)
                 continue
 
-            file_id = uuid.uuid4()
-            try:
-                mime = await asyncer.asyncify(DocumentManager._storage_single_doc_minio)(file_id, document)
-            except Exception:
-                logger.exception("[DocumentManager] 上传文件失败")
-                continue
-
+            mime = magic.from_buffer(document.file.read(), mime=True)
             # 保存到数据库
             doc_info = Document(
                 userId=user_id,
@@ -169,12 +135,6 @@ class DocumentManager:
 
 
     @staticmethod
-    def _remove_doc_from_minio(doc_id: str) -> None:
-        """从MinIO中删除文件"""
-        MinioClient.delete_file("document", doc_id)
-
-
-    @staticmethod
     async def delete_document(user_id: str, document_list: list[str]) -> None:
         """从未使用文件列表中删除一个文件"""
         async with postgres.session() as session:
@@ -207,10 +167,6 @@ class DocumentManager:
                 await session.delete(doc_info)
                 await session.commit()
 
-                # 删除MinIO内文件
-                await asyncer.asyncify(DocumentManager._remove_doc_from_minio)(doc)
-
-
     @staticmethod
     async def delete_document_by_conversation_id(
         conversation_id: uuid.UUID, auth_header: str,
@@ -224,7 +180,6 @@ class DocumentManager:
             )).all()
 
             for doc in docs:
-                await asyncer.asyncify(DocumentManager._remove_doc_from_minio)(str(doc.id))
                 await session.delete(doc)
             await session.commit()
 
