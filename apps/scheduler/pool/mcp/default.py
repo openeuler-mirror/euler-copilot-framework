@@ -42,7 +42,7 @@ def _default_sse_config(hex_id: str) -> MCPServerConfig:
         mcpServers={
             f"MCP_{hex_id}": MCPServerSSEConfig(
                 url="http://test.domain/sse",
-                env={
+                headers={
                     "EXAMPLE_HEADER": "example_value",
                 },
             ),
