@@ -13,15 +13,11 @@ NC='\033[0m' # No Color
 # Backup directories
 BACKUP_BASE="/home/dump"
 MYSQL_BACKUP_DIR="$BACKUP_BASE/mysql"
-OPENGAUSS_BACKUP_DIR="$BACKUP_BASE/opengauss"
 MINIO_BACKUP_DIR="$BACKUP_BASE/minio"
-OPENGAUSS_DATA_PATH="/home/omm/opengauss.sql"
 MYSQL_DATA_PATH="/home/mysql.sql"
 MYSQL_USER="authhub"
 MYSQL_DB_NAME="oauth2"
 MYSQL_TABLE_NAME="user"
-GS_USERNAME="postgres"
-GS_DB="postgres"
 
 # Timestamp function
 timestamp() {
@@ -54,7 +50,7 @@ print_banner() {
     echo -e "${GREEN}"
     echo "================================================================"
     echo "                  Euler Copilot Data Backup Script"
-    echo "                     MySQL + OpenGauss + MinIO"
+    echo "                     MySQL + MinIO"
     echo "================================================================"
     echo -e "${NC}"
 }
@@ -62,7 +58,7 @@ print_banner() {
 print_completion_banner() {
     echo -e "${GREEN}"
     echo "================================================================"
-    echo "             MySQL + OpenGauss + MinIO Data Backup Completed!"
+    echo "             MySQL + MinIO Data Backup Completed!"
     echo "================================================================"
     echo -e "${NC}"
 }
@@ -81,7 +77,7 @@ check_command() {
 create_backup_directories() {
     log_step "Creating backup directories"
 
-    mkdir -p "$MYSQL_BACKUP_DIR" "$OPENGAUSS_BACKUP_DIR" "$MINIO_BACKUP_DIR"
+    mkdir -p "$MYSQL_BACKUP_DIR" "$MINIO_BACKUP_DIR"
     check_command "Backup directories created" "Failed to create backup directories"
 
     log_info "MySQL backup directory: $MYSQL_BACKUP_DIR"
@@ -127,48 +123,6 @@ backup_mysql() {
         log_success "MySQL backup completed, file size: $file_size"
     else
         log_error "MySQL backup file not found"
-        return 1
-    fi
-}
-
-# Backup OpenGauss data
-backup_opengauss() {
-    log_step "Starting OpenGauss data backup"
-
-    # Get OpenGauss Pod name
-    log_info "Finding OpenGauss Pod..."
-    local pod_name=$(kubectl get pod -n euler-copilot | grep opengauss | awk '{print $1}')
-    if [ -z "$pod_name" ]; then
-        log_error "OpenGauss Pod not found"
-        return 1
-    fi
-    log_success "Found Pod: $pod_name"
-
-    # Get OpenGauss password
-    log_info "Getting OpenGauss password..."
-    local gauss_password=$(kubectl get secret euler-copilot-database -n euler-copilot -o jsonpath='{.data.gauss-password}' | base64 --decode)
-    if [ -z "$gauss_password" ]; then
-        log_error "Failed to get OpenGauss password"
-        return 1
-    fi
-    log_success "Password obtained successfully"
-
-    # Export database
-    log_info "Exporting OpenGauss database..."
-    kubectl exec -it "$pod_name" -n euler-copilot -- /bin/sh -c "su - omm -c 'source ~/.bashrc && gs_dump -U ${GS_USERNAME} -f ${OPENGAUSS_DATA_PATH} -p 5432 ${GS_DB} -F p -W \"${gauss_password}\"'"
-    check_command "OpenGauss database export completed" "OpenGauss database export failed"
-
-    # Copy backup file to local
-    log_info "Copying backup file to local..."
-    kubectl cp $pod_name:${OPENGAUSS_DATA_PATH} $OPENGAUSS_BACKUP_DIR/opengauss.sql -n euler-copilot
-    check_command "OpenGauss backup file copy completed" "OpenGauss backup file copy failed"
-
-    # Verify backup file
-    if [ -f "$OPENGAUSS_BACKUP_DIR/opengauss.sql" ]; then
-        local file_size=$(du -h "$OPENGAUSS_BACKUP_DIR/opengauss.sql" | cut -f1)
-        log_success "OpenGauss backup completed, file size: $file_size"
-    else
-        log_error "OpenGauss backup file not found"
         return 1
     fi
 }
@@ -229,14 +183,6 @@ show_backup_summary() {
         echo "MySQL:    Backup failed"
     fi
 
-    # OpenGauss backup information
-    if [ -f "$OPENGAUSS_BACKUP_DIR/opengauss.sql" ]; then
-        local gauss_size=$(du -h "$OPENGAUSS_BACKUP_DIR/opengauss.sql" | cut -f1)
-        echo "OpenGauss: $OPENGAUSS_BACKUP_DIR/opengauss.sql ($gauss_size)"
-    else
-        echo "OpenGauss: Backup failed"
-    fi
-
     # MinIO backup information
     if [ -d "$MINIO_BACKUP_DIR" ]; then
         local minio_size=$(du -sh "$MINIO_BACKUP_DIR" 2>/dev/null | cut -f1 || echo "Unknown")
@@ -262,13 +208,6 @@ main() {
         log_success "MySQL backup successful"
     else
         log_error "MySQL backup failed"
-    fi
-
-    # Backup OpenGauss
-    if backup_opengauss; then
-        log_success "OpenGauss backup successful"
-    else
-        log_error "OpenGauss backup failed"
     fi
 
     # Backup MinIO
