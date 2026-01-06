@@ -17,12 +17,6 @@ MOCK_CONFIG_DATA: dict[str, Any] = {
     "deploy": {"mode": "local", "cookie": "domain", "data_dir": "/app/data"},
     "rag": {"rag_service": "http://localhost"},
     "fastapi": {"domain": "localhost"},
-    "minio": {
-        "endpoint": "localhost:9000",
-        "access_key": "test_key",
-        "secret_key": "test_secret",
-        "secure": False,
-    },
     "postgres": {
         "host": "localhost",
         "port": 5432,
@@ -159,11 +153,6 @@ def test_config_fields(mocker: MockerFixture, tmp_path: Path) -> None:
     assert config.rag.rag_service == "http://localhost"
 
     assert config.fastapi.domain == "localhost"
-
-    assert config.minio.endpoint == "localhost:9000"
-    assert config.minio.access_key == "test_key"
-    assert config.minio.secret_key == "test_secret"
-    assert config.minio.secure is False
 
     assert config.postgres.host == "localhost"
     assert config.postgres.port == MOCK_CONFIG_DATA["postgres"]["port"]
