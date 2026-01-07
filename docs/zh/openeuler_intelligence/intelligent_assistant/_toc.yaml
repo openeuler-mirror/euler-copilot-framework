@@ -8,10 +8,8 @@ sections:
         sections: 
           - label: 部署指南
             sections:
-              - label: 无网络环境下部署指南
-                href: ./quick_start/smart_web/deploy_guide/offline.md
-              - label: 网络环境下部署指南
-                href: ./quick_start/smart_web/deploy_guide/online.md
+              - label: 智能助手web部署指南
+                href: ./quick_start/smart_web/deploy_guide/deployment.md
           - label: 使用指导
             sections: 
               - label: 前言
