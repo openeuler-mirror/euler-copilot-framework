@@ -3,319 +3,347 @@
 # OpenGauss Database Import Script - Fixed Version
 # Description: Used for Euler Copilot project database data import
 
-set -e  # Exit immediately on error
 
-# Color definitions
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-PURPLE='\033[0;35m'
-CYAN='\033[0;36m'
-NC='\033[0m' # No Color
-
-# Print functions
-log() {
-    echo -e "${GREEN}[$(date '+%Y-%m-%d %H:%M:%S')] $1${NC}"
-}
-
-info() {
-    echo -e "${BLUE}[$(date '+%Y-%m-%d %H:%M:%S')] $1${NC}"
-}
-
-warning() {
-    echo -e "${YELLOW}[$(date '+%Y-%m-%d %H:%M:%S')] Warning: $1${NC}"
-}
-
-error() {
-    echo -e "${RED}[$(date '+%Y-%m-%d %H:%M:%S')] Error: $1${NC}" >&2
-    exit 1
-}
-
-step() {
-    echo -e "${PURPLE}[$(date '+%Y-%m-%d %H:%M:%S')] === $1 ===${NC}"
-}
-
-# Configuration variables
 NAMESPACE="euler-copilot"
 SECRET_NAME="euler-copilot-database"
 PASSWORD_KEY="gauss-password"
-BACKUP_FILE="/home/dump/opengauss/opengauss.sql"
-POD_BACKUP_PATH="/home/omm/opengauss.sql"
-DATA_ONLY_SQL_PATH="/home/omm/data_only.sql"
+ACTION=""  # 不再设置默认值，通过参数检查
 
-# Check required tools
-check_dependencies() {
-    step "Checking required tools"
-    command -v kubectl >/dev/null 2>&1 || error "kubectl not installed"
-    command -v base64 >/dev/null 2>&1 || error "base64 not installed"
-    log "Dependency check passed"
+POD_NAME=""
+DB_HOST=""
+DB_PORT="5432"
+DB_USER="postgres"
+DB_NAME="postgres"
+PASSWORD=""
+
+red() { echo -e "\033[31m[ERROR] $1\033[0m"; }
+green() { echo -e "\033[32m[SUCCESS] $1\033[0m"; }
+blue() { echo -e "\033[34m[INFO] $1\033[0m"; }
+yellow() { echo -e "\033[33m[WARNING] $1\033[0m"; }
+
+error_exit() {
+    red "$1"
+    exit 1
 }
 
-# Get database password
-get_database_password() {
-    step "Getting database password"
+# 检查命令是否可用
+check_command() {
+    if ! command -v $1 &> /dev/null; then
+        error_exit "命令 $1 未找到，请先安装"
+    fi
+}
+
+# 检查kubectl连接
+check_kubectl() {
+    blue "检查kubectl连接..."
+    if ! kubectl cluster-info &> /dev/null; then
+        error_exit "无法连接到Kubernetes集群，请检查kubectl配置"
+    fi
+    green "kubectl连接正常"
+}
+
+# 获取rag的pod名称
+get_pod_name() {
+    if [ -n "$POD_NAME" ]; then
+        green "使用指定的pod: $POD_NAME"
+        return 0
+    fi
+
+    blue "查找rag的pod..."
+    POD_NAME=$(kubectl get pod -n $NAMESPACE 2>/dev/null | grep rag-deploy | grep Running | awk '{print $1}')
+    green "pod名称获取成功"
+}
+
+# 获取数据库密码
+get_db_password() {
+    blue "获取数据库密码..."
     PASSWORD=$(kubectl get secret $SECRET_NAME -n $NAMESPACE -o jsonpath="{.data.$PASSWORD_KEY}" 2>/dev/null | base64 --decode)
 
     if [ -z "$PASSWORD" ]; then
-        error "Unable to get database password, please check if secret exists"
+        error_exit "无法获取数据库密码，请检查secret是否存在"
     fi
-    log "Password obtained successfully"
+    green "密码获取成功"
 }
 
-# Get OpenGauss Pod name
-get_opengauss_pod() {
-    step "Finding OpenGauss Pod"
-    POD_NAME=$(kubectl get pod -n $NAMESPACE 2>/dev/null | grep opengauss | grep Running | awk '{print $1}')
+# 获取数据库主机地址
+get_db_host() {
+    blue "获取数据库服务地址..."
+    DB_HOST=$(kubectl get svc -n $NAMESPACE 2>/dev/null | grep opengauss | awk '{print $3}')
 
-    if [ -z "$POD_NAME" ]; then
-        error "No running OpenGauss Pod found"
+    if [ -z "$DB_HOST" ]; then
+        error_exit "未找到opengauss服务"
     fi
-    log "Found Pod: $POD_NAME"
+
+    green "数据库地址: $DB_HOST"
 }
 
-# Check if backup file exists
-check_backup_file() {
-    step "Checking backup file"
-    if [ ! -f "$BACKUP_FILE" ]; then
-        error "Backup file $BACKUP_FILE does not exist"
+# 显示数据库配置信息
+show_db_config() {
+    blue "数据库配置信息:"
+    echo "================================="
+    echo "  Pod名称:     $POD_NAME"
+    echo "  数据库地址:   $DB_HOST"
+    echo "  端口:        $DB_PORT"
+    echo "  用户名:      $DB_USER"
+    echo "  数据库名:    $DB_NAME"
+    echo "  操作类型:    $ACTION"
+    echo "  密码:        ********"
+    echo "================================="
+
+    read -p "是否继续执行? (y/n): " -n 1 -r
+    echo
+    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+        yellow "操作已取消"
+        exit 0
     fi
-    log "Backup file check passed: $BACKUP_FILE"
 }
 
-# Copy backup file to Pod
-copy_backup_to_pod() {
-    step "Copying backup file to Pod"
-    kubectl cp "$BACKUP_FILE" "$POD_NAME:$POD_BACKUP_PATH" -n $NAMESPACE
-    kubectl exec -it "$POD_NAME" -n $NAMESPACE -- bash -c "chown omm:omm $POD_BACKUP_PATH"
-    log "Backup file copy completed"
-}
-
-# Extract only data from SQL file
-extract_data_only() {
-    step "Extracting data-only SQL commands"
-    
-    # Create a script to extract only data (COPY statements)
-    kubectl exec -it "$POD_NAME" -n $NAMESPACE -- su - omm -s /bin/bash -c "
-cat > /tmp/extract_data.sh << 'EOF'
-#!/bin/bash
-# Extract only COPY statements from the SQL file
-grep '^COPY ' $POD_BACKUP_PATH > $DATA_ONLY_SQL_PATH
-
-# Also extract the data section (everything after the first occurrence of COPY)
-# This is a more robust method to get all data
-sed -n '/^COPY /,/^\\\\\./p' $POD_BACKUP_PATH > $DATA_ONLY_SQL_PATH
-
-# Add the SET commands at the beginning
-echo 'SET session_replication_role = replica;' > /tmp/header.sql
-cat /tmp/header.sql $DATA_ONLY_SQL_PATH > /tmp/combined.sql
-mv /tmp/combined.sql $DATA_ONLY_SQL_PATH
-
-# Add session_replication_role reset at the end
-echo 'SET session_replication_role = origin;' >> $DATA_ONLY_SQL_PATH
-
-echo 'Data extraction completed'
-EOF
-
-chmod +x /tmp/extract_data.sh
-/tmp/extract_data.sh
-"
-    
-    log "Data-only SQL extraction completed"
-}
-
-# Execute data-only import
-import_data_only() {
-    step "Executing data-only import"
-
-    info "Step 1: Disabling foreign key constraints..."
-    kubectl exec -it "$POD_NAME" -n $NAMESPACE -- su - omm -s /bin/bash -c \
-        "gsql -d postgres -U postgres -W '$PASSWORD' -c \"SET session_replication_role = replica;\""
-    log "Foreign key constraints disabled"
-
-    info "Step 2: Clearing existing data from tables..."
-    # Truncate all tables to avoid duplicate key errors
-    kubectl exec -it "$POD_NAME" -n $NAMESPACE -- su - omm -s /bin/bash -c \
-        "gsql -d postgres -U postgres -W '$PASSWORD' -c \"
-TRUNCATE TABLE 
-    action, team, knowledge_base, document, chunk, document_type,
-    role, role_action, users, task, task_report, team_user, user_role,
-    dataset, dataset_doc, image, qa, task_queue, team_message,
-    testcase, testing, user_message 
-CASCADE;\""
-    log "Existing data cleared"
-
-    info "Step 3: Importing data only (COPY statements)..."
-    # Use ON_ERROR_STOP=off to continue even if there are errors
-    kubectl exec -it "$POD_NAME" -n $NAMESPACE -- su - omm -s /bin/bash -c \
-        "gsql -d postgres -U postgres -f $DATA_ONLY_SQL_PATH -W '$PASSWORD' --set ON_ERROR_STOP=off"
-    log "Data import completed"
-
-    info "Step 4: Re-enabling foreign key constraints..."
-    kubectl exec -it "$POD_NAME" -n $NAMESPACE -- su - omm -s /bin/bash -c \
-        "gsql -d postgres -U postgres -W '$PASSWORD' -c \"SET session_replication_role = origin;\""
-    log "Foreign key constraints re-enabled"
-
-    log "Data-only import completed"
-}
-
-# Alternative method: Manual table-by-table import
-manual_table_import() {
-    step "Using manual table-by-table import method"
-    
-    # Disable constraints
-    kubectl exec -it "$POD_NAME" -n $NAMESPACE -- su - omm -s /bin/bash -c \
-        "gsql -d postgres -U postgres -W '$PASSWORD' -c \"SET session_replication_role = replica;\""
-    
-    # List of tables to import data for (in dependency order)
-    tables=("action" "users" "team" "team_user" "user_role" "role" "role_action" 
-            "knowledge_base" "document_type" "document" "chunk" "dataset" 
-            "dataset_doc" "image" "qa" "task" "task_queue" "task_report" 
-            "team_message" "testcase" "testing" "user_message")
-    
-    for table in "${tables[@]}"; do
-        info "Processing table: $table"
-        # Extract and import data for this specific table
-        kubectl exec -it "$POD_NAME" -n $NAMESPACE -- su - omm -s /bin/bash -c "
-            # Clear existing data
-            gsql -d postgres -U postgres -W '$PASSWORD' -c \"TRUNCATE TABLE $table CASCADE;\" 2>/dev/null || echo 'Table $table already empty or does not exist'
-            
-            # Extract data for this table from backup
-            sed -n '/^COPY $table /,/^\\\\\\./p' $POD_BACKUP_PATH > /tmp/${table}_data.sql 2>/dev/null
-            
-            # Import if data exists
-            if [ -s /tmp/${table}_data.sql ]; then
-                gsql -d postgres -U postgres -W '$PASSWORD' -f /tmp/${table}_data.sql --set ON_ERROR_STOP=off
-                echo 'Imported data for $table'
-            else
-                echo 'No data found for $table'
-            fi
-            
-            # Cleanup
-            rm -f /tmp/${table}_data.sql
-        " || warning "Failed to process table $table, continuing..."
-    done
-    
-    # Re-enable constraints
-    kubectl exec -it "$POD_NAME" -n $NAMESPACE -- su - omm -s /bin/bash -c \
-        "gsql -d postgres -U postgres -W '$PASSWORD' -c \"SET session_replication_role = origin;\""
-    
-    log "Manual table import completed"
-}
-
-# Clean up temporary files
-cleanup() {
-    step "Cleaning up temporary files"
-    kubectl exec -it "$POD_NAME" -n $NAMESPACE -- rm -f \
-        "$POD_BACKUP_PATH" \
-        "$DATA_ONLY_SQL_PATH" \
-        "/tmp/extract_data.sh" \
-        "/tmp/header.sql" \
-        "/tmp/combined.sql" \
-        "/tmp/*_data.sql" 2>/dev/null || true
-    log "Cleanup completed"
-}
-
-# Show banner
-show_banner() {
-    echo -e "${PURPLE}"
-    echo "================================================================"
-    echo "                OpenGauss Database Import Script"
-    echo "                Fixed Version - Data Only Import"
-    echo "================================================================"
-    echo -e "${NC}"
-}
-
-# Verify import success
-verify_import() {
-    step "Verifying import success"
-    
-    # Check if key tables have data
-    kubectl exec -it "$POD_NAME" -n $NAMESPACE -- su - omm -s /bin/bash -c "
-        echo 'Checking table row counts:'
-        gsql -d postgres -U postgres -W '$PASSWORD' -c \"
-            SELECT 'users' as table_name, COUNT(*) as row_count FROM users
-            UNION ALL SELECT 'team', COUNT(*) FROM team  
-            UNION ALL SELECT 'action', COUNT(*) FROM action
-            UNION ALL SELECT 'document', COUNT(*) FROM document
-            ORDER BY table_name;
-        \" || echo 'Verification query failed'
-    "
-    
-    log "Verification completed"
-}
-
-# Main function
-main() {
-    show_banner
-    step "Starting OpenGauss database import process"
-
-    check_dependencies
-    get_database_password
-    get_opengauss_pod
-    check_backup_file
-    copy_backup_to_pod
-    
-    # Try data-only import first
-    extract_data_only
-    import_data_only
-    
-    # If that fails, try manual method
-    if [ $? -ne 0 ]; then
-        warning "Data-only import encountered issues, trying manual table-by-table import..."
-        manual_table_import
+# 在pod中执行命令
+execute_in_pod() {
+    blue "在pod $POD_NAME 中执行$ACTION操作..."
+    # 构建Python命令
+    local python_cmd=""
+    if [ "$ACTION" = "load" ]; then
+        python_cmd="mv /home/tmp /home/sql_dump_load_tool && python3 main.py --action load --db-type opengauss --db-host '$DB_HOST' --db-port '$DB_PORT' --db-user '$DB_USER' --db-password '$PASSWORD' --db-name '$DB_NAME'"
+    elif [ "$ACTION" = "dump" ]; then
+        python_cmd="python3 main.py --action dump --db-type opengauss --db-host '$DB_HOST' --db-port '$DB_PORT' --db-user '$DB_USER' --db-password '$PASSWORD' --db-name '$DB_NAME'"
+    else
+        error_exit "未知的操作类型: $ACTION"
     fi
-    
-    verify_import
-    cleanup
 
-    echo -e "${GREEN}"
-    echo "================================================================"
-    echo "                   OpenGauss Data Import Completed!"
-    echo "================================================================"
-    echo -e "${NC}"
+    # 直接在kubectl exec中执行命令，确保实时输出
+    blue "开始执行远程命令..."
+    echo "================================="
 
-    echo -e "${GREEN}✓ Foreign key constraints disabled${NC}"
-    echo -e "${GREEN}✓ Existing data cleared${NC}"
-    echo -e "${GREEN}✓ New data imported${NC}"
-    echo -e "${GREEN}✓ Foreign key constraints re-enabled${NC}"
-    echo -e "${GREEN}✓ Import verified${NC}"
-    echo ""
-    echo -e "${BLUE}Tip: It is recommended to check application running status to ensure data import success.${NC}"
-}
+    kubectl exec -it $POD_NAME -n $NAMESPACE -- /bin/bash -c "
+echo '开始配置yum源...'
+sed -i 's|repo.openeuler.org|repo.huaweicloud.com/openeuler|g' /etc/yum.repos.d/openEuler.repo
+sed -i 's|\$basearch/aarch64|aarch64|g' /etc/yum.repos.d/openEuler.repo
+sed -i 's|\$releasever|24.03-LTS-SP2|g' /etc/yum.repos.d/openEuler.repo
+sed -i '/metalink/d' /etc/yum.repos.d/openEuler.repo
+sed -i '/metadata_expire/d' /etc/yum.repos.d/openEuler.repo
+yum clean all
+yum makecache
+echo 'yum源配置完成'
 
-# Show usage instructions
-usage() {
-    show_banner
-    echo -e "${YELLOW}Usage: $0${NC}"
-    echo ""
-    echo -e "Description: This script is used to import OpenGauss database data for Euler Copilot project"
-    echo ""
-    echo -e "${CYAN}Prerequisites:${NC}"
-    echo -e "  1. kubectl configured and able to access cluster"
-    echo -e "  2. opengauss.sql file exists in current directory"
-    echo -e "  3. Has sufficient cluster permissions"
-    echo ""
-    echo -e "${RED}Warning: This operation will clear existing database data and import new data!${NC}"
-}
+echo '安装git...'
+yum -y install git
+echo 'git安装完成'
 
-# Script entry point
-if [ "$1" = "-h" ] || [ "$1" = "--help" ]; then
-    usage
-    exit 0
+echo '克隆仓库...'
+if [ -d '/home/sql_dump_load_tool' ]; then
+    echo '仓库已存在，跳过克隆'
+    rm -rf /home/sql_dump_load_tool/tmp
+    echo '更新仓库...'
+    git pull
+else
+    git clone https://gitcode.com/zxstty/sql_dump_load_tool /home/sql_dump_load_tool
+    echo '仓库克隆完成'
 fi
 
-echo -e "${YELLOW}Warning: This operation will clear existing database data and import new data!${NC}"
+# 进入目录
+cd /home/sql_dump_load_tool
 
-yellow_text="${YELLOW}Confirm execution of database import operation? (y/N): ${NC}"
-read -p "$(echo -e "$yellow_text")" confirm
+echo '开始执行${ACTION}操作...'
+echo '================================='
+# 确保Python输出不会被缓冲
+export PYTHONUNBUFFERED=1
+# 执行Python脚本
+$python_cmd
+"
 
-case $confirm in
-    [yY] | [yY][eE][sS])
-        main
-        ;;
-    *)
-        warning "Operation cancelled"
+    local result=$?
+
+    if [ $result -eq 0 ]; then
+        green "${ACTION}操作执行完成！"
+    else
+        red "${ACTION}操作执行失败，退出码: $result"
+        return $result
+    fi
+}
+
+main() {
+    if [ -z "$ACTION" ]; then
+        red "必须指定操作类型: --action dump 或 --action load"
+        show_help
+        exit 1
+    fi
+
+    if [ "$ACTION" != "dump" ] && [ "$ACTION" != "load" ]; then
+        red "操作类型必须是 'dump' 或 'load'"
+        show_help
+        exit 1
+    fi
+
+    blue "开始执行数据${ACTION}脚本"
+    echo "================================="
+
+    check_command "kubectl"
+    check_command "base64"
+
+    check_kubectl
+
+    get_pod_name
+    get_db_password
+    get_db_host
+
+    show_db_config
+    # 如果是load操作，先拷贝宿主机/home/dump/opengauss的数据至openGauss的POD中
+    if [ "$ACTION" = "load" ]; then
+        kubectl cp /home/dump/opengauss ${POD_NAME}:/home/tmp -n $NAMESPACE
+    fi
+
+    # 在pod中执行命令
+    execute_in_pod
+    if [ "$ACTION" = "dump" ]; then
+        kubectl cp ${POD_NAME}:/home/sql_dump_load_tool/tmp /home/dump/opengauss -n $NAMESPACE
+        # 显示结果
+        echo "检查文件..."
+        ls -l /home/dump/opengauss
+    fi
+    green "所有操作已完成！"
+}
+
+
+# 仅获取配置信息，不执行
+get_config_only() {
+    blue "仅获取配置信息"
+    get_pod_name
+    get_db_password
+    get_db_host
+    show_db_config
+}
+
+# 测试数据库连接
+test_db_connection() {
+    blue "测试数据库连接..."
+    get_pod_name
+    get_db_password
+    get_db_host
+
+    local test_cmd=$(cat <<EOF
+echo "测试数据库连接..."
+export PYTHONUNBUFFERED=1
+timeout 10 python3 -c "
+import psycopg2
+try:
+    conn = psycopg2.connect(
+        host='$DB_HOST',
+        port='$DB_PORT',
+        user='$DB_USER',
+        password='$PASSWORD',
+        database='$DB_NAME'
+    )
+    print('数据库连接成功')
+    conn.close()
+except Exception as e:
+    print(f'数据库连接失败: {e}')
+    exit(1)
+"
+EOF
+    )
+
+    blue "尝试连接到数据库..."
+    kubectl exec $POD_NAME -n $NAMESPACE -- /bin/bash -c "$test_cmd"
+}
+
+# 仅清空表数据（不执行导入）
+clear_data_only() {
+    blue "仅清空数据库表数据"
+    get_pod_name
+    get_db_password
+    get_db_host
+    show_db_config
+}
+
+
+# 显示使用帮助
+show_help() {
+    echo "用法: $0 [选项]"
+    echo ""
+    echo "选项:"
+    echo "  -h, --help          显示此帮助信息"
+    echo "  -a, --action        指定操作类型 (dump 或 load)"
+    echo "  -c, --config        仅获取配置信息，不执行"
+    echo "  -t, --test          测试数据库连接"
+    echo "  -d, --clear-only    仅清空表数据，不执行导入"
+    echo "  -n, --namespace     指定命名空间（默认: euler-copilot）"
+    echo "  -s, --secret        指定secret名称"
+    echo "  -p, --pod           指定pod名称（跳过自动查找）"
+    echo ""
+    echo "示例:"
+    echo "  $0 --action load    执行数据导入"
+    echo "  $0 --action dump    执行数据导出"
+    echo "  $0 --config         仅显示配置信息"
+    echo "  $0 --test           测试数据库连接"
+    echo "  $0 --clear-only     仅清空表数据"
+    echo "  $0 --namespace myns --secret my-secret"
+}
+
+# ============================================
+# 参数解析
+# ============================================
+parse_args() {
+    # 如果没有参数，显示帮助信息
+    if [ $# -eq 0 ]; then
+        show_help
         exit 0
-        ;;
-esac
+    fi
+
+    # 存储其他参数
+    local other_args=""
+
+    while [[ $# -gt 0 ]]; do
+        case $1 in
+            -h|--help)
+                show_help
+                exit 0
+                ;;
+            -a|--action)
+                ACTION="$2"
+                shift 2
+                ;;
+            -c|--config)
+                get_config_only
+                exit 0
+                ;;
+            -t|--test)
+                test_db_connection
+                exit 0
+                ;;
+            -d|--clear-only)
+                clear_data_only
+                exit 0
+                ;;
+            -n|--namespace)
+                NAMESPACE="$2"
+                shift 2
+                ;;
+            -s|--secret)
+                SECRET_NAME="$2"
+                shift 2
+                ;;
+            -p|--pod)
+                POD_NAME="$2"
+                shift 2
+                ;;
+            *)
+                # 收集其他参数（如果需要的话）
+                other_args="$other_args $1"
+                shift
+                ;;
+        esac
+    done
+
+    # 如果指定了action，执行主流程
+    if [ -n "$ACTION" ]; then
+        main
+    else
+        red "必须指定操作类型: --action dump 或 --action load"
+        show_help
+        exit 1
+    fi
+}
+
+# 解析参数并执行
+parse_args "$@"
