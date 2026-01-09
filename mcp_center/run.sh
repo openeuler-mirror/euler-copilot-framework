@@ -1,6 +1,6 @@
 #!/bin/bash
 
-SERVICE_DIR="/usr/lib/sysagent/mcp_center/service_file"
+SERVICE_DIR="/usr/lib/sysagent/mcp_center/service"
 SYSTEMD_TARGET_DIR="/etc/systemd/system"
 
 # 添加可执行权限并运行 oe_cli_mcp_server 脚本
@@ -10,7 +10,7 @@ if ! /usr/lib/sysagent/mcp_center/oe_cli_mcp_server/run.sh; then
 fi
 
 # 添加可执行权限并运行 rag 脚本
-chmod +x /usr/lib/sysagent/mcp_center/third_mcp_servers/rag/run.sh
+chmod +x /usr/lib/sysagent/mcp_center/third_party_mcp/rag/run.sh
 if ! /usr/lib/sysagent/mcp_center/third_mcp_servers/rag/run.sh; then
     echo "错误: rag/run.sh 执行失败，退出码: $?" >&2
 fi
