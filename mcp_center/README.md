@@ -14,9 +14,9 @@ mcp_center 用于构建 AI 助手的 mcp 的能力，其目录结构如下：
 ├── config 公共和私有配置文件
 ├── mcp_config mcp注册到框架的配置文件
 ├── oe_cli_mcp_server oe-cli专属mcp服务
-├── service_file 的service系统服务文件集合
+├── service 的service系统服务文件集合
 ├── test 测试客户端目录
-├── third_mcp_servers 第三方的server源码所在目录
+├── third_party_mcp 第三方的server源码所在目录
 ├── util mcp_center的cli工具存放目录
 ├── README.en.md 英文版本说明
 ├── README.md 中文版本说明
@@ -70,7 +70,7 @@ mcp_center 用于构建 AI 助手的 mcp 的能力，其目录结构如下：
 | 类别   | 详情                                                   |
 |--------|------------------------------------------------------|
 | 名称   | oe-cli-mcp-server                                    |
-| 目录   | mcp_center/servers/oe_cli_mcp_server                 |
+| 目录   | mcp_center/third_party_mcp/oe_cli_mcp_server                 |
 | 占用端口 | 12555                                                |
 | 简介   | 基础运维MCP：文件管理，软件包管理，系统信息查询，进程管理，命令行执行，ssh修复，network修复 |
 
@@ -78,7 +78,7 @@ mcp_center 用于构建 AI 助手的 mcp 的能力，其目录结构如下：
 | 类别   | 详情                     |
 |--------|------------------------|
 | 名称   | rag-server             |
-| 目录   | mcp_center/servers/rag |
+| 目录   | mcp_center/third_party_mcp/rag |
 | 占用端口 | 12311                  |
 | 简介   | 轻量化rag服务               |
 
