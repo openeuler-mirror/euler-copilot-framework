@@ -11,7 +11,7 @@ fi
 
 # 添加可执行权限并运行 rag 脚本
 chmod +x /usr/lib/sysagent/mcp_center/third_party_mcp/rag/run.sh
-if ! /usr/lib/sysagent/mcp_center/third_mcp_servers/rag/run.sh; then
+if ! /usr/lib/sysagent/mcp_center/third_party_mcp/rag/run.sh; then
     echo "错误: rag/run.sh 执行失败，退出码: $?" >&2
 fi
 
