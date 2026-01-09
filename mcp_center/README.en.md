@@ -1,30 +1,20 @@
 # mcp_center
 
-## 1. Introduction to mcp_center
-mcp_center is the mcp registration center for AI assistants. This module mainly includes the following capabilities:
-
-1. Manage mcp-server capabilities
-2. Provide the built-in oe-mcp service (primarily for openEuler OS basic capabilities, with a convenient management method)
-3. Automatically deploy mcp-server capabilities
-
+## 1. Introduction
+mcp_center is used to build the oe intelligent assistant, and its directory structure is as follows:
 ```
-mcp_center is used to build the mcp capabilities of AI assistants. Its directory structure is as follows:```
-├── client Test client
-├── config Public and private configuration files
-├── mcp_config Configuration files for mcp registration to the framework
-├── oe_cli_mcp_server Exclusive mcp service for oe-cli
-├── service_file Collection of system service files (.service)
-├── test Test client directory
-├── third_mcp_servers Directory for third-party server source code
-├── util Storage directory for mcp_center's CLI tools
-├── README.en.md English version description
-├── README.md Chinese version description
-└── run.sh Script to start mcp services
+├── client - Test client
+├── config - Public and private configuration files
+├── mcp_config - Configuration files for mcp registration to the framework
+├── README.en.md - English version description
+├── README.md - Chinese version description
+├── requiremenets.txt - Overall dependencies
+├── run.sh - Script to start the mcp service
+├── servers - Directory containing mcp server source code
+└── service - Directory containing .service files for mcp
 ```
-
 
 ### Running Instructions
-
 1. Before running the mcp server, execute the following command in the mcp_center directory:
    ```
    export PYTHONPATH=$(pwd)
@@ -40,7 +30,7 @@ mcp_center is used to build the mcp capabilities of AI assistants. Its directory
    servers/top/
    ├── README.en.md       English version of mcp service details
    ├── README.md          Chinese version of mcp service details
-   ├── requirements.txt   Contains only private installation dependencies  (to avoid conflicts with public dependencies; you are responsible for dependency installation/management, and modify the corresponding Python path in the .service file)
+   ├── requirements.txt   Contains only private installation dependencies (to avoid conflicts with public dependencies)
    └── src                Source code directory (including server main entry)
        └── server.py
    ```
@@ -53,132 +43,465 @@ mcp_center is used to build the mcp capabilities of AI assistants. Its directory
    └── config.toml        Private custom configuration
    ```
 
-3. **Update Documentation**
-- When adding a new mcp, synchronize its basic information to the existing mcp section in the main directory's README (ensure no port conflicts; ports start from 12100).
-- When adding a new mcp, add a corresponding `.service` file in the `service_file` directory of the main directory (to package the mcp as a system service).
-- When adding a new mcp, create a directory with the corresponding name in the `mcp_config` directory of the main directory, and create a `config.json` file under it (for registering the mcp to the framework).
-- When adding a new mcp, add a command to the `run.sh` script in the main directory (if needed) for deploying the mcp.
+3. **Document Updates**  
+   For each new mcp added, you need to synchronously add the basic information of the mcp to the existing mcp section in the main directory's README (ensure that ports do not conflict, starting from 12100).<br>
+   For each new mcp added, you need to add a .service file in the service directory of the main directory to make the mcp a service.<br>
+   For each new mcp added, you need to create a corresponding directory in mcp_config of the main directory and create a config.json under it (for registering the mcp to the framework).<br>
+   For each new mcp added, you need to add a command in run.sh of the main directory to start the mcp service.
 
-**Note**: If the mcp has an independent environment, you can adjust the specific Python environment in the `.service` file to ensure the mcp runs normally.
+4. **General Parameter Requirements**  
+   Each mcp tool requires a host as an input parameter for communication with the remote server.
 
-4. **Remote Command Execution**  
-   Currently, this is uniformly handled by the `cmd_executor_tool`; there is no need to develop remote capabilities for each individual mcp.
+5. **Remote Command Execution**  
+   Remote command execution can be implemented through `paramiko`.
 
 
-## 3. Existing MCP Services in mcp_center
-
-| Category | Details                                                                 |
-|----------|-------------------------------------------------------------------------|
-| Name     | oe-cli-mcp-server                                                       |
-| Directory| mcp_center/servers/oe_cli_mcp_server                                   |
-| Port     | 12555                                                                   |
-| Description | Basic operation and maintenance MCP: file management, package management, system info query, process management, command execution, SSH repair, network repair |
-
+## 3. Existing MCP Services
 
 | Category | Details                     |
-|----------|------------------------------|
-| Name     | rag-server                   |
-| Directory| mcp_center/servers/rag       |
-| Port     | 12311                        |
-| Description | Lightweight RAG service      |
+|----------|-----------------------------|
+| Name     | servers/remote_info         |
+| Directory| mcp_center/servers/remote_info |
+| Port Used| 12100                       |
+| Introduction | Obtain endpoint information |
 
+| Category | Details                     |
+|----------|-----------------------------|
+| Name     | servers/shell_generator     |
+| Directory| mcp_center/servers/shell_generator |
+| Port Used| 12101                       |
+| Introduction | Generate & execute shell commands |
 
------------------
+| Category | Details                     |
+|----------|-----------------------------|
+| Name     | servers/top     |
+| Directory| mcp_center/servers/top |
+| Port Used| 12110                      |
+| Introduction | Get system load info |
 
-# 2. Introduction to MCPTool
+| Category | Details                     |
+|----------|-----------------------------|
+| Name     | servers/kill     |
+| Directory| mcp_center/servers/kill |
+| Port Used| 12111                       |
+| Introduction | Process control & signal meanings |
 
-MCPTool is the Tool required for MCP service registration. In this project, Tool is defined as a Tool package to facilitate MCP tool management and parsing. This mode is mainly used for the oe-mcp service.
+| Category | Details                     |
+|----------|-----------------------------|
+| Name     | servers/nohup     |
+| Directory| mcp_center/servers/nohup |
+| Port Used| 12112                       |
+| Introduction | Background process execution |
 
-The purpose of defining this structure has two aspects: on one hand, it makes it easier to manage the built-in oe-mcp capabilities; on the other hand, it provides a more convenient way for new mcp developers to manage MCPTools.
+| Category | Details                     |
+|----------|-----------------------------|
+| Name     | servers/strace     |
+| Directory| mcp_center/servers/strace |
+| Port Used| 12113                       |
+| Introduction | Process tracing for anomaly analysis |
 
-This structure requires little prior knowledge of mcp. You only need to follow the logic of normal Python project development and the guidelines below to enhance the capabilities of oe-mcp.
+| Category | Details                     |
+|----------|-----------------------------|
+| Name     | servers/nvidia     |
+| Directory| mcp_center/servers/nvidia |
+| Port Used| 12114                       |
+| Introduction | mcp_center/servers/nvidia |
 
+| Category   | Details                     |
+|------------|------------------------------|
+| Name       | servers/npu                  |
+| Directory  | mcp_center/servers/npu       |
+| Port Used  | 12115                        |
+| Description| Query and control of NPU     |
 
-## 2.1 MCPTool Definition
+| Category   | Details                  |
+|------------|--------------------------|
+| Name       | servers/iftop            |
+| Directory  | mcp_center/servers/iftop |
+| Port Used  | 12116                    |
+| Description| Network traffic monitoring |
 
-### 2.1.1 Tool Structure
+| Category | Details                       |
+|----------|-------------------------------|
+| Name     | servers/nload                 |
+| Directory| mcp_center/servers/nload      |
+| Port Used| 12117                         |
+| Introduction | Nload Bandwidth Monitoring |
 
-The basic structure of MCPTool is as follows:
+| Category | Details                       |
+|----------|-------------------------------|
+| Name     | servers/netstat               |
+| Directory| mcp_center/servers/netstat    |
+| Port Used| 12118                         |
+| Introduction | netstat Network Connection Monitoring |
 
-```
-.
-├── base.py/base_dir # Optional: other helper functions (not required)
-├── config.json # Required: configuration file
-├── requirements.txt # Dependency file
-├── readme.md # Usage documentation (Chinese)
-├── readme.en.md # Usage documentation (English)
-└── tool.py # Required: core Tool function collection
-```
+| Category | Details                       |
+|----------|-------------------------------|
+| Name     | servers/lsof                  |
+| Directory| mcp_center/servers/lsof       |
+| Port Used| 12119                         |
+| Introduction | Quickly troubleshoot file occupation conflicts, abnormal network connections and process resource occupation issues |
 
+| Category | Details                       |
+|----------|-------------------------------|
+| Name     | servers/ifconfig              |
+| Directory| mcp_center/servers/ifconfig   |
+| Port Used| 12120                         |
+| Introduction | ifconfig Network Interface Information Monitoring |
 
-### 2.1.2 File Description
+| Category | Details                       |
+|----------|-------------------------------|
+| Name     | servers/ethtool               |
+| Directory| mcp_center/servers/ethtool    |
+| Port Used| 12121                         |
+| Introduction | ethtool Network Card Information Query, Feature Status and Network Card Settings |
 
-#### tool.py
+| Category | Details                       |
+|----------|-------------------------------|
+| Name     | servers/tshark                |
+| Directory| mcp_center/servers/tshark     |
+| Port Used| 12122                         |
+| Introduction | Capture, Display and Analyze Network Traffic |
 
-This file exposes Tool functions for MCP registration. All functions (e.g., `file_tool`, `pkg_tool`) in `tool.py` will be registered to the MCP service. The basic format is as follows:
+| Category | Details                       |
+|----------|-------------------------------|
+| Name     | servers/file_content_tool     |
+| Directory| mcp_center/servers/file_content_tool |
+| Port Used| 12125                         |
+| Introduction | File Content Creation, Deletion, Modification and Query |
 
-```python
-# tool.py
+| Category | Details                       |
+|----------|-------------------------------|
+| Name     | servers/firewalld             |
+| Directory| mcp_center/servers/firewalld  |
+| Port Used| 12130                         |
+| Introduction | Firewalld Network Firewall Management Tool |
 
-def file_tool():
-    pass
+| Category | Details                       |
+|----------|-------------------------------|
+| Name     | servers/iptable               |
+| Directory| mcp_center/servers/iptable    |
+| Port Used| 12131                         |
+| Introduction | iptables Firewall Management Tool |
 
-def pkg_tool():
-    pass
-```
+| Category | Details                       |
+|----------|-------------------------------|
+| Name     | servers/docker                |
+| Directory| mcp_center/servers/docker     |
+| Port Used| 12133                         |
+| Introduction | docker Tool |
 
-#### config.json
+| Category | Details                       |
+|----------|-------------------------------|
+| Name     | servers/qemu                  |
+| Directory| mcp_center/servers/qemu       |
+| Port Used| 12134                         |
+| Introduction | Qemu Virtual Machine Management Tool |
 
-This file records the prompts for the functions in Tool.py provided by this Tool package. A basic example is as follows:
+| Category | Details                       |
+|----------|-------------------------------|
+| Name     | servers/nmap                  |
+| Directory| mcp_center/servers/nmap       |
+| Port Used| 12135                         |
+| Introduction | Nmap IP Scanning Tool |
 
-Notes:
-The tool name must match the function name (each tool name corresponds to a function in tool.py).
-Both Chinese (zh) and English (en) prompts are required.
+| Category | Details                       |
+|----------|-------------------------------|
+| Name     | servers/file_transfer                    |
+| Directory| mcp_center/servers/file_transfer         |
+| Port Used| 12136                         |
+| Introduction | File Transfer/Download  |
 
-```json
-{
-  "tools": {
-    "file_tool": {
-      "zh": "",
-      "en": ""
-    },
-    "pkg_tool": {
-      "zh": "",
-      "en": ""
-    }
-  }
-}
-```
+| Category       | Details                                          |
+|----------------|--------------------------------------------------|
+| Name           | servers/systrace-mcpserver                       |
+| Directory      | mcp_center/servers/systrace/systrace_mcp         |
+| Port Occupied  | 12145                                            |
+| Description    | Start MCP Server Service                         |
 
-#### requirements.txt
+| Category       | Details                                          |
+|----------------|--------------------------------------------------|
+| Name           | servers/systrace-openapi                         |
+| Directory      | mcp_center/servers/systrace/systrace_mcp         |
+| Port Occupied  | 12146                                            |
+| Description    | Start OpenAPI Server Service                     |
 
-A standard requirements.txt dependency file. When adding the Tool package, this file will be read automatically, and the corresponding dependencies will be installed.
+| Category       | Details                                          |
+|----------------|--------------------------------------------------|
+| Name           | servers/systrace-mcpserver                       |
+| Directory      | mcp_center/servers/euler-copilot-tune            |
+| Port Occupied  | 12147                                            |
+| Description    | Tuning MCP Service                               |
 
-```
-requests==2.31.0 
-```
+| Category | Details |
+|----------|--------------------------|
+| Name | servers/ |
+| Directory | mcp_center/servers/lscpu |
+| Port Occupied | 12202 |
+| Description | Collects static information such as CPU architecture |
 
-#### base.py/base_dir
+| Category | Details |
+|----------|--------------------------|
+| Name | servers/numa_topo |
+| Directory | mcp_center/servers/numa_topo |
+| Port Occupied | 12203 |
+| Description | Queries NUMA hardware topology and system configuration |
 
-This file or directory contains helper functions (not exposed for MCP registration). The structure and content can be customized.
-#### readme.md/readme.en.md
+| Category | Details |
+|----------|--------------------------|
+| Name | servers/numa_bind_proc |
+| Directory | mcp_center/servers/numa_bind_proc |
+| Port Occupied | 12204 |
+| Description | Binds processes to specified NUMA nodes at startup |
 
-These files provide usage instructions for the Tool package.
+| Category | Details |
+|----------|--------------------------|
+| Name | servers/numa_rebind_proc |
+| Directory | mcp_center/servers/numa_rebind_proc |
+| Port Occupied | 12205 |
+| Description | Modifies NUMA bindings of already started processes |
 
-### 2.1 MCPTool Management
+| Category | Details |
+|----------|--------------------------|
+| Name | servers/numa_bind_docker |
+| Directory | mcp_center/servers/numa_bind_docker |
+| Port Occupied | 12206 |
+| Description | Configure NUMA binding for Docker containers |
 
-#### Adding an MCPTool Package
+| Category | Details |
+|----------|--------------------------|
+| Name | servers/numa_perf_compare |
+| Directory | mcp_center/servers/numa_perf_compare |
+| Port Occupied | 12208 |
+| Description | Control test variables with NUMA binding |
 
-Prepare an MCPTool.zip file (e.g., test_tools.zip) that meets the basic requirements of the Tool package.
-Use the following command to add it:
+| Category | Details |
+|----------|--------------------------|
+| Name | servers/numa_diagnose |
+| Directory | mcp_center/servers/numa_diagnose |
+| Port Occupied | 12209 |
+| Description | Locate hardware issues with NUMA binding |
 
-```
-oe-mcp -add test_tools.zip
-```
+| Category | Details |
+|----------|--------------------------|
+| Name | servers/numastat |
+| Directory | mcp_center/servers/numastat |
+| Port Occupied | 12210 |
+| Description | View the overall NUMA memory access status of the system |
 
-#### Removing an MCPTool Package
-1. Use oe-mcp -tool to view the current Tool packages and their included Tool functions.
-2. Use the Tool package name obtained from the above step and execute the following command:
-```
-oe-mcp -remove test_tools
-```
+| Category | Details |
+|----------|--------------------------|
+| Name | servers/numa_cross_node |
+| Directory | mcp_center/servers/numa_cross_node |
+| Port Occupied | 12211 |
+| Description | Identify processes with excessive cross-node memory access |
+
+| Category | Details |
+|----------|--------------------------|
+| Name | servers/numa_container |
+| Directory | mcp_center/servers/numa_container |
+| Port Occupied | 12214 |
+| Description | Monitor NUMA memory access in Docker containers |
+
+| Category | Details |
+|----------|--------------------------|
+| Name | servers/hotspot_trace |
+| Directory | mcp_center/servers/hotspot_trace |
+| Port Occupied | 12216 |
+| Description | Quickly locate CPU performance bottlenecks in systems/processes |
+
+| Category | Details |
+|----------|--------------------------|
+| Name | servers/cache_miss_audit |
+| Directory | mcp_center/servers/cache_miss_audit |
+| Port Occupied | 12217 |
+| Description | Identify performance losses due to CPU cache misses |
+
+| Category | Details |
+|----------|--------------------------|
+| Name | servers/func_timing_trace |
+| Directory | mcp_center/servers/func_timing_trace |
+| Port Occupied | 12218 |
+| Description | Accurately measure function execution time (including call stack) |
+
+| Category | Details |
+|----------|--------------------------|
+| Name | servers/strace_syscall |
+| Directory | mcp_center/servers/strace_syscall |
+| Port Occupied | 12219 |
+| Description | Investigate unreasonable system calls (high frequency / time-consuming) |
+
+| Category | Details |
+|----------|--------------------------|
+| Name | servers/perf_interrupt |
+| Directory | mcp_center/servers/perf_interrupt |
+| Port Occupied | 12220 |
+| Description | Locate CPU usage caused by high-frequency interrupts |
+
+| Category | Details |
+|----------|--------------------------|
+| Name | servers/flame_graph |
+| Directory | mcp_center/servers/flame_graph |
+| Port Occupied | 12222 |
+| Description | Flame graph generation: Visualize performance bottlenecks |
+
+| Category | Details                     |
+|----------|-----------------------------|
+| Name     | servers/free                |
+| Directory| mcp_center/servers/free     |
+| Port Used| 13100                       |
+| Introduction | Obtain the overall status of system memory |
+
+| Category | Details                     |
+|----------|-----------------------------|
+| Name     | servers/vmstat              |
+| Directory| mcp_center/servers/vmstat   |
+| Port Used| 13101                       |
+| Introduction | Collect information on system resource interaction bottlenecks |
+
+| Category | Details                     |
+|----------|-----------------------------|
+| Name     | servers/sar                 |
+| Directory| mcp_center/servers/sar      |
+| Port Used| 13102                       |
+| Introduction | System resource monitoring and fault diagnosis |
+
+| Category | Details                     |
+|----------|-----------------------------|
+| Name     | servers/sync                |
+| Directory| mcp_center/servers/sync     |
+| Port Used| 13103                       |
+| Introduction | Write memory buffer data to disk |
+
+| Category | Details                     |
+|----------|-----------------------------|
+| Name     | servers/swapon              |
+| Directory| mcp_center/servers/swapon   |
+| Port Used| 13104                       |
+| Introduction | Check the status of swap devices |
+
+| Category | Details                     |
+|----------|-----------------------------|
+| Name     | servers/swapoff             |
+| Directory| mcp_center/servers/swapoff  |
+| Port Used| 13105                       |
+| Introduction | Disable swap devices    |
+
+| Category | Details                     |
+|----------|-----------------------------|
+| Name     | servers/fallocate           |
+| Directory| mcp_center/servers/fallocate|
+| Port Used| 13106                       |
+| Introduction | Temporarily create and enable swap files |
+
+| Category | Details                     |
+|----------|-----------------------------|
+| Name     | servers/find                |
+| Directory| mcp_center/servers/find     |
+| Port Used| 13107                       |
+| Introduction | File Search             |
+
+| Category | Details                     |
+|----------|-----------------------------|
+| Name     | servers/touch               |
+| Directory| mcp_center/servers/touch    |
+| Port Used| 13108                       |
+| Introduction | File Creation and Time Calibration |
+
+| Category | Details                     |
+|----------|-----------------------------|
+| Name     | servers/mkdir               |
+| Directory| mcp_center/servers/mkdir    |
+| Port Used| 13109                       |
+| Introduction | Directory Creation      |
+
+| Category | Details                     |
+|----------|-----------------------------|
+| Name     | servers/rm                  |
+| Directory| mcp_center/servers/rm       |
+| Port Used| 13110                       |
+| Introduction | File Deletion           |
+
+| Category | Details                     |
+|----------|-----------------------------|
+| Name     | servers/mv                  |
+| Directory| mcp_center/servers/mv       |
+| Port Used| 13111                       |
+| Introduction | File move or rename     |
+
+| Category | Details                     |
+|----------|-----------------------------|
+| Name     | servers/ls                  |
+| Directory| mcp_center/servers/ls       |
+| Port Used| 13112                       |
+| Introduction | View directory contents |
+
+| Category | Details                              |
+|----------|--------------------------------------|
+| Name     | head                                 |
+| Directory| mcp_center/servers/head              |
+| Port Used     | 13113                                |
+| Introduction | File beginning content viewing tool  |
+
+| Category | Details                              |
+|----------|--------------------------------------|
+| Name     | tail                                 |
+| Directory| mcp_center/servers/tail              |
+| Port Used     | 13114                                |
+| Introduction | File ending content viewing tool      |
+
+| Category | Details                              |
+|----------|--------------------------------------|
+| Name     | cat                                  |
+| Directory| mcp_center/servers/cat               |
+| Port Used     | 13115                                |
+| Introduction | File content viewing tool            |
+
+| Category | Details                              |
+|----------|--------------------------------------|
+| Name     | chown                                |
+| Directory| mcp_center/servers/chown             |
+| Port Used     | 13116                                |
+| Introduction | File owner modification tool         |
+
+| Category | Details                              |
+|----------|--------------------------------------|
+| Name     | chmod                                |
+| Directory| mcp_center/servers/chmod             |
+| Port Used     | 13117                                |
+| Introduction | File permission modification tool    |
+
+| Category | Details                              |
+|----------|--------------------------------------|
+| Name     | tar                                  |
+| Directory| mcp_center/servers/tar               |
+| Port Used     | 13118                                |
+| Introduction | File compression and decompression tool |
+
+| Category | Details                              |
+|----------|--------------------------------------|
+| Name     | zip                                  |
+| Directory| mcp_center/servers/zip               |
+| Port Used     | 13119                                |
+| Introduction | File compression and decompression tool |
+
+| Category | Details                              |
+|----------|--------------------------------------|
+| Name     | grep                                 |
+| Directory| mcp_center/servers/grep              |
+| Port Used     | 13120                                |
+| Introduction | File content search tool             |
+
+| Category | Details                              |
+|----------|--------------------------------------|
+| Name     | sed                                  |
+| Directory| mcp_center/servers/sed               |
+| Port Used     | 13121                                |
+| Introduction | Text processing tool                 |
+
+| Category | Details                              |
+|----------|--------------------------------------|
+| Name     | echo                                 |
+| Directory| mcp_center/servers/echo              |
+| Port Used     | 13125                                |
+| Introduction | Text writing tool                    |
