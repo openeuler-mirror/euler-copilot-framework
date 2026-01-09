@@ -32,7 +32,4 @@ for service_file in "$SERVICE_DIR"/*.service; do
   fi
 done
 
-chmod +x /usr/lib/sysagent/mcp_center/util/cli.py
-rm -f /usr/local/bin/mcp-manager
-ln -s /usr/lib/sysagent/mcp_center/util/cli.py /usr/local/bin/mcp-manager
 
