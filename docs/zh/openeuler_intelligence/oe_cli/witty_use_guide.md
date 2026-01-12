@@ -8,7 +8,7 @@ Witty Assistant 是 openEuler Intelligence 旗下的一款 OS 智能助手。Wit
 
 - **智能终端界面**: 基于 Textual 的现代化 TUI 界面
 - **流式响应**: 实时显示 AI 回复内容
-- **部署助手**: 内置 Witty Assistant 后端服务（sysAgent）自动部署功能
+- **部署助手**: 内置 Witty Assistant 后端服务自动部署功能
 - **配置管理**：内置设置界面（Ctrl+S）与本地配置文件，便于切换后端/更新连接信息
 
 ## 1. 整体使用描述（基于win11cmd）
@@ -121,9 +121,9 @@ witty llm
 
 ![set.png](pictures/set.png)
 
-此处也可以配置 Witty Assistant（sysagent） 地址，默认是本机 8002 端口。
+此处也可以配置 Witty Assistant 地址，默认是本机 8002 端口。
 
-点击后端：sysagent 可以切换到大模型配置界面进行配置。
+点击后端,可以切换到大模型配置界面进行配置。
 
 ![set_llm_in_sysagent.png](pictures/set_llm_in_sysagent.png)
 
@@ -183,30 +183,7 @@ witty
 
 ![vscode_set.png](pictures/vscode_set.png)
 
-### 2.4 使用 Xshell
-
-#### 打开 Witty Assistant
-
-```bash
-witty
-```
-
-![xshell_start.png](pictures/xshell_start.png)
-
-#### 智能体选择
-
-![xshell_select_agent.png](pictures/xshell_select_agent.png)
-
-#### 智能体使用
-
-智能体问题回答
-![xshell_result.png](pictures/xshell_result.png)
-
-#### 设置
-
-![xshell_setting.png](pictures/xshell_setting.png)
-
-## 4. 使用案例
+## 3. 使用案例
 
 以“Nginx服务启动”为例，演示openEuler智能助手的进阶用法：
 
@@ -214,10 +191,10 @@ witty
 
 ![nginx安装和启动](pictures/nginx_install.png)
 
-3. **查看nginx进程**：输入“查看nginx的进程情况”，查看nginx进程来看是否安装启动成功；
+2. **查看nginx进程**：输入“查看nginx的进程情况”，查看nginx进程来看是否安装启动成功；
 
 ![nginx进程查看](pictures/nginx_check.png)
 
-4. **使用命令行验证结果**：通过`systemctl status nginx`验证nginx是否被成功启动。
+3. **使用命令行验证结果**：通过`systemctl status nginx`验证nginx是否被成功启动。
 
 ![nginx运行结果](pictures/nginx_result.png)

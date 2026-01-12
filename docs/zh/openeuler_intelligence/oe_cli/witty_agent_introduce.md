@@ -1,4 +1,4 @@
-#  Witty Assistant 智能体介绍
+# Witty Assistant 智能体介绍
 
 ## 1. 引言
 
@@ -79,6 +79,7 @@ OE-智能运维助手包含 2 个核心 MCP Server，分别提供基础运维与
 |                 | <a id="sys_info_tool">sys_info_tool</a> | 批量采集openEuler系统的系统、硬件、安全类信息，纯Python+系统命令安全调用 | - info_types：信息类型列表（必填，枚举：os/load/uptime/cpu/mem/disk/gpu/net/selinux/firewall） | success（采集结果）、message（采集信息/错误提示）、result（结构化采集数据）、target（固定127.0.0.1）、info_types（已采集类型） |
 
 #### 3.2.2 rag-server
+
 | MCP_Server 名称 | MCP_Tool 列表 | 工具功能 | 核心输入参数 | 关键返回内容 |
 |-----------------|---------------|----------|--------------|--------------|
 |                 | <a id="create_knowledge_base">create_knowledge_base</a> | 创建新的知识库，支持自定义chunk大小与向量化配置，创建后需选择方可使用 | - kb_name：知识库名称（必填，唯一）<br>- chunk_size：chunk大小（必填，单位：token）<br>- 其他参数：embedding_model（向量化模型）、embedding_endpoint（服务端点）等（可选） | success（创建结果）、message（操作说明）、data（含kb_id、kb_name、chunk_size） |
