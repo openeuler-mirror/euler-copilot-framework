@@ -125,7 +125,7 @@ witty llm
 
 点击后端,可以切换到大模型配置界面进行配置。
 
-![set_llm_in_sysagent.png](pictures/set_llm_in_sysagent.png)
+![set_llm_in_use.png](pictures/set_llm_in_sysagent.png)
 
 ### 1.8 界面操作快捷键
 
