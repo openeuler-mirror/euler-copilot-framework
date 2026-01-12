@@ -187,14 +187,14 @@ witty
 
 以“Nginx服务启动”为例，演示openEuler智能助手的进阶用法：
 
-1. **自然语言交互**：启动openEuler智能助手，切换至“OE-智能运维助手”，输入“安装nginx并启动”；
+**自然语言交互**：启动openEuler智能助手，切换至“OE-智能运维助手”，输入“安装nginx并启动”；
 
 ![nginx安装和启动](pictures/nginx_install.png)
 
-2. **查看nginx进程**：输入“查看nginx的进程情况”，查看nginx进程来看是否安装启动成功；
+**查看nginx进程**：输入“查看nginx的进程情况”，查看nginx进程来看是否安装启动成功；
 
 ![nginx进程查看](pictures/nginx_check.png)
 
-3. **使用命令行验证结果**：通过`systemctl status nginx`验证nginx是否被成功启动。
+**使用命令行验证结果**：通过`systemctl status nginx`验证nginx是否被成功启动。
 
 ![nginx运行结果](pictures/nginx_result.png)
