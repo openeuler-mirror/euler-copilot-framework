@@ -3,9 +3,9 @@
 # RAG 服务部署脚本
 
 # 设置路径
-RAG_DIR="/usr/lib/sysagent/mcp_center/servers/rag"
+RAG_DIR="/usr/lib/sysagent/mcp_center/third_party_mcp/rag"
 SERVICE_FILE="/usr/lib/sysagent/mcp_center/service/rag.service"
-
+SYSTEM_PYTHON="/usr/bin/python3"
 # 复制 service 文件
 if [ -f "$SERVICE_FILE" ]; then
     cp "$SERVICE_FILE" /etc/systemd/system/
@@ -14,10 +14,9 @@ else
     echo "⚠️  警告：未找到 service 文件：$SERVICE_FILE"
 fi
 
-
 # 安装依赖
 if [ -f "$RAG_DIR/src/requirements.txt" ]; then
-    python3 -m pip install -r "$RAG_DIR/src/requirements.txt" -i https://mirrors.aliyun.com/pypi/simple/
+    "$SYSTEM_PYTHON" -m pip install -r "$RAG_DIR/src/requirements.txt" -i http://mirrors.aliyun.com/pypi/simple/
     echo "✅ 依赖安装完成"
 fi
 
@@ -32,8 +31,6 @@ echo "✅ 服务已启用"
 systemctl start rag.service
 echo "✅ 服务已启动"
 
-# 查看服务状态
-systemctl status rag.service
 
 # 设置 CLI 工具权限并创建符号链接
 chmod +x "$RAG_DIR/src/cli.py"
