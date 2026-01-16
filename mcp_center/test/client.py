@@ -126,10 +126,10 @@ async def main() -> None:
     client = MCPClient(url, headers)
     await client.init()
 
-    # # 初始化时多余的调用移除，保留下方有序测试用例
-    # # ==================================
-    # # 1. sys_info_tool 测试用例（3个，修复无效枚举值）
-    # # ==================================
+    # 初始化时多余的调用移除，保留下方有序测试用例
+    # ==================================
+    # 1. sys_info_tool 测试用例（3个，修复无效枚举值）
+    # ==================================
     print("\n" + "="*60)
     print("1. sys_info_tool - 采集CPU+内存+磁盘+系统信息")
     print("="*60)
@@ -147,16 +147,14 @@ async def main() -> None:
     print("="*60)
     result = await client.call_tool("sys_info_tool", {"info_types": ["selinux", "firewall"]})
     print(result)
-    #
-    # # 移除无效的 "kernel" 和 "all" 类型测试（工具不支持）
-    #
+
     # ==================================
     # 2. file_tool 测试用例（4个，修复枚举值、参数名）
     # ==================================
     print("\n" + "="*60)
     print("4. file_tool - 列出 /etc 目录下的 .conf 配置文件（过滤关键词）")
     print("="*60)
-    # 用 ls + 后续过滤实现（工具无find枚举，参数名改为file_path）
+
     result = await client.call_tool("file_test_tool", {
         "action": "ls",
         "file_path": "/etc",
@@ -164,11 +162,11 @@ async def main() -> None:
         "encoding": "utf-8"
     })
     print(result)
-    #
+
     print("\n" + "="*60)
     print("5. file_tool - 读取 /etc/os-release 文件内容（系统版本）")
     print("="*60)
-    # action改为cat，参数名改为file_path
+
     result = await client.call_tool("file_tool", {
         "action": "cat",
         "file_path": "/etc/os-release",
@@ -179,7 +177,7 @@ async def main() -> None:
     print("\n" + "="*60)
     print("6. file_tool - 新建临时文件并写入内容")
     print("="*60)
-    # 工具无find/mtime枚举，替换为add+edit实用场景
+
     result = await client.call_tool("file_tool", {
         "action": "add",
         "file_path": "/tmp/file_tool_test.txt",
@@ -197,7 +195,7 @@ async def main() -> None:
     print("\n" + "="*60)
     print("7. file_tool - 修改 /tmp/file_tool_test.txt 权限为755")
     print("="*60)
-    # action改为chmod，参数名改为file_path
+    
     result = await client.call_tool("file_tool", {
         "action": "chmod",
         "file_path": "/tmp/file_tool_test.txt",
