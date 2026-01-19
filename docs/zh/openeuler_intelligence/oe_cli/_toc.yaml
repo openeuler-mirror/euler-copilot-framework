@@ -1,0 +1,12 @@
+label: Witty Assistant CLI 入口
+isManual: true
+description: Witty Assistant 的命令行入口，提供 AI 驱动的命令行交互体验，支持多种智能体助手，实现自然语言诉求到工具调用的自动化操作。
+sections:
+  - label: 架构
+    href: ./architecture.md
+  - label: 初始化
+    href: ./deployment.md
+  - label: 使用指南
+    href: ./oe_cli_use_guide.md
+  - label: 智能体介绍
+    href: ./oe_cli_agent_introduce.md
