@@ -254,9 +254,6 @@ class PackageManager:
         logger.info("[Package Clear] 所有工具包已清空（需重启生效）")
         return True
 
-    # 兼容别名
-    clear_all = clear_all_packages
-
     # -------------------------------------------------------------------------
     # 辅助方法（无改动）
     # -------------------------------------------------------------------------
@@ -322,7 +319,7 @@ class PackageManager:
                     continue
 
                 # 优先取指定语言，兜底中文
-                final_desc = desc_dict.get(self.language, desc_dict.get(LanguageEnum.ZH.value, ""))
+                final_desc = desc_dict.get(self.language, LanguageEnum.ZH.value)
                 if not final_desc:
                     logger.warning(f"[Package Config] 包 {package_name} 函数 {func_name} 无有效描述")
 
@@ -360,7 +357,7 @@ class PackageManager:
             logger.error(f"[Package Deps] 包 {package_name} 依赖安装异常：{str(e)}", exc_info=True)
             return False
 
-    def _load_package_tool_module(self, package_name: PackageName, package_dir: PackageDir) -> Optional[Any]:
+    def _load_package_tool_module(self, package_name: PackageName, package_dir: PackageDir) -> Any:
         """加载包内的tool.py模块（系统环境，无 venv 路径注入）"""
         tool_py_path = os.path.join(package_dir, "tool.py")
         module_name = f"package_{package_name}_tool_module"
