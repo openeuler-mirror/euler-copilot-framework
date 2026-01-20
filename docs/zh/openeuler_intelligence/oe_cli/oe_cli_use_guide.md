@@ -138,6 +138,7 @@ witty llm
 ```sh
 witty
 ```
+
 #### 打开 Witty Assistant
 
 ![open_Witty.png](pictures/open_Witty.png)
