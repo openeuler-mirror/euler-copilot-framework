@@ -11,7 +11,7 @@ Witty Assistant 是 openEuler Intelligence 旗下的一款 OS 智能助手。Wit
 - **部署助手**: 内置 Witty Assistant 后端服务自动部署功能
 - **配置管理**：内置设置界面（Ctrl+S）与本地配置文件，便于切换后端/更新连接信息
 
-## 1. 整体使用描述（基于win11cmd）
+## 1. 使用说明（基于win11cmd）
 
 ### 1.1 打开 Witty Assistant
 
@@ -45,7 +45,7 @@ witty
 
 ![open_Witty.png](pictures/open_Witty.png)
 
-### 1.4 对话并工具执行确认
+### 1.5 对话并工具执行确认
 
 在左下角输入栏输入命令或问题，如帮我查看内存使用情况，智能体会根据提问自动选择合适的 MCP 工具，并询问是否执行，此处点击确认。
 
@@ -55,7 +55,14 @@ witty
 
 ![output.png](pictures/output.png)
 
-### 1.5 Witty Assistant预设
+>[!NOTE]说明
+>
+> 修改工具执行确认为自动确认 ，点击设置。
+> ![set_chat_model.png](pictures/set_chat_model.png)
+> 点击 mcp 工具授权，可以切换手动确认或自动确认。
+> ![set_confirm_tool.png](pictures/set_confirm_tool.png)
+
+### 1.6 Witty Assistant预设
 
 可以在 witty 前输入以下命令配置客户端。
 
@@ -94,7 +101,7 @@ witty set-default agent
 witty set-default log-level INFO
 ```
 
-### 1.6 查看日志
+### 1.7 查看日志
 
 查看最新的日志内容:
 
@@ -102,7 +109,7 @@ witty set-default log-level INFO
 witty logs
 ```
 
-### 1.7 大模型配置管理
+### 1.8 大模型配置管理
 
 ```sh
 witty llm
@@ -110,24 +117,7 @@ witty llm
 
 ![set llm.png](pictures/set_llm.png)
 
-### 1.8 设置相关
-
-​修改工具执行确认为自动确认 ，点击设置。
-
-![set_chat_model.png](pictures/set_chat_model.png)
-![set_confirm_tool.png](pictures/set_confirm_tool.png)
-
-点击 mcp 工具授权，可以切换手动确认或自动确认。
-
-![set.png](pictures/set.png)
-
-此处也可以配置 Witty Assistant 地址，默认是本机 8002 端口。
-
-点击后端,可以切换到大模型配置界面进行配置。
-
-![set_llm_in_use.png](pictures/set_llm_in_sysagent.png)
-
-### 1.8 界面操作快捷键
+### 1.9 界面操作快捷键
 
 - **Ctrl+S**: 打开设置界面
 - **Ctrl+R**: 重置对话历史
@@ -137,25 +127,26 @@ witty llm
 - **Ctrl+C**: 取消当前正在执行的任务（中断 LLM 请求或停止执行命令）
 - **Ctrl+Q**: 退出程序并关闭 TUI
 
-### 补充：操作的细节，包括 witty logs 日志等，参考 shell 的 [readme](https://gitee.com/openeuler/euler-copilot-shell/blob/master/README.md)
+### 补充：操作的细节，包括 witty logs 日志等，参考 shell 的 [readme](https://atomgit.com/openeuler/euler-copilot-shell)
 
 ## 2. 平台演示
 
 ### 2.1 使用cmd
 
-#### 打开 witty Assistant
+#### 选择智能体
 
 ```sh
 witty
 ```
+#### 打开 Witty Assistant
 
 ![open_Witty.png](pictures/open_Witty.png)
 
-#### 使用智能体
+#### 智能体选择
 
 ![default_agent.png](pictures/default_agent.png)
 
-根据具体情况依次执行 MCP 工具
+#### 使用智能体
 
 ![agent_use.png](pictures/agent_use.png)![](./pictures/使用案例1.PNG)
 
@@ -175,13 +166,9 @@ witty
 
 ![vscode_agent_set.png](pictures/vscode_agent_set.png)
 
-#### 智能体的使用
+#### 智能体使用
 
 ![vscode_use.png](pictures/vscode_use.png)
-
-### 设置
-
-![vscode_set.png](pictures/vscode_set.png)
 
 ## 3. 使用案例
 
