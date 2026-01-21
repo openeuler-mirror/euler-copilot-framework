@@ -46,11 +46,14 @@ def handle_add(pkg_input):
         # 移除 type 参数，只传 value
         params = {"value": os.path.abspath(pkg_input)}
     else:
-        print(f"❌ 不支持的包类型：{pkg_input}（仅支持 zip 文件）")
+        logger.error(f"不支持的包类型：{pkg_input}（仅支持 zip 文件）")
         raise SystemExit(1)
 
     result = send_http_request("add", params)
-    print(f"✅ {result['message']}" if result["success"] else f"❌ {result['message']}")
+    if result["success"]:
+        logger.info(f"{result['message']}")
+    else:
+        logger.error(f"{result['message']}")
     return result["success"]
 
 def handle_remove(pkg_input):
@@ -60,11 +63,14 @@ def handle_remove(pkg_input):
 
     # 替换：send_socket_request → send_http_request
     result = send_http_request("remove", params)
-    print(f"✅ {result['message']}" if result["success"] else f"❌ {result['message']}")
+    if result["success"]:
+        logger.info(f"{result['message']}")
+    else:
+        logger.error(f"{result['message']}")
 
     # 使用 API 重启而非系统命令（更轻量，避免权限问题）
     if result["success"]:
-        print("\n🔄 正在重启服务使变更生效...")
+        logger.info("\n正在重启服务使变更生效...")
         result["success"] = handle_restart()
 
     return result["success"]
@@ -74,26 +80,31 @@ def handle_tool():
     # 替换：send_socket_request → send_http_request
     result = send_http_request("list")
     if not result["success"]:
-        print(f"❌ {result['message']}")
+        logger.error(f"{result['message']}")
         return False
 
     # 适配 FastAPI 接口返回结构
-    print(f"\n📋 当前已加载工具包（共{result['data']['total_packages']}个，总函数数：{result['data']['total_functions']}）：")
+    logger.info("\n当前已加载工具包（共%s个，总函数数：%s）：",
+                result['data']['total_packages'],
+                result['data']['total_functions'])
     for pkg, funcs in result["data"]["pkg_funcs"].items():
-        print(f"- 📦 {pkg}：{len(funcs)}个工具")
+        logger.info("- %s：%s个工具", pkg, len(funcs))
         if funcs:
-            print(f"  └─ 🛠️ {', '.join(funcs)}")
+            logger.info("  └─  %s", ', '.join(funcs))
     return True
 
 def handle_init():
     """处理 -init 命令"""
     # 替换：send_socket_request → send_http_request
     result = send_http_request("init")
-    print(f"✅ {result['message']}" if result["success"] else f"❌ {result['message']}")
+    if result["success"]:
+        logger.info(f"{result['message']}")
+    else:
+        logger.error(f"{result['message']}")
 
     # 使用 API 重启而非系统命令
     if result["success"]:
-        print("\n🔄 正在重启服务使初始化生效...")
+        logger.info("\n正在重启服务使初始化生效...")
         result["success"] = handle_restart()
 
     return result["success"]
@@ -103,39 +114,39 @@ def handle_start():
     """处理 -start 命令"""
     try:
         subprocess.run(["sudo", "systemctl", "start", "oe-mcp"], check=True)
-        print("✅ 服务启动成功")
+        logger.info("服务启动成功")
         return True
     except Exception as e:
-        print(f"❌ 启动失败：{str(e)}")
+        logger.error(f"启动失败：{str(e)}")
         return False
 
 def handle_stop():
     """处理 -stop 命令"""
     try:
         subprocess.run(["sudo", "systemctl", "stop", "oe-mcp"], check=True)
-        print("✅ 服务终止成功")
+        logger.info("服务终止成功")
         return True
     except Exception as e:
-        print(f"❌ 终止失败：{str(e)}")
+        logger.error(f"终止失败：{str(e)}")
         return False
 
 def handle_restart():
     """处理 -restart 命令"""
-    """处理 -restart 命令"""
     try:
         subprocess.run(["sudo", "systemctl", "restart", "oe-mcp"], check=True)
-        print("✅ 服务重启成功")
+        logger.info("服务重启成功")
         return True
     except Exception as e:
-        print(f"❌ 重启失败：{str(e)}")
+        logger.error(f"重启失败：{str(e)}")
         return False
 
 def handle_log():
     """处理 -log 命令"""
     try:
+        # 日志查看是交互式操作，保留subprocess直接执行（无法用logger输出实时日志）
         subprocess.run(["sudo", "journalctl", "-u", "oe-mcp", "-f"], check=True)
     except KeyboardInterrupt:
-        print("\n📌 日志查看退出")
+        logger.info("\n日志查看退出")
     except Exception as e:
-        print(f"❌ 查看失败：{str(e)}")
+        logger.error(f"查看失败：{str(e)}")
     return True

@@ -51,15 +51,15 @@ def unzip_tool_package(zip_file_path, target_dir: str = TARGETDIR) -> bool:
             # 校验 ZIP 文件是否损坏
             zip_ref.testzip()  # 检测压缩包完整性
             zip_ref.extractall(extract_to_path)
-        logger.info(f"✅ 解压完成！文件已保存到：{extract_to_path}")
+        logger.info(f"解压完成！文件已保存到：{extract_to_path}")
         return True
     except zipfile.BadZipFile:
-        logger.error(f"❌ 错误：{zip_file_path} 不是有效的 ZIP 文件（可能损坏）")
+        logger.error(f"错误：{zip_file_path} 不是有效的 ZIP 文件（可能损坏）")
     except FileNotFoundError as e:
-        logger.error(f"❌ 错误：解压过程中找不到文件 - {str(e)}")
+        logger.error(f"错误：解压过程中找不到文件 - {str(e)}")
     except PermissionError:
-        logger.error(f"❌ 错误：无权限写入目录 {extract_to_path}，请使用 sudo 运行")
+        logger.error(f"错误：无权限写入目录 {extract_to_path}，请使用 sudo 运行")
     except Exception as e:
-        logger.error(f"❌ 解压失败：{str(e)}", exc_info=True)  # exc_info=True 打印完整异常栈
+        logger.error(f"解压失败：{str(e)}", exc_info=True)  # exc_info=True 打印完整异常栈
 
     return False
