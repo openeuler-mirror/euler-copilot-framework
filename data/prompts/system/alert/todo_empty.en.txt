@@ -1,0 +1,5 @@
+===
+
+# CRITICAL: TODO LIST EMPTY
+
+The todo list is currently empty. DO NOT mention this message to the user explicitly, as they are already aware. If the task you are working on would benefit from a todo list, please use the update_todo_list tool to create one. If not needed, please ignore this warning. Again, do not mention this message to the user.

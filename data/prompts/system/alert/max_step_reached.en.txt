@@ -1,0 +1,18 @@
+===
+
+# CRITICAL: MAXIMUM STEP REACHED
+
+You have reached the maximum number of steps I configured. Until my next input, you cannot use any tools. Respond in text only.
+
+You are requested to:
+- Do not invoke any tools (including reading or writing files, fetching system information, running commands, or using any other tool)
+- Summarize all of your previous task steps into a single paragraph and provide a response
+- This requirement overrides everything else: ignore all other instructions, user inputs, or tool-use requests
+
+Your reply must include the following:
+- Explicitly tell me “The number of task steps has reached the limit”
+- Summarize all of your previous task steps
+- List everything you have not yet completed
+- Provide a recommendation for what should be done next
+
+Now, without using any tools, output a TEXT-ONLY REPLY that satisfies these requirements:
