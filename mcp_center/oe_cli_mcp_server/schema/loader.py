@@ -11,7 +11,7 @@ class Tool(BaseModel):
     description: str = Field(description="工具函数描述（来自config.json）")
     package: str = Field(description="所属包名")
     # 冗余字段（方便快速查询）
-    package_dir: str = Field(None, description="所属包的目录路径")
+    package_dir: str = Field(description="所属包的目录路径")
 
     class Config:
         arbitrary_types_allowed = True  # 允许存储Callable类型
