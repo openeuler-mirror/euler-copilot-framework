@@ -197,6 +197,61 @@ function check_firewall {
     return 0
 }
 
+function check_cpu_feature_support {
+    local feature=""
+    local app_name=""
+    local app_version=""
+    local feature_name=""
+    
+    # 获取CPU架构
+    local architecture=$(uname -m)
+
+    # 根据架构设置检查参数
+    case "$architecture" in
+        "aarch64"|"arm64")
+            feature="fphp"
+            app_name="MongoDB"
+            app_version="v7.0.16"
+            feature_name="FPHP"
+            echo -e "${COLOR_INFO}[Info] 检查CPU是否支持${app_name}(${app_version})部署${COLOR_RESET}"
+            ;;
+        "x86_64")
+            feature="avx512"
+            app_name="openGauss"
+            app_version=""
+            feature_name="AVX512"
+            echo -e "${COLOR_INFO}[Info] 检查CPU是否支持${feature_name}${COLOR_RESET}"
+            ;;
+        *)
+            echo -e "${COLOR_INFO}[Info] $architecture 架构，跳过CPU特性检查${COLOR_RESET}"
+            return 0
+            ;;
+    esac
+
+    # 检查/proc/cpuinfo是否存在
+    if [[ ! -f "/proc/cpuinfo" ]]; then
+        echo -e "${COLOR_ERROR}[Error] 无法访问/proc/cpuinfo文件${COLOR_RESET}"
+        return 1
+    fi
+
+    if grep -q "$feature" /proc/cpuinfo; then
+        if [[ "$architecture" == "aarch64" || "$architecture" == "arm64" ]]; then
+            echo -e "${COLOR_SUCCESS}[Success] ARM的CPU支持${feature_name}功能${COLOR_RESET}"
+            echo -e "${COLOR_SUCCESS}[Success] CPU支持${feature_name}, 满足${app_name}部署要求${COLOR_RESET}"
+        else
+            echo -e "${COLOR_SUCCESS}[Success] CPU支持${feature_name}, 满足${app_name}部署要求${COLOR_RESET}"
+        fi
+        return 0
+    else
+        if [[ "$architecture" == "aarch64" || "$architecture" == "arm64" ]]; then
+            echo -e "${COLOR_ERROR}[Error] CPU不支持${feature_name}，无法部署${app_name}${app_version}，建议降低${app_name}的版本${COLOR_RESET}"
+        else
+            echo -e "${COLOR_ERROR}[Error] CPU不支持${feature_name}，无法部署${app_name}${COLOR_RESET}"
+        fi
+        return 1
+    fi
+}
+
 function prepare_offline {
     echo -e "${COLOR_INFO}[Info] 准备离线部署环境..."
     mkdir -p /home/eulercopilot/images
@@ -234,6 +289,7 @@ function main {
 
     check_selinux || return 1
     check_firewall || return 1
+    check_cpu_feature_support || return 1
 
     # 最终部署提示
     echo -e "\n${COLOR_SUCCESS}#####################################"
