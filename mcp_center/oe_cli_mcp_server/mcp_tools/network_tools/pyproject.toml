@@ -1,0 +1,11 @@
+[project]
+name = "network_tools"  # 替换为你的项目名
+version = "0.1.0"           # 项目版本（必填）
+requires-python = ">=3.8"   # Python 版本要求（根据实际需求调整）
+dependencies = [
+    "paramiko==4.0.0"         # 核心依赖（对应原 [pip] 部分）
+]
+
+[tool.pip]
+# pip 客户端配置（对应原 [pip_config] 部分）
+index-url = "https://mirrors.aliyun.com/pypi/simple/"

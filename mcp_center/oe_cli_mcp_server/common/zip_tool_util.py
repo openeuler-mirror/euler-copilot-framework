@@ -63,10 +63,3 @@ def unzip_tool_package(zip_file_path, target_dir: str = TARGETDIR) -> bool:
         logger.error(f"❌ 解压失败：{str(e)}", exc_info=True)  # exc_info=True 打印完整异常栈
 
     return False
-
-# 示例调用
-if __name__ == "__main__":
-    # 测试：解压 file_test_tool.zip
-    zip_path = "/home/tsn/euler-copilot-framework/mcp_center/file_test_tool.zip"
-    result = unzip_all(zip_file_path=zip_path)
-    print(f"解压结果：{'成功' if result else '失败'}")

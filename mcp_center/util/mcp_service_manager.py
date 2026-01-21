@@ -1,7 +1,6 @@
 import os
 import subprocess
 import logging
-from typing import Dict, List, Tuple, Optional
 
 # 基础日志配置
 logging.basicConfig(
@@ -18,31 +17,31 @@ class McpServiceManager:
     """
     def __init__(self, service_dir: str = SERVICE_DIR):
         self.service_dir = os.path.abspath(service_dir)
-        self.service_files: Dict[str, str] = {}  # 仅存储：文件名→路径（校验存在性）
+        self.service_files: dict[str, str] = {}  # 仅存储：文件名→路径（校验存在性）
         self.systemctl = "systemctl"
         self.journalctl = "journalctl"
         self._scan_services()
     # ===================== 核心操作：启动/停止/重启 =====================
-    def start(self, service_filename: str) -> Tuple[bool, str]:
+    def start(self, service_filename: str) -> tuple[bool, str]:
         """启动服务 → 等价于：systemctl start xxx.service"""
 
         cmd = [self.systemctl, "start", service_filename]
         return self._exec_cmd(cmd)
 
-    def stop(self, service_filename: str) -> Tuple[bool, str]:
+    def stop(self, service_filename: str) -> tuple[bool, str]:
         """停止服务 → 等价于：systemctl stop xxx.service"""
 
         cmd = [self.systemctl, "stop", service_filename]
         return self._exec_cmd(cmd)
 
-    def restart(self, service_filename: str) -> Tuple[bool, str]:
+    def restart(self, service_filename: str) -> tuple[bool, str]:
         """重启服务 → 等价于：systemctl restart xxx.service"""
 
         cmd = [self.systemctl, "restart", service_filename]
         return self._exec_cmd(cmd)
 
     # ===================== 批量操作 =====================
-    def start_all(self) -> Dict[str, Tuple[bool, str]]:
+    def start_all(self) -> dict[str, tuple[bool, str]]:
         """批量启动所有服务"""
         if not self.service_files:
             self._scan_services()
@@ -52,7 +51,7 @@ class McpServiceManager:
         print(f"批量启动完成 → 总计：{len(result)} 个服务")
         return result
 
-    def stop_all(self) -> Dict[str, Tuple[bool, str]]:
+    def stop_all(self) -> dict[str, tuple[bool, str]]:
         """批量停止所有服务"""
         if not self.service_files:
             self._scan_services()
@@ -63,7 +62,7 @@ class McpServiceManager:
         return result
 
     # ===================== 状态查询：仅执行，无解析 =====================
-    def get_status(self, service_filename: str) -> Tuple[bool, str]:
+    def get_status(self, service_filename: str) -> tuple[bool, str]:
         """查询状态 → 等价于：systemctl status xxx.service --no-pager"""
         # --no-pager 避免分页，直接返回完整输出（和终端执行效果一致）
         cmd = [self.systemctl, "status", service_filename, "--no-pager"]
@@ -73,7 +72,7 @@ class McpServiceManager:
     def get_logs(self,
                  service_filename: str,
                  lines: int = 100,
-                 follow: bool = False) -> Tuple[bool, str]:
+                 follow: bool = False) -> tuple[bool, str]:
         """
         查看日志 → 等价于：
         - 查看最后N行：journalctl -u xxx.service --no-pager -n N
@@ -96,7 +95,7 @@ class McpServiceManager:
             return self._exec_cmd(cmd)
 
     # ===================== 列出所有运行中的MCP服务 =====================
-    def list_running_services(self) -> List[str]:
+    def list_running_services(self) -> list[str]:
         """
         列出service_dir目录下所有正在运行（active (running)）的MCP服务
         :return: 运行中的服务名列表
@@ -140,7 +139,7 @@ class McpServiceManager:
         logger.info(f"扫描完成 → 目录：{self.service_dir} | 有效.service文件：{len(self.service_files)}")
         return len(self.service_files)
 
-    def _exec_cmd(self, cmd: List[str], timeout: int = 60) -> Tuple[bool, str]:
+    def _exec_cmd(self, cmd: list[str], timeout: int = 60) -> tuple[bool, str]:
         """
         极致简洁的命令执行封装：仅执行，无任何额外打印
         :return: (是否成功, 错误信息/空字符串)
