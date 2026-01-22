@@ -122,7 +122,9 @@ witty llm
 - **Ctrl+C**: 取消当前正在执行的任务（中断 LLM 请求或停止执行命令）
 - **Ctrl+Q**: 退出程序并关闭 TUI
 
-### 补充：操作的细节，包括 witty logs 日志等，参考 shell 的 [readme](https://atomgit.com/openeuler/euler-copilot-shell)
+>[!NOTE]说明：
+>
+> 操作的细节，包括 witty logs 日志等，参考 shell 的 [readme](https://atomgit.com/openeuler/euler-copilot-shell)
 
 ## 2. 平台演示
 
