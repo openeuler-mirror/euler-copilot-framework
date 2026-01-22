@@ -20,6 +20,7 @@ Witty Assistant 是 openEuler Intelligence 旗下的一款 OS 智能助手。Wit
 ```sh
 witty
 ```
+
 <img src=pictures/open_Witty.png width=1200 />
 
 ### 1.2 选择智能体
