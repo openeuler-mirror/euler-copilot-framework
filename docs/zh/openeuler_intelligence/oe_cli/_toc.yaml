@@ -6,7 +6,7 @@ sections:
     href: ./architecture.md
   - label: 初始化
     href: ./deployment.md
-  - label: 使用指南
-    href: ./oe_cli_use_guide.md
-  - label: 智能体介绍
-    href: ./oe_cli_agent_introduce.md
+  - label: 使用Witty Assistant 命令行客户端
+    href: ./use_guide.md
+  - label: Witty Assistant 智能体介绍
+    href: ./agent_introduce.md

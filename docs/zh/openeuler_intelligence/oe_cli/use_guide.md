@@ -1,4 +1,4 @@
-# Witty Assistant 命令行客户端使用手册
+# 使用Witty Assistant 命令行客户端
 
 ## 引言
 
@@ -11,7 +11,7 @@ Witty Assistant 是 openEuler Intelligence 旗下的一款 OS 智能助手。Wit
 - **部署助手**: 内置 Witty Assistant 后端服务自动部署功能
 - **配置管理**：内置设置界面（Ctrl+S）与本地配置文件，便于切换后端/更新连接信息
 
-## 1. 使用说明（基于win11cmd）
+## 1. 使用说明
 
 ### 1.1 打开 Witty Assistant
 
@@ -20,49 +20,43 @@ Witty Assistant 是 openEuler Intelligence 旗下的一款 OS 智能助手。Wit
 ```sh
 witty
 ```
+<img src=pictures/open_Witty.png width=1200 />
 
-![open_Witty.png](pictures/open_Witty.png)
-
-### 1.2 智能体选择
+### 1.2 选择智能体
 
 点击选择智能体（ ctrl + t ），默认为 OE-智能运维助手，按上下键选择，回车确认，ESC 取消，高亮表示选中。
 
-![default_agent.png](pictures/default_agent.png)
+<img src=pictures/default_agent.png width=1200 />
 
 ### 1.3 配置chat模型
 
 点击设置（ ctrl + s ），点击更改用户设置
 
-![set_chat_model.png](pictures/set_chat_model.png)
+<img src=pictures/set_chat_model.png width=1200 />
 
 点击大模型设置，按上下键选择模型，**空格**激活模型（字体变绿为激活），然后**回车**保存，模型会在初始化和大模型设置管理进行配置。
 
-![activate_chat_model.png](pictures/activate_chat_model.png)
+<img src=pictures/activate_chat_model.png width=1200 />
 
-### 1.4 智能体使用
+### 1.4 使用智能体
 
 进行智能体的使用，此处以OE-智能运维助手举例，回车确认，进入对话界面。
 
-![open_Witty.png](pictures/open_Witty.png)
-
-### 1.5 对话并工具执行确认
+<img src=pictures/open_Witty.png width=1200 />
 
 在左下角输入栏输入命令或问题，如帮我查看内存使用情况，智能体会根据提问自动选择合适的 MCP 工具，并询问是否执行，此处点击确认。
 
-![agent_use.png](pictures/agent_use.png)![](./pictures/使用案例1.PNG)
+<img src=pictures/use-case-1.PNG width=1200 />
 
 结果输出：
 
-![output.png](pictures/output.png)
+<img src=pictures/output.png width=1200 />
 
->[!NOTE]说明
+>[!NOTE]说明：
 >
-> 修改工具执行确认为自动确认 ，点击设置。
-> ![set_chat_model.png](pictures/set_chat_model.png)
-> 点击 mcp 工具授权，可以切换手动确认或自动确认。
-> ![set_confirm_tool.png](pictures/set_confirm_tool.png)
+> 设置->更改用户设置->常规设置，可以设置MCP工具授权模式。
 
-### 1.6 Witty Assistant预设
+### 1.5 Witty Assistant预设
 
 可以在 witty 前输入以下命令配置客户端。
 
@@ -101,7 +95,7 @@ witty set-default agent
 witty set-default log-level INFO
 ```
 
-### 1.7 查看日志
+### 1.6 查看日志
 
 查看最新的日志内容:
 
@@ -109,15 +103,15 @@ witty set-default log-level INFO
 witty logs
 ```
 
-### 1.8 大模型配置管理
+### 1.7 管理大模型配置
 
 ```sh
 witty llm
 ```
 
-![set llm.png](pictures/set_llm.png)
+<img src=pictures/set_llm.png width=1200 />
 
-### 1.9 界面操作快捷键
+### 1.8 界面操作快捷键
 
 - **Ctrl+S**: 打开设置界面
 - **Ctrl+R**: 重置对话历史
@@ -131,45 +125,45 @@ witty llm
 
 ## 2. 平台演示
 
-### 2.1 使用cmd
+### 2.1 使用Windows Terminal
 
-#### 选择智能体
+#### 打开 Witty Assistant
 
 ```sh
 witty
 ```
 
-#### 打开 Witty Assistant
+<img src=pictures/open_Witty.png width=1200 />
 
-![open_Witty.png](pictures/open_Witty.png)
+#### 选择智能体
 
-#### 智能体选择
-
-![default_agent.png](pictures/default_agent.png)
+<img src=pictures/default_agent.png width=1200 />
 
 #### 使用智能体
 
-![agent_use.png](pictures/agent_use.png)![](./pictures/使用案例1.PNG)
+<img src=pictures/agent_use.png width=1200 />
+
+<img src=pictures/use-case-1.PNG width=1200 />
 
 智能体根据工具调用结果输出结果
 
-![output.png](pictures/output.png)
+<img src=pictures/output.png width=1200 />
 
 ### 2.2 使用vscode
 
 #### 打开 Witty Assistant
 
-![vscode_open.png](pictures/vscode_open.png)
+<img src=pictures/vscode_open.png width=1200 />
 
-#### 智能体选择
+#### 选择智能体
 
 使用方法参上面，以下主要为演示部分页面：
 
-![vscode_agent_set.png](pictures/vscode_agent_set.png)
+<img src=pictures/vscode_agent_set.png width=1200 />
 
-#### 智能体使用
+#### 使用智能体
 
-![vscode_use.png](pictures/vscode_use.png)
+<img src=pictures/vscode_use.png width=1200 />
 
 ## 3. 使用案例
 
@@ -177,12 +171,12 @@ witty
 
 **自然语言交互**：启动openEuler智能助手，切换至“OE-智能运维助手”，输入“安装nginx并启动”；
 
-![nginx安装和启动](pictures/nginx_install.png)
+<img src=pictures/nginx_install.png width=1200 />
 
 **查看nginx进程**：输入“查看nginx的进程情况”，查看nginx进程来看是否安装启动成功；
 
-![nginx进程查看](pictures/nginx_check.png)
+<img src=pictures/nginx_check.png width=1200 />
 
 **使用命令行验证结果**：通过`systemctl status nginx`验证nginx是否被成功启动。
 
-![nginx运行结果](pictures/nginx_result.png)
+<img src=pictures/nginx_result.png width=1200 />
