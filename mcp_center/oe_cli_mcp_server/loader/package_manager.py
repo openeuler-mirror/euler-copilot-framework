@@ -14,7 +14,7 @@ import sys
 import json
 import logging
 import shutil
-from typing import Dict, Optional, Any, List
+from typing import Any
 from importlib.util import spec_from_file_location, module_from_spec
 
 # 内部依赖
@@ -29,8 +29,8 @@ from oe_cli_mcp_server.schema.loader import Tool, Package
 PackageName = str          # 工具包名称（目录名）
 PackageDir = str           # 工具包目录路径
 ToolFuncName = str         # 包内的工具函数名称
-ToolDict = Dict[ToolFuncName, Tool]  # 函数名 → Tool对象
-PackageDict = Dict[PackageName, Package]  # 包名 → Package对象
+ToolDict = dict[ToolFuncName, Tool]  # 函数名 → Tool对象
+PackageDict = dict[PackageName, Package]  # 包名 → Package对象
 
 # 全局配置
 logger = logging.getLogger(__name__)
@@ -44,7 +44,7 @@ class PackageManager:
     卸载：仅删物理目录，内存信息靠重启重建
     """
     def __init__(self,
-                 dep_manager: Optional[DepUVManager] = None,
+                 dep_manager: DepUVManager | None,
                  package_root_dir: str = DEFAULT_PACKAGE_ROOT):
         """
         初始化管理器
@@ -64,7 +64,7 @@ class PackageManager:
     # -------------------------------------------------------------------------
     # 核心业务能力（增/删/查/列表）- 适配你的 Pydantic 模型（无改动）
     # -------------------------------------------------------------------------
-    def load_package(self, package_dir: PackageDir) -> Optional[PackageName]:
+    def load_package(self, package_dir: PackageDir) -> PackageName | None:
         """
         加载单个工具包（核心）
         :param package_dir: 包目录绝对路径
@@ -130,7 +130,7 @@ class PackageManager:
         logger.info(f"[Package Load] 包 {package_name} 加载成功 | 有效工具函数数：{len(valid_funcs)}")
         return package_name
 
-    def load_all_packages(self) -> Dict[str, Any]:
+    def load_all_packages(self) -> dict[str, Any]:
         """
         加载所有工具包（批量）
         :return: 加载结果统计
@@ -193,7 +193,7 @@ class PackageManager:
         logger.info(f"[Package Unload] 包 {package_name} 卸载成功（需重启生效）")
         return True
 
-    def get_package_info(self, package_name: PackageName) -> Optional[Package]:
+    def get_package_info(self, package_name: PackageName) -> Package | None:
         """
         查询单个包的完整信息（返回你定义的 Package 对象）
         :param package_name: 包名
@@ -205,7 +205,7 @@ class PackageManager:
 
         return self._packages.get(package_name)
 
-    def get_tool_func_info(self, func_name: ToolFuncName) -> Optional[Tool]:
+    def get_tool_func_info(self, func_name: ToolFuncName) -> Tool | None:
         """
         查询单个工具函数的详情（返回你定义的 Tool 对象）
         :param func_name: 工具函数名（全局唯一）
@@ -217,11 +217,11 @@ class PackageManager:
 
         return self._tool_funcs.get(func_name)
 
-    def list_all_packages(self) -> List[PackageName]:
+    def list_all_packages(self) -> list[PackageName]:
         """列出所有已加载的工具包名（按添加顺序）"""
         return list(self._packages.keys())
 
-    def list_package_funcs(self, package_name: Optional[PackageName] = None) -> List[ToolFuncName]:
+    def list_package_funcs(self, package_name: PackageName | None) -> list[ToolFuncName]:
         """
         列出工具函数名（精准区分：包级/全局）
         :param package_name: 可选，指定包名则列出该包的函数，否则列出所有函数
@@ -254,11 +254,14 @@ class PackageManager:
         logger.info("[Package Clear] 所有工具包已清空（需重启生效）")
         return True
 
+    # 兼容别名
+    clear_all = clear_all_packages
+
     # -------------------------------------------------------------------------
     # 辅助方法（无改动）
     # -------------------------------------------------------------------------
     @staticmethod
-    def _init_empty_package_result(fail_reason: str) -> Dict[str, Any]:
+    def _init_empty_package_result(fail_reason: str) -> dict[str, Any]:
         """初始化空的包加载结果统计"""
         return {
             "total_package": 0,
@@ -291,7 +294,7 @@ class PackageManager:
             return False
         return True
 
-    def _load_package_func_configs(self, package_dir: PackageDir) -> Dict[ToolFuncName, str]:
+    def _load_package_func_configs(self, package_dir: PackageDir) -> dict[ToolFuncName, str]:
         """加载包内的工具函数配置（config.json → tools 节点）
         返回：{函数名: 对应语言的描述字符串}
         """
@@ -319,7 +322,7 @@ class PackageManager:
                     continue
 
                 # 优先取指定语言，兜底中文
-                final_desc = desc_dict.get(self.language, LanguageEnum.ZH.value)
+                final_desc = desc_dict.get(self.language, desc_dict.get(LanguageEnum.ZH.value, ""))
                 if not final_desc:
                     logger.warning(f"[Package Config] 包 {package_name} 函数 {func_name} 无有效描述")
 
@@ -383,7 +386,7 @@ class PackageManager:
     def _validate_package_tool_funcs(self,
                                      package_name: PackageName,
                                      tool_module: Any,
-                                     func_configs: Dict[ToolFuncName, str],
+                                     func_configs: dict[ToolFuncName, str],
                                      package_obj: Package) -> ToolDict:
         """
         校验并组装包内的工具函数（返回你定义的 Tool 对象字典）

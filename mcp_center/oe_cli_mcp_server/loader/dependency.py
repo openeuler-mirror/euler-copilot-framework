@@ -1,7 +1,7 @@
 import os
 import subprocess
 import logging
-from typing import Dict, Any
+from typing import Any
 
 from oe_cli_mcp_server.common.get_abs_cmd import get_absolute_command_path
 
@@ -17,7 +17,7 @@ class DepUVManager:
         # 强制使用系统 Python 环境（避免虚拟环境干扰）
         self.python_executable = "/usr/bin/python3"
 
-    def install_deps(self, tool_dir: str) -> Dict[str, Any]:
+    def install_deps(self, tool_dir: str) -> dict[str, Any]:
         """
         安装单个工具包的依赖
         :param tool_dir: 工具包目录（如 /xxx/mcp_tools/cmd_executor_tool）
