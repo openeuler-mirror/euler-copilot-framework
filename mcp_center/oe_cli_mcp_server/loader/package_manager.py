@@ -44,7 +44,7 @@ class PackageManager:
     卸载：仅删物理目录，内存信息靠重启重建
     """
     def __init__(self,
-                 dep_manager: DepUVManager | None,
+                 dep_manager: DepUVManager | None = None,
                  package_root_dir: str = DEFAULT_PACKAGE_ROOT):
         """
         初始化管理器
@@ -221,7 +221,7 @@ class PackageManager:
         """列出所有已加载的工具包名（按添加顺序）"""
         return list(self._packages.keys())
 
-    def list_package_funcs(self, package_name: PackageName | None) -> list[ToolFuncName]:
+    def list_package_funcs(self, package_name: PackageName | None = None ) -> list[ToolFuncName]:
         """
         列出工具函数名（精准区分：包级/全局）
         :param package_name: 可选，指定包名则列出该包的函数，否则列出所有函数
