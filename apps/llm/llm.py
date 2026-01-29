@@ -44,6 +44,7 @@ class LLM:
         include_thinking: bool = True,
         streaming: bool = True,
         tools: list[LLMFunctions] | None = None,
+        temperature: float = 0.7,
     ) -> AsyncGenerator[LLMChunk, None]:
         """调用大模型，统一处理流式和非流式"""
         async for chunk in self._provider.chat(
@@ -51,6 +52,7 @@ class LLM:
             include_thinking=include_thinking,
             streaming=streaming,
             tools=tools,
+            temperature=temperature,
         ):
             yield chunk
 

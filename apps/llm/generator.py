@@ -173,14 +173,13 @@ class JsonGenerator:
             param_schema=function["parameters"],
         )
 
-        tool_call_result = {}
-        async for chunk in self._llm.call(messages, include_thinking=False, streaming=False, tools=[tool]):
+        async for chunk in self._llm.call(
+            messages, include_thinking=False, streaming=False, tools=[tool], temperature=0,
+        ):
             if chunk.tool_call:
-                tool_call_result.update(chunk.tool_call)
-
-        function_name = function["name"]
-        if tool_call_result and function_name in tool_call_result:
-            return json.loads(tool_call_result[function_name])
+                # 直接处理第一条 tool_call
+                first_tool_call = chunk.tool_call[0]
+                return first_tool_call.arguments
 
         return {}
 
@@ -199,7 +198,7 @@ class JsonGenerator:
         messages = self._build_messages(prompt, conversation, retry_messages)
 
         full_response = ""
-        async for chunk in self._llm.call(messages, include_thinking=False, streaming=False):
+        async for chunk in self._llm.call(messages, include_thinking=False, streaming=False, temperature=0):
             if chunk.content:
                 full_response += chunk.content
 

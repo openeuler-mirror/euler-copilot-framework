@@ -1,6 +1,7 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2023-2025. All rights reserved.
 """大模型提供商：OpenAI"""
 
+import json
 import logging
 from collections.abc import AsyncGenerator
 from typing import Any, cast
@@ -16,7 +17,7 @@ from typing_extensions import override
 
 from apps.llm.token import token_calculator
 from apps.models import LLMType
-from apps.schemas.llm import LLMChunk, LLMFunctions
+from apps.schemas.llm import LLMChunk, LLMFunctions, LLMToolCall
 
 from .base import BaseProvider
 
@@ -72,6 +73,35 @@ class OpenAIProvider(BaseProvider):
                 http_client=self._http_client,
             )
 
+    def _parse_tool_calls(self, message: Any) -> list[LLMToolCall]:
+        """解析工具调用并转换为LLMToolCall列表"""
+        tool_calls_list: list[LLMToolCall] = []
+
+        if not hasattr(message, "tool_calls") or not message.tool_calls:
+            return tool_calls_list
+
+        for tool_call in message.tool_calls:
+            if tool_call.type == "function" and hasattr(tool_call, "function"):
+                func = tool_call.function
+                try:
+                    # 解析JSON字符串为字典
+                    arguments = json.loads(func.arguments) if isinstance(func.arguments, str) else func.arguments
+                    tool_calls_list.append(LLMToolCall(
+                        id=tool_call.id,
+                        name=func.name,
+                        arguments=arguments,
+                    ))
+                except (json.JSONDecodeError, TypeError):
+                    # 如果JSON解析失败，忽略这个工具调用
+                    _logger.warning(
+                        "[OpenAIProvider] 工具调用参数解析失败: tool_call_id=%s, name=%s",
+                        tool_call.id,
+                        func.name,
+                    )
+                    continue
+
+        return tool_calls_list
+
     def _handle_usage_chunk(self, chunk: ChatCompletionChunk | None, messages: list[dict[str, str]]) -> None:
         """处理包含usage信息的chunk"""
         if chunk and getattr(chunk, "usage", None):
@@ -111,12 +141,13 @@ class OpenAIProvider(BaseProvider):
         messages: list[dict[str, str]],
         *,
         streaming: bool,
+        temperature: float = 0.7,
     ) -> dict:
         """构建请求参数"""
         request_kwargs = {
             "messages": self._convert_messages(messages),
             "max_tokens": self.config.maxToken,
-            "temperature": self.config.temperature,
+            "temperature": temperature,
             "stream": streaming,
             **self.config.extraConfig,
         }
@@ -209,8 +240,8 @@ class OpenAIProvider(BaseProvider):
     ) -> AsyncGenerator[LLMChunk, None]:
         """处理非流式响应"""
         response: ChatCompletion = await self._client.chat.completions.create(**request_kwargs)
+        tool_calls_list: list[LLMToolCall] = []
 
-        tool_call_dict = {}
         if response.choices:
             message = response.choices[0].message
 
@@ -227,11 +258,8 @@ class OpenAIProvider(BaseProvider):
                 self.full_answer = message.content
 
             # 处理工具调用
-            if tools and hasattr(message, "tool_calls") and message.tool_calls:
-                for tool_call in message.tool_calls:
-                    if tool_call.type == "function" and hasattr(tool_call, "function"):
-                        func = tool_call.function
-                        tool_call_dict[func.name] = func.arguments
+            if tools:
+                tool_calls_list = self._parse_tool_calls(message)
 
         # 处理usage数据
         self._handle_usage_response(response, messages)
@@ -240,7 +268,7 @@ class OpenAIProvider(BaseProvider):
         yield LLMChunk(
             content=self.full_answer,
             reasoning_content=self.full_thinking,
-            tool_call=tool_call_dict if tool_call_dict else None,
+            tool_call=tool_calls_list if tool_calls_list else None,
         )
 
     @override
@@ -249,6 +277,7 @@ class OpenAIProvider(BaseProvider):
         tools: list[LLMFunctions] | None = None,
         *, include_thinking: bool = False,
         streaming: bool = True,
+        temperature: float = 0.7,
     ) -> AsyncGenerator[LLMChunk, None]:
         """聊天"""
         # 检查能力
@@ -267,7 +296,7 @@ class OpenAIProvider(BaseProvider):
         messages = self._validate_messages(messages)
 
         # 构建请求参数
-        request_kwargs = self._build_request_kwargs(messages, streaming=streaming)
+        request_kwargs = self._build_request_kwargs(messages, streaming=streaming, temperature=temperature)
 
         # 如果提供了tools，则启用function-calling模式
         if tools:

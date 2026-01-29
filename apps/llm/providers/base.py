@@ -53,6 +53,7 @@ class BaseProvider:
         tools: list[LLMFunctions] | None = None,
         *, include_thinking: bool = False,
         streaming: bool = True,
+        temperature: float = 0.7,
     ) -> AsyncGenerator[LLMChunk, None]:
         """聊天"""
         yield LLMChunk(content="")
