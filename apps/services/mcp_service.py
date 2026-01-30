@@ -102,8 +102,7 @@ class MCPServiceManager:
     @staticmethod
     async def get_mcp_config(mcp_id: str) -> MCPServerConfig:
         """获取MCP服务配置"""
-        config = await MCPLoader.get_config(mcp_id)
-        return config
+        return await MCPLoader.get_config(mcp_id)
 
 
     @staticmethod
