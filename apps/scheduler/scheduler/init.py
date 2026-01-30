@@ -88,7 +88,7 @@ class InitMixin:
                     task_data = await TaskManager.get_task_data_by_task_id(last_task.id)
                     if task_data:
                         self.task = task_data
-                        # 恢复任务时保留原有的 task_id，但更新 authHeader
+                        # 恢复任务时保留原有的 task 数据，但更新 authHeader
                         self.task.runtime.authHeader = auth_header
                         return
             else:
