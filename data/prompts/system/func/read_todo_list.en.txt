@@ -1,0 +1,18 @@
+Use this tool to view the to-do list for the current task.
+Use it proactively and frequently to ensure you are always informed of the up-to-date status of the to-do items.
+
+Recommended situations for using this tool:
+
+- At the start of a conversation, to check current to-do items
+- Before beginning a new task, to clarify work priorities
+- When the user inquires about previous tasks or future plans
+- When you are unsure about what to do next
+- After finishing a task, to update your understanding of the remaining work
+- Regularly, to make sure your actions stay aligned with the task objectives
+
+Usage:
+
+- This tool requires no parameters; keep the input empty and avoid making assumptions or speculations
+- The output will be a to-do list including each item's status and description; the order of the list represents its priority
+- Use the information provided to track progress and decide your next steps
+- If there are currently no to-do items, the tool will return empty content
