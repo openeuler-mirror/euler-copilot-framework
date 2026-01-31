@@ -1,0 +1,40 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.eggs/
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+
+# Build outputs
+dist/
+build/
+*.dist/
+*.build/
+*.onefile-build/
+
+# Test and coverage
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Ruff
+.ruff_cache/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# uv lock file is committed, but local cache is not
+.uv/
