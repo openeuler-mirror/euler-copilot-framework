@@ -6,7 +6,7 @@ sections:
     href: ./architecture.md
   - label: 初始化
     href: ./deployment.md
-  - label: Witty Assistant 使用介绍
+  - label: 智能助手 cli ( Witty Assistant )使用介绍
     href: ./use_guide.md
   - label: Witty Assistant 智能体介绍
     href: ./agent_introduce.md

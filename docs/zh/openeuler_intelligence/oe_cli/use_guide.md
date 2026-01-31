@@ -1,4 +1,4 @@
-# Witty Assistant 使用介绍
+# 智能助手 cli ( Witty Assistant )使用介绍
 
 ## 引言
 
@@ -25,23 +25,13 @@ witty
 
 ### 1.2 选择智能体
 
-点击选择智能体（ ctrl + t ），默认为 OE-智能运维助手，按上下键选择，回车确认，ESC 取消，高亮表示选中。
+点击选择智能体（ ctrl + t ），默认为 基础运维Agent，按上下键选择，回车确认，ESC 取消，高亮表示选中，智能体详情参照[智能体介绍](https://atomgit.com/openeuler/euler-copilot-framework/blob/master/docs/zh/openeuler_intelligence/oe_cli/agent_introduce.md)。
 
 <img src=pictures/default_agent.png width=1200 />
 
-### 1.3 配置chat模型
+### 1.3 使用智能体
 
-点击设置（ ctrl + s ），点击更改用户设置
-
-<img src=pictures/set_chat_model.png width=1200 />
-
-点击大模型设置，按上下键选择模型，**空格**激活模型（字体变绿为激活），然后**回车**保存，模型会在初始化和大模型设置管理进行配置。
-
-<img src=pictures/activate_chat_model.png width=1200 />
-
-### 1.4 使用智能体
-
-进行智能体的使用，此处以OE-智能运维助手举例，回车确认，进入对话界面。
+进行智能体的使用，此处以基础运维Agent举例，回车确认，进入对话界面。
 
 <img src=pictures/open_Witty.png width=1200 />
 
@@ -57,7 +47,7 @@ witty
 >
 > 设置->更改用户设置->常规设置，可以设置MCP工具授权模式。
 
-### 1.5 Witty Assistant预设
+### 1.4 Witty Assistant预设
 
 可以在 witty 前输入以下命令配置客户端。
 
@@ -96,7 +86,7 @@ witty set-default agent
 witty set-default log-level INFO
 ```
 
-### 1.6 查看日志
+### 1.5 查看日志
 
 查看最新的日志内容:
 
@@ -104,7 +94,7 @@ witty set-default log-level INFO
 witty logs
 ```
 
-### 1.7 管理大模型配置
+### 1.6 管理大模型配置
 
 ```sh
 witty llm
@@ -112,7 +102,7 @@ witty llm
 
 <img src=pictures/set_llm.png width=1200 />
 
-### 1.8 界面操作快捷键
+### 1.7 界面操作快捷键
 
 - **Ctrl+S**: 打开设置界面
 - **Ctrl+R**: 重置对话历史
@@ -146,8 +136,6 @@ witty
 
 <img src=pictures/agent_use.png width=1200 />
 
-<img src=pictures/use-case-1.PNG width=1200 />
-
 智能体根据工具调用结果输出结果
 
 <img src=pictures/output.png width=1200 />
@@ -172,7 +160,7 @@ witty
 
 以“Nginx服务启动”为例，演示openEuler智能助手的进阶用法：
 
-**自然语言交互**：启动openEuler智能助手，切换至“OE-智能运维助手”，输入“安装nginx并启动”；
+**自然语言交互**：启动openEuler智能助手，切换至“基础运维Agent”，输入“安装nginx并启动”；
 
 <img src=pictures/nginx_install.png width=1200 />
 
