@@ -1,4 +1,5 @@
-"""配置校验器模块
+"""
+配置校验器模块
 
 校验 MCP Server 配置的完整性和正确性
 """
@@ -9,6 +10,8 @@ import logging
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from witty_mcp_manager.registry.models import TransportType
+
 if TYPE_CHECKING:
     from witty_mcp_manager.registry.models import Diagnostics, ServerRecord
 
@@ -16,19 +19,22 @@ logger = logging.getLogger(__name__)
 
 
 class Checker:
-    """配置校验器
+    """
+    配置校验器
 
     校验 MCP Server 配置的完整性
     """
 
     def check_files(self, server: ServerRecord) -> list[str]:
-        """检查必要文件是否存在
+        """
+        检查必要文件是否存在
 
         Args:
             server: ServerRecord
 
         Returns:
             缺失文件列表
+
         """
         missing: list[str] = []
         install_root = Path(server.install_root)
@@ -45,30 +51,29 @@ class Checker:
         return missing
 
     def check_config_validity(self, server: ServerRecord) -> list[str]:
-        """检查配置有效性
+        """
+        检查配置有效性
 
         Args:
             server: ServerRecord
 
         Returns:
             错误列表
+
         """
         errors: list[str] = []
 
         config = server.default_config
 
         # STDIO 配置检查
-        if config.stdio:
-            if not config.stdio.command:
-                errors.append("STDIO config missing command")
+        if config.stdio and not config.stdio.command:
+            errors.append("STDIO config missing command")
 
         # SSE 配置检查
-        if config.sse:
-            if not config.sse.url:
-                errors.append("SSE config missing url")
+        if config.sse and not config.sse.url:
+            errors.append("SSE config missing url")
 
         # 传输类型与配置匹配检查
-        from witty_mcp_manager.registry.models import TransportType
 
         if config.transport == TransportType.STDIO and not config.stdio:
             errors.append("Transport is STDIO but no stdio config provided")
@@ -78,13 +83,15 @@ class Checker:
         return errors
 
     def validate(self, server: ServerRecord) -> Diagnostics:
-        """完整校验
+        """
+        完整校验
 
         Args:
             server: ServerRecord
 
         Returns:
             更新后的 Diagnostics
+
         """
         diagnostics = server.diagnostics.model_copy()
 

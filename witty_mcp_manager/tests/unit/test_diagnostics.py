@@ -6,15 +6,13 @@
 - TC005: 依赖缺失探测
 """
 
-from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 
 from witty_mcp_manager.diagnostics.checker import Checker
 from witty_mcp_manager.diagnostics.preflight import PreflightChecker
 from witty_mcp_manager.registry.models import (
-    Diagnostics,
     NormalizedConfig,
     ServerRecord,
     SourceType,
@@ -90,25 +88,26 @@ class TestPreflightChecker:
         """TC005: 所有依赖都存在"""
         # 所有命令都存在
         mock_which.return_value = "/usr/bin/command"
-        
+
         missing = preflight.check_dependencies(sample_server)
-        
+
         assert missing["system"] == []
         assert missing["packages"] == []
 
     @patch("shutil.which")
     def test_check_dependencies_missing(self, mock_which, preflight, sample_server):
         """TC005: 依赖缺失检测"""
+
         # 模拟 jq 不存在
         def which_side_effect(cmd):
             if cmd == "jq":
                 return None
             return f"/usr/bin/{cmd}"
-        
+
         mock_which.side_effect = which_side_effect
-        
+
         missing = preflight.check_dependencies(sample_server)
-        
+
         assert "jq" in missing["packages"]
 
     def test_generate_suggestions(self, preflight):
@@ -118,9 +117,9 @@ class TestPreflightChecker:
             "packages": ["git", "jq"],
             "python": [],
         }
-        
+
         suggestions = preflight.generate_suggestions(missing)
-        
+
         assert len(suggestions) >= 2
         assert any("dnf install python3" in s for s in suggestions)
         assert any("dnf install git jq" in s for s in suggestions)
@@ -131,9 +130,9 @@ class TestPreflightChecker:
         # 修改命令为不允许的
         sample_server.default_config.stdio.command = "bash"
         mock_which.return_value = "/bin/bash"
-        
+
         diagnostics = preflight.run_preflight(sample_server)
-        
+
         assert diagnostics.command_allowed is False
         assert any("not in allowlist" in e for e in diagnostics.errors)
 
@@ -141,9 +140,9 @@ class TestPreflightChecker:
     def test_run_preflight_command_not_found(self, mock_which, preflight, sample_server):
         """预检查：命令不存在"""
         mock_which.return_value = None
-        
+
         diagnostics = preflight.run_preflight(sample_server)
-        
+
         assert diagnostics.command_exists is False
         assert any("not found" in w for w in diagnostics.warnings)
 
@@ -163,7 +162,7 @@ class TestChecker:
         (server_dir / "mcp_config.json").write_text("{}")
         (server_dir / "src").mkdir()
         (server_dir / "src" / "server.py").write_text("")
-        
+
         return ServerRecord(
             id="test_mcp",
             name="Test MCP",
@@ -187,7 +186,7 @@ class TestChecker:
         server_dir = tmp_path / "no_config"
         server_dir.mkdir()
         (server_dir / "src").mkdir()
-        
+
         server = ServerRecord(
             id="no_config",
             name="No Config",
@@ -200,7 +199,7 @@ class TestChecker:
                 stdio=StdioConfig(command="uv", args=[]),
             ),
         )
-        
+
         missing = checker.check_files(server)
         assert "mcp_config.json" in missing
 
@@ -209,7 +208,7 @@ class TestChecker:
         server_dir = tmp_path / "no_src"
         server_dir.mkdir()
         (server_dir / "mcp_config.json").write_text("{}")
-        
+
         server = ServerRecord(
             id="no_src",
             name="No Src",
@@ -222,7 +221,7 @@ class TestChecker:
                 stdio=StdioConfig(command="uv", args=[]),
             ),
         )
-        
+
         missing = checker.check_files(server)
         assert "src/" in missing
 
@@ -240,7 +239,7 @@ class TestChecker:
                 stdio=StdioConfig(command="", args=[]),  # 空 command
             ),
         )
-        
+
         errors = checker.check_config_validity(server)
         assert any("missing command" in e for e in errors)
 
@@ -258,13 +257,13 @@ class TestChecker:
                 stdio=None,  # STDIO 传输但没有 stdio 配置
             ),
         )
-        
+
         errors = checker.check_config_validity(server)
         assert any("no stdio config" in e for e in errors)
 
     def test_validate_full(self, checker, server_with_files):
         """完整校验"""
         diagnostics = checker.validate(server_with_files)
-        
+
         assert diagnostics.config_valid is True
         assert diagnostics.is_ready is True

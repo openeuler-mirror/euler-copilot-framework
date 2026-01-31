@@ -1,4 +1,5 @@
-"""预检查模块
+"""
+预检查模块
 
 在启动 MCP Server 前进行命令白名单、依赖检查
 """
@@ -7,7 +8,6 @@ from __future__ import annotations
 
 import logging
 import shutil
-from pathlib import Path
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -18,7 +18,8 @@ logger = logging.getLogger(__name__)
 
 
 class PreflightChecker:
-    """预检查器
+    """
+    预检查器
 
     执行启动前检查：
     1. 命令白名单检查
@@ -26,44 +27,52 @@ class PreflightChecker:
     3. 依赖检查
     """
 
-    def __init__(self, config: ManagerConfig):
-        """初始化预检查器
+    def __init__(self, config: ManagerConfig) -> None:
+        """
+        初始化预检查器
 
         Args:
             config: 管理器配置
+
         """
         self.config = config
 
     def check_command_allowlist(self, command: str) -> bool:
-        """检查命令是否在白名单中
+        """
+        检查命令是否在白名单中
 
         Args:
             command: 命令名
 
         Returns:
             是否允许
+
         """
         return command in self.config.command_allowlist
 
     def check_command_exists(self, command: str) -> bool:
-        """检查命令是否存在
+        """
+        检查命令是否存在
 
         Args:
             command: 命令名
 
         Returns:
             是否存在
+
         """
         return shutil.which(command) is not None
 
     def check_dependencies(self, server: ServerRecord) -> dict[str, list[str]]:
-        """检查依赖
+        """
+        检查依赖
 
         Args:
             server: ServerRecord
 
         Returns:
             缺失依赖字典 {"system": [...], "python": [...], "packages": [...]}
+
         """
         missing: dict[str, list[str]] = {
             "system": [],
@@ -94,13 +103,15 @@ class PreflightChecker:
         return missing
 
     def generate_suggestions(self, missing_deps: dict[str, list[str]]) -> list[str]:
-        """生成修复建议
+        """
+        生成修复建议
 
         Args:
             missing_deps: 缺失依赖
 
         Returns:
             建议列表
+
         """
         suggestions: list[str] = []
 
@@ -119,13 +130,15 @@ class PreflightChecker:
         return suggestions
 
     def run_preflight(self, server: ServerRecord) -> Diagnostics:
-        """运行预检查
+        """
+        运行预检查
 
         Args:
             server: ServerRecord
 
         Returns:
             更新后的 Diagnostics
+
         """
         diagnostics = server.diagnostics.model_copy()
 
@@ -137,8 +150,7 @@ class PreflightChecker:
             if not self.check_command_allowlist(command):
                 diagnostics.command_allowed = False
                 diagnostics.errors.append(
-                    f"Command '{command}' is not in allowlist. "
-                    f"Allowed: {', '.join(self.config.command_allowlist)}"
+                    f"Command '{command}' is not in allowlist. Allowed: {', '.join(self.config.command_allowlist)}"
                 )
 
             # 存在性检查

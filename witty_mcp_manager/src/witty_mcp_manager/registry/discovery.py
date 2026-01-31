@@ -1,4 +1,5 @@
-"""MCP Server 发现模块
+"""
+MCP Server 发现模块
 
 扫描 RPM 安装目录和管理员配置，生成 ServerRecord 列表
 """
@@ -8,7 +9,7 @@ from __future__ import annotations
 import json
 import logging
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import yaml
 
@@ -30,27 +31,32 @@ logger = logging.getLogger(__name__)
 
 
 class Discovery:
-    """MCP Server 发现服务
+    """
+    MCP Server 发现服务
 
     负责扫描和发现所有 MCP Server：
     1. RPM 生态 MCP（/opt/mcp-servers/servers）
     2. 管理员配置的 MCP（admin_sources）
     """
 
-    def __init__(self, config: ManagerConfig):
-        """初始化发现服务
+    def __init__(self, config: ManagerConfig) -> None:
+        """
+        初始化发现服务
 
         Args:
             config: 管理器配置
+
         """
         self.config = config
         self.normalizer = Normalizer()
 
     def scan_all(self) -> list[ServerRecord]:
-        """扫描所有来源的 MCP Servers
+        """
+        扫描所有来源的 MCP Servers
 
         Returns:
             ServerRecord 列表
+
         """
         servers: list[ServerRecord] = []
 
@@ -71,13 +77,15 @@ class Discovery:
         return servers
 
     def _scan_rpm_path(self, base_path: str) -> list[ServerRecord]:
-        """扫描 RPM 安装路径
+        """
+        扫描 RPM 安装路径
 
         Args:
             base_path: 扫描根目录
 
         Returns:
             ServerRecord 列表
+
         """
         servers: list[ServerRecord] = []
         base = Path(base_path)
@@ -102,20 +110,22 @@ class Discovery:
                 server = self._parse_server_dir(server_dir)
                 if server:
                     servers.append(server)
-            except Exception as e:
-                # 单个解析失败不影响其他
-                logger.error("Failed to parse %s: %s", server_dir, e)
+            except Exception:
+                # 单个解析失败不影响其他（目录内容可能不受控）
+                logger.exception("Failed to parse %s", server_dir)
 
         return servers
 
     def _parse_server_dir(self, server_dir: Path) -> ServerRecord | None:
-        """解析单个 server 目录
+        """
+        解析单个 server 目录
 
         Args:
             server_dir: server 目录路径
 
         Returns:
             ServerRecord 或 None
+
         """
         config_file = server_dir / "mcp_config.json"
 
@@ -125,18 +135,18 @@ class Discovery:
 
         # 解析 mcp_config.json
         try:
-            with open(config_file, encoding="utf-8") as f:
+            with config_file.open(encoding="utf-8") as f:
                 raw_config = json.load(f)
-        except json.JSONDecodeError as e:
-            logger.error("Invalid JSON in %s: %s", config_file, e)
+        except json.JSONDecodeError:
+            logger.exception("Invalid JSON in %s", config_file)
             return None
 
         # 解析 mcp-rpm.yaml（可选）
         rpm_yaml = server_dir / "mcp-rpm.yaml"
-        rpm_metadata: dict = {}
+        rpm_metadata: dict[str, Any] = {}
         if rpm_yaml.exists():
             try:
-                with open(rpm_yaml, encoding="utf-8") as f:
+                with rpm_yaml.open(encoding="utf-8") as f:
                     rpm_metadata = yaml.safe_load(f) or {}
             except yaml.YAMLError as e:
                 logger.warning("Invalid YAML in %s: %s", rpm_yaml, e)
@@ -150,13 +160,15 @@ class Discovery:
         )
 
     def _create_admin_server(self, admin_source: AdminSource) -> ServerRecord | None:
-        """从 admin source 创建 ServerRecord
+        """
+        从 admin source 创建 ServerRecord
 
         Args:
             admin_source: 管理员配置的 MCP 源
 
         Returns:
             ServerRecord 或 None
+
         """
         try:
             transport = TransportType(admin_source.transport)
@@ -192,18 +204,20 @@ class Discovery:
                 default_disabled=admin_source.default_disabled,
                 default_config=normalized_config,
             )
-        except Exception as e:
-            logger.error("Failed to create admin server %s: %s", admin_source.id, e)
+        except Exception:
+            logger.exception("Failed to create admin server %s", admin_source.id)
             return None
 
     def get_server_by_id(self, server_id: str) -> ServerRecord | None:
-        """根据 ID 获取 ServerRecord
+        """
+        根据 ID 获取 ServerRecord
 
         Args:
             server_id: Server ID
 
         Returns:
             ServerRecord 或 None
+
         """
         servers = self.scan_all()
         for server in servers:

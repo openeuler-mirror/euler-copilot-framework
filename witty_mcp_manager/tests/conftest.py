@@ -1,8 +1,6 @@
 """Witty MCP Manager 测试配置"""
 
 import json
-from pathlib import Path
-from tempfile import TemporaryDirectory
 
 import pytest
 
@@ -79,10 +77,11 @@ def mock_mcp_servers_dir(tmp_path, sample_mcp_config, sample_mcp_rpm_yaml):
     git_mcp = servers_dir / "git_mcp"
     git_mcp.mkdir()
     (git_mcp / "mcp_config.json").write_text(json.dumps(sample_mcp_config, indent=2))
-    
+
     import yaml
+
     (git_mcp / "mcp-rpm.yaml").write_text(yaml.dump(sample_mcp_rpm_yaml))
-    
+
     src_dir = git_mcp / "src"
     src_dir.mkdir()
     (src_dir / "git_mcp.py").write_text("# Git MCP Server entry point")

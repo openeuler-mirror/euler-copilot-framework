@@ -1,4 +1,5 @@
-"""Witty MCP Manager - Universal MCP Host/Loader for Witty AI Assistant.
+"""
+Witty MCP Manager - Universal MCP Host/Loader for Witty AI Assistant.
 
 统一管理多源 MCP：
 - RPM 生态 MCP（/opt/mcp-servers/servers）
@@ -19,11 +20,11 @@ from witty_mcp_manager.registry.models import (
 )
 
 __all__ = [
-    "__version__",
-    "ServerRecord",
     "NormalizedConfig",
     "Override",
     "RuntimeState",
-    "TransportType",
+    "ServerRecord",
     "SourceType",
+    "TransportType",
+    "__version__",
 ]

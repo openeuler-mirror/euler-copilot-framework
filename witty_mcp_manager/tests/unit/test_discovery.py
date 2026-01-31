@@ -6,9 +6,6 @@
 """
 
 import json
-from pathlib import Path
-
-import pytest
 
 from witty_mcp_manager.registry.discovery import Discovery
 from witty_mcp_manager.registry.models import SourceType, TransportType
@@ -23,7 +20,7 @@ class TestDiscovery:
         servers = discovery.scan_all()
 
         assert len(servers) == 2
-        
+
         # 验证 git_mcp
         git_mcp = next((s for s in servers if s.id == "git_mcp"), None)
         assert git_mcp is not None
@@ -35,7 +32,7 @@ class TestDiscovery:
         """扫描空目录返回空列表"""
         empty_dir = tmp_path / "empty"
         empty_dir.mkdir()
-        
+
         mock_config.scan_paths = [str(empty_dir)]
         discovery = Discovery(mock_config)
         servers = discovery.scan_all()
@@ -123,7 +120,7 @@ class TestDiscovery:
 
         assert len(servers) == 1
         server = servers[0]
-        
+
         # canonical id 应该是目录名
         assert server.id == "oeDeploy_mcp"
         # upstream_key 是配置中的 key

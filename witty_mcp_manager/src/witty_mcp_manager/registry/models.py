@@ -9,6 +9,15 @@ from typing import Any
 from pydantic import BaseModel, Field
 
 
+def _default_deps_missing() -> dict[str, list[str]]:
+    """
+    构造 Diagnostics.deps_missing 的默认值。
+
+    需要显式标注返回类型，避免 mypy 将空列表推断为 list[Never]。
+    """
+    return {"system": [], "python": [], "packages": []}
+
+
 class TransportType(str, Enum):
     """MCP Transport 类型"""
 
@@ -66,7 +75,8 @@ class ToolPolicy(BaseModel):
 
 
 class NormalizedConfig(BaseModel):
-    """标准化配置
+    """
+    标准化配置
 
     将不同格式的 MCP 配置统一为标准格式
     """
@@ -80,7 +90,8 @@ class NormalizedConfig(BaseModel):
 
 
 class Diagnostics(BaseModel):
-    """诊断信息
+    """
+    诊断信息
 
     记录 MCP Server 的配置检查结果
     """
@@ -89,7 +100,7 @@ class Diagnostics(BaseModel):
     command_exists: bool = Field(default=True, description="命令是否存在")
     config_valid: bool = Field(default=True, description="配置是否有效")
     deps_missing: dict[str, list[str]] = Field(
-        default_factory=lambda: {"system": [], "python": [], "packages": []},
+        default_factory=_default_deps_missing,
         description="缺失的依赖",
     )
     errors: list[str] = Field(default_factory=list, description="错误列表")
@@ -122,7 +133,8 @@ class Diagnostics(BaseModel):
 
 
 class ServerRecord(BaseModel):
-    """MCP Server 记录
+    """
+    MCP Server 记录
 
     统一表示不同来源的 MCP Server
     """
@@ -145,7 +157,8 @@ class ServerRecord(BaseModel):
 
 
 class Override(BaseModel):
-    """覆盖配置
+    """
+    覆盖配置
 
     支持全局和用户级配置覆盖，不修改原始安装目录
     """
@@ -160,7 +173,8 @@ class Override(BaseModel):
 
 
 class RuntimeState(BaseModel):
-    """运行时状态
+    """
+    运行时状态
 
     记录 MCP Session 的运行时信息
     """

@@ -1,4 +1,5 @@
-"""`witty-mcp` command line interface.
+"""
+`witty-mcp` command line interface.
 
 This is currently a lightweight skeleton to provide a stable entrypoint for
 packaging and integration. Subcommands will be implemented incrementally.
@@ -18,17 +19,18 @@ app = typer.Typer(add_completion=False, help="Witty MCP Manager CLI")
 @app.command()
 def version() -> None:
     """Print the version."""
-
     console.print(__version__)
 
 
 @app.command()
-def daemon(debug: bool = typer.Option(False, "--debug", help="Enable debug output")) -> None:
-    """Run the daemon process.
+def daemon(
+    debug: bool = typer.Option(default=False, help="Enable debug output"),
+) -> None:
+    """
+    Run the daemon process.
 
     Note: daemon implementation is not yet available in this repository state.
     """
-
     if debug:
         console.print("[yellow]daemon --debug requested (daemon not implemented yet).[/yellow]")
     console.print("[red]daemon mode is not implemented yet.[/red]")

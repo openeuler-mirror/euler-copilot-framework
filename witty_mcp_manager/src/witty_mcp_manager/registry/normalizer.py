@@ -1,4 +1,5 @@
-"""MCP 配置标准化模块
+"""
+MCP 配置标准化模块
 
 将不同格式的 mcp_config.json 转换为统一的 NormalizedConfig
 """
@@ -6,8 +7,10 @@
 from __future__ import annotations
 
 import logging
-from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 from witty_mcp_manager.registry.models import (
     Diagnostics,
@@ -25,7 +28,8 @@ logger = logging.getLogger(__name__)
 
 
 class Normalizer:
-    """配置标准化器
+    """
+    配置标准化器
 
     将 mcpServers 格式的配置转换为 ServerRecord
     """
@@ -37,7 +41,8 @@ class Normalizer:
         rpm_metadata: dict[str, Any] | None = None,
         source: SourceType = SourceType.RPM,
     ) -> ServerRecord | None:
-        """标准化配置
+        """
+        标准化配置
 
         Args:
             server_dir: server 目录
@@ -47,6 +52,7 @@ class Normalizer:
 
         Returns:
             ServerRecord 或 None（解析失败时）
+
         """
         # 目录名作为 canonical id
         server_id = server_dir.name
@@ -59,7 +65,7 @@ class Normalizer:
 
         # 获取第一个（通常也是唯一一个）server 配置
         # upstream_key 可能与目录名不一致
-        upstream_key = list(mcp_servers.keys())[0]
+        upstream_key = next(iter(mcp_servers.keys()))
         server_config = mcp_servers[upstream_key]
 
         # 确定传输类型
@@ -96,7 +102,8 @@ class Normalizer:
         raw_config: dict[str, Any],
         server_config: dict[str, Any],
     ) -> TransportType:
-        """检测传输类型
+        """
+        检测传输类型
 
         Args:
             raw_config: 完整配置
@@ -104,6 +111,7 @@ class Normalizer:
 
         Returns:
             TransportType
+
         """
         # 显式指定的 mcpType
         mcp_type = raw_config.get("mcpType", "").lower()
@@ -129,7 +137,8 @@ class Normalizer:
         server_dir: Path,
         raw_config: dict[str, Any],
     ) -> NormalizedConfig:
-        """构建标准化配置
+        """
+        构建标准化配置
 
         Args:
             transport: 传输类型
@@ -139,6 +148,7 @@ class Normalizer:
 
         Returns:
             NormalizedConfig
+
         """
         stdio_config = None
         sse_config = None

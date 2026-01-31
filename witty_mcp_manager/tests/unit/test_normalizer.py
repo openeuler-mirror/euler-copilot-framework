@@ -6,9 +6,6 @@
 - 扩展字段保留
 """
 
-import json
-from pathlib import Path
-
 import pytest
 
 from witty_mcp_manager.registry.models import SourceType, TransportType
@@ -152,9 +149,7 @@ class TestNormalizer:
         server_dir = tmp_path / "git_mcp"
         server_dir.mkdir(exist_ok=True)
 
-        record = normalizer.normalize(
-            server_dir, sample_mcp_config, sample_mcp_rpm_yaml, SourceType.RPM
-        )
+        record = normalizer.normalize(server_dir, sample_mcp_config, sample_mcp_rpm_yaml, SourceType.RPM)
 
         # summary 优先从 raw_config.description 获取，如果没有则从 rpm_metadata.summary 获取
         # sample_mcp_config 有 description，所以用它

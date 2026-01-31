@@ -1,4 +1,5 @@
-"""CLI package for Witty MCP Manager.
+"""
+CLI package for Witty MCP Manager.
 
 The console entrypoint is configured in `pyproject.toml` as:
 

@@ -49,6 +49,7 @@ dev = [
     "pytest-cov>=7.0.0",
     "ruff>=0.14.14",
     "mypy>=1.19.1",
+    "types-PyYAML>=6.0.12",
 ]
 
 [project.scripts]
@@ -83,6 +84,7 @@ select = ["ALL"]
 ignore = [
     "ANN401", # Dynamically typed expressions (typing.Any) are disallowed
     "ARG002", # Unused method argument
+    "COM812", # Trailing comma missing (conflicts with formatter)
     "D400",   # First line should end with a period
     "D415",   # First line should end with a period, question mark, or exclamation point
     "PYI019", # Methods like `__new__` should return `typing.Self`
@@ -96,6 +98,24 @@ ignore = [
     "D203",   # 1 blank line required before class docstring
     "D212",   # Multi-line docstring summary should start at the first line
     "S101",   # Use of `assert` detected
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = [
+    "ANN",     # Tests don't need exhaustive typing
+    "D",       # Tests don't need strict docstrings
+    "S",       # Allow assert/tmp paths in tests
+    "PLR2004", # Magic values are fine in tests
+    "PLC0415", # Local imports are fine in tests
+]
+"src/witty_mcp_manager/cli/main.py" = [
+    "FBT001", # Typer command options often use bool flags
+]
+"src/witty_mcp_manager/exceptions.py" = [
+    "D107", # Docstrings on every exception __init__ add noise
+]
+"src/witty_mcp_manager/registry/models.py" = [
+    "TC003", # Keep runtime-available typing symbols for Pydantic
 ]
 
 [tool.ruff.format]
