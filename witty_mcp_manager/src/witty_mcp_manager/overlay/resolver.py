@@ -49,6 +49,18 @@ class EffectiveConfig:
         return not self.disabled
 
 
+@dataclass
+class _OverrideState:
+    """Override 状态封装"""
+
+    disabled: bool
+    config: NormalizedConfig
+    timeouts: Timeouts
+    concurrency: Concurrency
+    env: dict[str, str]
+    headers: dict[str, str]
+
+
 class OverlayResolver:
     """
     Overlay 配置解析器
@@ -100,25 +112,7 @@ class OverlayResolver:
             headers.update(config.sse.headers)
 
         # 2. 应用全局覆盖
-        global_override = self.storage.load_override(server.id)
-        if global_override:
-            disabled, config, timeouts, concurrency, env, headers = self._apply_override(
-                global_override, disabled, config, timeouts, concurrency, env, headers
-            )
-            logger.debug("Applied global override for %s", server.id)
-
-        # 3. 应用用户覆盖
-        if user_id:
-            user_override = self.storage.load_override(server.id, user_id)
-            if user_override:
-                disabled, config, timeouts, concurrency, env, headers = self._apply_override(
-                    user_override, disabled, config, timeouts, concurrency, env, headers
-                )
-                logger.debug("Applied user override for %s (user=%s)", server.id, user_id)
-
-        return EffectiveConfig(
-            mcp_id=server.id,
-            user_id=user_id,
+        state = _OverrideState(
             disabled=disabled,
             config=config,
             timeouts=timeouts,
@@ -127,56 +121,81 @@ class OverlayResolver:
             headers=headers,
         )
 
+        global_override = self.storage.load_override(server.id)
+        if global_override:
+            state = self._apply_override(global_override, state)
+            logger.debug("Applied global override for %s", server.id)
+
+        # 3. 应用用户覆盖
+        if user_id:
+            user_override = self.storage.load_override(server.id, user_id)
+            if user_override:
+                state = self._apply_override(user_override, state)
+                logger.debug("Applied user override for %s (user=%s)", server.id, user_id)
+
+        return EffectiveConfig(
+            mcp_id=server.id,
+            user_id=user_id,
+            disabled=state.disabled,
+            config=state.config,
+            timeouts=state.timeouts,
+            concurrency=state.concurrency,
+            env=state.env,
+            headers=state.headers,
+        )
+
     def _apply_override(
         self,
         override: Override,
-        disabled: bool,
-        config: NormalizedConfig,
-        timeouts: Timeouts,
-        concurrency: Concurrency,
-        env: dict[str, str],
-        headers: dict[str, str],
-    ) -> tuple[bool, NormalizedConfig, Timeouts, Concurrency, dict[str, str], dict[str, str]]:
+        state: _OverrideState,
+    ) -> _OverrideState:
         """
         应用覆盖配置
 
         Args:
             override: 覆盖配置
-            disabled: 当前禁用状态
-            config: 当前配置
-            timeouts: 当前超时配置
-            concurrency: 当前并发配置
-            env: 当前环境变量
-            headers: 当前请求头
+            state: 当前状态
 
         Returns:
-            更新后的配置元组
+            更新后的状态
 
         """
         # 禁用状态
+        disabled = state.disabled
         if override.disabled is not None:
             disabled = override.disabled
 
         # 环境变量（合并）
+        env = dict(state.env)
         if override.env:
             env.update(override.env)
 
         # 请求头（合并）
+        headers = dict(state.headers)
         if override.headers:
             headers.update(override.headers)
 
         # 超时配置（覆盖）
+        timeouts = state.timeouts
         if override.timeouts:
             timeouts = override.timeouts
 
         # 并发配置（覆盖）
+        concurrency = state.concurrency
         if override.concurrency:
             concurrency = override.concurrency
 
         # 应用参数补丁（arg_patches）
-        config = self._apply_arg_patches(config, override.arg_patches)
+        config = self._apply_arg_patches(state.config, override.arg_patches)
 
-        return disabled, config, timeouts, concurrency, env, headers
+        return _OverrideState(
+            disabled=disabled,
+            config=config,
+            timeouts=timeouts,
+            concurrency=concurrency,
+            env=env,
+            headers=headers,
+        )
 
     def _apply_arg_patches(
         self,

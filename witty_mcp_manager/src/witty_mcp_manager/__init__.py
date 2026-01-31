@@ -23,23 +23,18 @@ from witty_mcp_manager.runtime import RuntimeManager, SessionRecycler
 from witty_mcp_manager.security import CommandAllowlist, LogRedactor, SecretsManager
 
 __all__ = [
-    # Registry models
-    "NormalizedConfig",
-    "Override",
-    "RuntimeState",
-    "ServerRecord",
-    "SourceType",
-    "TransportType",
-    # Overlay
-    "OverlayStorage",
-    "OverlayResolver",
-    # Runtime
-    "RuntimeManager",
-    "SessionRecycler",
-    # Security
     "CommandAllowlist",
     "LogRedactor",
+    "NormalizedConfig",
+    "OverlayResolver",
+    "OverlayStorage",
+    "Override",
+    "RuntimeManager",
+    "RuntimeState",
     "SecretsManager",
-    # Version
+    "ServerRecord",
+    "SessionRecycler",
+    "SourceType",
+    "TransportType",
     "__version__",
 ]

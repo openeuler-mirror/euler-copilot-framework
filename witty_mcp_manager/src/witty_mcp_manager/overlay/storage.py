@@ -98,14 +98,15 @@ class OverlayStorage:
             with file_path.open("w", encoding="utf-8") as f:
                 json.dump(override.model_dump(exclude_none=True), f, indent=2, ensure_ascii=False)
 
-            scope = f"user/{user_id}" if user_id else "global"
-            logger.info("Saved override for %s (scope=%s): %s", mcp_id, scope, file_path)
-            return file_path
-
         except OSError as e:
             msg = f"Failed to save override for {mcp_id}: {e}"
             logger.exception(msg)
             raise ConfigError(msg) from e
+
+        else:
+            scope = f"user/{user_id}" if user_id else "global"
+            logger.info("Saved override for %s (scope=%s): %s", mcp_id, scope, file_path)
+            return file_path
 
     def load_override(self, mcp_id: str, user_id: str | None = None) -> Override | None:
         """
@@ -156,13 +157,15 @@ class OverlayStorage:
 
         try:
             file_path.unlink()
-            scope = f"user/{user_id}" if user_id else "global"
-            logger.info("Deleted override for %s (scope=%s)", mcp_id, scope)
-            return True
 
         except OSError as e:
             logger.warning("Failed to delete override %s: %s", file_path, e)
             return False
+
+        else:
+            scope = f"user/{user_id}" if user_id else "global"
+            logger.info("Deleted override for %s (scope=%s)", mcp_id, scope)
+            return True
 
     def list_global_overrides(self) -> list[str]:
         """

@@ -76,7 +76,7 @@ class StreamableHTTPAdapter(BaseAdapter):
         self._connected = False
         self._clear_cache()
 
-    async def discover_tools(self, force_refresh: bool = False) -> list[Tool]:
+    async def discover_tools(self, *, force_refresh: bool = False) -> list[Tool]:
         """
         发现可用的 Tools
 

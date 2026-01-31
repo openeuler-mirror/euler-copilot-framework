@@ -122,7 +122,7 @@ class STDIOAdapter(BaseAdapter):
             await session.mark_running()
 
         except Exception as e:
-            logger.exception("Failed to connect to STDIO MCP %s: %s", self.mcp_id, e)
+            logger.exception("Failed to connect to STDIO MCP %s", self.mcp_id)
             await self._cleanup()
             msg = f"Failed to connect to {self.mcp_id}: {e}"
             raise AdapterError(msg, adapter_type="stdio") from e
@@ -147,7 +147,7 @@ class STDIOAdapter(BaseAdapter):
         try:
             if self._session_context:
                 await self._session_context.__aexit__(None, None, None)
-        except Exception as e:
+        except OSError as e:
             logger.warning("Error closing session: %s", e)
         finally:
             self._session = None
@@ -156,7 +156,7 @@ class STDIOAdapter(BaseAdapter):
         try:
             if self._client_context:
                 await self._client_context.__aexit__(None, None, None)
-        except Exception as e:
+        except OSError as e:
             logger.warning("Error closing client: %s", e)
         finally:
             self._client_context = None
@@ -164,7 +164,7 @@ class STDIOAdapter(BaseAdapter):
         self._connected = False
         self._clear_cache()
 
-    async def discover_tools(self, force_refresh: bool = False) -> list[Tool]:
+    async def discover_tools(self, *, force_refresh: bool = False) -> list[Tool]:
         """
         发现可用的 Tools
 
@@ -196,13 +196,14 @@ class STDIOAdapter(BaseAdapter):
             tools = [Tool.from_mcp_tool(t) for t in result.tools]
             self._set_cached_tools(tools)
 
-            logger.info("Discovered %d tools for %s", len(tools), self.mcp_id)
-            return tools
-
         except Exception as e:
-            logger.exception("Failed to discover tools for %s: %s", self.mcp_id, e)
+            logger.exception("Failed to discover tools for %s", self.mcp_id)
             msg = f"Failed to discover tools for {self.mcp_id}: {e}"
             raise AdapterError(msg, adapter_type="stdio") from e
+
+        else:
+            logger.info("Discovered %d tools for %s", len(tools), self.mcp_id)
+            return tools
 
     async def call_tool(
         self,
@@ -251,16 +252,6 @@ class STDIOAdapter(BaseAdapter):
             duration_ms = int((time.monotonic() - start_time) * 1000)
             tool_result = ToolCallResult.from_mcp_result(result, duration_ms)
 
-            logger.info(
-                "Tool %s on %s completed in %dms (success=%s)",
-                tool_name,
-                self.mcp_id,
-                duration_ms,
-                tool_result.success,
-            )
-
-            return tool_result
-
         except TimeoutError:
             duration_ms = int((time.monotonic() - start_time) * 1000)
             logger.warning(
@@ -277,10 +268,19 @@ class STDIOAdapter(BaseAdapter):
         except Exception as e:
             duration_ms = int((time.monotonic() - start_time) * 1000)
             logger.exception(
-                "Tool %s on %s failed: %s",
+                "Tool %s on %s failed",
                 tool_name,
                 self.mcp_id,
-                e,
             )
             msg = f"Tool call failed: {e}"
             raise ToolCallError(msg, tool_name=tool_name, mcp_id=self.mcp_id) from e
+
+        else:
+            logger.info(
+                "Tool %s on %s completed in %dms (success=%s)",
+                tool_name,
+                self.mcp_id,
+                duration_ms,
+                tool_result.success,
+            )
+            return tool_result

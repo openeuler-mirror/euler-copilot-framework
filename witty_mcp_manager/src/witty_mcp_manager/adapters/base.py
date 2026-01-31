@@ -9,11 +9,13 @@ from __future__ import annotations
 import logging
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import UTC, datetime
 from enum import Enum
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Self
 
 if TYPE_CHECKING:
+    import types
+
     from witty_mcp_manager.overlay.resolver import EffectiveConfig
     from witty_mcp_manager.registry.models import ServerRecord
     from witty_mcp_manager.runtime.manager import Session
@@ -133,8 +135,6 @@ class ToolsCache:
     @property
     def is_expired(self) -> bool:
         """是否已过期"""
-        from datetime import UTC
-
         elapsed = (datetime.now(UTC) - self.cached_at).total_seconds()
         return elapsed >= self.ttl_seconds
 
@@ -196,7 +196,7 @@ class BaseAdapter(ABC):
         """
 
     @abstractmethod
-    async def discover_tools(self, force_refresh: bool = False) -> list[Tool]:
+    async def discover_tools(self, *, force_refresh: bool = False) -> list[Tool]:
         """
         发现可用的 Tools
 
@@ -243,8 +243,6 @@ class BaseAdapter(ABC):
 
     def _set_cached_tools(self, tools: list[Tool]) -> None:
         """设置 Tools 缓存"""
-        from datetime import UTC
-
         ttl = self.config.config.tool_policy.cache_ttl if self.config else 600
         self._tools_cache = ToolsCache(
             tools=tools,
@@ -256,10 +254,15 @@ class BaseAdapter(ABC):
         """清除缓存"""
         self._tools_cache = None
 
-    async def __aenter__(self) -> BaseAdapter:
+    async def __aenter__(self) -> Self:
         """异步上下文管理器入口"""
         return self
 
-    async def __aexit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
+    async def __aexit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: types.TracebackType | None,
+    ) -> None:
         """异步上下文管理器退出"""
         await self.disconnect()

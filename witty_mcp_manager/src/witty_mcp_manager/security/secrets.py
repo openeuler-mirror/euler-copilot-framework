@@ -93,38 +93,45 @@ class SecretsManager:
             return self._resolve_file(ref_key)
         if ref_type == "secrets":
             return self._resolve_secrets(ref_key)
-        raise ConfigError(f"Unknown secret reference type: {ref_type}")
+        msg = f"Unknown secret reference type: {ref_type}"
+        raise ConfigError(msg)
 
     def _resolve_env(self, var_name: str) -> str:
         """从环境变量解析"""
         value = os.environ.get(var_name)
         if value is None:
-            raise ConfigError(f"Environment variable not found: {var_name}")
+            msg = f"Environment variable not found: {var_name}"
+            raise ConfigError(msg)
         return value
 
     def _resolve_file(self, file_path: str) -> str:
         """从文件解析"""
         path = Path(file_path)
         if not path.exists():
-            raise ConfigError(f"Secret file not found: {file_path}")
+            msg = f"Secret file not found: {file_path}"
+            raise ConfigError(msg)
         if not path.is_file():
-            raise ConfigError(f"Secret path is not a file: {file_path}")
+            msg = f"Secret path is not a file: {file_path}"
+            raise ConfigError(msg)
 
         try:
             return path.read_text().strip()
         except OSError as e:
-            raise ConfigError(f"Failed to read secret file {file_path}: {e}") from e
+            msg = f"Failed to read secret file {file_path}: {e}"
+            raise ConfigError(msg) from e
 
     def _resolve_secrets(self, key_name: str) -> str:
         """从 secrets 目录解析"""
         secret_path = self.secrets_dir / key_name
         if not secret_path.exists():
-            raise ConfigError(f"Secret not found: {key_name}")
+            msg = f"Secret not found: {key_name}"
+            raise ConfigError(msg)
 
         try:
             return secret_path.read_text().strip()
         except OSError as e:
-            raise ConfigError(f"Failed to read secret {key_name}: {e}") from e
+            msg = f"Failed to read secret {key_name}: {e}"
+            raise ConfigError(msg) from e
 
     def resolve_all(self, value: str) -> str:
         """
@@ -190,17 +197,22 @@ class SecretsManager:
 
         # 验证 key_name（防止路径穿越）
         if "/" in key_name or "\\" in key_name or ".." in key_name:
-            raise ConfigError(f"Invalid secret key name: {key_name}")
+            msg = f"Invalid secret key name: {key_name}"
+            raise ConfigError(msg)
 
         secret_path = self.secrets_dir / key_name
 
         try:
             secret_path.write_text(value)
             secret_path.chmod(0o600)  # 仅 owner 可读写
+
+        except OSError as e:
+            msg = f"Failed to save secret {key_name}: {e}"
+            raise ConfigError(msg) from e
+
+        else:
             logger.info("Saved secret: %s", key_name)
             return secret_path
-        except OSError as e:
-            raise ConfigError(f"Failed to save secret {key_name}: {e}") from e
 
     def delete_secret(self, key_name: str) -> bool:
         """
@@ -220,11 +232,14 @@ class SecretsManager:
 
         try:
             secret_path.unlink()
-            logger.info("Deleted secret: %s", key_name)
-            return True
+
         except OSError as e:
             logger.warning("Failed to delete secret %s: %s", key_name, e)
             return False
+
+        else:
+            logger.info("Deleted secret: %s", key_name)
+            return True
 
     def list_secrets(self) -> list[str]:
         """

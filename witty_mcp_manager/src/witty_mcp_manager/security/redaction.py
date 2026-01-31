@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import logging
 import re
-from typing import Any
+from typing import Any, ClassVar, Final
 
 logger = logging.getLogger(__name__)
 
@@ -24,7 +24,7 @@ class LogRedactor:
     """
 
     # 敏感字段关键词（不区分大小写）
-    SENSITIVE_KEYWORDS = frozenset(
+    SENSITIVE_KEYWORDS: ClassVar[frozenset[str]] = frozenset(
         [
             "password",
             "passwd",
@@ -48,7 +48,7 @@ class LogRedactor:
     )
 
     # 敏感模式正则
-    SENSITIVE_PATTERNS = [
+    SENSITIVE_PATTERNS: ClassVar[list[re.Pattern[str]]] = [
         # JWT token
         re.compile(r"eyJ[A-Za-z0-9_-]*\.eyJ[A-Za-z0-9_-]*\.[A-Za-z0-9_-]*"),
         # Bearer token
@@ -59,8 +59,8 @@ class LogRedactor:
         re.compile(r"gho_[A-Za-z0-9]{36}"),  # GitHub OAuth Token
     ]
 
-    MASK = "***REDACTED***"
-    MASK_SHORT = "***"
+    MASK: Final[str] = "***REDACTED***"
+    MASK_SHORT: Final[str] = "***"
 
     def __init__(
         self,
@@ -114,7 +114,7 @@ class LogRedactor:
 
         return result
 
-    def redact_dict(self, data: dict[str, Any], in_place: bool = False) -> dict[str, Any]:
+    def redact_dict(self, data: dict[str, Any], *, in_place: bool = False) -> dict[str, Any]:
         """
         脱敏字典
 
@@ -205,16 +205,23 @@ class LogRedactor:
         return message
 
 
-# 全局默认脱敏器
-_default_redactor: LogRedactor | None = None
+# 全局默认脱敏器单例
+class _RedactorSingleton:
+    """Redactor 单例容器"""
+
+    _instance: LogRedactor | None = None
+
+    @classmethod
+    def get(cls) -> LogRedactor:
+        """获取单例"""
+        if cls._instance is None:
+            cls._instance = LogRedactor()
+        return cls._instance
 
 
 def get_redactor() -> LogRedactor:
     """获取全局脱敏器"""
-    global _default_redactor
-    if _default_redactor is None:
-        _default_redactor = LogRedactor()
-    return _default_redactor
+    return _RedactorSingleton.get()
 
 
 def redact(data: dict[str, Any]) -> dict[str, Any]:
