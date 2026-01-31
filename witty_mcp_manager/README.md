@@ -76,6 +76,9 @@ uv sync --extra dev
 source .venv/bin/activate
 ```
 
+说明：本项目的静态检查（ruff/mypy）与测试（pytest）默认依赖 `dev` extra。
+为了保证使用到的是同一套依赖与解释器，建议所有命令都通过 `uv run ...` 执行。
+
 ### 运行测试
 
 ```bash
@@ -93,14 +96,29 @@ uv run pytest --cov=witty_mcp_manager --cov-report=html
 
 ```bash
 # 格式化
-ruff format .
+uv run ruff format .
 
 # 检查
-ruff check .
+uv run ruff check .
 
 # 类型检查
-mypy src/
+uv run mypy src
 ```
+
+### 质量门禁（推荐一键）
+
+```bash
+uv run ruff format --check . \
+    && uv run ruff check . \
+    && uv run mypy src \
+    && uv run pytest -q
+```
+
+### 常见问题
+
+- mypy 提示 `Library stubs not installed for "yaml"`
+
+    这通常表示你没有安装 `dev` 依赖。请先执行 `uv sync --extra dev`，再运行 `uv run mypy src`。
 
 ### 构建二进制
 
@@ -162,3 +180,5 @@ Mulan PSL v2
 ## 贡献
 
 欢迎提交 Issue 和 PR 到 [openEuler euler-copilot-framework 仓库](https://atomgit.com/openeuler/euler-copilot-framework)。
+
+开发/提交规范见 `CONTRIBUTING.md`。
