@@ -9,21 +9,19 @@ from __future__ import annotations
 import copy
 import logging
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
-from witty_mcp_manager.overlay.storage import OverlayStorage
+if TYPE_CHECKING:
+    from witty_mcp_manager.overlay.storage import OverlayStorage
+
 from witty_mcp_manager.registry.models import (
     Concurrency,
     NormalizedConfig,
     Override,
     ServerRecord,
-    SseConfig,
     StdioConfig,
     Timeouts,
 )
-
-if TYPE_CHECKING:
-    pass
 
 logger = logging.getLogger(__name__)
 
@@ -67,6 +65,7 @@ class OverlayResolver:
 
         Args:
             storage: Overlay 存储实例
+
         """
         self.storage = storage
 
@@ -84,6 +83,7 @@ class OverlayResolver:
 
         Returns:
             最终生效配置
+
         """
         # 1. 从默认配置开始
         config = copy.deepcopy(server.default_config)
@@ -151,6 +151,7 @@ class OverlayResolver:
 
         Returns:
             更新后的配置元组
+
         """
         # 禁用状态
         if override.disabled is not None:
@@ -180,7 +181,7 @@ class OverlayResolver:
     def _apply_arg_patches(
         self,
         config: NormalizedConfig,
-        arg_patches: list[dict],
+        arg_patches: list[dict[str, Any]],
     ) -> NormalizedConfig:
         """
         应用参数补丁
@@ -196,6 +197,7 @@ class OverlayResolver:
 
         Returns:
             更新后的配置
+
         """
         if not arg_patches or not config.stdio:
             return config
@@ -241,6 +243,7 @@ class OverlayResolver:
 
         Returns:
             是否启用
+
         """
         # 检查用户设置
         user_enabled = self.storage.is_user_enabled(server.id, user_id)
@@ -268,6 +271,7 @@ class OverlayResolver:
 
         Returns:
             启用的 MCP Server 列表（系统级未禁用的）
+
         """
         result = []
         for server in servers:

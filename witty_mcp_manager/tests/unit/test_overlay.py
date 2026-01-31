@@ -4,16 +4,14 @@ Overlay 模块单元测试
 
 from __future__ import annotations
 
-import json
 import tempfile
 from pathlib import Path
 
 import pytest
 
-from witty_mcp_manager.overlay.resolver import EffectiveConfig, OverlayResolver
+from witty_mcp_manager.overlay.resolver import OverlayResolver
 from witty_mcp_manager.overlay.storage import OverlayStorage
 from witty_mcp_manager.registry.models import (
-    Concurrency,
     NormalizedConfig,
     Override,
     ServerRecord,

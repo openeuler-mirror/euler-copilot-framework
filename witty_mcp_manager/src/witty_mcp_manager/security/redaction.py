@@ -24,26 +24,28 @@ class LogRedactor:
     """
 
     # 敏感字段关键词（不区分大小写）
-    SENSITIVE_KEYWORDS = frozenset([
-        "password",
-        "passwd",
-        "pwd",
-        "secret",
-        "token",
-        "api_key",
-        "apikey",
-        "api-key",
-        "access_key",
-        "accesskey",
-        "access-key",
-        "private_key",
-        "privatekey",
-        "private-key",
-        "credential",
-        "auth",
-        "authorization",
-        "bearer",
-    ])
+    SENSITIVE_KEYWORDS = frozenset(
+        [
+            "password",
+            "passwd",
+            "pwd",
+            "secret",
+            "token",
+            "api_key",
+            "apikey",
+            "api-key",
+            "access_key",
+            "accesskey",
+            "access-key",
+            "private_key",
+            "privatekey",
+            "private-key",
+            "credential",
+            "auth",
+            "authorization",
+            "bearer",
+        ]
+    )
 
     # 敏感模式正则
     SENSITIVE_PATTERNS = [
@@ -71,6 +73,7 @@ class LogRedactor:
         Args:
             extra_keywords: 额外的敏感关键词
             mask: 脱敏替换字符串
+
         """
         self._keywords = set(self.SENSITIVE_KEYWORDS)
         if extra_keywords:
@@ -86,6 +89,7 @@ class LogRedactor:
 
         Returns:
             是否敏感
+
         """
         key_lower = key.lower()
         return any(kw in key_lower for kw in self._keywords)
@@ -99,6 +103,7 @@ class LogRedactor:
 
         Returns:
             脱敏后的值
+
         """
         if not isinstance(value, str):
             return value
@@ -119,6 +124,7 @@ class LogRedactor:
 
         Returns:
             脱敏后的字典
+
         """
         if not in_place:
             data = dict(data)
@@ -132,8 +138,10 @@ class LogRedactor:
                 data[key] = self.redact_dict(value, in_place=False)
             elif isinstance(value, list):
                 data[key] = [
-                    self.redact_dict(v, in_place=False) if isinstance(v, dict)
-                    else self.redact_value(v) if isinstance(v, str)
+                    self.redact_dict(v, in_place=False)
+                    if isinstance(v, dict)
+                    else self.redact_value(v)
+                    if isinstance(v, str)
                     else v
                     for v in value
                 ]
@@ -149,6 +157,7 @@ class LogRedactor:
 
         Returns:
             脱敏后的环境变量
+
         """
         result = {}
         for key, value in env.items():
@@ -167,19 +176,18 @@ class LogRedactor:
 
         Returns:
             脱敏后的请求头
+
         """
-        result = {}
+        result: dict[str, str] = {}
         for key, value in headers.items():
             key_lower = key.lower()
-            if key_lower in ("authorization", "x-api-key", "x-auth-token"):
-                result[key] = self.MASK_SHORT
-            elif self.is_sensitive_key(key):
+            if key_lower in ("authorization", "x-api-key", "x-auth-token") or self.is_sensitive_key(key):
                 result[key] = self.MASK_SHORT
             else:
                 result[key] = self.redact_value(value)
         return result
 
-    def safe_log(self, message: str, data: dict | None = None) -> str:
+    def safe_log(self, message: str, data: dict[str, Any] | None = None) -> str:
         """
         生成安全的日志消息
 
@@ -189,6 +197,7 @@ class LogRedactor:
 
         Returns:
             脱敏后的日志消息
+
         """
         if data:
             redacted = self.redact_dict(data)

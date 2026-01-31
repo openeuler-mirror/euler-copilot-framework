@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -29,7 +29,7 @@ class SessionRecycler:
 
     def __init__(
         self,
-        runtime_manager: "RuntimeManager",
+        runtime_manager: RuntimeManager,
         default_idle_ttl: int = DEFAULT_IDLE_TTL,
         check_interval: int = CHECK_INTERVAL,
     ) -> None:
@@ -40,12 +40,13 @@ class SessionRecycler:
             runtime_manager: Runtime 管理器
             default_idle_ttl: 默认空闲 TTL（秒）
             check_interval: 检查间隔（秒）
+
         """
         self.runtime_manager = runtime_manager
         self.default_idle_ttl = default_idle_ttl
         self.check_interval = check_interval
 
-        self._task: asyncio.Task | None = None
+        self._task: asyncio.Task[None] | None = None
         self._running = False
 
     async def start(self) -> None:
@@ -86,7 +87,7 @@ class SessionRecycler:
 
     async def _recycle_idle_sessions(self) -> None:
         """回收空闲会话"""
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         recycled = 0
 
         sessions = await self.runtime_manager.list_sessions()
@@ -127,18 +128,20 @@ class SessionRecycler:
 
         Returns:
             回收的会话数量
+
         """
         before = len(await self.runtime_manager.list_sessions())
         await self._recycle_idle_sessions()
         after = len(await self.runtime_manager.list_sessions())
         return before - after
 
-    def get_stats(self) -> dict:
+    def get_stats(self) -> dict[str, int | bool]:
         """
         获取统计信息
 
         Returns:
             统计信息字典
+
         """
         return {
             "running": self._running,

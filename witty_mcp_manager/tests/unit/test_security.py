@@ -13,7 +13,7 @@ import pytest
 
 from witty_mcp_manager.exceptions import CommandNotAllowedError, ConfigError
 from witty_mcp_manager.security.allowlist import CommandAllowlist
-from witty_mcp_manager.security.redaction import LogRedactor, get_redactor, redact
+from witty_mcp_manager.security.redaction import LogRedactor, redact
 from witty_mcp_manager.security.secrets import SecretsManager
 
 

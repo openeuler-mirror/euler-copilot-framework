@@ -9,6 +9,7 @@ from __future__ import annotations
 import logging
 import shutil
 from pathlib import Path
+from typing import Any
 
 from witty_mcp_manager.exceptions import CommandNotAllowedError
 
@@ -41,6 +42,7 @@ class CommandAllowlist:
         Args:
             allowed: 覆盖默认白名单（None 使用默认）
             extra_allowed: 额外允许的命令（追加到默认白名单）
+
         """
         if allowed is not None:
             self._allowed = set(allowed)
@@ -66,6 +68,7 @@ class CommandAllowlist:
 
         Returns:
             是否允许
+
         """
         # 提取命令名称（去除路径）
         cmd_name = Path(command).name
@@ -81,6 +84,7 @@ class CommandAllowlist:
 
         Raises:
             CommandNotAllowedError: 命令不在白名单中
+
         """
         if not self.is_allowed(command):
             raise CommandNotAllowedError(
@@ -94,6 +98,7 @@ class CommandAllowlist:
 
         Args:
             command: 命令名称
+
         """
         self._allowed.add(command)
         logger.info("Added command to allowlist: %s", command)
@@ -107,6 +112,7 @@ class CommandAllowlist:
 
         Returns:
             是否移除成功
+
         """
         if command in self._allowed:
             self._allowed.discard(command)
@@ -123,10 +129,11 @@ class CommandAllowlist:
 
         Returns:
             命令是否存在
+
         """
         return shutil.which(command) is not None
 
-    def validate(self, command: str) -> dict:
+    def validate(self, command: str) -> dict[str, Any]:
         """
         验证命令
 
@@ -135,12 +142,13 @@ class CommandAllowlist:
 
         Returns:
             验证结果字典
+
         """
         cmd_name = Path(command).name
         allowed = self.is_allowed(command)
         exists = self.check_exists(cmd_name)
 
-        result = {
+        result: dict[str, Any] = {
             "command": command,
             "command_name": cmd_name,
             "allowed": allowed,

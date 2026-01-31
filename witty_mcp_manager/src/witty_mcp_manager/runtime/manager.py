@@ -8,10 +8,10 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 
-from witty_mcp_manager.exceptions import RuntimeError as WittyRuntimeError
+from witty_mcp_manager.exceptions import WittyRuntimeError
 from witty_mcp_manager.registry.models import RuntimeState, ServerRecord
 
 if TYPE_CHECKING:
@@ -32,7 +32,7 @@ class Session:
         mcp_id: str,
         user_id: str,
         server: ServerRecord,
-        config: "EffectiveConfig",
+        config: EffectiveConfig,
     ) -> None:
         """
         初始化会话
@@ -42,6 +42,7 @@ class Session:
             user_id: 用户 ID
             server: MCP Server 记录
             config: 最终生效配置
+
         """
         self.mcp_id = mcp_id
         self.user_id = user_id
@@ -72,7 +73,7 @@ class Session:
 
     def touch(self) -> None:
         """更新最后使用时间"""
-        self.state.last_used_at = datetime.now(timezone.utc)
+        self.state.last_used_at = datetime.now(UTC)
 
     async def start(self) -> None:
         """
@@ -82,7 +83,7 @@ class Session:
         """
         async with self._lock:
             self.state.status = "starting"
-            self.state.started_at = datetime.now(timezone.utc)
+            self.state.started_at = datetime.now(UTC)
             self.state.last_used_at = self.state.started_at
             logger.info("Session starting: %s", self.session_key)
 
@@ -92,6 +93,7 @@ class Session:
 
         Args:
             pid: 进程 ID（仅 STDIO）
+
         """
         async with self._lock:
             self.state.status = "running"
@@ -104,6 +106,7 @@ class Session:
 
         Args:
             error: 错误信息（如有）
+
         """
         async with self._lock:
             if error:
@@ -119,7 +122,7 @@ class Session:
                 try:
                     self._process.terminate()
                     await asyncio.wait_for(self._process.wait(), timeout=5.0)
-                except asyncio.TimeoutError:
+                except TimeoutError:
                     self._process.kill()
                 except Exception as e:
                     logger.warning("Failed to terminate process: %s", e)
@@ -156,7 +159,7 @@ class RuntimeManager:
     async def get_or_create_session(
         self,
         server: ServerRecord,
-        config: "EffectiveConfig",
+        config: EffectiveConfig,
         user_id: str,
     ) -> Session:
         """
@@ -172,6 +175,7 @@ class RuntimeManager:
 
         Raises:
             WittyRuntimeError: 创建失败
+
         """
         key = self._make_key(user_id, server.id)
 
@@ -185,9 +189,7 @@ class RuntimeManager:
                     return session
                 # 会话存在但未运行，检查重启次数
                 if session.state.restart_count >= self.MAX_RESTART_COUNT:
-                    raise WittyRuntimeError(
-                        f"Session {key} exceeded max restart count ({self.MAX_RESTART_COUNT})"
-                    )
+                    raise WittyRuntimeError(f"Session {key} exceeded max restart count ({self.MAX_RESTART_COUNT})")
 
             # 创建新会话
             session = Session(
@@ -211,6 +213,7 @@ class RuntimeManager:
 
         Returns:
             会话实例，不存在则返回 None
+
         """
         key = self._make_key(user_id, mcp_id)
         return self._sessions.get(key)
@@ -225,6 +228,7 @@ class RuntimeManager:
 
         Returns:
             是否移除成功
+
         """
         key = self._make_key(user_id, mcp_id)
 
@@ -246,6 +250,7 @@ class RuntimeManager:
 
         Returns:
             会话列表
+
         """
         if user_id:
             return [s for s in self._sessions.values() if s.user_id == user_id]
@@ -260,6 +265,7 @@ class RuntimeManager:
 
         Returns:
             会话列表
+
         """
         return [s for s in self._sessions.values() if s.mcp_id == mcp_id]
 
@@ -273,6 +279,7 @@ class RuntimeManager:
 
         Returns:
             运行时状态，不存在则返回 None
+
         """
         session = await self.get_session(user_id, mcp_id)
         return session.state if session else None
@@ -291,10 +298,11 @@ class RuntimeManager:
 
         Returns:
             统计信息字典
+
         """
         total = len(self._sessions)
         running = sum(1 for s in self._sessions.values() if s.is_running)
-        by_status = {}
+        by_status: dict[str, int] = {}
         for s in self._sessions.values():
             status = s.state.status
             by_status[status] = by_status.get(status, 0) + 1

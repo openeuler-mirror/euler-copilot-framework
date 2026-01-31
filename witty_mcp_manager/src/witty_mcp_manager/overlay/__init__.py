@@ -8,6 +8,6 @@ from witty_mcp_manager.overlay.resolver import OverlayResolver
 from witty_mcp_manager.overlay.storage import OverlayStorage
 
 __all__ = [
-    "OverlayStorage",
     "OverlayResolver",
+    "OverlayStorage",
 ]

@@ -10,13 +10,9 @@ from __future__ import annotations
 import json
 import logging
 from pathlib import Path
-from typing import TYPE_CHECKING
 
-from witty_mcp_manager.exceptions import ConfigError, WittyMCPError
+from witty_mcp_manager.exceptions import ConfigError
 from witty_mcp_manager.registry.models import Override
-
-if TYPE_CHECKING:
-    pass
 
 logger = logging.getLogger(__name__)
 
@@ -41,6 +37,7 @@ class OverlayStorage:
 
         Args:
             state_directory: StateDirectory 路径（通常为 /var/lib/witty-mcp-manager）
+
         """
         self.state_directory = Path(state_directory)
         self.overrides_dir = self.state_directory / "overrides"
@@ -63,6 +60,7 @@ class OverlayStorage:
 
         Returns:
             override 文件路径
+
         """
         if user_id:
             user_dir = self.users_dir / user_id
@@ -88,6 +86,7 @@ class OverlayStorage:
 
         Raises:
             ConfigError: 保存失败
+
         """
         file_path = self._get_override_path(mcp_id, user_id)
 
@@ -118,6 +117,7 @@ class OverlayStorage:
 
         Returns:
             覆盖配置，不存在则返回 None
+
         """
         file_path = self._get_override_path(mcp_id, user_id)
 
@@ -147,6 +147,7 @@ class OverlayStorage:
 
         Returns:
             是否删除成功
+
         """
         file_path = self._get_override_path(mcp_id, user_id)
 
@@ -169,6 +170,7 @@ class OverlayStorage:
 
         Returns:
             MCP ID 列表
+
         """
         if not self.global_dir.exists():
             return []
@@ -184,6 +186,7 @@ class OverlayStorage:
 
         Returns:
             MCP ID 列表
+
         """
         user_dir = self.users_dir / user_id
         if not user_dir.exists():
@@ -197,6 +200,7 @@ class OverlayStorage:
 
         Returns:
             用户 ID 列表
+
         """
         if not self.users_dir.exists():
             return []
@@ -212,6 +216,7 @@ class OverlayStorage:
 
         Returns:
             是否被全局禁用
+
         """
         override = self.load_override(mcp_id)
         return override is not None and override.disabled is True
@@ -226,6 +231,7 @@ class OverlayStorage:
 
         Returns:
             True=启用, False=禁用, None=未设置
+
         """
         override = self.load_override(mcp_id, user_id)
         if override is None:

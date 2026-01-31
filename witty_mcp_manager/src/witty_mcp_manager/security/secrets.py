@@ -41,6 +41,7 @@ class SecretsManager:
 
         Args:
             state_directory: StateDirectory 路径
+
         """
         self.state_directory = Path(state_directory)
         self.secrets_dir = self.state_directory / "secrets"
@@ -61,6 +62,7 @@ class SecretsManager:
 
         Returns:
             是否为引用
+
         """
         return isinstance(value, str) and self.REF_PATTERN.search(value) is not None
 
@@ -76,6 +78,7 @@ class SecretsManager:
 
         Raises:
             ConfigError: 解析失败
+
         """
         match = self.REF_PATTERN.match(reference)
         if not match:
@@ -86,12 +89,11 @@ class SecretsManager:
 
         if ref_type == "env":
             return self._resolve_env(ref_key)
-        elif ref_type == "file":
+        if ref_type == "file":
             return self._resolve_file(ref_key)
-        elif ref_type == "secrets":
+        if ref_type == "secrets":
             return self._resolve_secrets(ref_key)
-        else:
-            raise ConfigError(f"Unknown secret reference type: {ref_type}")
+        raise ConfigError(f"Unknown secret reference type: {ref_type}")
 
     def _resolve_env(self, var_name: str) -> str:
         """从环境变量解析"""
@@ -133,8 +135,10 @@ class SecretsManager:
 
         Returns:
             解析后的字符串
+
         """
-        def replace_ref(match: re.Match) -> str:
+
+        def replace_ref(match: re.Match[str]) -> str:
             full_ref = match.group(0)
             try:
                 return self.resolve_reference(full_ref)
@@ -153,8 +157,9 @@ class SecretsManager:
 
         Returns:
             解析后的字典
+
         """
-        result = {}
+        result: dict[str, Any] = {}
         for key, value in data.items():
             if isinstance(value, str):
                 result[key] = self.resolve_all(value)
@@ -162,9 +167,7 @@ class SecretsManager:
                 result[key] = self.resolve_dict(value)
             elif isinstance(value, list):
                 result[key] = [
-                    self.resolve_all(v) if isinstance(v, str)
-                    else self.resolve_dict(v) if isinstance(v, dict)
-                    else v
+                    self.resolve_all(v) if isinstance(v, str) else self.resolve_dict(v) if isinstance(v, dict) else v
                     for v in value
                 ]
             else:
@@ -181,6 +184,7 @@ class SecretsManager:
 
         Returns:
             保存的文件路径
+
         """
         self.ensure_directory()
 
@@ -207,6 +211,7 @@ class SecretsManager:
 
         Returns:
             是否删除成功
+
         """
         secret_path = self.secrets_dir / key_name
 
@@ -227,6 +232,7 @@ class SecretsManager:
 
         Returns:
             secret 名称列表（不包含值）
+
         """
         if not self.secrets_dir.exists():
             return []
@@ -242,6 +248,7 @@ class SecretsManager:
 
         Returns:
             是否存在
+
         """
         secret_path = self.secrets_dir / key_name
         return secret_path.exists() and secret_path.is_file()

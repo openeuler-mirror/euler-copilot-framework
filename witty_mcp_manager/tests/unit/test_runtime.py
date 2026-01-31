@@ -4,9 +4,8 @@ Runtime 模块单元测试
 
 from __future__ import annotations
 
-import asyncio
-from datetime import datetime, timedelta, timezone
-from unittest.mock import AsyncMock, MagicMock, patch
+from datetime import UTC, datetime, timedelta
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -117,9 +116,7 @@ class TestSession:
         assert session.state.pid is None
 
     @pytest.mark.asyncio
-    async def test_stop_with_error(
-        self, sample_server: ServerRecord, mock_config: MagicMock
-    ) -> None:
+    async def test_stop_with_error(self, sample_server: ServerRecord, mock_config: MagicMock) -> None:
         """测试带错误停止"""
         session = Session(
             mcp_id="git_mcp",
@@ -369,7 +366,7 @@ class TestSessionRecycler:
         await session.mark_running()
 
         # 模拟空闲超时（设置 last_used_at 为过去时间）
-        session.state.last_used_at = datetime.now(timezone.utc) - timedelta(seconds=120)
+        session.state.last_used_at = datetime.now(UTC) - timedelta(seconds=120)
 
         # 执行回收
         recycled = await recycler.recycle_now()
