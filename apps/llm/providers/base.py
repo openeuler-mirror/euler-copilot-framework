@@ -21,8 +21,8 @@ class BaseProvider:
             # 添加默认系统消息
             messages.insert(0, {"role": "system", "content": "You are a helpful assistant."})
 
-        if messages[-1]["role"] != "user":
-            err = f"消息格式错误，最后一个消息必须是用户消息：{messages[-1]}"
+        if messages[-1]["role"] not in ["user", "tool"]:
+            err = f"消息格式错误，最后一个消息必须是用户消息或工具消息：{messages[-1]}"
             raise ValueError(err)
 
         return messages
@@ -53,6 +53,7 @@ class BaseProvider:
         tools: list[LLMFunctions] | None = None,
         *, include_thinking: bool = False,
         streaming: bool = True,
+        temperature: float = 0.7,
     ) -> AsyncGenerator[LLMChunk, None]:
         """聊天"""
         yield LLMChunk(content="")

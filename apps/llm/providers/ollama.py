@@ -141,12 +141,13 @@ class OllamaProvider(BaseProvider):
         *,
         streaming: bool,
         tools: list[LLMFunctions] | None,
+        temperature: float = 0.7,
     ) -> dict[str, Any]:
         """构建chat请求参数"""
         chat_kwargs = {
             "messages": messages,
             "options": {
-                "temperature": self.config.temperature,
+                "temperature": temperature,
                 "num_predict": self.config.maxToken,
             },
             "stream": streaming,
@@ -169,6 +170,7 @@ class OllamaProvider(BaseProvider):
         tools: list[LLMFunctions] | None = None,
         *, include_thinking: bool = False,
         streaming: bool = True,
+        temperature: float = 0.7,
     ) -> AsyncGenerator[LLMChunk, None]:
         # 检查能力
         if not self._allow_chat:
@@ -186,7 +188,7 @@ class OllamaProvider(BaseProvider):
         messages = self._validate_messages(messages)
 
         # 构建chat请求参数
-        chat_kwargs = self._build_chat_kwargs(messages, streaming=streaming, tools=tools)
+        chat_kwargs = self._build_chat_kwargs(messages, streaming=streaming, tools=tools, temperature=temperature)
 
         # 发送请求
         response = await self._client.chat(**chat_kwargs)
