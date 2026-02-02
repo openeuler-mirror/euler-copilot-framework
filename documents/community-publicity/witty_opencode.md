@@ -2,7 +2,7 @@
 
 ## 引言
 
-在数字化转型的浪潮中，服务器运维面临着复杂度高、效率低、门槛高等挑战。openEuler 24.03 LTS SP3 推出的 Witty Assistant 智能助手，通过默认集成 OpenCode AI 编码代理框架，为服务器运维带来了革命性的变化。
+在数智化转型的浪潮中，服务器运维面临着复杂度高、效率低、门槛高等挑战。openEuler 24.03 LTS SP3 推出的 Witty Assistant 智能助手，通过默认集成 OpenCode AI 编码代理框架，为服务器运维带来了革命性的变化。
 
 Witty Assistant 提供 LLM 驱动的命令行交互体验，支持对接多种 LLM 后端及 AI Agent。而 OpenCode 作为核心的 AI 编码代理框架，将大语言模型封装为可插拔的智能体，不仅能生成适配 openEuler 的专业运维脚本，还能快速诊断故障、确保配置合规、优化系统性能，真正实现了"自然语言驱动的智能运维"。
 
@@ -80,7 +80,7 @@ sudo witty init
 完成参数配置后，点击下方"开始部署"按钮，启动部署程序。
 ![部署完成](./pictures/deploy_finish.png)
 
-轻量部署模式完成后，会显示已经初始化的智能体，包括默认配置的 OpenCode 智能体。
+部署完成后，会显示已经初始化的智能体，包括默认配置的 OpenCode 智能体。
 
 ### 验证 OpenCode 集成
 
@@ -130,6 +130,7 @@ witty
 
 **执行示例**：
 ![故障诊断与分析](./pictures/trace.png)
+![故障诊断方案确认](./pictures/trace01.png)
 
 
 ## 高级配置与管理
@@ -205,10 +206,6 @@ echo "index-url = https://pypi.tuna.tsinghua.edu.cn/simple" >> ~/.pip/pip.conf
    ```
 
    将 `/path/to/download/dir` 替换为实际的下载目录，`<package-name>` 替换为实际需要安装的包名。
-
-### Q4: 服务器系统版本受制约，无法升级到 openEuler 24.03 LTS SP3，怎么办？
-
-**A4**: 可以尝试在当前系统版本上手动安装所需的软件包和依赖项。由于 openEuler 24.03 LTS 以上的版本都使用 6.6 版本的内核和 Python 3.11，因此只需要将 `/etc/os-release` 和 `/etc/openEuler-release` 文件中的版本信息修改为 24.03 LTS SP3 即可。
 
 请注意，使用这种方法安装需要自行准备所需的软件包和依赖项，可能会遇到兼容性问题，建议在测试环境中进行验证后再应用到生产环境中。
 
