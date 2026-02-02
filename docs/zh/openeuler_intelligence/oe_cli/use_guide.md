@@ -25,7 +25,7 @@ witty
 
 ### 1.2 选择智能体
 
-点击选择智能体（ ctrl + t ），默认为 基础运维Agent，按上下键选择，回车确认，ESC 取消，高亮表示选中，智能体详情参照[智能体介绍](https://atomgit.com/openeuler/euler-copilot-framework/blob/master/docs/zh/openeuler_intelligence/oe_cli/agent_introduce.md)。
+点击选择智能体（ ctrl + t ），默认为 基础运维Agent，按上下键选择，回车确认，ESC 取消，高亮表示选中，智能体详情参照[智能体介绍]()。
 
 <img src=pictures/default_agent.png width=1200 />
 
