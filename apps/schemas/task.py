@@ -2,7 +2,6 @@
 """Task相关数据结构定义"""
 
 import uuid
-from typing import Any
 
 from pydantic import BaseModel, Field
 
@@ -23,17 +22,17 @@ class TaskData(BaseModel):
 class AgentCheckpointExtra(BaseModel):
     """Executor额外数据"""
 
-    current_input: dict[str, Any] = Field(description="当前输入数据", default={})
-    error_message: str = Field(description="错误信息", default="")
-    retry_times: int = Field(description="当前步骤重试次数", default=0)
-    step_goal: str = Field(description="当前步骤目标", default="")
-    step_cnt: int = Field(description="已执行步骤数", default=0)
+    todo_list: str = Field(description="TODO列表", default="")
+    step_count: int = Field(description="步骤计数", default=0)
+    tool_list: list[str] | None = Field(description="工具列表", default=None)
 
 
 class AgentHistoryExtra(BaseModel):
     """执行器历史额外数据"""
 
-    step_goal: str = Field(description="步骤目标")
+    tool_call_id: str | None = Field(description="工具调用ID", default=None)
+    role: str | None = Field(description="消息角色", default=None)
+    risk_confirmed: bool | None = Field(description="风险已确认", default=None)
 
 
 class StepQueueItem(BaseModel):

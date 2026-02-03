@@ -1,0 +1,86 @@
+Use this tool to create and manage a structured task (todo) list for the current objective. This helps you track progress, complete complex tasks, and demonstrate thoroughness to the user.
+It also helps the user understand the overall progress of objective completion.
+
+## Examples of Using the Todo List
+
+### Example 1
+User: Help me write a bash script to backup the /home/user/documents directory to /backup/docs with a timestamp. Test it when you're done!
+Assistant: I'll help you create a directory backup script. Let me create a todo list to track this implementation.
+*Creates todo list with the following items:*
+1. Create backup script backup.sh
+2. Implement timestamp generation and backup directory naming
+3. Add copy logic from /home/user/documents to /backup/docs
+4. Add directory existence checks and error handling
+5. Test script functionality and verify backup results
+*Begins working on the first task*
+
+Analysis:
+The assistant used the todo list because:
+1. The backup script requires multiple functional modules (timestamp, copy, error handling)
+2. The user explicitly requested testing after completion
+3. Breaking the task into specific steps with clearly specified source and target directories makes implementation and verification easier
+
+### Example 2
+User: Help me find all log files larger than 100MB in the /var/log directory and clean them up
+Assistant: Let me first search for all log files larger than 100MB in the /var/log directory.
+*Uses find command to locate all matching log files*
+Assistant: I found 12 log files larger than 100MB in the /var/log directory. Let me create a todo list to track the cleanup work.
+*Creates todo list with specific items for each log file that needs cleanup*
+
+Analysis:
+The assistant used the todo list because:
+1. First, the assistant performed a search to understand the scope of the task
+2. After discovering multiple large files in the directory, determined this was a multi-step task
+3. The todo list helps ensure each file is processed systematically
+4. This approach prevents missing any files and gives the user clear visibility of cleanup progress
+
+## Examples of When NOT to Use the Todo List
+
+### Example 1
+User: How do I view all files in the current directory?
+Assistant: In Linux, you can use the ls command to view all files in the current directory:
+
+```bash
+ls -la
+```
+
+This will display detailed information about all files (including hidden files) in the current directory, including permissions, owner, size, and modification time.
+
+Analysis:
+The assistant did not use the todo list because this is a simple task that can be completed in one step. There's no need to track multiple tasks or steps for such a straightforward request.
+
+### Example 2
+User: What does the chmod command do in Linux?
+Assistant: The chmod command is used to modify access permissions for files and directories in Linux systems. It can set read(r), write(w), and execute(x) permissions for the file owner, group users, and other users respectively. For example, 'chmod 755 script.sh' gives the owner full permissions, and gives group users and other users read and execute permissions.
+
+Analysis:
+The assistant did not use the todo list because this is an informational request with no actual tools or scripts to execute. The user is simply asking for an explanation, not for the assistant to perform multiple steps or tasks.
+
+## Task States and Management
+
+1. **Task States**: A task can only have one of the following three states:
+   - `pending`: Task not yet started
+   - `in_progress`: Currently working on (only one task can be in progress at a time)
+   - `completed`: Task successfully completed
+
+   **IMPORTANT**: Use imperative or present continuous tense to describe tasks
+   - Imperative: The imperative form describing what needs to be done (e.g., "Run tests", "Build the project")
+   - Present continuous: The present continuous form shown during execution (e.g., "Running tests", "Building the project")
+
+2. **Task Management**:
+   - Update task status in real-time as you work
+   - Mark tasks complete IMMEDIATELY after finishing (don't batch multiple completions)
+   - Exactly ONE task must be in_progress at any time (not less, not more)
+   - Complete current tasks before starting new ones
+   - Remove tasks that are no longer relevant from the list
+
+3. **Task Completion Requirements**:
+   - ONLY mark a task as completed when you have FULLY accomplished it
+   - If you encounter errors and cannot complete the task, keep the task as in_progress
+   - When in trouble, create a new task describing what needs to be resolved
+   - Never mark a task as completed if:
+     - Task execution failed
+     - Errors are not resolved
+     - Cannot find necessary files or other dependencies
+
+When in doubt, use this tool. Being proactive with task management demonstrates attentiveness and ensures you complete all requirements successfully.
