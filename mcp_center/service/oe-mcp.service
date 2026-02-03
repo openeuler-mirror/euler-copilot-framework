@@ -13,7 +13,7 @@ WorkingDirectory=/usr/lib/sysagent/mcp_center/
 
 Environment=PYTHONUNBUFFERED=1
 Environment=PYTHONPATH=/usr/lib/sysagent/mcp_center
-ExecStart=/usr/bin/python /usr/lib/sysagent/mcp_center/oe_cli_mcp_server/server.py
+ExecStart=/usr/bin/python3 /usr/lib/sysagent/mcp_center/oe_cli_mcp_server/server.py
 
 # 原有合理配置保留
 Restart=always

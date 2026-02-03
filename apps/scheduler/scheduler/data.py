@@ -126,19 +126,6 @@ class DataMixin:
             return pg_record.id
         return None
 
-    async def _handle_task_state(self) -> None:
-        """根据任务状态判断删除或保存Task"""
-        task = self.task
-
-        if not task.state or task.state.executorStatus in [
-            ExecutorStatus.SUCCESS,
-            ExecutorStatus.ERROR,
-            ExecutorStatus.CANCELLED,
-        ]:
-            await TaskManager.delete_task_by_task_id(task.metadata.id)
-        else:
-            await TaskManager.save_task(task)
-
     async def _save_data(self) -> None:
         """保存当前Executor、Task、Record等的数据"""
         task = self.task
@@ -147,8 +134,8 @@ class DataMixin:
 
         record_content = self._build_record_content()
 
-        # 先处理任务状态（删除或保存Task）
-        await self._handle_task_state()
+        # 保存Task
+        await TaskManager.save_task(task)
 
         # 再保存flow context
         if task.state:
