@@ -15,6 +15,7 @@ from typing import Annotated
 
 import httpx
 import typer
+import yaml
 from rich.console import Console
 
 from witty_mcp_manager.config.config import load_config
@@ -85,17 +86,17 @@ def validate_config(
                 console.print(f"[red]Error: File not found: {config_file}[/red]")
                 raise typer.Exit(code=1)  # noqa: TRY301
 
-            # Try to parse as JSON
+            # Try to parse as YAML
             with config_file.open() as f:
-                json.load(f)
-            console.print(f"[green]✓[/green] {config_file} is valid JSON.")
+                yaml.safe_load(f)
+            console.print(f"[green]✓[/green] {config_file} is valid YAML.")
         else:
             # Validate global config
             load_config()
             console.print("[green]✓[/green] Global configuration is valid.")
 
-    except json.JSONDecodeError as e:
-        console.print(f"[red]Invalid JSON: {e}[/red]")
+    except yaml.YAMLError as e:
+        console.print(f"[red]Invalid YAML: {e}[/red]")
         raise typer.Exit(code=1) from None
     except Exception as e:  # noqa: BLE001
         console.print(f"[red]Validation error: {e}[/red]")
@@ -106,19 +107,11 @@ def validate_config(
 def reload_config() -> None:
     """Reload daemon configuration (requires daemon restart)."""
     try:
-        with _get_client() as client:
-            response = client.post("/v1/config/reload")
-            response.raise_for_status()
-
-        console.print("[green]✓[/green] Configuration reloaded.")
-
-    except httpx.ConnectError:
-        console.print("[red]Error: Cannot connect to witty-mcp-manager daemon.[/red]")
-        console.print("[yellow]Try: systemctl restart witty-mcp-manager[/yellow]")
-        raise typer.Exit(code=1) from None
-    except httpx.HTTPStatusError as e:
-        console.print(f"[red]HTTP error {e.response.status_code}: {e.response.text}[/red]")
-        raise typer.Exit(code=1) from None
+        console.print(
+            "[yellow]Not supported:[/yellow] IPC API does not expose config reload. "
+            "Please restart the daemon."
+        )
+        raise typer.Exit(code=2)
     except Exception as e:  # noqa: BLE001
         console.print(f"[red]Unexpected error: {e}[/red]")
         raise typer.Exit(code=1) from None

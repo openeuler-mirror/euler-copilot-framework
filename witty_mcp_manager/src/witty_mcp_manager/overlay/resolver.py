@@ -22,6 +22,7 @@ from witty_mcp_manager.registry.models import (
     StdioConfig,
     Timeouts,
 )
+from witty_mcp_manager.security.secrets import SecretsManager
 
 logger = logging.getLogger(__name__)
 
@@ -80,6 +81,7 @@ class OverlayResolver:
 
         """
         self.storage = storage
+        self.secrets = SecretsManager(self.storage.state_directory)
 
     def resolve(
         self,
@@ -140,9 +142,16 @@ class OverlayResolver:
             config=state.config,
             timeouts=state.timeouts,
             concurrency=state.concurrency,
-            env=state.env,
-            headers=state.headers,
+            env=self._resolve_secret_refs(state.env),
+            headers=self._resolve_secret_refs(state.headers),
         )
+
+    def _resolve_secret_refs(self, data: dict[str, str]) -> dict[str, str]:
+        """解析 secrets 引用"""
+        if not data:
+            return {}
+        resolved = self.secrets.resolve_dict(data)
+        return {str(k): str(v) for k, v in resolved.items()}
 
     def _apply_override(
         self,

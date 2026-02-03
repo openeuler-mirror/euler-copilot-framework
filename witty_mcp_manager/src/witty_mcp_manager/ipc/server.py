@@ -35,6 +35,7 @@ from witty_mcp_manager.ipc.routes.registry import set_server as set_registry_ser
 from witty_mcp_manager.ipc.routes.runtime import set_server as set_runtime_server
 from witty_mcp_manager.ipc.routes.tools import set_server as set_tools_server
 from witty_mcp_manager.registry.models import ServerRecord, TransportType
+from witty_mcp_manager.runtime.recycle import SessionRecycler
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator
@@ -42,6 +43,7 @@ if TYPE_CHECKING:
     from witty_mcp_manager.adapters.base import BaseAdapter
     from witty_mcp_manager.config.config import ManagerConfig
     from witty_mcp_manager.diagnostics.checker import Checker
+    from witty_mcp_manager.diagnostics.preflight import PreflightChecker
     from witty_mcp_manager.overlay.resolver import OverlayResolver
     from witty_mcp_manager.overlay.storage import OverlayStorage
     from witty_mcp_manager.registry.discovery import Discovery
@@ -93,6 +95,7 @@ class IPCServer:
         self._adapters: dict[str, BaseAdapter] = {}
         self._started_at: datetime | None = None
         self._shutdown_event = asyncio.Event()
+        self._recycler: SessionRecycler | None = None
 
         # 创建 FastAPI 应用
         self.app = create_app(self)
@@ -115,8 +118,11 @@ class IPCServer:
         logger.info("Discovered %d MCP servers", len(self._servers))
 
         # 对每个 server 运行诊断
+        preflight = PreflightChecker(self.config)
         for server in servers:
             diagnostics = self.checker.validate(server)
+            server.diagnostics = diagnostics
+            diagnostics = preflight.run_preflight(server)
             server.diagnostics = diagnostics
             if diagnostics.errors:
                 logger.warning(
@@ -125,10 +131,21 @@ class IPCServer:
                     diagnostics.errors,
                 )
 
+        # 启动会话回收器
+        self._recycler = SessionRecycler(
+            runtime_manager=self.runtime_manager,
+            default_idle_ttl=self.config.idle_session_ttl,
+        )
+        await self._recycler.start()
+
     async def shutdown(self) -> None:
         """关闭服务器"""
         logger.info("Shutting down IPC server...")
         self._shutdown_event.set()
+
+        if self._recycler:
+            await self._recycler.stop()
+            self._recycler = None
 
         # 关闭所有适配器
         for adapter in self._adapters.values():
@@ -136,6 +153,7 @@ class IPCServer:
                 await adapter.disconnect()
             except Exception:
                 logger.exception("Error disconnecting adapter")
+        self._adapters.clear()
 
         # 关闭所有会话
         sessions = await self.runtime_manager.list_sessions()
@@ -235,7 +253,7 @@ class IPCServer:
 
         # 设置 socket 权限
         def _set_socket_permissions() -> None:
-            socket_file.chmod(stat.S_IRUSR | stat.S_IWUSR | stat.S_IRGRP | stat.S_IWGRP)
+            socket_file.chmod(stat.S_IRUSR | stat.S_IWUSR)
 
         # 启动后设置权限
         original_startup = uvicorn_server.startup
