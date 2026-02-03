@@ -93,9 +93,7 @@ async def list_tools(
 
     try:
         # 获取或创建会话
-        session = await server.runtime_manager.get_or_create_session(
-            srv, effective, user.user_id
-        )
+        session = await server.runtime_manager.get_or_create_session(srv, effective, user.user_id)
 
         # 获取适配器
         adapter = await server.get_or_create_adapter(srv, session)
@@ -197,9 +195,7 @@ async def call_tool(
 
     try:
         # 获取或创建会话
-        session = await server.runtime_manager.get_or_create_session(
-            srv, effective, user.user_id
-        )
+        session = await server.runtime_manager.get_or_create_session(srv, effective, user.user_id)
 
         # 更新最后使用时间
         session.touch()

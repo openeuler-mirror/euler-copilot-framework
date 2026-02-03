@@ -347,10 +347,10 @@ class TestSessionRecycler:
     async def test_start_stop(self, recycler: SessionRecycler) -> None:
         """测试启动和停止"""
         await recycler.start()
-        assert recycler._running is True
+        assert recycler._running is True  # noqa: SLF001
 
         await recycler.stop()
-        assert recycler._running is False
+        assert recycler._running is False  # noqa: SLF001
 
     @pytest.mark.asyncio
     async def test_recycle_idle_session(

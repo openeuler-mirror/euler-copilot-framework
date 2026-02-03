@@ -95,9 +95,7 @@ def _determine_server_status(srv: ServerRecord) -> tuple[str, str | None]:
 async def list_servers(
     user: Annotated[UserContext, Depends(get_user_context)],
     *,
-    include_disabled: Annotated[
-        bool, Query(description="是否包含系统级禁用的 Server")
-    ] = False,
+    include_disabled: Annotated[bool, Query(description="是否包含系统级禁用的 Server")] = False,
 ) -> ServerListResponse:
     """
     列出所有 MCP Servers
