@@ -2,31 +2,23 @@
 """MCP 用户目标拆解与规划"""
 
 import logging
-from collections.abc import AsyncGenerator
 from copy import deepcopy
 from typing import Any
 
 from jinja2 import BaseLoader
 from jinja2.sandbox import SandboxedEnvironment
 
-from apps.llm import LLM, json_generator
+from apps.llm import json_generator
 from apps.models import MCPTools
 from apps.scheduler.slot.slot import Slot
-from apps.schemas.llm import LLMChunk
 from apps.schemas.mcp import (
-    IsParamError,
-    Step,
     ToolRisk,
 )
-from apps.schemas.task import TaskData
 
 from .base import MCPBase
 from .func import (
-    CREATE_NEXT_STEP_FUNCTION,
     EVALUATE_TOOL_RISK_FUNCTION,
-    FINAL_ANSWER,
     GET_MISSING_PARAMS_FUNCTION,
-    IS_PARAM_ERROR_FUNCTION,
 )
 
 _env = SandboxedEnvironment(
@@ -40,61 +32,6 @@ logger = logging.getLogger(__name__)
 
 class MCPPlanner(MCPBase):
     """MCP 用户目标拆解与规划"""
-
-    async def get_flow_name(self, llm: LLM) -> str:
-        """获取当前流程的名称"""
-        template = _env.from_string(await self._load_prompt("gen_agent_name"))
-        prompt = template.render(goal=self._goal)
-
-        messages = [
-            {"role": "system", "content": "You are a helpful assistant."},
-            {"role": "user", "content": prompt},
-        ]
-
-        agent_name = ""
-        async for chunk in llm.call(messages, streaming=False):
-            agent_name += chunk.content or ""
-
-        result = agent_name.strip()
-        logger.info("[MCPPlanner] 生成流程名称: %s", result)
-        return result
-
-    async def create_next_step(self, tools: list[MCPTools], task: TaskData, llm: LLM) -> Step:
-        """创建下一步的执行步骤"""
-        history = await self.assemble_memory(task)
-
-        # 第一步：让大模型思考分析
-        thinking_template = _env.from_string(await self._load_prompt("agent_thinking"))
-        thinking_prompt = thinking_template.render(goal=self._goal, tools=tools)
-
-        thinking_messages = [
-            {"role": "system", "content": "You are a helpful assistant."},
-            *history,
-            {"role": "user", "content": thinking_prompt},
-        ]
-
-        thinking_content = ""
-        async for chunk in llm.call(thinking_messages, streaming=False):
-            thinking_content += chunk.content or ""
-        logger.info("[MCPPlanner] 思考分析: %s", thinking_content)
-
-        function = deepcopy(CREATE_NEXT_STEP_FUNCTION[self._language])
-        function["parameters"]["properties"]["tool_name"]["enum"] = [tool.toolName for tool in tools]
-
-        step_template = _env.from_string(await self._load_prompt("gen_step"))
-        step_prompt = step_template.render(goal=self._goal, tools=tools, function_schema=function)
-
-        step = await json_generator.generate(
-            function=function,
-            conversation=[
-                {"role": "system", "content": "You are a helpful assistant."},
-                {"role": "user", "content": thinking_prompt},
-                {"role": "assistant", "content": thinking_content},
-            ],
-            prompt=step_prompt,
-        )
-        logger.info("[MCPPlanner] 创建下一步的执行步骤: %s", step)
-        return Step.model_validate(step)
 
     async def get_tool_risk(
         self,
@@ -118,36 +55,6 @@ class MCPPlanner(MCPBase):
         )
 
         return ToolRisk.model_validate(risk)
-
-    async def is_param_error(
-        self,
-        task: TaskData,
-        error_message: str,
-        tool: MCPTools,
-        step_goal: str,
-        input_params: dict[str, Any],
-    ) -> IsParamError:
-        """判断错误信息是否是参数错误"""
-        tmplate = _env.from_string(await self._load_prompt("is_param_error"))
-        prompt = tmplate.render(
-            goal=self._goal,
-            step_id=tool.toolName,
-            step_name=tool.toolName,
-            step_goal=step_goal,
-            input_params=input_params,
-            error_message=error_message,
-        )
-        history = await self.assemble_memory(task)
-
-        is_param_error = await json_generator.generate(
-            function=IS_PARAM_ERROR_FUNCTION[self._language],
-            conversation=[
-                {"role": "system", "content": "You are a helpful assistant."},
-                *history,
-            ],
-            prompt=prompt,
-        )
-        return IsParamError.model_validate(is_param_error)
 
     async def get_missing_param(
         self, tool: MCPTools, input_param: dict[str, Any], error_message: dict[str, Any],
@@ -174,23 +81,3 @@ class MCPPlanner(MCPBase):
             ],
             prompt=prompt,
         )
-
-    async def generate_answer(self, task: TaskData, llm: LLM) -> AsyncGenerator[LLMChunk, None]:
-        """生成最终回答,返回LLMChunk"""
-        template = _env.from_string(FINAL_ANSWER[self._language])
-        prompt = template.render(
-            goal=self._goal,
-        )
-
-        history = await self.assemble_memory(task)
-        messages = [
-            {"role": "system", "content": "You are a helpful assistant."},
-            *history,
-            {"role": "user", "content": prompt},
-        ]
-
-        async for chunk in llm.call(
-            messages,
-            streaming=True,
-        ):
-            yield chunk

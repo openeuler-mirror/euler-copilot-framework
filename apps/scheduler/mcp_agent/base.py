@@ -11,8 +11,6 @@ from jinja2.sandbox import SandboxedEnvironment
 
 from apps.common.config import config
 from apps.models import LanguageType
-from apps.models.task import StepStatus
-from apps.scheduler.mcp.prompt import MEMORY_TEMPLATE
 from apps.schemas.task import TaskData
 
 _logger = logging.getLogger(__name__)
@@ -49,43 +47,9 @@ class MCPBase:
         """
         从Markdown文件加载提示词
 
-        :param prompt_id: 提示词ID,例如 "gen_params" 等
+        :param prompt_id: 提示词ID,例如 "risk_evaluate" 等
         :return: 提示词内容
         """
         filename = f"{prompt_id}.{self._language.value}.md"
         prompt_file = Path(config.deploy.data_dir) / "prompts" / "system" / "mcp" / filename
         return await prompt_file.read_text(encoding="utf-8")
-
-    @staticmethod
-    async def assemble_memory(task: TaskData) -> list[dict[str, str]]:
-        """组装记忆"""
-        history = []
-        template = MEMORY_TEMPLATE[task.runtime.language]
-
-        filtered_context = [item for item in task.context if item.stepStatus != StepStatus.WAITING]
-
-        for index, item in enumerate(filtered_context, start=1):
-            step_goal = item.extraData["step_goal"]
-            user_content = _env.from_string(template).render(
-                msg_type="user",
-                step_index=index,
-                step_goal=step_goal,
-                step_name=item.stepName,
-                input_data=item.inputData,
-            )
-            history.append({
-                "role": "user",
-                "content": user_content,
-            })
-
-            assistant_content = _env.from_string(template).render(
-                msg_type="assistant",
-                step_index=index,
-                step_status=item.stepStatus.value,
-                output_data=item.outputData,
-            )
-            history.append({
-                "role": "assistant",
-                "content": assistant_content,
-            })
-        return history
