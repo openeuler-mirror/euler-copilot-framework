@@ -83,7 +83,7 @@ class TaskManager:
                 context = list((await session.scalars(
                 select(ExecutorHistory).where(
                     ExecutorHistory.taskId == task_id,
-                ).order_by(ExecutorHistory.updatedAt.asc()).limit(context_length),
+                ).order_by(ExecutorHistory.createdAt.asc()).limit(context_length),
             )).all())
 
             return TaskData(

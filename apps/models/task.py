@@ -153,9 +153,6 @@ class ExecutorCheckpoint(Base):
     """检查点ID"""
     executorDescription: Mapped[str] = mapped_column(Text, nullable=False, default="")  # noqa: N815
     """执行器描述"""
-    # TODO：删除这个字段
-    data: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default_factory=dict)
-    """步骤额外数据"""
     errorMessage: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default_factory=dict)  # noqa: N815
     """错误信息"""
     extraData: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default_factory=dict)  # noqa: N815
@@ -185,8 +182,7 @@ class ExecutorHistory(Base):
     """步骤输出数据"""
     extraData: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default_factory=dict)  # noqa: N815
     """步骤额外数据"""
-    updatedAt: Mapped[datetime] = mapped_column(  # noqa: N815
+    createdAt: Mapped[datetime] = mapped_column(  # noqa: N815
         DateTime(timezone=True), nullable=False, default_factory=lambda: datetime.now(UTC),
-        onupdate=lambda: datetime.now(UTC),
     )
-    """更新时间"""
+    """创建时间"""
