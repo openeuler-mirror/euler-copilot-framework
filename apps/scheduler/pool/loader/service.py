@@ -107,7 +107,6 @@ class ServiceLoader:
     async def delete(service_id: uuid.UUID, *, is_reload: bool = False) -> None:
         """删除Service，并更新数据库"""
         async with postgres.session() as session:
-            await session.execute(delete(Service).where(Service.id == service_id))
             await session.execute(delete(NodeInfo).where(NodeInfo.serviceId == service_id))
             await session.execute(delete(ServiceACL).where(ServiceACL.serviceId == service_id))
             await session.execute(delete(ServiceHashes).where(ServiceHashes.serviceId == service_id))
@@ -122,6 +121,7 @@ class ServiceLoader:
                         embedding.NodePoolVector,
                     ).where(embedding.NodePoolVector.serviceId == service_id),
                 )
+            await session.execute(delete(Service).where(Service.id == service_id))
             await session.commit()
 
         if not is_reload:
@@ -154,6 +154,9 @@ class ServiceLoader:
                 permission=PermissionType.PRIVATE,
             )
             session.add(service_data)
+
+            # 立即执行插入Service的SQL，让数据库能查到它，解决外键检查问题
+            await session.flush()
 
             for node in nodes:
                 session.add(node)
