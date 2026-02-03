@@ -61,10 +61,20 @@ class LLM:
         """获取输入token数"""
         return self._provider.input_tokens
 
+    @input_tokens.setter
+    def input_tokens(self, value: int) -> None:
+        """设置输入token数"""
+        self._provider.input_tokens = value
+
     @property
     def output_tokens(self) -> int:
         """获取输出token数"""
         return self._provider.output_tokens
+
+    @output_tokens.setter
+    def output_tokens(self, value: int) -> None:
+        """设置输出token数"""
+        self._provider.output_tokens = value
 
     @property
     def config(self) -> LLMData:

@@ -11,6 +11,7 @@ from openai import AsyncOpenAI, AsyncStream
 from openai.types.chat import (
     ChatCompletion,
     ChatCompletionChunk,
+    ChatCompletionMessage,
     ChatCompletionMessageParam,
 )
 from typing_extensions import override
@@ -73,7 +74,7 @@ class OpenAIProvider(BaseProvider):
                 http_client=self._http_client,
             )
 
-    def _parse_tool_calls(self, message: Any) -> list[LLMToolCall]:
+    def _parse_tool_calls(self, message: ChatCompletionMessage) -> list[LLMToolCall]:
         """解析工具调用并转换为LLMToolCall列表"""
         tool_calls_list: list[LLMToolCall] = []
 
@@ -109,16 +110,16 @@ class OpenAIProvider(BaseProvider):
                 # 使用服务端统计的token计数
                 usage = chunk.usage
                 if usage and hasattr(usage, "prompt_tokens") and hasattr(usage, "completion_tokens"):
-                    self.input_tokens = usage.prompt_tokens
-                    self.output_tokens = usage.completion_tokens
+                    self.input_tokens += usage.prompt_tokens
+                    self.output_tokens += usage.completion_tokens
             except Exception:  # noqa: BLE001
                 # 忽略异常，保持已有的token统计逻辑
                 _logger.warning("[OpenAIProvider] 推理框架未返回使用数据，使用本地估算逻辑")
 
         # 如果没有从服务端获取到token计数，使用本地估算
         if not self.input_tokens or not self.output_tokens:
-            self.input_tokens = token_calculator.calculate_token_length(messages)
-            self.output_tokens = token_calculator.calculate_token_length([{
+            self.input_tokens += token_calculator.calculate_token_length(messages)
+            self.output_tokens += token_calculator.calculate_token_length([{
                 "role": "assistant",
                 "content": "<think>" + self.full_thinking + "</think>" + self.full_answer,
             }])
@@ -126,12 +127,12 @@ class OpenAIProvider(BaseProvider):
     def _handle_usage_response(self, response: ChatCompletion, messages: list[dict[str, str]]) -> None:
         """处理非流式响应的usage信息"""
         if hasattr(response, "usage") and response.usage:
-            self.input_tokens = response.usage.prompt_tokens
-            self.output_tokens = response.usage.completion_tokens
+            self.input_tokens += response.usage.prompt_tokens
+            self.output_tokens += response.usage.completion_tokens
         else:
             # 回退到本地估算
-            self.input_tokens = token_calculator.calculate_token_length(messages)
-            self.output_tokens = token_calculator.calculate_token_length([{
+            self.input_tokens += token_calculator.calculate_token_length(messages)
+            self.output_tokens += token_calculator.calculate_token_length([{
                 "role": "assistant",
                 "content": "<think>" + self.full_thinking + "</think>" + self.full_answer,
             }])
@@ -287,8 +288,10 @@ class OpenAIProvider(BaseProvider):
             raise RuntimeError(err)
 
         # 初始化Token计数和累积内容
-        self.input_tokens = 0
-        self.output_tokens = 0
+        if not hasattr(self, "input_tokens"):
+            self.input_tokens = 0
+        if not hasattr(self, "output_tokens"):
+            self.output_tokens = 0
         self.full_thinking = ""
         self.full_answer = ""
 
