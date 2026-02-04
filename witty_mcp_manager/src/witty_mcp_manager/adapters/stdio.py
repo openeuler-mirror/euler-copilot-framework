@@ -128,6 +128,7 @@ class STDIOAdapter(BaseAdapter):
             logger.exception("Failed to connect to STDIO MCP %s", self.mcp_id)
             await self._cleanup()
             msg = f"Failed to connect to {self.mcp_id}: {e}"
+            await session.stop(error=msg)
             raise AdapterError(msg, adapter_type="stdio") from e
 
     async def disconnect(self) -> None:
@@ -246,11 +247,12 @@ class STDIOAdapter(BaseAdapter):
         start_time = time.monotonic()
 
         try:
+            redacted_args = self._redact_dict(arguments)
             logger.debug(
                 "Calling tool %s on %s with args: %s",
                 tool_name,
                 self.mcp_id,
-                arguments,
+                redacted_args,
             )
 
             # 使用 asyncio.wait_for 实现超时

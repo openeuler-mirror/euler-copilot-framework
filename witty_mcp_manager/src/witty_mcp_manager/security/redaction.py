@@ -44,7 +44,7 @@ class LogRedactor:
             "auth",
             "authorization",
             "bearer",
-        ]
+        ],
     )
 
     # 敏感模式正则

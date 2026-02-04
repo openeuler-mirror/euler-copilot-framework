@@ -14,6 +14,8 @@ from datetime import UTC, datetime
 from enum import Enum
 from typing import TYPE_CHECKING, Any, Self
 
+from witty_mcp_manager.security.redaction import get_redactor
+
 if TYPE_CHECKING:
     import types
 
@@ -241,6 +243,10 @@ class BaseAdapter(ABC):
             ToolCallError: Tool 执行错误
 
         """
+
+    def _redact_dict(self, data: dict[str, Any]) -> dict[str, Any]:
+        """脱敏日志数据"""
+        return get_redactor().redact_dict(data)
 
     async def __aenter__(self) -> Self:
         """异步上下文管理器入口"""
