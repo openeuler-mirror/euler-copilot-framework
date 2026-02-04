@@ -1,0 +1,6 @@
+label: XPU Turbo
+isManual: true
+description: 异构协同加速运行
+sections:
+  - label: 部署 XPU Turbo
+    href: ./deploy_guide/deployment.md

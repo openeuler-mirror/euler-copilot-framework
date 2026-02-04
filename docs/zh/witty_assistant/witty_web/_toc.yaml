@@ -1,0 +1,18 @@
+label: 智能助手 Web 用户手册
+isManual: true
+description: Witty Assistant的 Web 入口, 提供 AI 驱动的Web交互界面
+sections: 
+  - label: 介绍
+    href: ./user_guide/introduction.md
+  - label: 一键部署
+    href: ./deploy_guide/deployment.md
+  - label: 使用说明
+    sections:
+      - label: 注册与登录
+        href: ./user_guide/registration_and_login.md
+      - label: 智能问答使用介绍
+        href: ./user_guide/qa_guide.md
+      - label: 知识库使用介绍
+        href: ./user_guide/knowledge_guide.md
+      - label: MCP 使用介绍
+        href: ./user_guide/mcp_guide.md
