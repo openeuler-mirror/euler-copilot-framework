@@ -11,7 +11,7 @@ Witty Assistant 是 openEuler Intelligence 旗下的一款 OS 智能助手。Wit
 - **部署助手**: 内置 Witty Assistant 后端服务自动部署功能
 - **配置管理**：内置设置界面（Ctrl+S）与本地配置文件，便于切换后端/更新连接信息
 
-## 1. 使用说明
+## 使用说明
 
 ### 打开 Witty Assistant
 
@@ -116,7 +116,7 @@ witty llm
 >
 > 操作的细节，包括 witty logs 日志等，参考 shell 的 [readme](https://atomgit.com/openeuler/euler-copilot-shell)
 
-## 2. 平台演示
+## 平台演示
 
 ### 使用Windows Terminal
 
@@ -156,7 +156,7 @@ witty
 
 <img src=pictures/vscode_use.png width=1200 />
 
-## 3. 使用案例
+## 使用案例
 
 以“Nginx服务启动”为例，演示智能助手 cli的进阶用法：
 
