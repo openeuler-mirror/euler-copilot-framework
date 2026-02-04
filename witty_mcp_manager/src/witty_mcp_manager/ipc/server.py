@@ -23,7 +23,8 @@ from witty_mcp_manager import __version__
 from witty_mcp_manager.adapters.http import StreamableHTTPAdapter
 from witty_mcp_manager.adapters.sse import SSEAdapter
 from witty_mcp_manager.adapters.stdio import STDIOAdapter
-from witty_mcp_manager.exceptions import ConfigError, WittyMCPError
+from witty_mcp_manager.diagnostics.preflight import PreflightChecker
+from witty_mcp_manager.exceptions import ConfigError, WittyMCPError, WittyRuntimeError
 from witty_mcp_manager.ipc.routes import (
     health_router,
     registry_router,
@@ -43,7 +44,6 @@ if TYPE_CHECKING:
     from witty_mcp_manager.adapters.base import BaseAdapter
     from witty_mcp_manager.config.config import ManagerConfig
     from witty_mcp_manager.diagnostics.checker import Checker
-    from witty_mcp_manager.diagnostics.preflight import PreflightChecker
     from witty_mcp_manager.overlay.resolver import OverlayResolver
     from witty_mcp_manager.overlay.storage import OverlayStorage
     from witty_mcp_manager.registry.discovery import Discovery
@@ -187,6 +187,13 @@ class IPCServer:
             适配器实例
 
         """
+        if session.state.status == "error":
+            max_restarts = self.runtime_manager.MAX_RESTART_COUNT
+            if session.state.restart_count >= max_restarts:
+                msg = f"Session {session.session_key} exceeded max restart count ({max_restarts})"
+                raise WittyRuntimeError(msg)
+            await session.restart()
+
         # 使用 session_key 作为适配器的唯一标识（per user + per mcp_id）
         adapter_key = f"{session.user_id}:{server.id}"
 

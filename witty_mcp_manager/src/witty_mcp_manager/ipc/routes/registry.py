@@ -2,18 +2,23 @@
 Registry 路由
 
 提供 MCP Server 列表、详情、启用/禁用等 API。
+系统级配置只读，由 RPM 管理；用户仅可配置凭据和启用状态。
 """
 
 from __future__ import annotations
 
 import logging
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi import Path as PathParam
 
-from witty_mcp_manager.ipc.auth import SYSTEM_USER_ID, UserContext, get_user_context
+from witty_mcp_manager.ipc.auth import UserContext, get_user_context
 from witty_mcp_manager.ipc.schemas import (
+    ConfigureRequest,
+    ConfigureResponse,
+    ConfigureResult,
     DepsMissing,
     DiagnosticsInfo,
     EffectiveConfigInfo,
@@ -24,7 +29,7 @@ from witty_mcp_manager.ipc.schemas import (
     ServerListResponse,
     ServerSummary,
 )
-from witty_mcp_manager.registry.models import Override, ServerRecord
+from witty_mcp_manager.registry.models import Override, ServerRecord, TransportType
 
 if TYPE_CHECKING:
     from witty_mcp_manager.ipc.server import IPCServer
@@ -89,6 +94,47 @@ def _determine_server_status(srv: ServerRecord) -> tuple[str, str | None]:
             return "degraded", f"缺少{'; '.join(missing_parts)}"
 
     return "ready", None
+
+
+def _validate_configure_request(transport: TransportType, request: ConfigureRequest) -> None:
+    """校验配置请求：env 仅 STDIO，headers 仅 SSE/HTTP"""
+    if request.env is not None and transport != TransportType.STDIO:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "code": "INVALID_ENV",
+                "message": "env 仅支持 STDIO transport",
+            },
+        )
+    if request.headers is not None and transport not in (TransportType.SSE, TransportType.STREAMABLE_HTTP):
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "code": "INVALID_HEADERS",
+                "message": "headers 仅支持 SSE/Streamable HTTP transport",
+            },
+        )
+
+
+def _apply_configure_request(
+    override: Override,
+    request: ConfigureRequest,
+) -> None:
+    """应用配置请求到 override"""
+    if request.env is not None:
+        override.env = request.env
+    if request.headers is not None:
+        override.headers = request.headers
+
+
+def _build_configure_result(mcp_id: str, override: Override) -> ConfigureResult:
+    """构建配置结果（返回 secret:// 引用）"""
+    return ConfigureResult(
+        mcp_id=mcp_id,
+        env=override.env,
+        headers=override.headers,
+        updated_at=datetime.now(UTC),
+    )
 
 
 @router.get("/servers", response_model=ServerListResponse)
@@ -241,47 +287,6 @@ async def enable_server(
     )
 
 
-@router.post("/servers/{mcp_id}:enable", response_model=EnableDisableResponse)
-async def enable_server_global(
-    mcp_id: Annotated[str, PathParam(description="MCP Server ID")],
-    user: Annotated[UserContext, Depends(get_user_context)],
-) -> EnableDisableResponse:
-    """系统级启用 MCP Server（仅系统用户）"""
-    if user.user_id != SYSTEM_USER_ID:
-        raise HTTPException(
-            status_code=403,
-            detail={
-                "code": "FORBIDDEN",
-                "message": "System-level enable requires system user",
-            },
-        )
-
-    server = get_server()
-
-    srv = server.get_server(mcp_id)
-    if not srv:
-        raise HTTPException(
-            status_code=404,
-            detail={
-                "code": "SERVER_NOT_FOUND",
-                "message": f"MCP Server not found: {mcp_id}",
-            },
-        )
-
-    override = server.overlay_storage.load_override(mcp_id)
-    if override:
-        override.disabled = False
-    else:
-        override = Override(scope="global", disabled=False)
-
-    server.overlay_storage.save_override(mcp_id, override, None)
-    logger.info("System enabled server %s", mcp_id)
-
-    return EnableDisableResponse(
-        data=EnableDisableResult(mcp_id=mcp_id, enabled=True),
-    )
-
-
 @router.post("/me/servers/{mcp_id}:disable", response_model=EnableDisableResponse)
 async def disable_server(
     mcp_id: Annotated[str, PathParam(description="MCP Server ID")],
@@ -322,21 +327,19 @@ async def disable_server(
     )
 
 
-@router.post("/servers/{mcp_id}:disable", response_model=EnableDisableResponse)
-async def disable_server_global(
+@router.post("/me/servers/{mcp_id}:configure", response_model=ConfigureResponse)
+async def configure_server(
     mcp_id: Annotated[str, PathParam(description="MCP Server ID")],
     user: Annotated[UserContext, Depends(get_user_context)],
-) -> EnableDisableResponse:
-    """系统级禁用 MCP Server（仅系统用户）"""
-    if user.user_id != SYSTEM_USER_ID:
-        raise HTTPException(
-            status_code=403,
-            detail={
-                "code": "FORBIDDEN",
-                "message": "System-level disable requires system user",
-            },
-        )
+    request: ConfigureRequest,
+) -> ConfigureResponse:
+    """
+    用户级配置 MCP Server
 
+    用户可配置 env（STDIO）或 headers（SSE/HTTP）中的凭据。
+    请求传明文，Manager 存储后返回 secret:// 引用。
+    timeouts/concurrency 由系统统一管理，用户不可自定义。
+    """
     server = get_server()
 
     srv = server.get_server(mcp_id)
@@ -349,15 +352,19 @@ async def disable_server_global(
             },
         )
 
-    override = server.overlay_storage.load_override(mcp_id)
-    if override:
-        override.disabled = True
-    else:
-        override = Override(scope="global", disabled=True)
+    _validate_configure_request(srv.default_config.transport, request)
 
-    server.overlay_storage.save_override(mcp_id, override, None)
-    logger.info("System disabled server %s", mcp_id)
+    scope = f"user/{user.user_id}"
+    override = server.overlay_storage.load_override(mcp_id, user.user_id)
+    if override is None:
+        override = Override(scope=scope)
 
-    return EnableDisableResponse(
-        data=EnableDisableResult(mcp_id=mcp_id, enabled=False),
+    _apply_configure_request(override, request)
+
+    server.overlay_storage.save_override(mcp_id, override, user.user_id)
+
+    logger.info("User %s configured server %s", user.user_id, mcp_id)
+
+    return ConfigureResponse(
+        data=_build_configure_result(mcp_id, override),
     )
