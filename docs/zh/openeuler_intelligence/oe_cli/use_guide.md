@@ -86,7 +86,7 @@ witty set-default agent
 witty set-default log-level INFO
 ```
 
-### 1.5 查看日志
+### 查看日志
 
 查看最新的日志内容:
 
@@ -94,7 +94,7 @@ witty set-default log-level INFO
 witty logs
 ```
 
-### 1.6 管理大模型配置
+### 管理大模型配置
 
 ```sh
 witty llm
