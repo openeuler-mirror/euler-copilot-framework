@@ -234,7 +234,7 @@ scp -r /home/eulercopilot/images/* root@target-server:/home/eulercopilot/images/
    请输入选项编号（1-9）:
    ```
 
-#### 重启操作
+### 重启操作
 
 - 选择需要重启的服务按回车执行
 
@@ -259,7 +259,7 @@ scp -r /home/eulercopilot/images/* root@target-server:/home/eulercopilot/images/
    请输入要重启的服务编号（1-12）:
    ```
 
-#### 卸载操作
+### 卸载操作
 
 - 卸载操作仅卸载服务并清除数据，不卸载部署工具
 
@@ -275,7 +275,7 @@ scp -r /home/eulercopilot/images/* root@target-server:/home/eulercopilot/images/
    请输入选项编号（0-3）: 2
    ```
 
-#### 运维指令
+### 运维指令
 
 - 使用以下指令进行服务和镜像维护
 
