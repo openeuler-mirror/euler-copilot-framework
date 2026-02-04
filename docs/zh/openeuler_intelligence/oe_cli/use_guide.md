@@ -1,4 +1,4 @@
-# 智能助手 cli ( Witty Assistant )使用介绍
+# 智能助手 cli (Witty Assistant)使用介绍
 
 ## 引言
 
@@ -13,7 +13,7 @@ Witty Assistant 是 openEuler Intelligence 旗下的一款 OS 智能助手。Wit
 
 ## 1. 使用说明
 
-### 1.1 打开 Witty Assistant
+### 打开 Witty Assistant
 
 打开 Witty Assistant，ctrl + c 中断，ctrl + q 退出，ctrl + s 打开设置，ctrl + t 选择智能体，支持鼠标选择。
 
@@ -23,13 +23,13 @@ witty
 
 <img src=pictures/open_Witty.png width=1200 />
 
-### 1.2 选择智能体
+### 选择智能体
 
 点击选择智能体（ ctrl + t ），默认为 基础运维Agent，按上下键选择，回车确认，ESC 取消，高亮表示选中，智能体详情参照[智能体介绍]()。
 
 <img src=pictures/default_agent.png width=1200 />
 
-### 1.3 使用智能体
+### 使用智能体
 
 进行智能体的使用，此处以基础运维Agent举例，回车确认，进入对话界面。
 
@@ -37,7 +37,7 @@ witty
 
 在左下角输入栏输入命令或问题，如帮我查看内存使用情况，智能体会根据提问自动选择合适的 MCP 工具，并询问是否执行，此处点击确认。
 
-<img src=pictures/use-case-1.PNG width=1200 />
+<img src=pictures/agent_use.png width=1200 />
 
 结果输出：
 
@@ -47,7 +47,7 @@ witty
 >
 > 设置->更改用户设置->常规设置，可以设置MCP工具授权模式。
 
-### 1.4 Witty Assistant预设
+### Witty Assistant预设
 
 可以在 witty 前输入以下命令配置客户端。
 
@@ -102,7 +102,7 @@ witty llm
 
 <img src=pictures/set_llm.png width=1200 />
 
-### 1.7 界面操作快捷键
+### 界面操作快捷键
 
 - **Ctrl+S**: 打开设置界面
 - **Ctrl+R**: 重置对话历史
@@ -118,7 +118,7 @@ witty llm
 
 ## 2. 平台演示
 
-### 2.1 使用Windows Terminal
+### 使用Windows Terminal
 
 #### 打开 Witty Assistant
 
@@ -140,7 +140,7 @@ witty
 
 <img src=pictures/output.png width=1200 />
 
-### 2.2 使用vscode
+### 使用vscode
 
 #### 打开 Witty Assistant
 
@@ -158,9 +158,9 @@ witty
 
 ## 3. 使用案例
 
-以“Nginx服务启动”为例，演示openEuler智能助手的进阶用法：
+以“Nginx服务启动”为例，演示智能助手 cli的进阶用法：
 
-**自然语言交互**：启动openEuler智能助手，切换至“基础运维Agent”，输入“安装nginx并启动”；
+**自然语言交互**：启动 Witty Assistant ，切换至“基础运维Agent”，即OE-智能运维助手，输入“安装nginx并启动”；
 
 <img src=pictures/nginx_install.png width=1200 />
 
