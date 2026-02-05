@@ -130,16 +130,16 @@ sudo dnf install gcc gcc-c++ python3-devel patchelf ccache
 pip install nuitka ordered-set
 
 # 构建 onefile 二进制（默认）
-./scripts/build-nuitka.sh
+./scripts/build_nuitka.sh
 
 # 构建 standalone 目录
-./scripts/build-nuitka.sh --mode standalone
+./scripts/build_nuitka.sh --mode standalone
 
 # 自定义输出目录
-./scripts/build-nuitka.sh --output-dir /opt/witty-mcp
+./scripts/build_nuitka.sh --output-dir /opt/witty-mcp
 
 # 清理并重新构建
-./scripts/build-nuitka.sh --clean
+./scripts/build_nuitka.sh --clean
 ```
 
 构建产物位于 `dist/witty-mcp`。
@@ -151,7 +151,7 @@ witty_mcp_manager/
 ├── pyproject.toml              # 项目配置
 ├── README.md                   # 项目说明
 ├── scripts/
-│   └── build-nuitka.sh         # Nuitka 构建脚本
+│   └── build_nuitka.sh         # Nuitka 构建脚本
 ├── src/
 │   └── witty_mcp_manager/      # 源码
 │       ├── __init__.py
