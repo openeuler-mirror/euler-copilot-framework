@@ -40,6 +40,7 @@ dependencies = [
     "mcp>=1.26.0",
     "typer>=0.21.1",
     "rich>=14.3.1",
+    "questionary>=2.1.1",
 ]
 
 [project.optional-dependencies]
@@ -50,6 +51,7 @@ dev = [
     "ruff>=0.14.14",
     "mypy>=1.19.1",
     "types-PyYAML>=6.0.12",
+    "nuitka>=2.8.10",
 ]
 
 [project.scripts]
