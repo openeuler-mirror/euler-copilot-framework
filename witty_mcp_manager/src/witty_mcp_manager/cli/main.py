@@ -14,6 +14,7 @@ from witty_mcp_manager import __version__
 
 # Import subcommands
 from . import config as config_cmd
+from . import configure as configure_cmd
 from . import logs as logs_cmd
 from . import runtime as runtime_cmd
 from . import servers as servers_cmd
@@ -26,6 +27,7 @@ app.add_typer(servers_cmd.app, name="servers", help="Manage MCP servers")
 app.add_typer(runtime_cmd.app, name="runtime", help="Inspect runtime state")
 app.add_typer(logs_cmd.app, name="logs", help="View logs")
 app.add_typer(config_cmd.app, name="config", help="Manage configuration")
+app.add_typer(configure_cmd.app, name="configure", help="Configure MCP credentials")
 
 
 @app.command()
