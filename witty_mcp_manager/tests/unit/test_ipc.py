@@ -429,13 +429,13 @@ class TestIPCServerIntegration:
                 transport=TransportType.STDIO,
                 stdio=StdioConfig(command="python3", args=["server.py"]),
             ),
-            diagnostics=Diagnostics(command_allowed=True, command="python3"),
+            diagnostics=Diagnostics(command_allowed=True, command_exists=True),
         )
         discovery.scan_all.return_value = [test_server]
 
         # Mock checker
         checker = MagicMock(spec=Checker)
-        checker.validate.return_value = Diagnostics(command_allowed=True, command="python3")
+        checker.validate.return_value = Diagnostics(command_allowed=True, command_exists=True)
 
         # Mock overlay storage
         overlay_storage = MagicMock(spec=OverlayStorage)
@@ -505,14 +505,23 @@ class TestIPCServerIntegration:
     ) -> None:
         """测试带认证的列表请求"""
         from witty_mcp_manager.overlay.resolver import EffectiveConfig
-        from witty_mcp_manager.registry.models import Concurrency, NormalizedConfig, Timeouts, TransportType
+        from witty_mcp_manager.registry.models import (
+            Concurrency,
+            NormalizedConfig,
+            StdioConfig,
+            Timeouts,
+            TransportType,
+        )
 
         # Mock overlay resolver
         mock_dependencies["overlay_resolver"].resolve.return_value = EffectiveConfig(
             mcp_id="test_mcp",
             user_id="user123",
             disabled=False,
-            config=NormalizedConfig(transport=TransportType.STDIO),
+            config=NormalizedConfig(
+                transport=TransportType.STDIO,
+                stdio=StdioConfig(command="python3", args=["server.py"]),
+            ),
             timeouts=Timeouts(),
             concurrency=Concurrency(),
         )

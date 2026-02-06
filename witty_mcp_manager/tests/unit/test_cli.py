@@ -13,11 +13,16 @@ import pytest
 from typer.testing import CliRunner
 
 from witty_mcp_manager.cli.main import app as main_app
-from witty_mcp_manager.cli.runtime import (
-    _format_duration,
+from witty_mcp_manager.cli.permissions import (
+    CliPermissionError,
+    PrivilegeLevel,
+    ResolvedScope,
+    UserIdentity,
+    resolve_scope,
+    resolve_user_for_ipc,
 )
 from witty_mcp_manager.cli.runtime import (
-    _require_user_id as runtime_require_user_id,
+    _format_duration,
 )
 from witty_mcp_manager.cli.runtime import (
     app as runtime_app,
@@ -27,9 +32,6 @@ from witty_mcp_manager.cli.servers import (
     _extract_stdio,
     _infer_transport,
     _load_server_entry,
-)
-from witty_mcp_manager.cli.servers import (
-    _require_user_id as servers_require_user_id,
 )
 from witty_mcp_manager.cli.servers import (
     app as servers_app,
@@ -273,29 +275,152 @@ class TestCLIHelperFunctions:
         """测试 _format_duration None"""
         assert _format_duration(None) == "N/A"
 
-    def test_require_user_id_servers_missing(self):
-        """测试 servers _require_user_id 缺失时退出"""
-        import typer
 
-        with pytest.raises(typer.Exit):
-            servers_require_user_id(None, "enable")
+class TestPermissions:
+    """权限模块测试"""
 
-    def test_require_user_id_servers_present(self):
-        """测试 servers _require_user_id 存在时返回"""
-        result = servers_require_user_id("test_user", "enable")
-        assert result == "test_user"
+    def test_privilege_level_enum(self):
+        """测试 PrivilegeLevel 枚举"""
+        assert PrivilegeLevel.ROOT.value == "root"
+        assert PrivilegeLevel.SUDO.value == "sudo"
+        assert PrivilegeLevel.REGULAR.value == "regular"
 
-    def test_require_user_id_runtime_missing(self):
-        """测试 runtime _require_user_id 缺失时退出"""
-        import typer
+    def test_user_identity_privileged(self):
+        """测试特权用户身份"""
+        identity = UserIdentity(
+            privilege=PrivilegeLevel.ROOT,
+            effective_uid=0,
+            real_username="root",
+        )
+        assert identity.is_privileged
+        assert identity.can_manage_global
+        assert identity.can_manage_others
 
-        with pytest.raises(typer.Exit):
-            runtime_require_user_id(None, "sessions")
+    def test_user_identity_regular(self):
+        """测试普通用户身份"""
+        identity = UserIdentity(
+            privilege=PrivilegeLevel.REGULAR,
+            effective_uid=1000,
+            real_username="testuser",
+        )
+        assert not identity.is_privileged
+        assert not identity.can_manage_global
+        assert not identity.can_manage_others
 
-    def test_require_user_id_runtime_present(self):
-        """测试 runtime _require_user_id 存在时返回"""
-        result = runtime_require_user_id("test_user", "sessions")
-        assert result == "test_user"
+    def test_resolve_scope_regular_user_auto(self):
+        """测试普通用户自动解析到当前用户"""
+        identity = UserIdentity(
+            privilege=PrivilegeLevel.REGULAR,
+            effective_uid=1000,
+            real_username="testuser",
+        )
+        scope = resolve_scope(identity, global_flag=False, user_flag=None, operation="test")
+        assert not scope.is_global
+        assert scope.user_id == "testuser"
+
+    def test_resolve_scope_regular_user_global_denied(self):
+        """测试普通用户无法使用 --global"""
+        identity = UserIdentity(
+            privilege=PrivilegeLevel.REGULAR,
+            effective_uid=1000,
+            real_username="testuser",
+        )
+        with pytest.raises(CliPermissionError) as exc_info:
+            resolve_scope(identity, global_flag=True, user_flag=None, operation="test")
+        assert "--global requires root/sudo" in str(exc_info.value)
+
+    def test_resolve_scope_regular_user_other_user_denied(self):
+        """测试普通用户无法管理其他用户"""
+        identity = UserIdentity(
+            privilege=PrivilegeLevel.REGULAR,
+            effective_uid=1000,
+            real_username="testuser",
+        )
+        with pytest.raises(CliPermissionError) as exc_info:
+            resolve_scope(identity, global_flag=False, user_flag="otheruser", operation="test")
+        assert "Cannot manage other user" in str(exc_info.value)
+
+    def test_resolve_scope_privileged_default_root(self):
+        """测试特权用户不指定参数时默认使用 root 用户"""
+        identity = UserIdentity(
+            privilege=PrivilegeLevel.ROOT,
+            effective_uid=0,
+            real_username="root",
+        )
+        scope = resolve_scope(identity, global_flag=False, user_flag=None, operation="test")
+        assert not scope.is_global
+        assert scope.user_id == "root"
+
+    def test_resolve_scope_privileged_global(self):
+        """测试特权用户使用 --global"""
+        identity = UserIdentity(
+            privilege=PrivilegeLevel.ROOT,
+            effective_uid=0,
+            real_username="root",
+        )
+        scope = resolve_scope(identity, global_flag=True, user_flag=None, operation="test")
+        assert scope.is_global
+        assert scope.user_id is None
+
+    def test_resolve_scope_privileged_user(self):
+        """测试特权用户使用 --user"""
+        identity = UserIdentity(
+            privilege=PrivilegeLevel.ROOT,
+            effective_uid=0,
+            real_username="root",
+        )
+        scope = resolve_scope(identity, global_flag=False, user_flag="alice", operation="test")
+        assert not scope.is_global
+        assert scope.user_id == "alice"
+
+    def test_resolve_scope_conflict_flags(self):
+        """测试同时指定 --global 和 --user 冲突"""
+        identity = UserIdentity(
+            privilege=PrivilegeLevel.ROOT,
+            effective_uid=0,
+            real_username="root",
+        )
+        with pytest.raises(CliPermissionError) as exc_info:
+            resolve_scope(identity, global_flag=True, user_flag="alice", operation="test")
+        assert "Cannot specify both" in str(exc_info.value)
+
+    def test_resolve_user_for_ipc_regular(self):
+        """测试 IPC 用户解析（普通用户）"""
+        identity = UserIdentity(
+            privilege=PrivilegeLevel.REGULAR,
+            effective_uid=1000,
+            real_username="testuser",
+        )
+        result = resolve_user_for_ipc(identity, user_flag=None, operation="test")
+        assert result == "testuser"
+
+    def test_resolve_user_for_ipc_privileged_default_root(self):
+        """测试 IPC 用户解析（特权用户默认使用 root）"""
+        identity = UserIdentity(
+            privilege=PrivilegeLevel.ROOT,
+            effective_uid=0,
+            real_username="root",
+        )
+        result = resolve_user_for_ipc(identity, user_flag=None, operation="test")
+        assert result == "root"
+
+    def test_resolve_user_for_ipc_privileged_with_user(self):
+        """测试 IPC 用户解析（特权用户指定 --user）"""
+        identity = UserIdentity(
+            privilege=PrivilegeLevel.ROOT,
+            effective_uid=0,
+            real_username="root",
+        )
+        result = resolve_user_for_ipc(identity, user_flag="alice", operation="test")
+        assert result == "alice"
+
+    def test_resolved_scope_name(self):
+        """测试 ResolvedScope.scope_name"""
+        global_scope = ResolvedScope(is_global=True, user_id=None)
+        assert global_scope.scope_name == "global"
+
+        user_scope = ResolvedScope(is_global=False, user_id="alice")
+        assert user_scope.scope_name == "user/alice"
 
 
 class TestCLIWithRealConfigs:
