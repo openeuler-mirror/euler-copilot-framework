@@ -20,3 +20,4 @@ package-lock.json
 package.json
 
 !mcp_center/config/
+!witty_mcp_manager/**/config/
