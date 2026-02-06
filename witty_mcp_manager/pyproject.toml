@@ -1,0 +1,128 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "witty-mcp-manager"
+version = "1.0.0"
+description = "Universal MCP Host/Loader for Witty Assistant"
+readme = "README.md"
+license = { text = "MulanPSL-2.0" }
+authors = [
+    { name = "Shoucheng He", email = "heshoucheng@huawei.com" },
+    { name = "Hongyu Shi", email = "shywzt@iCloud.com" },
+    { name = "Shunan Tang", email = "tangshunan1@huawei.com" },
+]
+maintainers = [
+    { name = "openEuler SIG-Intelligence", email = "intelligence@openeuler.org" },
+]
+keywords = ["mcp", "witty", "openeuler", "ai-assistant", "tool-server"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "Intended Audience :: System Administrators",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Topic :: System :: Systems Administration",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "License :: OSI Approved :: Mulan Permissive Software License v2 (MulanPSL-2.0)",
+]
+requires-python = ">=3.11"
+
+dependencies = [
+    "pydantic>=2.12.5",
+    "pyyaml>=6.0.3",
+    "fastapi>=0.128.0",
+    "uvicorn>=0.40.0",
+    "httpx>=0.28.1",
+    "mcp>=1.26.0",
+    "typer>=0.21.1",
+    "rich>=14.3.1",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=9.0.2",
+    "pytest-asyncio>=1.3.0",
+    "pytest-cov>=7.0.0",
+    "ruff>=0.14.14",
+    "mypy>=1.19.1",
+    "types-PyYAML>=6.0.12",
+]
+
+[project.scripts]
+witty-mcp = "witty_mcp_manager.cli.main:app"
+
+[project.urls]
+Homepage = "https://atomgit.com/openeuler/euler-copilot-framework"
+Documentation = "https://atomgit.com/openeuler/euler-copilot-framework/tree/master/docs"
+Repository = "https://atomgit.com/openeuler/euler-copilot-framework"
+Issues = "https://atomgit.com/openeuler/euler-copilot-framework/issues"
+
+[tool.hatch.build.targets.sdist]
+include = ["/src"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/witty_mcp_manager"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+python_files = ["test_*.py"]
+python_functions = ["test_*"]
+addopts = "-v --tb=short"
+
+[tool.ruff]
+line-length = 120
+indent-width = 4
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["ALL"]
+ignore = [
+    "ANN401", # Dynamically typed expressions (typing.Any) are disallowed
+    "ARG002", # Unused method argument
+    "COM812", # Trailing comma missing (conflicts with formatter)
+    "D400",   # First line should end with a period
+    "D415",   # First line should end with a period, question mark, or exclamation point
+    "PYI019", # Methods like `__new__` should return `typing.Self`
+    "RUF001", # String contains ambiguous unicode character
+    "RUF002", # Docstring contains ambiguous unicode character
+    "RUF003", # Comment contains ambiguous unicode character
+    "S104",   # Possible binding to all interfaces
+    "TD002",  # Missing author in TODO
+    "TD003",  # Missing issue link on the line following this TODO
+    "INP001", # File is part of an implicit namespace package
+    "D203",   # 1 blank line required before class docstring
+    "D212",   # Multi-line docstring summary should start at the first line
+    "S101",   # Use of `assert` detected
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = [
+    "ANN",     # Tests don't need exhaustive typing
+    "D",       # Tests don't need strict docstrings
+    "S",       # Allow assert/tmp paths in tests
+    "PLR2004", # Magic values are fine in tests
+    "PLC0415", # Local imports are fine in tests
+]
+"src/witty_mcp_manager/cli/main.py" = [
+    "FBT001", # Typer command options often use bool flags
+]
+"src/witty_mcp_manager/exceptions.py" = [
+    "D107", # Docstrings on every exception __init__ add noise
+]
+"src/witty_mcp_manager/registry/models.py" = [
+    "TC003", # Keep runtime-available typing symbols for Pydantic
+]
+
+[tool.ruff.format]
+quote-style = "double"
+
+[tool.mypy]
+python_version = "3.11"
+warn_return_any = true
+warn_unused_ignores = true
+strict = true
