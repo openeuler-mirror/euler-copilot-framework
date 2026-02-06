@@ -44,7 +44,7 @@ class TestDetermineServerStatusEdgeCases:
 
         status, reason = _determine_server_status(server)
         assert status == "unavailable"
-        assert"白名单" in reason  # type: ignore[operator]
+        assert "白名单" in reason  # type: ignore[operator]
 
     def test_with_errors(self) -> None:
         """测试有错误时返回 unavailable"""
