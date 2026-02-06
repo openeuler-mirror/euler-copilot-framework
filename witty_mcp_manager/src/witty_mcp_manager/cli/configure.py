@@ -462,11 +462,15 @@ def _apply_cli_config(
         return
 
     # Try IPC first for user-level (converts to secret:// references)
-    if not is_global and resolved_user and _apply_config_via_ipc(
-        mcp_id,
-        resolved_user,
-        env=env_dict if env_dict else None,
-        headers=headers_dict if headers_dict else None,
+    if (
+        not is_global
+        and resolved_user
+        and _apply_config_via_ipc(
+            mcp_id,
+            resolved_user,
+            env=env_dict if env_dict else None,
+            headers=headers_dict if headers_dict else None,
+        )
     ):
         console.print(f"[green]✓ Configuration applied for {mcp_id} (secrets stored securely)[/green]")
         return
