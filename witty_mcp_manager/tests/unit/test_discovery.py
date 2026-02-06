@@ -161,6 +161,7 @@ class TestDiscoveryAdminSources:
         assert admin_server is not None
         assert admin_server.source == SourceType.ADMIN
         assert admin_server.transport == TransportType.SSE
+        assert admin_server.default_config.sse is not None
         assert admin_server.default_config.sse.url == "http://127.0.0.1:12555/sse"
 
     def test_get_server_by_id(self, mock_config, mock_mcp_servers_dir):

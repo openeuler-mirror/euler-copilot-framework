@@ -49,8 +49,8 @@ class TestIPCServerStartup:
         mock_server.id = "test-server"
         mock_server.diagnostics = MagicMock()
         mock_server.diagnostics.errors = []
-        ipc_server.discovery.scan_all.return_value = [mock_server]
-        ipc_server.checker.validate.return_value = MagicMock(errors=[])
+        ipc_server.discovery.scan_all.return_value = [mock_server]  # type: ignore[attr-defined]
+        ipc_server.checker.validate.return_value = MagicMock(errors=[])  # type: ignore[attr-defined]
 
         await ipc_server.startup()
 
@@ -64,17 +64,17 @@ class TestIPCServerStartup:
         mock_server.id = "diag-server"
         diag = MagicMock()
         diag.errors = ["some error"]
-        ipc_server.discovery.scan_all.return_value = [mock_server]
-        ipc_server.checker.validate.return_value = diag
+        ipc_server.discovery.scan_all.return_value = [mock_server]  # type: ignore[attr-defined]
+        ipc_server.checker.validate.return_value = diag  # type: ignore[attr-defined]
 
         await ipc_server.startup()
 
-        ipc_server.checker.validate.assert_called_once_with(mock_server)
+        ipc_server.checker.validate.assert_called_once_with(mock_server)  # type: ignore[attr-defined]
 
     @pytest.mark.asyncio
     async def test_startup_starts_recycler(self, ipc_server: IPCServer) -> None:
         """测试 startup 启动回收器"""
-        ipc_server.discovery.scan_all.return_value = []
+        ipc_server.discovery.scan_all.return_value = []  # type: ignore[attr-defined]
         await ipc_server.startup()
 
         assert ipc_server._recycler is not None  # noqa: SLF001
@@ -88,7 +88,7 @@ class TestIPCServerShutdown:
         """测试 shutdown 停止回收器"""
         mock_recycler = AsyncMock()
         ipc_server._recycler = mock_recycler  # noqa: SLF001
-        ipc_server.runtime_manager.list_sessions = AsyncMock(return_value=[])
+        ipc_server.runtime_manager.list_sessions = AsyncMock(return_value=[])  # type: ignore[method-assign]
 
         await ipc_server.shutdown()
 
@@ -100,7 +100,7 @@ class TestIPCServerShutdown:
         """测试 shutdown 断开所有适配器"""
         mock_adapter = AsyncMock()
         ipc_server._adapters["key1"] = mock_adapter  # noqa: SLF001
-        ipc_server.runtime_manager.list_sessions = AsyncMock(return_value=[])
+        ipc_server.runtime_manager.list_sessions = AsyncMock(return_value=[])  # type: ignore[method-assign]
 
         await ipc_server.shutdown()
 
@@ -113,7 +113,7 @@ class TestIPCServerShutdown:
         mock_adapter = AsyncMock()
         mock_adapter.disconnect.side_effect = RuntimeError("disconnect failed")
         ipc_server._adapters["key1"] = mock_adapter  # noqa: SLF001
-        ipc_server.runtime_manager.list_sessions = AsyncMock(return_value=[])
+        ipc_server.runtime_manager.list_sessions = AsyncMock(return_value=[])  # type: ignore[method-assign]
 
         # 不应抛出异常
         await ipc_server.shutdown()
@@ -123,7 +123,7 @@ class TestIPCServerShutdown:
         """测试 shutdown 停止所有会话"""
         mock_session = AsyncMock()
         mock_session.session_key = "s1"
-        ipc_server.runtime_manager.list_sessions = AsyncMock(return_value=[mock_session])
+        ipc_server.runtime_manager.list_sessions = AsyncMock(return_value=[mock_session])  # type: ignore[method-assign]
 
         await ipc_server.shutdown()
 
@@ -135,7 +135,7 @@ class TestIPCServerShutdown:
         mock_session = AsyncMock()
         mock_session.session_key = "s1"
         mock_session.stop.side_effect = RuntimeError("stop failed")
-        ipc_server.runtime_manager.list_sessions = AsyncMock(return_value=[mock_session])
+        ipc_server.runtime_manager.list_sessions = AsyncMock(return_value=[mock_session])  # type: ignore[method-assign]
 
         # 不应抛出异常
         await ipc_server.shutdown()
@@ -273,5 +273,5 @@ class TestCreateApp:
     def test_app_has_routers(self, ipc_server: IPCServer) -> None:
         """测试应用包含路由"""
         app = create_app(ipc_server)
-        routes = [r.path for r in app.routes]
+        routes = [r.path for r in app.routes]  # type: ignore[attr-defined]
         assert any("/v1" in r for r in routes)

@@ -168,23 +168,23 @@ class TestCLIHelperFunctions:
     def test_infer_transport_stdio(self):
         """测试 _infer_transport 识别 stdio"""
         entry = {"command": "uv", "args": ["run"]}
-        assert _infer_transport(entry) == "stdio"
+        assert _infer_transport(entry) == "stdio"  # type: ignore[arg-type]
 
-        entry = {"stdio": {"command": "python3"}}
-        assert _infer_transport(entry) == "stdio"
+        entry = {"stdio": {"command": "python3"}}  # type: ignore[dict-item]
+        assert _infer_transport(entry) == "stdio"  # type: ignore[arg-type]
 
     def test_infer_transport_sse(self):
         """测试 _infer_transport 识别 sse"""
         entry = {"url": "http://localhost:8080/sse"}
-        assert _infer_transport(entry) == "sse"
+        assert _infer_transport(entry) == "sse"  # type: ignore[arg-type]
 
-        entry = {"sse": {"url": "http://localhost:8080"}}
-        assert _infer_transport(entry) == "sse"
+        entry = {"sse": {"url": "http://localhost:8080"}}  # type: ignore[dict-item]
+        assert _infer_transport(entry) == "sse"  # type: ignore[arg-type]
 
     def test_infer_transport_explicit(self):
         """测试 _infer_transport 使用显式 transport 字段"""
         entry = {"transport": "custom", "command": "uv"}
-        assert _infer_transport(entry) == "custom"
+        assert _infer_transport(entry) == "custom"  # type: ignore[arg-type]
 
     def test_infer_transport_empty(self):
         """测试 _infer_transport 空配置"""
@@ -197,7 +197,7 @@ class TestCLIHelperFunctions:
             "args": ["run", "main.py"],
             "env": {"PATH": "/usr/bin"},
         }
-        command, args, env = _extract_stdio(entry)
+        command, args, env = _extract_stdio(entry)  # type: ignore[arg-type]
         assert command == "uv"
         assert args == ["run", "main.py"]
         assert env == {"PATH": "/usr/bin"}
@@ -211,13 +211,13 @@ class TestCLIHelperFunctions:
                 "env": {"PYTHONPATH": "/opt/mcp"},
             },
         }
-        command, args, _env = _extract_stdio(entry)
+        command, args, _env = _extract_stdio(entry)  # type: ignore[arg-type]
         assert command == "python3"
         assert args == ["-m", "mcp_server"]
 
     def test_extract_stdio_missing(self):
         """测试 _extract_stdio 处理缺失字段"""
-        entry = {}
+        entry: dict[str, object] = {}
         command, args, env = _extract_stdio(entry)
         assert command is None
         assert args is None
