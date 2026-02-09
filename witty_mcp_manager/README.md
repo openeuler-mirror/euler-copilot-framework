@@ -120,6 +120,36 @@ uv run ruff format --check . \
 
     这通常表示你没有安装 `dev` 依赖。请先执行 `uv sync --extra dev`，再运行 `uv run mypy src`。
 
+### 测试环境管理
+
+快速配置和管理 Linux 测试环境（在 openEuler 本地执行）：
+
+```bash
+# 首次设置
+./scripts/test_env.sh setup-dev    # 配置本地开发环境 (uv)
+./scripts/test_env.sh install      # 安装服务到系统
+./scripts/test_env.sh start        # 启动服务
+
+# 日常操作
+./scripts/test_env.sh status       # 查看状态
+./scripts/test_env.sh logs         # 查看日志
+./scripts/test_env.sh restart      # 重启服务
+./scripts/test_env.sh test-mcps    # 测试 MCP 服务器
+./scripts/test_env.sh health       # 健康检查
+
+# 清理
+./scripts/test_env.sh clean        # 清理状态文件
+./scripts/test_env.sh clean-all    # 完全清理
+```
+
+**详细使用指南：** [scripts/reference/test_env/TEST_ENV_GUIDE.md](scripts/reference/test_env/TEST_ENV_GUIDE.md)
+
+**环境要求：**
+
+- openEuler 24.03 LTS SP3 (或其他 Linux + systemd)
+- 需要 root 权限或 sudo 权限
+- 在 Linux 本地执行，无需远程连接
+
 ### 构建二进制
 
 使用 Nuitka 构建独立二进制文件，无需系统 Python 包：
@@ -151,7 +181,9 @@ witty_mcp_manager/
 ├── pyproject.toml              # 项目配置
 ├── README.md                   # 项目说明
 ├── scripts/
-│   └── build_nuitka.sh         # Nuitka 构建脚本
+│   ├── build_nuitka.sh         # Nuitka 构建脚本
+│   ├── test_env.sh             # 测试环境管理脚本
+│   └── run_integration_tests.sh
 ├── src/
 │   └── witty_mcp_manager/      # 源码
 │       ├── __init__.py
