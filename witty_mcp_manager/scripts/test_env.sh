@@ -51,7 +51,13 @@ MCP_CENTER_PATH="${MCP_CENTER_PATH:-/usr/lib/sysagent/mcp_center/mcp_config}"
 STATE_DIR="${STATE_DIR:-/var/lib/witty-mcp-manager}"
 RUNTIME_DIR="${RUNTIME_DIR:-/run/witty}"
 CONFIG_DIR="${CONFIG_DIR:-/etc/witty}"
+
+# 服务名称
 SERVICE_NAME="witty-mcp-manager"
+SERVICE_NAME_DEV="witty-mcp-manager-dev"
+
+# 开发模式检测
+DEV_MODE="${DEV_MODE:-false}"
 
 # 颜色输出
 RED='\033[0;31m'
@@ -142,17 +148,61 @@ setup_dev() {
 # ============================================
 
 install_service() {
-    log_info "安装 Witty MCP Manager 服务..."
+    local dev_mode="${1:-false}"
+    local service_name
+    local service_file
+    local service_user
+    local service_group
+    
+    if [[ "${dev_mode}" == "true" ]]; then
+        service_name="${SERVICE_NAME_DEV}"
+        service_file="${PROJECT_ROOT}/data/${SERVICE_NAME_DEV}.service"
+        service_user="$(whoami)"
+        service_group="$(id -gn)"
+        log_info "安装 Witty MCP Manager 服务 (开发模式)..."
+    else
+        service_name="${SERVICE_NAME}"
+        service_file="${PROJECT_ROOT}/data/${SERVICE_NAME}.service"
+        service_user="witty-mcp"
+        service_group="witty-mcp"
+        log_info "安装 Witty MCP Manager 服务 (生产模式)..."
+    fi
     
     check_linux
     check_project_root
     
-    # 创建 witty-mcp 用户
-    if ! id witty-mcp >/dev/null 2>&1; then
-        log_info "创建 witty-mcp 用户..."
-        run_as_root useradd -r -s /sbin/nologin witty-mcp
+    # 生产模式需要检查二进制和创建用户
+    if [[ "${dev_mode}" == "false" ]]; then
+        # 检查二进制是否存在
+        if [[ ! -x "/usr/bin/witty-mcp" ]]; then
+            log_error "生产模式需要先构建并安装二进制文件"
+            log_error "二进制文件不存在或不可执行: /usr/bin/witty-mcp"
+            echo ""
+            log_info "请按以下步骤构建和安装："
+            echo "  1. 构建二进制:"
+            echo "     cd ${PROJECT_ROOT}"
+            echo "     ./scripts/build_nuitka.sh"
+            echo ""
+            echo "  2. 安装二进制到 /usr/bin:"
+            echo "     sudo cp dist/witty-mcp /usr/bin/witty-mcp"
+            echo "     sudo chmod 755 /usr/bin/witty-mcp"
+            echo ""
+            log_info "生产模式使用预编译的二进制文件以获得最佳性能"
+            exit 1
+        fi
+        
+        log_success "✓ 二进制文件已就绪: /usr/bin/witty-mcp"
+        
+        # 创建 witty-mcp 用户
+        if ! id witty-mcp >/dev/null 2>&1; then
+            log_info "创建 witty-mcp 用户..."
+            run_as_root useradd -r -s /sbin/nologin witty-mcp
+        else
+            log_info "witty-mcp 用户已存在"
+        fi
     else
-        log_info "witty-mcp 用户已存在"
+        log_info "开发模式：使用当前用户 ${service_user}:${service_group}"
+        log_info "开发模式：使用 uv run 启动，无需构建二进制"
     fi
     
     # 创建目录
@@ -163,8 +213,8 @@ install_service() {
     
     # 设置权限
     log_info "设置目录权限..."
-    run_as_root chown -R witty-mcp:witty-mcp ${STATE_DIR}
-    run_as_root chown -R witty-mcp:witty-mcp ${RUNTIME_DIR}
+    run_as_root chown -R ${service_user}:${service_group} ${STATE_DIR}
+    run_as_root chown -R ${service_user}:${service_group} ${RUNTIME_DIR}
     run_as_root chmod 755 ${RUNTIME_DIR}
     
     # 检查 /opt/mcp-servers 权限
@@ -179,70 +229,104 @@ install_service() {
     
     # 安装服务文件
     log_info "安装 systemd 服务..."
-    if [[ ! -f "${PROJECT_ROOT}/data/witty-mcp-manager.service" ]]; then
-        log_error "服务文件不存在: ${PROJECT_ROOT}/data/witty-mcp-manager.service"
+    if [[ ! -f "${service_file}" ]]; then
+        log_error "服务文件不存在: ${service_file}"
         exit 1
     fi
-    run_as_root cp ${PROJECT_ROOT}/data/witty-mcp-manager.service /usr/lib/systemd/system/
-    run_as_root chmod 644 /usr/lib/systemd/system/witty-mcp-manager.service
+    
+    # 开发模式需要替换服务文件中的占位符
+    if [[ "${dev_mode}" == "true" ]]; then
+        log_info "生成开发环境服务配置..."
+        local temp_service="/tmp/${service_name}.service"
+        sed -e "s|PROJECT_ROOT|${PROJECT_ROOT}|g" \
+            -e "s|INSTALL_USER|${service_user}|g" \
+            -e "s|INSTALL_GROUP|${service_group}|g" \
+            "${service_file}" > "${temp_service}"
+        run_as_root cp "${temp_service}" "/usr/lib/systemd/system/${service_name}.service"
+        rm -f "${temp_service}"
+    else
+        run_as_root cp "${service_file}" "/usr/lib/systemd/system/${service_name}.service"
+    fi
+    
+    run_as_root chmod 644 "/usr/lib/systemd/system/${service_name}.service"
     
     # 重载 systemd
     run_as_root systemctl daemon-reload
     
     # 启用服务
-    run_as_root systemctl enable ${SERVICE_NAME}
+    run_as_root systemctl enable "${service_name}"
     
-    log_success "服务安装完成"
+    log_success "服务安装完成 (${service_name})"
     log_info "使用以下命令管理服务:"
-    echo "  ./scripts/test_env.sh start    # 启动服务"
-    echo "  ./scripts/test_env.sh status   # 查看状态"
-    echo "  ./scripts/test_env.sh logs     # 查看日志"
+    if [[ "${dev_mode}" == "true" ]]; then
+        echo "  DEV_MODE=true ./scripts/test_env.sh start    # 启动服务"
+        echo "  DEV_MODE=true ./scripts/test_env.sh status   # 查看状态"
+        echo "  DEV_MODE=true ./scripts/test_env.sh logs     # 查看日志"
+    else
+        echo "  ./scripts/test_env.sh start    # 启动服务"
+        echo "  ./scripts/test_env.sh status   # 查看状态"
+        echo "  ./scripts/test_env.sh logs     # 查看日志"
+    fi
 }
 
 # ============================================
 # 服务管理
 # ============================================
 
+# 获取当前服务名（根据 DEV_MODE）
+get_service_name() {
+    if [[ "${DEV_MODE}" == "true" ]]; then
+        echo "${SERVICE_NAME_DEV}"
+    else
+        echo "${SERVICE_NAME}"
+    fi
+}
+
 start_service() {
-    log_info "启动守护进程..."
+    local svc=$(get_service_name)
+    log_info "启动守护进程 (${svc})..."
     check_linux
-    run_as_root systemctl start ${SERVICE_NAME}
+    run_as_root systemctl start "${svc}"
     sleep 2
     check_status
 }
 
 stop_service() {
-    log_info "停止守护进程..."
+    local svc=$(get_service_name)
+    log_info "停止守护进程 (${svc})..."
     check_linux
-    run_as_root systemctl stop ${SERVICE_NAME}
+    run_as_root systemctl stop "${svc}"
     log_success "守护进程已停止"
 }
 
 restart_service() {
-    log_info "重启守护进程..."
+    local svc=$(get_service_name)
+    log_info "重启守护进程 (${svc})..."
     check_linux
-    run_as_root systemctl restart ${SERVICE_NAME}
+    run_as_root systemctl restart "${svc}"
     sleep 2
     check_status
 }
 
 check_status() {
-    log_info "检查服务状态..."
+    local svc=$(get_service_name)
+    log_info "检查服务状态 (${svc})..."
     check_linux
-    run_as_root systemctl status ${SERVICE_NAME} --no-pager || true
+    run_as_root systemctl status "${svc}" --no-pager || true
 }
 
 show_logs() {
     local lines="${1:-100}"
     local follow="${2:-}"
+    local svc=$(get_service_name)
     
     check_linux
-    log_info "查看日志 (最近 ${lines} 行)..."
+    log_info "查看日志 (${svc}, 最近 ${lines} 行)..."
     
     if [[ -n "${follow}" ]]; then
-        run_as_root journalctl -u ${SERVICE_NAME} -n ${lines} -f
+        run_as_root journalctl -u "${svc}" -n ${lines} -f
     else
-        run_as_root journalctl -u ${SERVICE_NAME} -n ${lines} --no-pager
+        run_as_root journalctl -u "${svc}" -n ${lines} --no-pager
     fi
 }
 
@@ -300,23 +384,26 @@ clean_all() {
     
     check_linux
     
-    # 停止并禁用服务
-    if run_as_root systemctl is-active ${SERVICE_NAME} >/dev/null 2>&1; then
-        log_info "停止服务..."
-        run_as_root systemctl stop ${SERVICE_NAME}
-    fi
+    # 清理所有可能的服务（生产和开发）
+    for svc in "${SERVICE_NAME}" "${SERVICE_NAME_DEV}"; do
+        if run_as_root systemctl is-active "${svc}" >/dev/null 2>&1; then
+            log_info "停止服务 ${svc}..."
+            run_as_root systemctl stop "${svc}"
+        fi
+        
+        if run_as_root systemctl is-enabled "${svc}" >/dev/null 2>&1; then
+            log_info "禁用服务 ${svc}..."
+            run_as_root systemctl disable "${svc}"
+        fi
+        
+        # 删除服务文件
+        if [[ -f "/usr/lib/systemd/system/${svc}.service" ]]; then
+            log_info "删除服务文件 ${svc}.service..."
+            run_as_root rm -f "/usr/lib/systemd/system/${svc}.service"
+        fi
+    done
     
-    if run_as_root systemctl is-enabled ${SERVICE_NAME} >/dev/null 2>&1; then
-        log_info "禁用服务..."
-        run_as_root systemctl disable ${SERVICE_NAME}
-    fi
-    
-    # 删除服务文件
-    if [[ -f /usr/lib/systemd/system/${SERVICE_NAME}.service ]]; then
-        log_info "删除服务文件..."
-        run_as_root rm -f /usr/lib/systemd/system/${SERVICE_NAME}.service
-        run_as_root systemctl daemon-reload
-    fi
+    run_as_root systemctl daemon-reload
     
     # 删除目录
     log_info "删除目录..."
@@ -769,13 +856,14 @@ health_check() {
     check_linux
     
     local errors=0
+    local svc=$(get_service_name)
     
     # 检查服务状态
-    log_info "检查服务状态..."
-    if run_as_root systemctl is-active ${SERVICE_NAME} >/dev/null 2>&1; then
-        log_success "✓ 服务运行中"
+    log_info "检查服务状态 (${svc})..."
+    if run_as_root systemctl is-active "${svc}" >/dev/null 2>&1; then
+        log_success "✓ 服务运行中 (${svc})"
     else
-        log_error "✗ 服务未运行"
+        log_error "✗ 服务未运行 (${svc})"
         ((++errors))
     fi
     
@@ -852,6 +940,8 @@ Witty MCP Manager 测试环境管理脚本
     ✓ openEuler 24.03 LTS SP3 (或其他 Linux) 已配置
     ✓ 具有 root 权限或 sudo 权限
     ✓ 本仓库已克隆到本地
+    ✓ 开发模式: 已运行 setup-dev 配置 uv 环境
+    ✓ 生产模式: Nuitka 构建的二进制已安装到 /usr/bin/witty-mcp
     ✓ MCP 服务器已安装 (可选，test-mcps 命令需要)
       - RPM MCP: 通过 dnf 安装到 /opt/mcp-servers/servers
       - mcp_center MCP: 部署到 /usr/lib/sysagent/mcp_center/mcp_config
@@ -862,7 +952,8 @@ Witty MCP Manager 测试环境管理脚本
 
 命令:
     setup-dev          配置本地开发环境 (uv sync)
-    install            安装服务到系统
+    install            安装服务到系统 (生产模式)
+    install-dev        安装服务到系统 (开发模式，使用 uv run)
     start              启动守护进程
     stop               停止守护进程
     restart            重启守护进程
@@ -876,6 +967,7 @@ Witty MCP Manager 测试环境管理脚本
     help               显示此帮助信息
 
 环境变量:
+    DEV_MODE           开发模式标志 (true/false, 默认: false)
     MCP_SERVERS_PATH   RPM MCP 服务器安装路径 (默认: /opt/mcp-servers/servers)
     MCP_CENTER_PATH    mcp_center MCP 配置路径 (默认: /usr/lib/sysagent/mcp_center/mcp_config)
     STATE_DIR          状态目录 (默认: /var/lib/witty-mcp-manager)
@@ -884,16 +976,23 @@ Witty MCP Manager 测试环境管理脚本
     WITTY_USER         daemon 查询用户 (默认: test-user)
 
 示例:
-    # 首次设置
-    $0 setup-dev                    # 配置本地开发环境
-    $0 install                      # 安装服务
-    $0 start                        # 启动服务
+    # 开发环境首次设置 (推荐用于本地开发)
+    $0 setup-dev                    # 配置本地开发环境 (uv sync)
+    $0 install-dev                  # 安装开发模式服务 (使用 uv run)
+    DEV_MODE=true $0 start          # 启动开发服务
     
-    # 日常操作
-    $0 status                       # 查看状态
-    $0 logs 50                      # 查看最近 50 行日志
-    $0 logs-f                       # 跟随查看日志
-    $0 restart                      # 重启服务
+    # 生产环境设置 (需要先构建二进制)
+    ./scripts/build_nuitka.sh       # 1. 构建二进制
+    sudo cp dist/witty-mcp /usr/bin/witty-mcp  # 2. 安装二进制
+    sudo chmod 755 /usr/bin/witty-mcp
+    $0 install                      # 3. 安装生产服务
+    $0 start                        # 4. 启动生产服务
+    
+    # 日常操作 (开发模式需要设置 DEV_MODE=true)
+    DEV_MODE=true $0 status         # 查看状态
+    DEV_MODE=true $0 logs 50        # 查看最近 50 行日志
+    DEV_MODE=true $0 logs-f         # 跟随查看日志
+    DEV_MODE=true $0 restart        # 重启服务
     
     # MCP 测试
     $0 test-mcps                    # 列出所有 MCP 服务器
@@ -911,6 +1010,22 @@ Witty MCP Manager 测试环境管理脚本
     MCP_SERVERS_PATH=/custom/path $0 test-mcps
 
 注意:
+    - **开发模式 vs 生产模式**:
+      * 开发模式 (install-dev):
+        - 使用 uv run 启动
+        - 适合本地开发调试
+        - 使用当前用户运行
+        - 代码修改后重启即生效
+        - 所有管理命令需要设置 DEV_MODE=true
+      * 生产模式 (install):
+        - 使用 Nuitka 构建的优化二进制 (/usr/bin/witty-mcp)
+        - 提供更好的性能和单文件部署
+        - 使用 witty-mcp 系统用户运行
+        - 需要先构建和安装二进制
+      * 两种模式使用不同的服务名:
+        - 开发: witty-mcp-manager-dev
+        - 生产: witty-mcp-manager
+    - 
     - 本脚本必须在 Linux 系统上运行
     - 大部分命令需要 root 权限（可使用 root 用户或 sudo）
     - 使用 clean 或 clean-all 前会提示确认
@@ -921,9 +1036,11 @@ Witty MCP Manager 测试环境管理脚本
     - mcp-cli ping 需要 uv tool install mcp-cli (安装后如不在 PATH 中，请运行 uv tool update-shell)
 
 相关文档:
+    - 开发/生产模式对比: scripts/reference/test_env/DEV_VS_PROD_MODE.md
     - 详细使用指南: scripts/reference/test_env/TEST_ENV_GUIDE.md
     - 使用示例: scripts/reference/test_env/EXAMPLES.md
     - 快速参考: scripts/reference/test_env/QUICK_REFERENCE.sh
+    - 构建说明: scripts/README.md (build_nuitka.sh 部分)
 
 EOF
 }
@@ -946,7 +1063,10 @@ main() {
             setup_dev
             ;;
         install)
-            install_service
+            install_service false
+            ;;
+        install-dev)
+            install_service true
             ;;
         start)
             start_service

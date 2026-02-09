@@ -1,0 +1,39 @@
+[Unit]
+Description=Witty MCP Manager - Development Mode
+Documentation=https://atomgit.com/openeuler/euler-copilot-framework
+After=network.target
+
+[Service]
+Type=simple
+# 开发环境：使用 uv run 启动
+# PROJECT_ROOT 在安装时会被替换为实际路径
+WorkingDirectory=PROJECT_ROOT
+ExecStart=/usr/bin/env bash -c 'cd PROJECT_ROOT && uv run witty-mcp daemon'
+Restart=on-failure
+RestartSec=5s
+
+# 开发环境使用当前用户
+User=INSTALL_USER
+Group=INSTALL_GROUP
+
+# 开发目录读写权限
+ReadWritePaths=PROJECT_ROOT
+
+# Security hardening (适度放宽，方便开发调试)
+NoNewPrivileges=true
+PrivateTmp=false
+ProtectSystem=false
+ProtectHome=false
+ReadWritePaths=/run /var/lib/witty-mcp-manager
+
+# Resource limits
+LimitNOFILE=65536
+TasksMax=512
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=witty-mcp-manager-dev
+
+[Install]
+WantedBy=multi-user.target

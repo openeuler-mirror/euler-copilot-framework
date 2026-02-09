@@ -2,7 +2,14 @@
 
 ## 快速开始
 
-### 1. 首次设置
+### 两种模式选择
+
+**开发模式**（推荐用于本地开发）：使用 `uv run`，当前用户运行
+**生产模式**：需要系统安装，使用 `witty-mcp` 系统用户
+
+详见：[开发模式 vs 生产模式对比](DEV_VS_PROD_MODE.md)
+
+### 1. 首次设置（开发模式 - 推荐）
 
 ```bash
 # 进入 witty_mcp_manager 目录
@@ -11,10 +18,31 @@ cd witty_mcp_manager
 # 配置本地开发环境
 ./scripts/test_env.sh setup-dev
 
-# 安装服务到系统
+# 安装开发服务
+./scripts/test_env.sh install-dev
+
+# 启动服务（需要 DEV_MODE=true）
+DEV_MODE=true ./scripts/test_env.sh start
+```
+
+### 1. 首次设置（生产模式）
+
+```bash
+# 1. 构建二进制（必须）
+cd witty_mcp_manager
+./scripts/build_nuitka.sh
+
+# 2. 安装二进制
+sudo cp dist/witty-mcp /usr/bin/witty-mcp
+sudo chmod 755 /usr/bin/witty-mcp
+
+# 3. 验证二进制
+/usr/bin/witty-mcp --version
+
+# 4. 安装生产服务
 ./scripts/test_env.sh install
 
-# 启动服务
+# 5. 启动服务
 ./scripts/test_env.sh start
 ```
 
@@ -45,17 +73,21 @@ cd witty_mcp_manager
 ### 服务管理
 
 ```bash
-# 启动守护进程
+# 生产模式
 ./scripts/test_env.sh start
-
-# 停止守护进程
 ./scripts/test_env.sh stop
-
-# 重启守护进程
 ./scripts/test_env.sh restart
-
-# 查看服务状态
 ./scripts/test_env.sh status
+
+# 开发模式（需要 DEV_MODE=true）
+DEV_MODE=true ./scripts/test_env.sh start
+DEV_MODE=true ./scripts/test_env.sh stop
+DEV_MODE=true ./scripts/test_env.sh restart
+DEV_MODE=true ./scripts/test_env.sh status
+
+# 💡 提示：设置别名简化开发模式命令
+alias wmm-dev='DEV_MODE=true ./scripts/test_env.sh'
+# 然后使用: wmm-dev start, wmm-dev status, etc.
 ```
 
 ### 日志查看
@@ -127,7 +159,9 @@ STATE_DIR=/var/lib/custom-witty ./scripts/test_env.sh status
 
 | 变量名 | 默认值 | 说明 |
 | ------ | ------ | ---- |
-| `MCP_SERVERS_PATH` | `/opt/mcp-servers/servers` | MCP 服务器安装路径 |
+| `DEV_MODE` | `false` | 开发模式标志 (true/false) |
+| `MCP_SERVERS_PATH` | `/opt/mcp-servers/servers` | RPM MCP 服务器安装路径 |
+| `MCP_CENTER_PATH` | `/usr/lib/sysagent/mcp_center/mcp_config` | mcp_center MCP 配置路径 |
 | `STATE_DIR` | `/var/lib/witty-mcp-manager` | 状态目录 |
 | `RUNTIME_DIR` | `/run/witty` | 运行时目录 |
 | `CONFIG_DIR` | `/etc/witty` | 配置目录 |
@@ -137,18 +171,36 @@ STATE_DIR=/var/lib/custom-witty ./scripts/test_env.sh status
 
 ## 典型工作流
 
-### 开发调试流程
+### 开发调试流程（开发模式）
 
 ```bash
 # 1. 设置开发环境
 ./scripts/test_env.sh setup-dev
+./scripts/test_env.sh install-dev
 
 # 2. 在本地开发和测试
 cd witty_mcp_manager
 uv run pytest -v
 
-# 3. 重新安装服务（如果需要）
-./scripts/test_env.sh install
+# 3. 代码修改后重启服务
+DEV_MODE=true ./scripts/test_env.sh restart
+
+# 4. 查看日志确认
+DEV_MODE=true ./scripts/test_env.sh logs-f
+```
+
+### 开发调试流程（生产模式）
+
+```bash
+# 1. 在本地开发和测试
+cd witty_mcp_manager
+uv run pytest -v
+
+# 2. 重新构建二进制
+./scripts/build_nuitka.sh
+
+# 3. 安装新的二进制
+sudo cp dist/witty-mcp /usr/bin/witty-mcp
 
 # 4. 重启服务
 ./scripts/test_env.sh restart

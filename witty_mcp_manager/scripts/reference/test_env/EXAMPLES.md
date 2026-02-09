@@ -1,9 +1,9 @@
 # Witty MCP Manager 测试环境使用示例
 
-## 示例 1：完整的首次安装流程
+## 示例 1：完整的首次安装流程（开发模式 - 推荐）
 
 ```bash
-# 场景：第一次配置测试环境（在 Linux 本地执行）
+# 场景：第一次配置开发环境（在 Linux 本地执行）
 
 # 步骤 1：进入项目目录
 cd /path/to/euler-copilot/framework/witty_mcp_manager
@@ -15,24 +15,81 @@ cd /path/to/euler-copilot/framework/witty_mcp_manager
 # [INFO] 使用 uv 同步依赖...
 # [SUCCESS] 开发环境配置完成
 
-# 步骤 3：安装服务到系统
-./scripts/test_env.sh install
+# 步骤 3：安装开发服务
+./scripts/test_env.sh install-dev
 # 输出：
-# [INFO] 安装 Witty MCP Manager 服务...
-# [INFO] 创建 witty-mcp 用户...
+# [INFO] 安装 Witty MCP Manager 服务 (开发模式)...
+# [INFO] 开发模式：使用当前用户 user:user
 # [INFO] 创建目录结构...
 # [INFO] 安装 systemd 服务...
-# [SUCCESS] 服务安装完成
+# [SUCCESS] 服务安装完成 (witty-mcp-manager-dev)
 
-# 步骤 4：启动服务
-./scripts/test_env.sh start
+# 步骤 4：启动服务（需要 DEV_MODE=true）
+DEV_MODE=true ./scripts/test_env.sh start
 # 输出：
-# [INFO] 启动守护进程...
-# [INFO] 检查服务状态...
-# ● witty-mcp-manager.service - Witty MCP Manager
+# [INFO] 启动守护进程 (witty-mcp-manager-dev)...
+# [INFO] 检查服务状态 (witty-mcp-manager-dev)...
+# ● witty-mcp-manager-dev.service - Witty MCP Manager - Development Mode
 #    Active: active (running)
 
 # 步骤 5：验证安装
+DEV_MODE=true ./scripts/test_env.sh health
+# 输出：
+# [SUCCESS] ✓ 服务运行中 (witty-mcp-manager-dev)
+# [SUCCESS] ✓ UDS 套接字存在
+# [SUCCESS] ✓ 状态目录权限正常
+# [SUCCESS] ============================================
+# [SUCCESS] 健康检查通过 ✓
+
+# 💡 提示：设置别名简化命令
+alias wmm-dev='DEV_MODE=true ./scripts/test_env.sh'
+# 然后使用: wmm-dev start, wmm-dev status, etc.
+```
+
+---
+
+## 示例 1b：完整的首次安装流程（生产模式）
+
+```bash
+# 场景：第一次配置生产环境（在 Linux 本地执行）
+
+# 步骤 1：进入项目目录
+cd /path/to/euler-copilot/framework/witty_mcp_manager
+
+# 步骤 2：构建二进制
+./scripts/build_nuitka.sh
+# 输出：
+# [INFO] Building witty-mcp with Nuitka...
+# [SUCCESS] Build completed: dist/witty-mcp
+
+# 步骤 3：安装二进制到系统
+sudo cp dist/witty-mcp /usr/bin/witty-mcp
+sudo chmod 755 /usr/bin/witty-mcp
+
+# 步骤 4：验证二进制
+/usr/bin/witty-mcp --version
+# 输出：
+# witty-mcp version X.Y.Z
+
+# 步骤 5：安装服务
+./scripts/test_env.sh install
+# 输出：
+# [INFO] 安装 Witty MCP Manager 服务 (生产模式)...
+# [SUCCESS] ✓ 二进制文件已就绪: /usr/bin/witty-mcp
+# [INFO] 创建 witty-mcp 用户...
+# [INFO] 创建目录结构...
+# [INFO] 安装 systemd 服务...
+# [SUCCESS] 服务安装完成 (witty-mcp-manager)
+
+# 步骤 6：启动服务
+./scripts/test_env.sh start
+# 输出：
+# [INFO] 启动守护进程 (witty-mcp-manager)...
+# [INFO] 检查服务状态 (witty-mcp-manager)...
+# ● witty-mcp-manager.service - Witty MCP Manager
+#    Active: active (running)
+
+# 步骤 7：验证安装
 ./scripts/test_env.sh health
 # 输出：
 # [SUCCESS] ✓ 服务运行中
@@ -44,7 +101,39 @@ cd /path/to/euler-copilot/framework/witty_mcp_manager
 
 ---
 
-## 示例 2：日常开发调试
+## 示例 2：日常开发调试（开发模式）
+
+```bash
+# 场景：修改了代码，需要验证
+
+# 1. 查看当前服务状态
+DEV_MODE=true ./scripts/test_env.sh status
+
+# 2. 代码修改后直接重启（uv 会自动加载最新代码）
+DEV_MODE=true ./scripts/test_env.sh restart
+
+# 3. 实时查看日志，观察启动过程
+DEV_MODE=true ./scripts/test_env.sh logs-f
+# 按 Ctrl+C 退出
+
+# 4. 测试 MCP 服务器
+DEV_MODE=true ./scripts/test_env.sh test-mcps
+# 输出（daemon 运行时）:
+# [INFO] 通过 daemon (UDS) 查询 MCP 服务器...
+#   ✓ cvekit_mcp                [rpm   ] ready
+#   ⚠ git_mcp                   [rpm   ] degraded     - 缺少系统依赖: python3-mcp
+#   共 12 个服务器: 1 ready, 9 degraded, 2 unavailable
+
+# 5. 用 mcp-cli ping 测试服务器
+DEV_MODE=true ./scripts/test_env.sh test-mcps ping cvekit_mcp
+
+# 6. 查看服务器工具列表
+DEV_MODE=true ./scripts/test_env.sh test-mcps tools cvekit_mcp
+```
+
+---
+
+## 示例 2b：日常开发调试（生产模式）
 
 ```bash
 # 场景：修改了代码，需要验证
