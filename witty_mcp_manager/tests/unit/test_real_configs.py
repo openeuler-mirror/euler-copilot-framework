@@ -26,13 +26,17 @@ class TestRealMCPDiscovery:
         discovery = Discovery(mock_real_config)
         servers = discovery.scan_all()
 
-        # 应该发现 4 个服务器
-        assert len(servers) == 4
+        # 应该发现 6 个服务器（4 个 RPM STDIO + 2 个 Admin SSE）
+        assert len(servers) == 6
         server_ids = {s.id for s in servers}
+        # RPM STDIO 服务器
         assert "git_mcp" in server_ids
         assert "ccb_mcp" in server_ids
         assert "oeDeploy_mcp" in server_ids
         assert "cvekit_mcp" in server_ids
+        # Admin SSE 服务器（config.json 格式）
+        assert "mcp_server_mcp" in server_ids
+        assert "rag_mcp" in server_ids
 
     def test_git_mcp_server(self, mock_real_config, mock_real_mcp_servers_dir):
         """TC102: git_mcp 使用 uv 命令"""
@@ -103,6 +107,34 @@ class TestRealMCPDiscovery:
 
         # 验证 timeout
         assert cvekit.default_config.timeouts.tool_call == 600
+
+    def test_mcp_server_mcp_sse(self, mock_real_config, mock_real_mcp_servers_dir):
+        """mcp_server_mcp: Admin SSE 服务器（config.json 格式）"""
+        discovery = Discovery(mock_real_config)
+        servers = discovery.scan_all()
+
+        mcp_server = next((s for s in servers if s.id == "mcp_server_mcp"), None)
+        assert mcp_server is not None
+        assert mcp_server.source == SourceType.ADMIN
+        assert mcp_server.transport == TransportType.SSE
+        assert mcp_server.default_config.sse is not None
+        assert mcp_server.default_config.sse.url == "http://127.0.0.1:12555/sse"
+        assert mcp_server.default_config.stdio is None
+        assert mcp_server.name == "oe-智能运维工具"
+
+    def test_rag_mcp_sse(self, mock_real_config, mock_real_mcp_servers_dir):
+        """rag_mcp: Admin SSE 服务器（config.json 格式）"""
+        discovery = Discovery(mock_real_config)
+        servers = discovery.scan_all()
+
+        rag_mcp = next((s for s in servers if s.id == "rag_mcp"), None)
+        assert rag_mcp is not None
+        assert rag_mcp.source == SourceType.ADMIN
+        assert rag_mcp.transport == TransportType.SSE
+        assert rag_mcp.default_config.sse is not None
+        assert rag_mcp.default_config.sse.url == "http://127.0.0.1:12311/sse"
+        assert rag_mcp.default_config.stdio is None
+        assert rag_mcp.name == "轻量化知识库"
 
 
 class TestRealMCPNormalizer:
@@ -256,7 +288,7 @@ class TestRealMCPIntegration:
         preflight = PreflightChecker(mock_real_config)
 
         servers = discovery.scan_all()
-        assert len(servers) == 4
+        assert len(servers) == 6
 
         for server in servers:
             # 运行文件检查
@@ -266,8 +298,9 @@ class TestRealMCPIntegration:
 
             # 每个 server 都应该有有效的 diagnostics
             assert preflight_diag is not None
-            # 所有使用的命令都应该在白名单中
-            assert preflight_diag.command_allowed is True, f"{server.id} command not allowed"
+            # STDIO 服务器的命令都应该在白名单中
+            if server.default_config.stdio:
+                assert preflight_diag.command_allowed is True, f"{server.id} command not allowed"
 
     def test_overlay_with_real_servers(self, mock_real_config, mock_real_mcp_servers_dir, mock_state_directory):
         """测试 overlay 与真实服务器的集成"""

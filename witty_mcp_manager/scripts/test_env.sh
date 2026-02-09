@@ -47,6 +47,7 @@ PROJECT_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
 # 默认配置
 MCP_SERVERS_PATH="${MCP_SERVERS_PATH:-/opt/mcp-servers/servers}"
+MCP_CENTER_PATH="${MCP_CENTER_PATH:-/usr/lib/sysagent/mcp_center/mcp_config}"
 STATE_DIR="${STATE_DIR:-/var/lib/witty-mcp-manager}"
 RUNTIME_DIR="${RUNTIME_DIR:-/run/witty}"
 CONFIG_DIR="${CONFIG_DIR:-/etc/witty}"
@@ -336,6 +337,47 @@ SOCK_PATH="${RUNTIME_DIR}/mcp-manager.sock"
 # 默认测试用户
 WITTY_USER="${WITTY_USER:-test-user}"
 
+# 查找 MCP 配置文件（支持 mcp_config.json 和 config.json 两种格式）
+# 用法: _find_config_file <server_dir>
+# 返回: 配置文件路径（或空字符串）
+_find_config_file() {
+    local server_dir="$1"
+    if [[ -f "${server_dir}/mcp_config.json" ]]; then
+        echo "${server_dir}/mcp_config.json"
+    elif [[ -f "${server_dir}/config.json" ]]; then
+        echo "${server_dir}/config.json"
+    fi
+}
+
+# 在所有扫描路径中查找 server 目录
+# 用法: _find_server_dir <server_name>
+# 返回: server 目录的绝对路径（或空字符串）
+_find_server_dir() {
+    local server_name="$1"
+    local scan_path
+    for scan_path in "${MCP_SERVERS_PATH}" "${MCP_CENTER_PATH}"; do
+        local candidate="${scan_path}/${server_name}"
+        if [[ -d "$candidate" ]]; then
+            local config
+            config=$(_find_config_file "$candidate")
+            if [[ -n "$config" ]]; then
+                echo "$candidate"
+                return
+            fi
+        fi
+    done
+}
+
+# 获取所有扫描路径列表（过滤不存在的路径）
+_scan_paths() {
+    local scan_path
+    for scan_path in "${MCP_SERVERS_PATH}" "${MCP_CENTER_PATH}"; do
+        if [[ -d "${scan_path}" ]]; then
+            echo "${scan_path}"
+        fi
+    done
+}
+
 # 通过 daemon UDS socket 发请求
 _daemon_curl() {
     local method="$1"
@@ -426,29 +468,37 @@ print(f'  共 {total} 个服务器: \033[0;32m{ready} ready\033[0m, \033[1;33m{d
         log_warn "daemon 未运行, 扫描本地目录..."
         echo ""
         
-        if [[ ! -d "${MCP_SERVERS_PATH}" ]]; then
-            log_error "MCP 服务器路径不存在: ${MCP_SERVERS_PATH}"
-            log_info "请先安装 MCP Server RPM 包"
+        local found_any_path=false
+        local count=0
+        
+        local scan_path
+        while IFS= read -r scan_path; do
+            found_any_path=true
+            log_info "扫描路径: ${scan_path}"
+            
+            while IFS= read -r -d '' dir; do
+                local server_name=$(basename "$dir")
+                
+                if [[ -f "$dir/mcp_config.json" ]] || [[ -f "$dir/config.json" ]]; then
+                    ((++count))
+                    log_success "✓ $server_name (有 MCP 配置)"
+                elif [[ -f "$dir/pyproject.toml" ]]; then
+                    ((++count))
+                    log_success "✓ $server_name (Python 项目)"
+                elif [[ -f "$dir/package.json" ]]; then
+                    ((++count))
+                    log_success "✓ $server_name (Node.js 项目)"
+                fi
+            done < <(find "${scan_path}" -mindepth 1 -maxdepth 1 -type d -print0 2>/dev/null || true)
+        done < <(_scan_paths)
+        
+        if [[ "$found_any_path" != "true" ]]; then
+            log_error "MCP 服务器路径不存在:"
+            log_error "  RPM: ${MCP_SERVERS_PATH}"
+            log_error "  mcp_center: ${MCP_CENTER_PATH}"
+            log_info "请先安装 MCP Server RPM 包或部署 mcp_center"
             return 1
         fi
-        
-        log_info "扫描路径: ${MCP_SERVERS_PATH}"
-        
-        local count=0
-        while IFS= read -r -d '' dir; do
-            local server_name=$(basename "$dir")
-            ((count++))
-            
-            if [[ -f "$dir/mcp_config.json" ]]; then
-                log_success "✓ $server_name (有 MCP 配置)"
-            elif [[ -f "$dir/pyproject.toml" ]]; then
-                log_success "✓ $server_name (Python 项目)"
-            elif [[ -f "$dir/package.json" ]]; then
-                log_success "✓ $server_name (Node.js 项目)"
-            else
-                log_info "  $server_name"
-            fi
-        done < <(find "${MCP_SERVERS_PATH}" -mindepth 1 -maxdepth 1 -type d -print0 2>/dev/null || true)
         
         echo ""
         if [[ $count -eq 0 ]]; then
@@ -470,13 +520,17 @@ _test_mcps_ping() {
         return 1
     fi
     
-    local config_file="${MCP_SERVERS_PATH}/${server_name}/mcp_config.json"
-    if [[ ! -f "$config_file" ]]; then
-        log_error "配置文件不存在: ${config_file}"
+    local server_dir
+    server_dir=$(_find_server_dir "${server_name}")
+    if [[ -z "$server_dir" ]]; then
+        log_error "未找到服务器 ${server_name}（已扫描: ${MCP_SERVERS_PATH}, ${MCP_CENTER_PATH}）"
         return 1
     fi
     
-    # 从 mcp_config.json 解析出 server key
+    local config_file
+    config_file=$(_find_config_file "${server_dir}")
+    
+    # 从配置文件解析出 server key
     local server_key
     server_key=$(python3 -c "
 import json
@@ -520,11 +574,15 @@ _test_mcps_tools() {
         return 1
     fi
     
-    local config_file="${MCP_SERVERS_PATH}/${server_name}/mcp_config.json"
-    if [[ ! -f "$config_file" ]]; then
-        log_error "配置文件不存在: ${config_file}"
+    local server_dir
+    server_dir=$(_find_server_dir "${server_name}")
+    if [[ -z "$server_dir" ]]; then
+        log_error "未找到服务器 ${server_name}（已扫描: ${MCP_SERVERS_PATH}, ${MCP_CENTER_PATH}）"
         return 1
     fi
+    
+    local config_file
+    config_file=$(_find_config_file "${server_dir}")
     
     local server_key
     server_key=$(python3 -c "
@@ -573,11 +631,6 @@ _test_mcps_ping_all() {
         return 1
     fi
     
-    if [[ ! -d "${MCP_SERVERS_PATH}" ]]; then
-        log_error "MCP 服务器路径不存在: ${MCP_SERVERS_PATH}"
-        return 1
-    fi
-    
     local mcpcli=$(_mcpcli_cmd)
     local total=0
     local passed=0
@@ -586,41 +639,47 @@ _test_mcps_ping_all() {
     log_info "用 mcp-cli 逐个 ping 测试..."
     echo ""
     
-    while IFS= read -r -d '' dir; do
-        local server_name=$(basename "$dir")
-        local config_file="${dir}/mcp_config.json"
+    local scan_path
+    while IFS= read -r scan_path; do
+        log_info "扫描: ${scan_path}"
         
-        if [[ ! -f "$config_file" ]]; then
-            continue
-        fi
-        
-        local server_key
-        server_key=$(python3 -c "
+        while IFS= read -r -d '' dir; do
+            local server_name=$(basename "$dir")
+            local config_file
+            config_file=$(_find_config_file "${dir}")
+            
+            if [[ -z "$config_file" ]]; then
+                continue
+            fi
+            
+            local server_key
+            server_key=$(python3 -c "
 import json
 with open('${config_file}') as f:
     d = json.load(f)
 keys = list(d.get('mcpServers', {}).keys())
 print(keys[0] if keys else '')
 " 2>/dev/null)
-        
-        if [[ -z "$server_key" ]]; then
-            continue
-        fi
-        
-        ((total++))
-        printf "  %-30s " "${server_name}"
-        
-        if timeout 30 ${mcpcli} ping \
-            --config-file "${config_file}" \
-            --server "${server_key}" \
-            -q >/dev/null 2>&1; then
-            echo -e "${GREEN}✓ OK${NC}"
-            ((passed++))
-        else
-            echo -e "${RED}✗ FAIL${NC}"
-            ((failed++))
-        fi
-    done < <(find "${MCP_SERVERS_PATH}" -mindepth 1 -maxdepth 1 -type d -print0 2>/dev/null || true)
+            
+            if [[ -z "$server_key" ]]; then
+                continue
+            fi
+            
+            ((++total))
+            printf "  %-30s " "${server_name}"
+            
+            if timeout 30 ${mcpcli} ping \
+                --config-file "${config_file}" \
+                --server "${server_key}" \
+                -q >/dev/null 2>&1; then
+                echo -e "${GREEN}✓ OK${NC}"
+                ((++passed))
+            else
+                echo -e "${RED}✗ FAIL${NC}"
+                ((++failed))
+            fi
+        done < <(find "${scan_path}" -mindepth 1 -maxdepth 1 -type d -print0 2>/dev/null || true)
+    done < <(_scan_paths)
     
     echo ""
     log_info "结果: ${total} 个测试, ${GREEN}${passed} 通过${NC}, ${RED}${failed} 失败${NC}"
@@ -681,7 +740,8 @@ MCP 测试子命令:
 
 环境变量:
   WITTY_USER          daemon 查询的用户 (默认: test-user)
-  MCP_SERVERS_PATH    MCP 服务器目录 (默认: /opt/mcp-servers/servers)
+  MCP_SERVERS_PATH    RPM MCP 服务器目录 (默认: /opt/mcp-servers/servers)
+  MCP_CENTER_PATH     mcp_center MCP 目录 (默认: /usr/lib/sysagent/mcp_center/mcp_config)
 
 示例:
   ./scripts/test_env.sh test-mcps                          # 列出所有
@@ -716,7 +776,7 @@ health_check() {
         log_success "✓ 服务运行中"
     else
         log_error "✗ 服务未运行"
-        ((errors++))
+        ((++errors))
     fi
     
     # 检查套接字
@@ -725,7 +785,7 @@ health_check() {
         log_success "✓ UDS 套接字存在"
     else
         log_error "✗ UDS 套接字不存在"
-        ((errors++))
+        ((++errors))
     fi
     
     # 检查目录权限
@@ -734,17 +794,24 @@ health_check() {
         log_success "✓ 状态目录权限正常"
     else
         log_error "✗ 状态目录权限异常"
-        ((errors++))
+        ((++errors))
     fi
     
     # 检查 MCP 服务器路径
     log_info "检查 MCP 服务器路径..."
     if [[ -d "${MCP_SERVERS_PATH}" ]]; then
-        local count=$(ls -1 ${MCP_SERVERS_PATH} 2>/dev/null | wc -l)
-        log_success "✓ MCP 服务器路径存在 (${count} 个子目录)"
+        local count=$(ls -1d ${MCP_SERVERS_PATH}/*/ 2>/dev/null | wc -l)
+        log_success "✓ RPM MCP 路径存在: ${MCP_SERVERS_PATH} (${count} 个子目录)"
     else
-        log_warn "⚠ MCP 服务器路径不存在: ${MCP_SERVERS_PATH}"
-        log_info "  如需测试 MCP，请安装 MCP Server RPM 包"
+        log_warn "⚠ RPM MCP 路径不存在: ${MCP_SERVERS_PATH}"
+        log_info "  如需测试 RPM MCP，请安装 MCP Server RPM 包"
+    fi
+    if [[ -d "${MCP_CENTER_PATH}" ]]; then
+        local count=$(ls -1d ${MCP_CENTER_PATH}/*/ 2>/dev/null | wc -l)
+        log_success "✓ mcp_center 路径存在: ${MCP_CENTER_PATH} (${count} 个子目录)"
+    else
+        log_warn "⚠ mcp_center 路径不存在: ${MCP_CENTER_PATH}"
+        log_info "  如需测试 mcp_center MCP，请部署 mcp_center"
     fi
     
     # 检查 witty-mcp 用户
@@ -753,7 +820,7 @@ health_check() {
         log_success "✓ witty-mcp 用户存在"
     else
         log_error "✗ witty-mcp 用户不存在"
-        ((errors++))
+        ((++errors))
     fi
     
     echo ""
@@ -807,7 +874,8 @@ Witty MCP Manager 测试环境管理脚本
     help               显示此帮助信息
 
 环境变量:
-    MCP_SERVERS_PATH   MCP 服务器安装路径 (默认: /opt/mcp-servers/servers)
+    MCP_SERVERS_PATH   RPM MCP 服务器安装路径 (默认: /opt/mcp-servers/servers)
+    MCP_CENTER_PATH    mcp_center MCP 配置路径 (默认: /usr/lib/sysagent/mcp_center/mcp_config)
     STATE_DIR          状态目录 (默认: /var/lib/witty-mcp-manager)
     RUNTIME_DIR        运行时目录 (默认: /run/witty)
     CONFIG_DIR         配置目录 (默认: /etc/witty)

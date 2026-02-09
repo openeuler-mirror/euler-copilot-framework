@@ -438,11 +438,13 @@ class TestCLIWithRealConfigs:
         real_discovery = Discovery(mock_real_config)
         servers = real_discovery.scan_all()
 
-        # 验证发现了预期的服务器
-        assert len(servers) == 4
+        # 验证发现了预期的服务器（4 RPM STDIO + 2 Admin SSE）
+        assert len(servers) == 6
         server_ids = {s.id for s in servers}
         assert "git_mcp" in server_ids
         assert "ccb_mcp" in server_ids
+        assert "mcp_server_mcp" in server_ids
+        assert "rag_mcp" in server_ids
 
     def test_info_command_logic(
         self,

@@ -29,6 +29,10 @@ class Checker:
         """
         检查必要文件是否存在
 
+        支持两种配置文件名：
+        - mcp_config.json（RPM 标准格式）
+        - config.json（mcp_center 格式，如 mcp_server_mcp、rag_mcp）
+
         Args:
             server: ServerRecord
 
@@ -39,11 +43,15 @@ class Checker:
         missing: list[str] = []
         install_root = Path(server.install_root)
 
-        # 检查 mcp_config.json
-        if not (install_root / "mcp_config.json").exists():
-            missing.append("mcp_config.json")
+        # 检查配置文件（支持两种文件名）
+        has_config = (
+            (install_root / "mcp_config.json").exists()
+            or (install_root / "config.json").exists()
+        )
+        if not has_config:
+            missing.append("mcp_config.json or config.json")
 
-        # 检查 src 目录
+        # src/ 检查：缺失时记录为 warning，不影响 config_valid
         src_dir = install_root / "src"
         if not src_dir.exists():
             missing.append("src/")
@@ -97,9 +105,15 @@ class Checker:
 
         # 检查文件
         missing_files = self.check_files(server)
-        if missing_files:
-            diagnostics.errors.append(f"Missing files: {', '.join(missing_files)}")
+        # src/ 缺失仅作为 warning，不影响 config_valid
+        critical_missing = [f for f in missing_files if f != "src/"]
+        src_missing = "src/" in missing_files
+
+        if critical_missing:
+            diagnostics.errors.append(f"Missing files: {', '.join(critical_missing)}")
             diagnostics.config_valid = False
+        if src_missing:
+            diagnostics.warnings.append("Missing src/ directory")
 
         # 检查配置
         config_errors = self.check_config_validity(server)
