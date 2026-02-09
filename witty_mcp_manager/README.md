@@ -4,11 +4,14 @@
 
 ## 功能
 
-统一管理三种 MCP 来源：
+统一管理多种 MCP 来源：
 
 1. **RPM 生态 MCP**：自动发现 `/opt/mcp-servers/servers`
-2. **旧版 master mcp**（oe-cli-mcp-server）：通过 SSE Adapter 连接
-3. **独立第三方 MCP Server**：通过配置文件注册
+   - 配置文件：`mcp_config.json`（标准格式）
+   - 传输类型：STDIO（主流）或 SSE
+2. **mcp_center MCP**：自动发现 `/usr/lib/sysagent/mcp_center/mcp_config`
+   - 配置文件：`config.json`（mcp_center 私有格式）
+   - 传输类型：SSE（主流）或 STDIO
 
 ## 安装
 

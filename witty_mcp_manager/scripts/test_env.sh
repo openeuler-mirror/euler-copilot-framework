@@ -852,7 +852,9 @@ Witty MCP Manager 测试环境管理脚本
     ✓ openEuler 24.03 LTS SP3 (或其他 Linux) 已配置
     ✓ 具有 root 权限或 sudo 权限
     ✓ 本仓库已克隆到本地
-    ✓ MCP Server RPM 已安装 (可选，test-mcps 命令需要)
+    ✓ MCP 服务器已安装 (可选，test-mcps 命令需要)
+      - RPM MCP: 通过 dnf 安装到 /opt/mcp-servers/servers
+      - mcp_center MCP: 部署到 /usr/lib/sysagent/mcp_center/mcp_config
 
 使用方法:
     cd /path/to/euler-copilot/framework/witty_mcp_manager
@@ -912,8 +914,10 @@ Witty MCP Manager 测试环境管理脚本
     - 本脚本必须在 Linux 系统上运行
     - 大部分命令需要 root 权限（可使用 root 用户或 sudo）
     - 使用 clean 或 clean-all 前会提示确认
-    - MCP Server RPM 可选安装，兼容部分安装的情况
-    - test-mcps 优先通过 daemon UDS socket 查询
+    - MCP 服务器可选安装，脚本会自动扫描可用的路径
+      - 支持两个扫描路径: MCP_SERVERS_PATH (RPM) 和 MCP_CENTER_PATH (mcp_center)
+      - 兼容部分安装的情况（只有 RPM 或只有 mcp_center）
+    - test-mcps 优先通过 daemon UDS socket 查询，回退到目录扫描
     - mcp-cli ping 需要 uv tool install mcp-cli (安装后如不在 PATH 中，请运行 uv tool update-shell)
 
 相关文档:
