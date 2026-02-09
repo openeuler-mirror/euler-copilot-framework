@@ -80,6 +80,20 @@ class CommandNotAllowedError(SecurityError):
         self.allowlist = allowlist or []
 
 
+class ConfigError(WittyMCPError):
+    """配置错误（通用）"""
+
+    def __init__(self, message: str) -> None:
+        super().__init__(message, "CONFIG_ERROR")
+
+
+class WittyRuntimeError(WittyMCPError):
+    """运行时错误"""
+
+    def __init__(self, message: str) -> None:
+        super().__init__(message, "RUNTIME_ERROR")
+
+
 class ToolCallError(WittyMCPError):
     """Tool 调用错误"""
 

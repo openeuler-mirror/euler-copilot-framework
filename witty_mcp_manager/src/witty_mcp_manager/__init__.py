@@ -10,6 +10,7 @@ Witty MCP Manager - Universal MCP Host/Loader for Witty AI Assistant.
 __version__ = "1.0.0"
 __author__ = "openEuler Community"
 
+from witty_mcp_manager.overlay import OverlayResolver, OverlayStorage
 from witty_mcp_manager.registry.models import (
     NormalizedConfig,
     Override,
@@ -18,13 +19,27 @@ from witty_mcp_manager.registry.models import (
     SourceType,
     TransportType,
 )
+from witty_mcp_manager.runtime import RuntimeManager, SessionRecycler
+from witty_mcp_manager.security import CommandAllowlist, LogRedactor, SecretsManager
 
 __all__ = [
+    # Registry models
     "NormalizedConfig",
     "Override",
     "RuntimeState",
     "ServerRecord",
     "SourceType",
     "TransportType",
+    # Overlay
+    "OverlayStorage",
+    "OverlayResolver",
+    # Runtime
+    "RuntimeManager",
+    "SessionRecycler",
+    # Security
+    "CommandAllowlist",
+    "LogRedactor",
+    "SecretsManager",
+    # Version
     "__version__",
 ]
