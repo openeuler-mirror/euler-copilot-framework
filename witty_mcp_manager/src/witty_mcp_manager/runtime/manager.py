@@ -124,7 +124,7 @@ class Session:
                     await asyncio.wait_for(self._process.wait(), timeout=5.0)
                 except TimeoutError:
                     self._process.kill()
-                except Exception as e:
+                except ProcessLookupError as e:
                     logger.warning("Failed to terminate process: %s", e)
                 finally:
                     self._process = None
@@ -189,7 +189,8 @@ class RuntimeManager:
                     return session
                 # 会话存在但未运行，检查重启次数
                 if session.state.restart_count >= self.MAX_RESTART_COUNT:
-                    raise WittyRuntimeError(f"Session {key} exceeded max restart count ({self.MAX_RESTART_COUNT})")
+                    msg = f"Session {key} exceeded max restart count ({self.MAX_RESTART_COUNT})"
+                    raise WittyRuntimeError(msg)
 
             # 创建新会话
             session = Session(

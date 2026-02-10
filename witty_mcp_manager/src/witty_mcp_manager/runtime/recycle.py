@@ -7,6 +7,7 @@ TTL 回收模块
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import logging
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
@@ -67,10 +68,8 @@ class SessionRecycler:
         self._running = False
         if self._task:
             self._task.cancel()
-            try:
+            with contextlib.suppress(asyncio.CancelledError):
                 await self._task
-            except asyncio.CancelledError:
-                pass
             self._task = None
         logger.info("Session recycler stopped")
 
@@ -82,8 +81,8 @@ class SessionRecycler:
                 await self._recycle_idle_sessions()
             except asyncio.CancelledError:
                 break
-            except Exception as e:
-                logger.exception("Error in recycler loop: %s", e)
+            except Exception:
+                logger.exception("Error in recycler loop")
 
     async def _recycle_idle_sessions(self) -> None:
         """回收空闲会话"""
