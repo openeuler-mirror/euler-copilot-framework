@@ -253,7 +253,7 @@ async def get_server_detail(
     )
 
 
-@router.post("/me/servers/{mcp_id}:enable", response_model=EnableDisableResponse)
+@router.post("/me/servers/{mcp_id}/enable", response_model=EnableDisableResponse)
 async def enable_server(
     mcp_id: Annotated[str, PathParam(description="MCP Server ID")],
     user: Annotated[UserContext, Depends(get_user_context)],
@@ -287,7 +287,7 @@ async def enable_server(
     )
 
 
-@router.post("/me/servers/{mcp_id}:disable", response_model=EnableDisableResponse)
+@router.post("/me/servers/{mcp_id}/disable", response_model=EnableDisableResponse)
 async def disable_server(
     mcp_id: Annotated[str, PathParam(description="MCP Server ID")],
     user: Annotated[UserContext, Depends(get_user_context)],

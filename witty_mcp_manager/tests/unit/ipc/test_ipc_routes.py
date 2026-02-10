@@ -378,7 +378,7 @@ class TestIPCServerConfigureEndpoint:
     def test_disable_nonexistent_server(self, test_client: TestClient) -> None:
         """测试禁用不存在的 server"""
         response = test_client.post(
-            "/v1/me/servers/nonexistent:disable",
+            "/v1/me/servers/nonexistent/disable",
             headers={HEADER_USER_ID: "user123"},
         )
         assert response.status_code == 404
