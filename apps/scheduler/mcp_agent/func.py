@@ -1,53 +1,7 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2023-2025. All rights reserved.
 """MCP相关的大模型Prompt"""
 
-from textwrap import dedent
-
 from apps.models import LanguageType
-
-CREATE_NEXT_STEP_FUNCTION: dict[LanguageType, dict] = {
-    LanguageType.CHINESE: {
-        "name": "create_next_step",
-        "description": "根据当前的目标、计划和历史，选择合适的工具并定义其参数来创建下一个执行步骤",
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "tool_name": {
-                    "type": "string",
-                    "description": "工具名称，必须从可用工具列表中选择一个",
-                    "enum": [],
-                },
-                "description": {
-                    "type": "string",
-                    "description": "步骤描述，清晰说明本步骤要做什么",
-                },
-            },
-            "required": ["tool_name", "description"],
-        },
-    },
-    LanguageType.ENGLISH: {
-        "name": "create_next_step",
-        "description": (
-            "Create the next execution step in the workflow by selecting "
-            "an appropriate tool and defining its parameters"
-        ),
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "tool_name": {
-                    "type": "string",
-                    "description": "Tool name, must be selected from the available tools list",
-                    "enum": [],
-                },
-                "description": {
-                    "type": "string",
-                    "description": "Step description, clearly explain what this step will do",
-                },
-            },
-            "required": ["tool_name", "description"],
-        },
-    },
-}
 
 EVALUATE_TOOL_RISK_FUNCTION: dict[LanguageType, dict] = {
     LanguageType.CHINESE: {
@@ -148,28 +102,92 @@ GET_MISSING_PARAMS_FUNCTION: dict[LanguageType, dict] = {
     },
 }
 
-FINAL_ANSWER: dict[LanguageType, str] = {
-    LanguageType.CHINESE: dedent(
-        r"""
-            综合理解计划执行结果和背景信息，向用户报告目标的完成情况。
+UPDATE_TOOL_FUNCTION: dict[LanguageType, dict] = {
+    LanguageType.CHINESE: {
+        "name": "update_todo_list",
+        "description": "",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "todo_list": {
+                    "type": "string",
+                    "description": "更新后的待办列表",
+                },
+            },
+            "required": ["todo_list"],
+        },
+        "output": {
+            "type": "object",
+            "properties": {
+                "status": {
+                    "type": "string",
+                    "description": "执行状态",
+                },
+            },
+            "required": ["status"],
+        },
+    },
+    LanguageType.ENGLISH: {
+        "name": "update_todo_list",
+        "description": "",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "todo_list": {
+                    "type": "string",
+                    "description": "The updated todo list",
+                },
+            },
+            "required": ["todo_list"],
+        },
+        "output": {
+            "type": "object",
+            "properties": {
+                "status": {
+                    "type": "string",
+                    "description": "Execution status",
+                },
+            },
+            "required": ["status"],
+        },
+    },
+}
 
-            # 用户目标
-            {{goal}}
-
-            # 现在，请根据以上信息，向用户报告目标的完成情况：
-
-        """,
-    ),
-    LanguageType.ENGLISH: dedent(
-        r"""
-            Comprehensively understand the plan execution results and background information, and report the goal \
-completion status to the user.
-
-            # User Goal
-            {{goal}}
-
-            # Now, based on the above information, report the goal completion status to the user:
-
-        """,
-    ),
+READ_TOOL_FUNCTION: dict[LanguageType, dict] = {
+    LanguageType.CHINESE: {
+        "name": "read_todo_list",
+        "description": "",
+        "parameters": {
+            "type": "object",
+            "properties": {},
+        },
+        "output": {
+            "type": "object",
+            "properties": {
+                "todo": {
+                    "type": "string",
+                    "description": "当前待办列表内容",
+                },
+            },
+            "required": ["todo"],
+        },
+    },
+    LanguageType.ENGLISH: {
+        "name": "read_todo_list",
+        "description": "",
+        "parameters": {
+            "type": "object",
+            "properties": {},
+        },
+        "output": {
+            "type": "object",
+            "properties": {
+                "todo": {
+                    "type": "string",
+                    "description": "Current todo list content",
+                },
+            },
+            "required": ["todo"],
+        },
+    },
 }

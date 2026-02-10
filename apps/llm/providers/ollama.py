@@ -62,8 +62,8 @@ class OllamaProvider(BaseProvider):
     def _process_usage_data(self, last_chunk: ChatResponse | None, messages: list[dict[str, str]]) -> None:
         """处理最后一个chunk的usage数据"""
         if last_chunk and last_chunk.done:
-            self.input_tokens = last_chunk.prompt_eval_count or 0
-            self.output_tokens = last_chunk.eval_count or 0
+            self.input_tokens += last_chunk.prompt_eval_count or 0
+            self.output_tokens += last_chunk.eval_count or 0
             _logger.info(
                 "[OllamaProvider] 使用Ollama统计数据: input_tokens=%s, output_tokens=%s",
                 self.input_tokens, self.output_tokens,
@@ -71,8 +71,8 @@ class OllamaProvider(BaseProvider):
         else:
             # 如果无法获取统计数据，回退到本地估算
             _logger.warning("[OllamaProvider] 无法获取Ollama统计数据，使用本地估算逻辑")
-            self.input_tokens = token_calculator.calculate_token_length(messages)
-            self.output_tokens = token_calculator.calculate_token_length([{
+            self.input_tokens += token_calculator.calculate_token_length(messages)
+            self.output_tokens += token_calculator.calculate_token_length([{
                 "role": "assistant",
                 "content": "<think>" + self.full_thinking + "</think>" + self.full_answer,
             }])
@@ -179,8 +179,10 @@ class OllamaProvider(BaseProvider):
             raise RuntimeError(err)
 
         # 初始化Token计数和累积内容
-        self.input_tokens = 0
-        self.output_tokens = 0
+        if not hasattr(self, "input_tokens"):
+            self.input_tokens = 0
+        if not hasattr(self, "output_tokens"):
+            self.output_tokens = 0
         self.full_thinking = ""
         self.full_answer = ""
 

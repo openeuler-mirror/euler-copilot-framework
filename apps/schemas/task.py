@@ -25,6 +25,8 @@ class AgentCheckpointExtra(BaseModel):
     todo_list: str = Field(description="TODO列表", default="")
     step_count: int = Field(description="步骤计数", default=0)
     tool_list: list[str] | None = Field(description="工具列表", default=None)
+    input_token: int = Field(description="输入Token数量", default=0)
+    output_token: int = Field(description="输出Token数量", default=0)
 
 
 class AgentHistoryExtra(BaseModel):
