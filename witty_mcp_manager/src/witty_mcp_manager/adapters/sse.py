@@ -19,6 +19,9 @@ from witty_mcp_manager.adapters.base import (
     BaseAdapter,
     Tool,
     ToolCallResult,
+    get_cache_lock,
+    get_global_cached_tools,
+    update_global_cached_tools,
 )
 from witty_mcp_manager.exceptions import AdapterError, ToolCallError
 
@@ -167,7 +170,6 @@ class SSEAdapter(BaseAdapter):
             self._client_context = None
 
         self._connected = False
-        self._clear_cache()
 
     async def discover_tools(self, *, force_refresh: bool = False) -> list[Tool]:
         """
@@ -187,28 +189,36 @@ class SSEAdapter(BaseAdapter):
             msg = f"Not connected to {self.mcp_id}"
             raise AdapterError(msg, adapter_type="sse")
 
-        # 检查缓存
-        if not force_refresh:
-            cached = self._get_cached_tools()
-            if cached is not None:
-                logger.debug("Using cached tools for %s (%d tools)", self.mcp_id, len(cached))
+        # 尝试从全局缓存获取
+        ttl = self.get_cache_ttl()
+        cached = await get_global_cached_tools(self.mcp_id, ttl, force_refresh=force_refresh)
+        if cached is not None:
+            logger.debug("Using cached tools for %s (%d tools)", self.mcp_id, len(cached))
+            return cached
+
+        # 获取锁，避免并发重复请求
+        lock = await get_cache_lock(self.mcp_id)
+        async with lock:
+            # 双重检查：可能其他协程已经更新了缓存
+            cached = await get_global_cached_tools(self.mcp_id, ttl, force_refresh=False)
+            if cached is not None and not force_refresh:
+                logger.debug("Using cached tools for %s after lock (%d tools)", self.mcp_id, len(cached))
                 return cached
 
-        try:
-            logger.debug("Discovering tools for %s", self.mcp_id)
-            result = await self._session.list_tools()
+            try:
+                logger.debug("Discovering tools for %s", self.mcp_id)
+                result = await self._session.list_tools()
+                tools = [Tool.from_mcp_tool(t) for t in result.tools]
+                await update_global_cached_tools(self.mcp_id, tools)
 
-            tools = [Tool.from_mcp_tool(t) for t in result.tools]
-            self._set_cached_tools(tools)
+            except Exception as e:
+                logger.exception("Failed to discover tools for %s", self.mcp_id)
+                msg = f"Failed to discover tools for {self.mcp_id}: {e}"
+                raise AdapterError(msg, adapter_type="sse") from e
 
-        except Exception as e:
-            logger.exception("Failed to discover tools for %s", self.mcp_id)
-            msg = f"Failed to discover tools for {self.mcp_id}: {e}"
-            raise AdapterError(msg, adapter_type="sse") from e
-
-        else:
-            logger.info("Discovered %d tools for %s", len(tools), self.mcp_id)
-            return tools
+            else:
+                logger.info("Discovered %d tools for %s", len(tools), self.mcp_id)
+                return tools
 
     async def call_tool(
         self,

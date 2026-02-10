@@ -13,6 +13,7 @@ from typing import TYPE_CHECKING, Annotated
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi import Path as PathParam
 
+from witty_mcp_manager.adapters.base import GLOBAL_TOOLS_CACHE
 from witty_mcp_manager.exceptions import AdapterError, WittyRuntimeError
 from witty_mcp_manager.ipc.auth import UserContext, get_user_context
 from witty_mcp_manager.ipc.schemas import (
@@ -30,6 +31,7 @@ from witty_mcp_manager.ipc.schemas import (
 )
 
 if TYPE_CHECKING:
+    from witty_mcp_manager.adapters.base import BaseAdapter
     from witty_mcp_manager.ipc.server import IPCServer
 
 logger = logging.getLogger(__name__)
@@ -136,16 +138,21 @@ async def list_tools(
         ) from e
 
 
-def _get_cache_info(adapter: object, *, force_refresh: bool) -> CacheInfo | None:
+def _get_cache_info(adapter: BaseAdapter, *, force_refresh: bool) -> CacheInfo | None:
     """获取缓存信息"""
-    # 访问适配器的缓存（通过公共方法）
-    cache = getattr(adapter, "get_tools_cache", lambda: None)()
-    if cache is None:
+    mcp_id = adapter.mcp_id
+    if mcp_id not in GLOBAL_TOOLS_CACHE:
         return None
 
+    tools, cached_at, _ = GLOBAL_TOOLS_CACHE[mcp_id]
+    if not tools:
+        return None
+
+    ttl = adapter.get_cache_ttl()
+
     return CacheInfo(
-        cached_at=cache.cached_at,
-        expires_at=cache.cached_at + timedelta(seconds=cache.ttl_seconds),
+        cached_at=cached_at,
+        expires_at=cached_at + timedelta(seconds=ttl),
         from_cache=not force_refresh,
     )
 

@@ -169,12 +169,24 @@ class IPCServer:
             适配器实例
 
         """
-        # 创建适配器
-        adapter = self._create_adapter(server, session.config)
+        # 使用 session_key 作为适配器的唯一标识（per user + per mcp_id）
+        adapter_key = f"{session.user_id}:{server.id}"
 
-        # 连接
-        if not adapter.is_connected:
+        # 复用已有适配器
+        if adapter_key in self._adapters:
+            adapter = self._adapters[adapter_key]
+            if adapter.is_connected:
+                return adapter
+            # 如果适配器存在但未连接，重新连接
             await adapter.connect(session)
+            return adapter
+
+        # 创建新适配器
+        adapter = self._create_adapter(server, session.config)
+        await adapter.connect(session)
+
+        # 缓存适配器
+        self._adapters[adapter_key] = adapter
 
         return adapter
 

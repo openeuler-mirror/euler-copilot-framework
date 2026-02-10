@@ -10,6 +10,10 @@ from witty_mcp_manager.adapters.base import (
     Tool,
     ToolCallResult,
     ToolsCache,
+    clear_global_cache,
+    get_cache_lock,
+    get_global_cached_tools,
+    update_global_cached_tools,
 )
 from witty_mcp_manager.adapters.http import StreamableHTTPAdapter
 from witty_mcp_manager.adapters.sse import SSEAdapter
@@ -24,4 +28,8 @@ __all__ = [
     "Tool",
     "ToolCallResult",
     "ToolsCache",
+    "clear_global_cache",
+    "get_cache_lock",
+    "get_global_cached_tools",
+    "update_global_cached_tools",
 ]

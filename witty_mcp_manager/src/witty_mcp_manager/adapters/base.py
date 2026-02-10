@@ -6,6 +6,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
@@ -21,6 +22,9 @@ if TYPE_CHECKING:
     from witty_mcp_manager.runtime.manager import Session
 
 logger = logging.getLogger(__name__)
+
+# 全局工具缓存：按 mcp_id 存储 (tools, cached_at, lock)
+GLOBAL_TOOLS_CACHE: dict[str, tuple[list[Tool], datetime, asyncio.Lock]] = {}
 
 
 class AdapterType(str, Enum):
@@ -159,7 +163,6 @@ class BaseAdapter(ABC):
         """
         self.server = server
         self.config = config
-        self._tools_cache: ToolsCache | None = None
         self._connected = False
 
     @property
@@ -171,6 +174,10 @@ class BaseAdapter(ABC):
     def is_connected(self) -> bool:
         """是否已连接"""
         return self._connected
+
+    def get_cache_ttl(self) -> int:
+        """获取缓存 TTL 配置"""
+        return self.config.config.tool_policy.cache_ttl if self.config else 600
 
     @abstractmethod
     async def connect(self, session: Session) -> None:
@@ -235,25 +242,6 @@ class BaseAdapter(ABC):
 
         """
 
-    def _get_cached_tools(self) -> list[Tool] | None:
-        """获取缓存的 Tools（如未过期）"""
-        if self._tools_cache and not self._tools_cache.is_expired:
-            return self._tools_cache.tools
-        return None
-
-    def _set_cached_tools(self, tools: list[Tool]) -> None:
-        """设置 Tools 缓存"""
-        ttl = self.config.config.tool_policy.cache_ttl if self.config else 600
-        self._tools_cache = ToolsCache(
-            tools=tools,
-            cached_at=datetime.now(UTC),
-            ttl_seconds=ttl,
-        )
-
-    def _clear_cache(self) -> None:
-        """清除缓存"""
-        self._tools_cache = None
-
     async def __aenter__(self) -> Self:
         """异步上下文管理器入口"""
         return self
@@ -266,3 +254,99 @@ class BaseAdapter(ABC):
     ) -> None:
         """异步上下文管理器退出"""
         await self.disconnect()
+
+
+def _get_or_create_cache_entry(mcp_id: str) -> tuple[list[Tool], datetime, asyncio.Lock]:
+    """
+    获取或创建全局缓存条目
+
+    Args:
+        mcp_id: MCP Server ID
+
+    Returns:
+        (tools, cached_at, lock) 元组
+
+    """
+    if mcp_id not in GLOBAL_TOOLS_CACHE:
+        GLOBAL_TOOLS_CACHE[mcp_id] = ([], datetime.min.replace(tzinfo=UTC), asyncio.Lock())
+    return GLOBAL_TOOLS_CACHE[mcp_id]
+
+
+async def get_global_cached_tools(
+    mcp_id: str,
+    ttl_seconds: int,
+    *,
+    force_refresh: bool = False,
+) -> list[Tool] | None:
+    """
+    从全局缓存获取工具列表
+
+    Args:
+        mcp_id: MCP Server ID
+        ttl_seconds: 缓存过期时间（秒）
+        force_refresh: 是否强制刷新
+
+    Returns:
+        如果缓存有效返回工具列表，否则返回 None
+
+    """
+    if force_refresh:
+        return None
+
+    tools, cached_at, _ = _get_or_create_cache_entry(mcp_id)
+
+    if not tools:
+        return None
+
+    # 检查是否过期
+    elapsed = (datetime.now(UTC) - cached_at).total_seconds()
+    if elapsed >= ttl_seconds:
+        return None
+
+    # 返回防御性拷贝
+    return tools.copy()
+
+
+async def update_global_cached_tools(
+    mcp_id: str,
+    tools: list[Tool],
+) -> None:
+    """
+    更新全局缓存
+
+    Args:
+        mcp_id: MCP Server ID
+        tools: 工具列表
+
+    """
+    _, _, lock = _get_or_create_cache_entry(mcp_id)
+    GLOBAL_TOOLS_CACHE[mcp_id] = (tools, datetime.now(UTC), lock)
+
+
+async def get_cache_lock(mcp_id: str) -> asyncio.Lock:
+    """
+    获取指定 MCP Server 的缓存锁
+
+    Args:
+        mcp_id: MCP Server ID
+
+    Returns:
+        异步锁
+
+    """
+    _, _, lock = _get_or_create_cache_entry(mcp_id)
+    return lock
+
+
+def clear_global_cache(mcp_id: str | None = None) -> None:
+    """
+    清除全局缓存
+
+    Args:
+        mcp_id: MCP Server ID，如果为 None 则清除所有缓存
+
+    """
+    if mcp_id is None:
+        GLOBAL_TOOLS_CACHE.clear()
+    elif mcp_id in GLOBAL_TOOLS_CACHE:
+        del GLOBAL_TOOLS_CACHE[mcp_id]
