@@ -1,0 +1,14 @@
+label: 智能助手 CLI 用户手册
+isManual: true
+description: Witty Assistant的命令行入口, 提供AI驱动的命令行交互体验
+sections:
+  - label: 介绍
+    href: ./user_guide/introduce.md
+  - label: 一键部署
+    href: ./deploy_guide/deployment.md
+  - label: 使用说明
+    sections:
+      - label: 使用智能助手 CLI
+        href: ./user_guide/user_guide.md
+      - label: 使用智能助手 CLI Agent
+        href: ./user_guide/agent_introduce.md
