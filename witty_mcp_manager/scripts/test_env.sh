@@ -703,7 +703,7 @@ _test_mcps_call() {
     
     log_info "调用 ${server_name}/${tool_name}..."
     local response
-    response=$(_daemon_curl POST "/v1/me/servers/${server_name}/tools/${tool_name}:call" \
+    response=$(_daemon_curl POST "/v1/me/servers/${server_name}/tools/${tool_name}/call" \
         -d "{\"arguments\": ${tool_args}}")
     
     echo "$response" | python3 -m json.tool 2>/dev/null || echo "$response"

@@ -410,7 +410,7 @@ class TestIPCServerConfigureEndpoint:
     def test_configure_nonexistent_server(self, test_client: TestClient) -> None:
         """测试配置不存在的 server"""
         response = test_client.post(
-            "/v1/me/servers/nonexistent:configure",
+            "/v1/me/servers/nonexistent/configure",
             headers={HEADER_USER_ID: "user123"},
             json={"env": {"KEY": "val"}},
         )
@@ -423,7 +423,7 @@ class TestIPCServerConfigureEndpoint:
     ) -> None:
         """测试配置 env"""
         response = test_client.post(
-            "/v1/me/servers/test_mcp:configure",
+            "/v1/me/servers/test_mcp/configure",
             headers={HEADER_USER_ID: "user123"},
             json={"env": {"API_KEY": "secret"}},
         )

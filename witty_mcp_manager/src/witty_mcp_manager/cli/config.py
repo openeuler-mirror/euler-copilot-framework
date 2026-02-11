@@ -284,7 +284,7 @@ def _apply_overlay_via_ipc(
         console.print("[yellow]Warning: No valid fields for IPC (only env/headers supported).[/yellow]")
         return
 
-    endpoint = f"/v1/me/servers/{mcp_id}:configure"
+    endpoint = f"/v1/me/servers/{mcp_id}/configure"
 
     with _get_client(user_id) as client:
         response = client.post(endpoint, json=filtered_payload)

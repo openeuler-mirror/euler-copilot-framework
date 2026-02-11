@@ -167,7 +167,7 @@ def _apply_config_via_ipc(
 
     try:
         with _get_client(user_id) as client:
-            response = client.post(f"/v1/me/servers/{mcp_id}:configure", json=payload)
+            response = client.post(f"/v1/me/servers/{mcp_id}/configure", json=payload)
             response.raise_for_status()
             return True
     except httpx.ConnectError:

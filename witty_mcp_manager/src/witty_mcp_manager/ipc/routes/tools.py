@@ -192,7 +192,7 @@ def _get_cache_info(adapter: BaseAdapter, *, force_refresh: bool) -> CacheInfo |
     )
 
 
-@router.post("/me/servers/{mcp_id}/tools/{tool_name}:call", response_model=ToolCallResponse)
+@router.post("/me/servers/{mcp_id}/tools/{tool_name}/call", response_model=ToolCallResponse)
 async def call_tool(
     mcp_id: Annotated[str, PathParam(description="MCP Server ID")],
     tool_name: Annotated[str, PathParam(description="Tool 名称")],

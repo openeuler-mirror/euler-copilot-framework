@@ -530,7 +530,7 @@ class TestIPCToolCall:
                 arguments[prop] = {}
 
         response = ipc_client.post(
-            f"/v1/me/servers/{mcp_id}/tools/{tool_name}:call",
+            f"/v1/me/servers/{mcp_id}/tools/{tool_name}/call",
             json={"arguments": arguments},
         )
 
@@ -822,7 +822,7 @@ class TestEndToEnd:
         if tools:
             tool_name = tools[0]["name"]
             response = ipc_client.post(
-                f"/v1/me/servers/{mcp_id}/tools/{tool_name}:call",
+                f"/v1/me/servers/{mcp_id}/tools/{tool_name}/call",
                 json={"arguments": {}},
             )
             # 调用可能成功或失败，但 API 应该响应
@@ -942,7 +942,7 @@ class TestErrorHandling:
 
         # 发送无效 JSON
         response = ipc_client.post(
-            f"/v1/me/servers/{mcp_id}/tools/some_tool:call",
+            f"/v1/me/servers/{mcp_id}/tools/some_tool/call",
             content="invalid json",
             headers={"Content-Type": "application/json"},
         )

@@ -327,7 +327,7 @@ async def disable_server(
     )
 
 
-@router.post("/me/servers/{mcp_id}:configure", response_model=ConfigureResponse)
+@router.post("/me/servers/{mcp_id}/configure", response_model=ConfigureResponse)
 async def configure_server(
     mcp_id: Annotated[str, PathParam(description="MCP Server ID")],
     user: Annotated[UserContext, Depends(get_user_context)],
