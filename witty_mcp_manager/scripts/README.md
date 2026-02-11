@@ -10,6 +10,7 @@ scripts/
 ├── test_env.sh                        # 测试环境管理脚本
 ├── build_nuitka.sh                    # Nuitka 构建脚本
 ├── run_integration_tests.sh           # 集成测试脚本
+├── generate_openapi.py                # OpenAPI 文档生成脚本
 └── reference/                         # 参考文档
     └── test_env/                      # test_env.sh 相关文档
         ├── TEST_ENV_GUIDE.md          # 详细使用指南
@@ -94,6 +95,48 @@ Linux 测试环境一站式管理工具
 ```bash
 ./scripts/run_integration_tests.sh
 ```
+
+---
+
+### [generate_openapi.py](generate_openapi.py)
+
+**OpenAPI 文档生成工具** - 自动生成 API 文档
+
+**适用环境：**
+
+- 开发环境（需要 Python 3.11+ 和 uv）
+- 文档更新时使用
+
+**功能：**
+
+- ✅ 从 FastAPI 应用自动生成 OpenAPI 3.1 规范
+- ✅ 支持 JSON 和 YAML 输出格式
+- ✅ 输出到文件或 stdout
+- ✅ 包含完整的 API 端点、参数、响应定义
+- ✅ 自动提取 Pydantic 数据模型
+
+**核心特性：**
+
+- 基于实际代码生成，确保文档与实现同步
+- 支持所有 API 端点：Health、Registry、Tools、Runtime
+- 包含请求/响应示例和数据模型定义
+- 生成的文档可用于 Swagger UI、ReDoc 等工具
+
+**快速开始：**
+
+```bash
+# 在 witty_mcp_manager 目录下执行
+uv run python scripts/generate_openapi.py                    # 输出到 stdout
+uv run python scripts/generate_openapi.py --output docs/openapi.json    # 生成 JSON
+uv run python scripts/generate_openapi.py --format yaml --output docs/openapi.yaml  # 生成 YAML
+```
+
+**使用场景：**
+
+- API 实现变更后更新文档
+- 生成客户端代码的基础
+- API 测试和验证
+- 文档网站自动生成
 
 ---
 
@@ -261,4 +304,4 @@ Linux 测试环境一站式管理工具
 
 ---
 
-最后更新：2026-02-09
+最后更新：2026-02-11

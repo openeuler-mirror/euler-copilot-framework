@@ -89,7 +89,7 @@ class TestServersSubcommand:
         """测试 servers enable 不指定选项时自动使用用户作用域"""
         mock_config.return_value = MagicMock(state_directory="/tmp/state")
         mock_storage.return_value.load_override.return_value = None
-        
+
         # 普通用户不指定选项时，会自动使用当前用户的用户作用域
         result = runner.invoke(servers_app, ["enable", "git_mcp"])
         # 应该成功（除非有权限或文件系统问题）
@@ -101,7 +101,7 @@ class TestServersSubcommand:
         """测试 servers disable 不指定选项时自动使用用户作用域"""
         mock_config.return_value = MagicMock(state_directory="/tmp/state")
         mock_storage.return_value.load_override.return_value = None
-        
+
         # 普通用户不指定选项时，会自动使用当前用户的用户作用域
         result = runner.invoke(servers_app, ["disable", "git_mcp"])
         assert result.exit_code in [0, 1]  # 0 成功，1 可能因为权限或其他原因
