@@ -86,9 +86,7 @@ class TestGlobalToolsCache:
         await update_global_cached_tools("test_mcp", tools)
 
         # 强制刷新应返回 None
-        cached = await get_global_cached_tools(
-            "test_mcp", ttl_seconds=600, force_refresh=True
-        )
+        cached = await get_global_cached_tools("test_mcp", ttl_seconds=600, force_refresh=True)
         assert cached is None
 
     async def test_multiple_mcp_servers(self):
@@ -148,9 +146,7 @@ class TestGlobalToolsCache:
         async def update_with_delay():
             async with lock:
                 await asyncio.sleep(0.1)
-                await update_global_cached_tools(
-                    "test_mcp", [Tool(name="delayed", description="desc")]
-                )
+                await update_global_cached_tools("test_mcp", [Tool(name="delayed", description="desc")])
 
         # 启动延迟更新任务
         task = asyncio.create_task(update_with_delay())

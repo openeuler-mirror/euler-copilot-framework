@@ -78,6 +78,7 @@ RPM_MCP_SERVERS = [
         "name": "mcp-oedp",
         "command": ["uv", "--directory", "/opt/mcp-servers/servers/oeDeploy_mcp/src", "run", "mcp-oedp.py"],
         "expected_tools": ["install_oedp", "remove_oedp"],
+        "skip": "Requires --model_url, --api_key, --model_name arguments",
     },
     {
         "name": "oeGitExt_mcp",
@@ -100,6 +101,7 @@ RPM_MCP_SERVERS = [
         "name": "ccbMcp",
         "command": ["python3", "/opt/mcp-servers/servers/ccb_mcp/src/ccb_mcp.py"],
         "expected_tools": ["select_projects", "select_builds", "build"],
+        "skip": "Requires 17 mandatory arguments",
     },
 ]
 
@@ -146,6 +148,10 @@ class TestStdioMCPConnection:
     @pytest.mark.parametrize("server", RPM_MCP_SERVERS, ids=[s["name"] for s in RPM_MCP_SERVERS])
     async def test_stdio_mcp_connection(self, server, mcp_client_class):
         """测试 stdio 模式 MCP 服务器连接"""
+        # 跳过需要额外参数的服务器
+        if "skip" in server:
+            pytest.skip(server["skip"])
+
         client_session_cls, stdio_client = mcp_client_class
 
         command = server["command"]
@@ -429,6 +435,15 @@ class TestDataCollection:
 
         for server in RPM_MCP_SERVERS:
             server_name = server["name"]
+
+            # 跳过需要额外参数的服务器
+            if "skip" in server:
+                results[server_name] = {
+                    "status": "skipped",
+                    "reason": server["skip"],
+                }
+                continue
+
             command = server["command"]
             env = server.get("env", {})
 
@@ -477,6 +492,12 @@ class TestDataCollection:
                 results[server_name] = {
                     "status": "failed",
                     "error": str(e),
+                }
+            except Exception as e:  # noqa: BLE001
+                # 捕获所有其他异常（如McpError、参数错误等）
+                results[server_name] = {
+                    "status": "failed",
+                    "error": f"{type(e).__name__}: {e}",
                 }
 
         # 保存结果
@@ -550,6 +571,12 @@ class TestDataCollection:
                 results[server_name] = {
                     "status": "failed",
                     "error": str(e),
+                }
+            except Exception as e:  # noqa: BLE001
+                # 捕获所有其他异常（如McpError、连接错误等）
+                results[server_name] = {
+                    "status": "failed",
+                    "error": f"{type(e).__name__}: {e}",
                 }
 
         # 保存结果

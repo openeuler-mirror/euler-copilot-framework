@@ -312,44 +312,6 @@ class TestSSEAdapter:
         assert adapter.is_connected is False
 
 
-class TestBaseAdapterMethods:
-    """BaseAdapter 通用方法测试"""
-
-    def test_get_cached_tools_empty(self, stdio_server_record, mock_effective_config):
-        """测试无缓存时返回 None"""
-        adapter = STDIOAdapter(stdio_server_record, mock_effective_config)
-        assert adapter._get_cached_tools() is None  # noqa: SLF001
-
-    def test_set_and_get_cached_tools(self, stdio_server_record, mock_effective_config):
-        """测试设置和获取缓存"""
-        adapter = STDIOAdapter(stdio_server_record, mock_effective_config)
-        tools = [Tool(name="tool1"), Tool(name="tool2")]
-        adapter._set_cached_tools(tools)  # noqa: SLF001
-
-        cached = adapter._get_cached_tools()  # noqa: SLF001
-        assert cached is not None
-        assert len(cached) == 2
-
-    def test_clear_cache(self, stdio_server_record, mock_effective_config):
-        """测试清除缓存"""
-        adapter = STDIOAdapter(stdio_server_record, mock_effective_config)
-        adapter._set_cached_tools([Tool(name="tool1")])  # noqa: SLF001
-        assert adapter._get_cached_tools() is not None  # noqa: SLF001
-
-        adapter._clear_cache()  # noqa: SLF001
-        assert adapter._get_cached_tools() is None  # noqa: SLF001
-
-    def test_get_tools_cache(self, stdio_server_record, mock_effective_config):
-        """测试 get_tools_cache 方法"""
-        adapter = STDIOAdapter(stdio_server_record, mock_effective_config)
-        assert adapter.get_tools_cache() is None
-
-        adapter._set_cached_tools([Tool(name="t1")])  # noqa: SLF001
-        cache = adapter.get_tools_cache()
-        assert cache is not None
-        assert len(cache.tools) == 1
-
-
 class TestAdapterCreation:
     """适配器创建测试"""
 

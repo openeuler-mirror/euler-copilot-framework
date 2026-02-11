@@ -44,10 +44,7 @@ class Checker:
         install_root = Path(server.install_root)
 
         # 检查配置文件（支持两种文件名）
-        has_config = (
-            (install_root / "mcp_config.json").exists()
-            or (install_root / "config.json").exists()
-        )
+        has_config = (install_root / "mcp_config.json").exists() or (install_root / "config.json").exists()
         if not has_config:
             missing.append("mcp_config.json or config.json")
 

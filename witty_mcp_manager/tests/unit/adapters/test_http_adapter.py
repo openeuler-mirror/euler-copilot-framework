@@ -18,6 +18,7 @@ from witty_mcp_manager.exceptions import AdapterError
 def http_adapter() -> StreamableHTTPAdapter:
     """创建 HTTP 适配器实例"""
     server = MagicMock()
+    server.id = "test_http_server"
     config = MagicMock()
     return StreamableHTTPAdapter(server, config)
 

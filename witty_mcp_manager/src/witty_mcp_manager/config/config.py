@@ -106,7 +106,7 @@ def load_config(config_path: str | None = None) -> ManagerConfig:
         if path and Path(path).exists():
             logger.info("Loading config from: %s", path)
             try:
-                with open(path) as f:
+                with Path(path).open() as f:
                     data = yaml.safe_load(f) or {}
                 return ManagerConfig(**data)
             except Exception:
@@ -117,8 +117,8 @@ def load_config(config_path: str | None = None) -> ManagerConfig:
     return ManagerConfig()
 
 
-# 全局配置实例
-_config: ManagerConfig | None = None
+# 全局配置容器（使用 dict 避免 global 语句）
+_state: dict[str, ManagerConfig | None] = {"config": None}
 
 
 def get_config() -> ManagerConfig:
@@ -129,13 +129,13 @@ def get_config() -> ManagerConfig:
         全局 ManagerConfig 实例
 
     """
-    global _config
-    if _config is None:
-        _config = load_config()
-    return _config
+    config = _state["config"]
+    if config is None:
+        config = load_config()
+        _state["config"] = config
+    return config
 
 
 def reset_config() -> None:
     """重置全局配置（主要用于测试）"""
-    global _config
-    _config = None
+    _state["config"] = None

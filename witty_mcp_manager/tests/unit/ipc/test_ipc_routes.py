@@ -223,38 +223,62 @@ class TestGetCacheInfo:
 
     def test_no_cache(self) -> None:
         """测试无缓存"""
+        from witty_mcp_manager.adapters.base import GLOBAL_TOOLS_CACHE
+
         adapter = MagicMock()
-        adapter.get_tools_cache = MagicMock(return_value=None)
+        adapter.mcp_id = "test_mcp"
+        adapter.get_cache_ttl = MagicMock(return_value=600)
+
+        # 确保全局缓存为空
+        if "test_mcp" in GLOBAL_TOOLS_CACHE:
+            del GLOBAL_TOOLS_CACHE["test_mcp"]
+
         result = _get_cache_info(adapter, force_refresh=False)
         assert result is None
 
     def test_with_cache(self) -> None:
         """测试有缓存"""
-        cache = MagicMock()
-        cache.cached_at = datetime.now(UTC)
-        cache.ttl_seconds = 600
-        cache.is_expired = False
+        import asyncio
+
+        from witty_mcp_manager.adapters.base import GLOBAL_TOOLS_CACHE, Tool
 
         adapter = MagicMock()
-        adapter.get_tools_cache = MagicMock(return_value=cache)
+        adapter.mcp_id = "test_mcp_cached"
+        adapter.get_cache_ttl = MagicMock(return_value=600)
+
+        # 设置全局缓存
+        tools = [Tool(name="tool1")]
+        cached_at = datetime.now(UTC)
+        GLOBAL_TOOLS_CACHE["test_mcp_cached"] = (tools, cached_at, asyncio.Lock())
 
         result = _get_cache_info(adapter, force_refresh=False)
         assert result is not None
         assert result.from_cache is True
 
+        # 清理
+        del GLOBAL_TOOLS_CACHE["test_mcp_cached"]
+
     def test_forced_refresh_no_cache(self) -> None:
         """测试强制刷新时 from_cache=False"""
-        cache = MagicMock()
-        cache.cached_at = datetime.now(UTC)
-        cache.ttl_seconds = 600
-        cache.is_expired = False
+        import asyncio
+
+        from witty_mcp_manager.adapters.base import GLOBAL_TOOLS_CACHE, Tool
 
         adapter = MagicMock()
-        adapter.get_tools_cache = MagicMock(return_value=cache)
+        adapter.mcp_id = "test_mcp_refresh"
+        adapter.get_cache_ttl = MagicMock(return_value=600)
+
+        # 设置全局缓存
+        tools = [Tool(name="tool1")]
+        cached_at = datetime.now(UTC)
+        GLOBAL_TOOLS_CACHE["test_mcp_refresh"] = (tools, cached_at, asyncio.Lock())
 
         result = _get_cache_info(adapter, force_refresh=True)
         assert result is not None
         assert result.from_cache is False
+
+        # 清理
+        del GLOBAL_TOOLS_CACHE["test_mcp_refresh"]
 
 
 # =============================================================================
