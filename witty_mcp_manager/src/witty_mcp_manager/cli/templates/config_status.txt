@@ -1,0 +1,7 @@
+
+[bold cyan]Witty MCP Manager Configuration[/bold cyan]
+
+[bold]Scan Paths:[/bold] {{ scan_paths }}
+[bold]Socket Path:[/bold] {{ socket_path }}
+[bold]Idle Session TTL:[/bold] {{ idle_session_ttl }}s
+[bold]Command Allowlist:[/bold] {{ command_allowlist }}

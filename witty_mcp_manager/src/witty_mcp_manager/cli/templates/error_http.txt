@@ -1,0 +1,1 @@
+[red]HTTP error {{ status_code }}: {{ response_text }}[/red]

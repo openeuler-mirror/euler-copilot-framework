@@ -1,0 +1,12 @@
+
+[bold cyan]Server: {{ mcp_id }}[/bold cyan]
+
+[bold]User:[/bold] {{ user_id }}
+[bold]Status:[/bold] {{ status }}
+[bold]PID:[/bold] {{ pid }}
+[bold]Started At:[/bold] {{ started_at }}
+[bold]Last Used:[/bold] {{ last_used_at }}
+[bold]Idle Time:[/bold] {{ idle_time_sec|format_duration }}
+[bold]Restart Count:[/bold] {{ restart_count }}
+[bold]Error Count:[/bold] {{ error_count }}
+[bold]Last Error:[/bold] {{ last_error }}

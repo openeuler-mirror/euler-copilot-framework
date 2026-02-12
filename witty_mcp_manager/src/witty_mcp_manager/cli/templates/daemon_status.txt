@@ -1,0 +1,8 @@
+
+[bold cyan]Witty MCP Manager Status[/bold cyan]
+
+[bold]Active Sessions:[/bold] {{ active_sessions }}
+[bold]Discovered Servers:[/bold] {{ total_servers }}
+[bold]Enabled Servers:[/bold] {{ enabled_servers }}
+[bold]Uptime (s):[/bold] {{ uptime }}
+[bold]Version:[/bold] {{ version }}

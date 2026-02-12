@@ -1,0 +1,1 @@
+[red]journalctl not found. Is systemd installed?[/red]
