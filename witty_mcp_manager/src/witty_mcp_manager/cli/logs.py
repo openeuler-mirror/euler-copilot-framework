@@ -13,6 +13,8 @@ from typing import Annotated
 import typer
 from rich.console import Console
 
+from .renderer import print_template
+
 console = Console()
 app = typer.Typer(add_completion=False, help="View logs")
 
@@ -38,10 +40,10 @@ def tail_logs(
     try:
         subprocess.run(cmd, check=True)  # noqa: S603
     except subprocess.CalledProcessError as e:
-        console.print(f"[red]Error running journalctl: {e}[/red]")
+        print_template(console, "error_journalctl.txt", {"error": str(e)})
         raise typer.Exit(code=1) from None
     except FileNotFoundError:
-        console.print("[red]journalctl not found. Is systemd installed?[/red]")
+        print_template(console, "error_journalctl_not_found.txt", {})
         raise typer.Exit(code=1) from None
 
 
@@ -66,8 +68,8 @@ def show_logs(
     try:
         subprocess.run(cmd, check=True)  # noqa: S603
     except subprocess.CalledProcessError as e:
-        console.print(f"[red]Error running journalctl: {e}[/red]")
+        print_template(console, "error_journalctl.txt", {"error": str(e)})
         raise typer.Exit(code=1) from None
     except FileNotFoundError:
-        console.print("[red]journalctl not found. Is systemd installed?[/red]")
+        print_template(console, "error_journalctl_not_found.txt", {})
         raise typer.Exit(code=1) from None

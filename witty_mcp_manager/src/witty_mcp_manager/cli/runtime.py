@@ -24,6 +24,8 @@ from rich.table import Table
 
 from witty_mcp_manager.ipc.auth import HEADER_USER_ID, SYSTEM_USER_ID
 
+from .renderer import print_template
+
 UDS_PATH = "/run/witty/mcp-manager.sock"
 
 console = Console()
@@ -43,24 +45,9 @@ def _get_client(user_id: str) -> httpx.Client:
 def _require_user_id(user_id: str | None, command: str) -> str:
     """Require explicit user_id for user-level operations."""
     if not user_id:
-        console.print(f"[red]Error: --user <user_id> is required for {command}.[/red]")
-        console.print("[yellow]Hint: System username is NOT used as user ID.[/yellow]")
-        console.print("[yellow]      User ID is a business identifier (OIDC sub, email, UUID, etc.).[/yellow]")
+        print_template(console, "error_user_required.txt", {"command": command})
         raise typer.Exit(code=1)
     return user_id
-
-
-def _format_duration(seconds: int | None) -> str:
-    if seconds is None:
-        return "N/A"
-    remaining = int(seconds)
-    minutes, sec = divmod(remaining, 60)
-    hours, minutes = divmod(minutes, 60)
-    if hours > 0:
-        return f"{hours}h {minutes}m {sec}s"
-    if minutes > 0:
-        return f"{minutes}m {sec}s"
-    return f"{sec}s"
 
 
 def _fetch_session_data(client: httpx.Client, mcp_id: str) -> dict[str, object]:
@@ -99,26 +86,31 @@ def _print_session_status(mcp_id: str, data: dict[str, object]) -> None:
     """Print session status to console."""
     session = data.get("session", {})
     if isinstance(session, dict):
-        console.print(f"\n[bold cyan]Server: {mcp_id}[/bold cyan]\n")
-        console.print(f"[bold]User:[/bold] {session.get('user_id', 'N/A')}")
-        console.print(f"[bold]Status:[/bold] {session.get('status', 'N/A')}")
-        console.print(f"[bold]PID:[/bold] {session.get('pid', 'N/A')}")
-        console.print(f"[bold]Started At:[/bold] {session.get('started_at', 'N/A')}")
-        console.print(f"[bold]Last Used:[/bold] {session.get('last_used_at', 'N/A')}")
-        console.print(f"[bold]Idle Time:[/bold] {_format_duration(session.get('idle_time_sec'))}")
-        console.print(f"[bold]Restart Count:[/bold] {session.get('restart_count', 'N/A')}")
-        console.print(f"[bold]Error Count:[/bold] {session.get('error_count', 'N/A')}")
-        console.print(f"[bold]Last Error:[/bold] {session.get('last_error', 'N/A')}")
+        context = {
+            "mcp_id": mcp_id,
+            "user_id": session.get("user_id", "N/A"),
+            "status": session.get("status", "N/A"),
+            "pid": session.get("pid", "N/A"),
+            "started_at": session.get("started_at", "N/A"),
+            "last_used_at": session.get("last_used_at", "N/A"),
+            "idle_time_sec": session.get("idle_time_sec"),
+            "restart_count": session.get("restart_count", "N/A"),
+            "error_count": session.get("error_count", "N/A"),
+            "last_error": session.get("last_error", "N/A"),
+        }
+        print_template(console, "session_status.txt", context)
 
 
 def _print_daemon_status(data: dict[str, object]) -> None:
     """Print daemon status to console."""
-    console.print("\n[bold cyan]Witty MCP Manager Status[/bold cyan]\n")
-    console.print(f"[bold]Active Sessions:[/bold] {data.get('active_sessions', 0)}")
-    console.print(f"[bold]Discovered Servers:[/bold] {data.get('total_servers', 0)}")
-    console.print(f"[bold]Enabled Servers:[/bold] {data.get('enabled_servers', 0)}")
-    console.print(f"[bold]Uptime (s):[/bold] {data.get('uptime', 'N/A')}")
-    console.print(f"[bold]Version:[/bold] {data.get('version', 'N/A')}")
+    context = {
+        "active_sessions": data.get("active_sessions", 0),
+        "total_servers": data.get("total_servers", 0),
+        "enabled_servers": data.get("enabled_servers", 0),
+        "uptime": data.get("uptime", "N/A"),
+        "version": data.get("version", "N/A"),
+    }
+    print_template(console, "daemon_status.txt", context)
 
 
 @app.command("status")
@@ -166,11 +158,17 @@ def status(
             _print_daemon_status(data)
 
     except httpx.ConnectError:
-        console.print("[red]Error: Cannot connect to witty-mcp-manager daemon.[/red]")
-        console.print("[yellow]Is the daemon running? Try: systemctl status witty-mcp-manager[/yellow]")
+        print_template(console, "error_daemon_connect.txt", {})
         raise typer.Exit(code=1) from None
     except httpx.HTTPStatusError as e:
-        console.print(f"[red]HTTP error {e.response.status_code}: {e.response.text}[/red]")
+        print_template(
+            console,
+            "error_http.txt",
+            {
+                "status_code": e.response.status_code,
+                "response_text": e.response.text,
+            },
+        )
         raise typer.Exit(code=1) from None
     except Exception as e:  # noqa: BLE001
         console.print(f"[red]Unexpected error: {e}[/red]")
@@ -222,7 +220,7 @@ def list_sessions(
             return
 
         if not sessions:
-            console.print("[yellow]No active sessions.[/yellow]")
+            print_template(console, "info_no_sessions.txt", {})
             return
 
         table = Table(title="Active MCP Sessions")
@@ -244,10 +242,17 @@ def list_sessions(
         console.print(table)
 
     except httpx.ConnectError:
-        console.print("[red]Error: Cannot connect to witty-mcp-manager daemon.[/red]")
+        print_template(console, "error_daemon_connect.txt", {})
         raise typer.Exit(code=1) from None
     except httpx.HTTPStatusError as e:
-        console.print(f"[red]HTTP error {e.response.status_code}: {e.response.text}[/red]")
+        print_template(
+            console,
+            "error_http.txt",
+            {
+                "status_code": e.response.status_code,
+                "response_text": e.response.text,
+            },
+        )
         raise typer.Exit(code=1) from None
     except Exception as e:  # noqa: BLE001
         console.print(f"[red]Unexpected error: {e}[/red]")

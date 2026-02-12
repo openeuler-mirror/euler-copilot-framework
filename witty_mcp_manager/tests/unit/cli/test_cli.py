@@ -21,9 +21,7 @@ from witty_mcp_manager.cli.permissions import (
     resolve_scope,
     resolve_user_for_ipc,
 )
-from witty_mcp_manager.cli.runtime import (
-    _format_duration,
-)
+from witty_mcp_manager.cli.renderer import _format_duration
 from witty_mcp_manager.cli.runtime import (
     app as runtime_app,
 )
