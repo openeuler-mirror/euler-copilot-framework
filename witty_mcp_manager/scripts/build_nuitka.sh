@@ -164,7 +164,11 @@ PYTHONPATH="${SRC_DIR}:${PYTHONPATH:-}" python3 -m nuitka "${NUITKA_OPTS[@]}" "$
 
 # Verify output
 echo "[4/4] Verifying build..."
-BINARY="${OUTPUT_DIR}/witty-mcp"
+if [[ "${MODE}" == "standalone" ]]; then
+    BINARY="${OUTPUT_DIR}/__main__.dist/witty-mcp"
+else
+    BINARY="${OUTPUT_DIR}/witty-mcp"
+fi
 
 if [[ ! -f "$BINARY" ]]; then
     echo "Error: Build failed - binary not found at ${BINARY}" >&2
