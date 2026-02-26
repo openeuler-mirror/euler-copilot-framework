@@ -56,6 +56,41 @@ def get_server() -> IPCServer:
     return _server
 
 
+def _ensure_server_ready(srv: object) -> None:
+    """确保 server 可用，否则抛出 HTTP 错误"""
+    diagnostics = getattr(srv, "diagnostics", None)
+    if diagnostics is None:
+        return
+
+    if not diagnostics.command_allowed:
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "code": "COMMAND_NOT_ALLOWED",
+                "message": "Command is not in allowlist",
+            },
+        )
+
+    if not diagnostics.command_exists:
+        raise HTTPException(
+            status_code=503,
+            detail={
+                "code": "COMMAND_NOT_FOUND",
+                "message": "Command not found in PATH",
+            },
+        )
+
+    if not diagnostics.config_valid:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "code": "INVALID_CONFIG",
+                "message": "Server configuration is invalid",
+                "details": {"errors": diagnostics.errors},
+            },
+        )
+
+
 @router.get("/servers/{mcp_id}/tools", response_model=ToolsListResponse)
 async def list_tools(
     mcp_id: Annotated[str, PathParam(description="MCP Server ID")],
@@ -91,11 +126,11 @@ async def list_tools(
             },
         )
 
+    _ensure_server_ready(srv)
+
     try:
         # 获取或创建会话
-        session = await server.runtime_manager.get_or_create_session(
-            srv, effective, user.user_id
-        )
+        session = await server.runtime_manager.get_or_create_session(srv, effective, user.user_id)
 
         # 获取适配器
         adapter = await server.get_or_create_adapter(srv, session)
@@ -192,14 +227,14 @@ async def call_tool(
             },
         )
 
+    _ensure_server_ready(srv)
+
     start_time = datetime.now(UTC)
     timeout_ms_default = effective.timeouts.tool_call * 1000
 
     try:
         # 获取或创建会话
-        session = await server.runtime_manager.get_or_create_session(
-            srv, effective, user.user_id
-        )
+        session = await server.runtime_manager.get_or_create_session(srv, effective, user.user_id)
 
         # 更新最后使用时间
         session.touch()

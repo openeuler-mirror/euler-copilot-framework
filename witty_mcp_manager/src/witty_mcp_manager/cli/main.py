@@ -1,19 +1,31 @@
-"""
-`witty-mcp` command line interface.
-
-This is currently a lightweight skeleton to provide a stable entrypoint for
-packaging and integration. Subcommands will be implemented incrementally.
-"""
+"""`witty-mcp` command line interface."""
 
 from __future__ import annotations
+
+import logging
+import signal
+import sys
+from typing import Annotated
 
 import typer
 from rich.console import Console
 
 from witty_mcp_manager import __version__
 
+# Import subcommands
+from . import config as config_cmd
+from . import logs as logs_cmd
+from . import runtime as runtime_cmd
+from . import servers as servers_cmd
+
 console = Console()
 app = typer.Typer(add_completion=False, help="Witty MCP Manager CLI")
+
+# Add subcommands
+app.add_typer(servers_cmd.app, name="servers", help="Manage MCP servers")
+app.add_typer(runtime_cmd.app, name="runtime", help="Inspect runtime state")
+app.add_typer(logs_cmd.app, name="logs", help="View logs")
+app.add_typer(config_cmd.app, name="config", help="Manage configuration")
 
 
 @app.command()
@@ -24,35 +36,69 @@ def version() -> None:
 
 @app.command()
 def daemon(
-    debug: bool = typer.Option(default=False, help="Enable debug output"),
+    debug: Annotated[  # noqa: FBT002
+        bool,
+        typer.Option("--debug", help="Enable debug logging"),
+    ] = False,
 ) -> None:
-    """
-    Run the daemon process.
+    """Run the daemon process."""
+    log_level = logging.DEBUG if debug else logging.INFO
+    logging.basicConfig(
+        level=log_level,
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    )
+    logger = logging.getLogger("witty_mcp_manager")
 
-    Note: daemon implementation is not yet available in this repository state.
-    """
-    if debug:
-        console.print("[yellow]daemon --debug requested (daemon not implemented yet).[/yellow]")
-    console.print("[red]daemon mode is not implemented yet.[/red]")
-    raise typer.Exit(code=2)
+    from witty_mcp_manager.config.config import load_config  # noqa: PLC0415
+    from witty_mcp_manager.diagnostics.checker import Checker  # noqa: PLC0415
+    from witty_mcp_manager.ipc.server import IPCServer, IPCServerConfig  # noqa: PLC0415
+    from witty_mcp_manager.overlay.resolver import OverlayResolver  # noqa: PLC0415
+    from witty_mcp_manager.overlay.storage import OverlayStorage  # noqa: PLC0415
+    from witty_mcp_manager.registry.discovery import Discovery  # noqa: PLC0415
+    from witty_mcp_manager.runtime.manager import RuntimeManager  # noqa: PLC0415
 
+    logger.info("Starting Witty MCP Manager daemon...")
 
-def _placeholder_app(name: str) -> typer.Typer:
-    sub = typer.Typer(add_completion=False)
+    try:
+        config = load_config()
+        logger.info("Configuration loaded from %s", config.socket_path)
 
-    @sub.callback(invoke_without_command=True)
-    def _cb(ctx: typer.Context) -> None:
-        if ctx.invoked_subcommand is None:
-            console.print(f"[red]'{name}' subcommands are not implemented yet.[/red]")
-            raise typer.Exit(code=2)
+        discovery = Discovery(config)
+        checker = Checker()
+        overlay_storage = OverlayStorage(config.state_directory)
+        overlay_resolver = OverlayResolver(overlay_storage)
+        runtime_manager = RuntimeManager()
 
-    return sub
+        server_config = IPCServerConfig(
+            config=config,
+            discovery=discovery,
+            checker=checker,
+            overlay_storage=overlay_storage,
+            overlay_resolver=overlay_resolver,
+            runtime_manager=runtime_manager,
+        )
 
+        ipc_server = IPCServer(server_config)
 
-app.add_typer(_placeholder_app("servers"), name="servers", help="Manage MCP servers")
-app.add_typer(_placeholder_app("runtime"), name="runtime", help="Inspect runtime state")
-app.add_typer(_placeholder_app("logs"), name="logs", help="View logs")
-app.add_typer(_placeholder_app("config"), name="config", help="Manage configuration")
+        def signal_handler(_sig: int, _frame: object) -> None:
+            logger.info("Received shutdown signal, stopping...")
+            sys.exit(0)
+
+        signal.signal(signal.SIGINT, signal_handler)
+        signal.signal(signal.SIGTERM, signal_handler)
+
+        import uvicorn  # noqa: PLC0415
+
+        logger.info("Starting UDS HTTP server on %s", config.socket_path)
+        uvicorn.run(
+            ipc_server.app,
+            uds=config.socket_path,
+            log_level="debug" if debug else "info",
+        )
+
+    except Exception:
+        logger.exception("Failed to start daemon")
+        raise typer.Exit(code=1) from None
 
 
 if __name__ == "__main__":

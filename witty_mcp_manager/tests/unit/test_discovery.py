@@ -3,6 +3,10 @@
 测试用例：
 - TC001: 扫描 /opt/mcp-servers/servers 成功识别 server 目录
 - TC002: 解析 mcp_config.json（key≠目录名）
+
+配置格式说明：
+- 标准格式（sample_mcp_config）不包含顶层 name 字段，name 会 fallback 到 server_id
+- 有 mcp-rpm.yaml 的情况下，可从 rpm_metadata 获取元数据
 """
 
 import json
@@ -24,7 +28,8 @@ class TestDiscovery:
         # 验证 git_mcp
         git_mcp = next((s for s in servers if s.id == "git_mcp"), None)
         assert git_mcp is not None
-        assert git_mcp.name == "Git MCP Server"
+        # 标准格式没有顶层 name 字段，fallback 到 server_id
+        assert git_mcp.name == "git_mcp"
         assert git_mcp.source == SourceType.RPM
         assert git_mcp.transport == TransportType.STDIO
 
@@ -107,7 +112,7 @@ class TestDiscovery:
                 "mcp-oedp": {  # key 与目录名不一致
                     "command": "uv",
                     "args": ["run", "server.py"],
-                }
+                },
             },
             "name": "oeDeploy MCP",
         }
@@ -145,7 +150,7 @@ class TestDiscoveryAdminSources:
                     "timeout": 60,
                 },
                 description="文件管理，软件包管理",
-            )
+            ),
         ]
 
         discovery = Discovery(mock_config)

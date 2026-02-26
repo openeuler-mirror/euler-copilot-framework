@@ -4,10 +4,9 @@ IPC 模块单元测试
 
 from __future__ import annotations
 
-import asyncio
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING, Any
-from unittest.mock import AsyncMock, MagicMock, patch
+from typing import Any
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from fastapi import HTTPException
@@ -25,26 +24,13 @@ from witty_mcp_manager.ipc.schemas import (
     APIResponse,
     CacheInfo,
     ContentItem,
-    EnableDisableResponse,
-    EnableDisableResult,
-    ErrorDetail,
-    HealthResponse,
     HealthStatus,
     RuntimeStatus,
-    ServerDetail,
     ServerSummary,
-    ToolCallMetadata,
     ToolCallRequest,
-    ToolCallResponse,
     ToolCallResult,
     ToolSchema,
-    ToolsListResponse,
-    ToolsListResult,
 )
-
-if TYPE_CHECKING:
-    pass
-
 
 # =============================================================================
 # Auth 模块测试
@@ -489,10 +475,8 @@ class TestIPCServerIntegration:
         server = IPCServer(server_config)
 
         # 手动调用 startup 逻辑
-        server._servers = {
-            mock_dependencies["test_server"].id: mock_dependencies["test_server"]
-        }
-        server._started_at = datetime.now(UTC)
+        server._servers = {mock_dependencies["test_server"].id: mock_dependencies["test_server"]}  # noqa: SLF001
+        server._started_at = datetime.now(UTC)  # noqa: SLF001
 
         return TestClient(server.app)
 

@@ -53,9 +53,7 @@ def _calculate_idle_time(last_used_at: datetime | None) -> int:
 async def list_sessions(
     user: Annotated[UserContext, Depends(get_user_context)],
     *,
-    all_users: Annotated[
-        bool, Query(description="列出所有用户的会话（需要管理员权限）")
-    ] = False,
+    all_users: Annotated[bool, Query(description="列出所有用户的会话（需要管理员权限）")] = False,
 ) -> RuntimeListResponse:
     """列出运行时会话"""
     server = get_server()

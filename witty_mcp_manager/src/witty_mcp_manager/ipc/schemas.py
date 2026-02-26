@@ -126,7 +126,6 @@ class EnableDisableRequest(BaseModel):
     """启用/禁用请求（可选参数）"""
 
 
-
 class EnableDisableResult(BaseModel):
     """启用/禁用结果"""
 

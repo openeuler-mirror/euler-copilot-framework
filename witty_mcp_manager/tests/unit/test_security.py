@@ -129,7 +129,10 @@ class TestLogRedactor:
 
     def test_redact_jwt_token(self, redactor: LogRedactor) -> None:
         """测试脱敏 JWT Token"""
-        jwt = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.dozjgNryP4J3jVmNHl0w5N_XgL0n3I9PlFUP0THsR8U"
+        jwt = (
+            "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0."
+            "dozjgNryP4J3jVmNHl0w5N_XgL0n3I9PlFUP0THsR8U"
+        )
         result = redactor.redact_value(jwt)
         assert "eyJ" not in result
         assert "REDACTED" in result

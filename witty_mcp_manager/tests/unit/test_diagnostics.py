@@ -46,7 +46,7 @@ class TestPreflightChecker:
                 "dependencies": {
                     "system": ["python3", "uv"],
                     "packages": ["git", "jq"],
-                }
+                },
             },
         )
 

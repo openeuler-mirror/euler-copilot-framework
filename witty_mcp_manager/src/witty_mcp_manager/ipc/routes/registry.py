@@ -12,7 +12,7 @@ from typing import TYPE_CHECKING, Annotated
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi import Path as PathParam
 
-from witty_mcp_manager.ipc.auth import UserContext, get_user_context
+from witty_mcp_manager.ipc.auth import SYSTEM_USER_ID, UserContext, get_user_context
 from witty_mcp_manager.ipc.schemas import (
     DepsMissing,
     DiagnosticsInfo,
@@ -95,9 +95,7 @@ def _determine_server_status(srv: ServerRecord) -> tuple[str, str | None]:
 async def list_servers(
     user: Annotated[UserContext, Depends(get_user_context)],
     *,
-    include_disabled: Annotated[
-        bool, Query(description="是否包含系统级禁用的 Server")
-    ] = False,
+    include_disabled: Annotated[bool, Query(description="是否包含系统级禁用的 Server")] = False,
 ) -> ServerListResponse:
     """
     列出所有 MCP Servers
@@ -243,6 +241,47 @@ async def enable_server(
     )
 
 
+@router.post("/servers/{mcp_id}:enable", response_model=EnableDisableResponse)
+async def enable_server_global(
+    mcp_id: Annotated[str, PathParam(description="MCP Server ID")],
+    user: Annotated[UserContext, Depends(get_user_context)],
+) -> EnableDisableResponse:
+    """系统级启用 MCP Server（仅系统用户）"""
+    if user.user_id != SYSTEM_USER_ID:
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "code": "FORBIDDEN",
+                "message": "System-level enable requires system user",
+            },
+        )
+
+    server = get_server()
+
+    srv = server.get_server(mcp_id)
+    if not srv:
+        raise HTTPException(
+            status_code=404,
+            detail={
+                "code": "SERVER_NOT_FOUND",
+                "message": f"MCP Server not found: {mcp_id}",
+            },
+        )
+
+    override = server.overlay_storage.load_override(mcp_id)
+    if override:
+        override.disabled = False
+    else:
+        override = Override(scope="global", disabled=False)
+
+    server.overlay_storage.save_override(mcp_id, override, None)
+    logger.info("System enabled server %s", mcp_id)
+
+    return EnableDisableResponse(
+        data=EnableDisableResult(mcp_id=mcp_id, enabled=True),
+    )
+
+
 @router.post("/me/servers/{mcp_id}:disable", response_model=EnableDisableResponse)
 async def disable_server(
     mcp_id: Annotated[str, PathParam(description="MCP Server ID")],
@@ -277,6 +316,47 @@ async def disable_server(
         logger.info("Stopped session for disabled server %s (user=%s)", mcp_id, user.user_id)
 
     logger.info("User %s disabled server %s", user.user_id, mcp_id)
+
+    return EnableDisableResponse(
+        data=EnableDisableResult(mcp_id=mcp_id, enabled=False),
+    )
+
+
+@router.post("/servers/{mcp_id}:disable", response_model=EnableDisableResponse)
+async def disable_server_global(
+    mcp_id: Annotated[str, PathParam(description="MCP Server ID")],
+    user: Annotated[UserContext, Depends(get_user_context)],
+) -> EnableDisableResponse:
+    """系统级禁用 MCP Server（仅系统用户）"""
+    if user.user_id != SYSTEM_USER_ID:
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "code": "FORBIDDEN",
+                "message": "System-level disable requires system user",
+            },
+        )
+
+    server = get_server()
+
+    srv = server.get_server(mcp_id)
+    if not srv:
+        raise HTTPException(
+            status_code=404,
+            detail={
+                "code": "SERVER_NOT_FOUND",
+                "message": f"MCP Server not found: {mcp_id}",
+            },
+        )
+
+    override = server.overlay_storage.load_override(mcp_id)
+    if override:
+        override.disabled = True
+    else:
+        override = Override(scope="global", disabled=True)
+
+    server.overlay_storage.save_override(mcp_id, override, None)
+    logger.info("System disabled server %s", mcp_id)
 
     return EnableDisableResponse(
         data=EnableDisableResult(mcp_id=mcp_id, enabled=False),
