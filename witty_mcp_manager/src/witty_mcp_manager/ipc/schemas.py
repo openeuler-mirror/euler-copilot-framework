@@ -141,6 +141,43 @@ class EnableDisableResponse(BaseModel):
 
 
 # =============================================================================
+# Configure API 模型
+# =============================================================================
+
+
+class ConfigureRequest(BaseModel):
+    """
+    用户级配置请求
+
+    用户可配置 env（STDIO）或 headers（SSE/HTTP）的凭据。
+    timeout/concurrency 由系统统一管理，用户不可自定义。
+    """
+
+    env: dict[str, str] | None = Field(default=None, description="环境变量（仅 STDIO）")
+    headers: dict[str, str] | None = Field(default=None, description="请求头（仅 SSE/HTTP）")
+
+
+class ConfigureResult(BaseModel):
+    """
+    配置结果
+
+    响应中返回 secret:// 引用，而非原始明文。
+    """
+
+    mcp_id: str
+    env: dict[str, str] = Field(default_factory=dict)
+    headers: dict[str, str] = Field(default_factory=dict)
+    updated_at: datetime
+
+
+class ConfigureResponse(BaseModel):
+    """配置响应"""
+
+    success: bool = True
+    data: ConfigureResult | None = None
+
+
+# =============================================================================
 # Tools API 模型
 # =============================================================================
 

@@ -12,7 +12,7 @@ from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 
 from witty_mcp_manager.exceptions import WittyRuntimeError
-from witty_mcp_manager.registry.models import RuntimeState, ServerRecord
+from witty_mcp_manager.registry.models import RuntimeState, RuntimeStatus, ServerRecord
 
 if TYPE_CHECKING:
     from witty_mcp_manager.overlay.resolver import EffectiveConfig
@@ -53,7 +53,7 @@ class Session:
         self.state = RuntimeState(
             user_id=user_id,
             mcp_id=mcp_id,
-            status="stopped",
+            status=RuntimeStatus.STOPPED,
         )
 
         # 内部状态
@@ -69,7 +69,7 @@ class Session:
     @property
     def is_running(self) -> bool:
         """是否正在运行"""
-        return self.state.status == "running"
+        return self.state.status == RuntimeStatus.RUNNING
 
     def touch(self) -> None:
         """更新最后使用时间"""
@@ -82,7 +82,7 @@ class Session:
         注意：实际启动逻辑由 Adapter 实现，此方法仅更新状态
         """
         async with self._lock:
-            self.state.status = "starting"
+            self.state.status = RuntimeStatus.STARTING
             self.state.started_at = datetime.now(UTC)
             self.state.last_used_at = self.state.started_at
             logger.info("Session starting: %s", self.session_key)
@@ -96,7 +96,7 @@ class Session:
 
         """
         async with self._lock:
-            self.state.status = "running"
+            self.state.status = RuntimeStatus.RUNNING
             self.state.pid = pid
             logger.info("Session running: %s (pid=%s)", self.session_key, pid)
 
@@ -110,11 +110,11 @@ class Session:
         """
         async with self._lock:
             if error:
-                self.state.status = "error"
+                self.state.status = RuntimeStatus.ERROR
                 self.state.last_error = error
                 logger.warning("Session error: %s - %s", self.session_key, error)
             else:
-                self.state.status = "stopped"
+                self.state.status = RuntimeStatus.STOPPED
                 logger.info("Session stopped: %s", self.session_key)
 
             # 清理进程

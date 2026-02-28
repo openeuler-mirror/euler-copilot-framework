@@ -12,12 +12,12 @@
 #   - pip install nuitka ordered-set
 #
 # Usage:
-#   ./scripts/build-nuitka.sh [--mode onefile|standalone] [--output-dir DIR]
+#   ./scripts/build_nuitka.sh [--mode onefile|standalone] [--output-dir DIR]
 #
 # Examples:
-#   ./scripts/build-nuitka.sh                      # default: onefile mode
-#   ./scripts/build-nuitka.sh --mode standalone    # standalone directory mode
-#   ./scripts/build-nuitka.sh --output-dir /opt    # custom output directory
+#   ./scripts/build_nuitka.sh                      # default: onefile mode
+#   ./scripts/build_nuitka.sh --mode standalone    # standalone directory mode
+#   ./scripts/build_nuitka.sh --output-dir /opt    # custom output directory
 
 set -euo pipefail
 

@@ -1,7 +1,22 @@
 """
 MCP 配置标准化模块
 
-将不同格式的 mcp_config.json 转换为统一的 NormalizedConfig
+将不同格式的 mcp_config.json 转换为统一的 NormalizedConfig。
+
+支持的配置格式：
+1. 标准格式 (Claude Desktop/Cline 事实标准):
+   - STDIO: command, args, env, alwaysAllow, disabled
+   - SSE: url, headers, alwaysAllow, disabled
+   参考: https://docs.cline.bot/mcp/configuring-mcp-servers
+
+2. Admin 私有格式 (euler-copilot-framework mcp_center):
+   - 使用 autoApprove 而非 alwaysAllow
+   - 包含 autoInstall、mcpType、overview 等非标准字段
+
+字段映射规则：
+- alwaysAllow（标准）优先于 autoApprove（私有）
+- autoInstall: 忽略（旧 Loader 专用）
+- mcpType: 用于传输类型检测
 """
 
 from __future__ import annotations
@@ -168,10 +183,15 @@ class Normalizer:
             )
 
         # Tool 策略
+        # 支持两种字段名：
+        # - alwaysAllow: 标准格式（Claude Desktop/Cline 事实标准）
+        # - autoApprove: 私有格式（euler-copilot-framework Admin MCP）
+        # 优先使用 alwaysAllow，fallback 到 autoApprove
+        always_allow = server_config.get("alwaysAllow") or server_config.get("autoApprove") or []
         tool_policy = ToolPolicy(
             cache_ttl=server_config.get("toolsCacheTtl", 600),
             auto_discover=server_config.get("autoDiscover", True),
-            always_allow=server_config.get("alwaysAllow", []),
+            always_allow=always_allow,
         )
 
         # 超时配置
@@ -182,19 +202,31 @@ class Normalizer:
         )
 
         # 收集未识别的字段到 extras
+        # 已知字段分为两类：
+        # 1. 标准字段：command, args, env, url, headers, timeout, disabled, alwaysAllow
+        # 2. 私有字段：autoApprove, autoInstall（这些不放入 extras，显式忽略）
         known_keys = {
+            # 标准 STDIO 字段
             "command",
             "args",
             "env",
+            # 标准 SSE 字段
             "url",
             "headers",
+            # 通用标准字段
             "timeout",
             "disabled",
             "alwaysAllow",
+            # 私有字段（显式忽略，不放入 extras）
+            "autoApprove",
+            "autoInstall",
+            # 扩展字段
             "autoDiscover",
             "toolsCacheTtl",
             "connectTimeout",
             "idleTtl",
+            # 其他已知字段
+            "description",  # 有些配置在 server_config 中包含 description
         }
         extras = {k: v for k, v in server_config.items() if k not in known_keys}
 

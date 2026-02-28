@@ -120,6 +120,10 @@ class Discovery:
         """
         解析单个 server 目录
 
+        支持两种配置文件名：
+        - mcp_config.json（RPM 标准格式）
+        - config.json（mcp_center 格式）
+
         Args:
             server_dir: server 目录路径
 
@@ -127,13 +131,19 @@ class Discovery:
             ServerRecord 或 None
 
         """
-        config_file = server_dir / "mcp_config.json"
+        # 支持多种配置文件名
+        config_file = None
+        for filename in ("mcp_config.json", "config.json"):
+            candidate = server_dir / filename
+            if candidate.exists():
+                config_file = candidate
+                break
 
-        if not config_file.exists():
-            logger.debug("No mcp_config.json in %s", server_dir)
+        if config_file is None:
+            logger.debug("No mcp_config.json or config.json in %s", server_dir)
             return None
 
-        # 解析 mcp_config.json
+        # 解析配置文件
         try:
             with config_file.open(encoding="utf-8") as f:
                 raw_config = json.load(f)
@@ -141,7 +151,7 @@ class Discovery:
             logger.exception("Invalid JSON in %s", config_file)
             return None
 
-        # 解析 mcp-rpm.yaml（可选）
+        # 解析 mcp-rpm.yaml（可选，仅 RPM 包有）
         rpm_yaml = server_dir / "mcp-rpm.yaml"
         rpm_metadata: dict[str, Any] = {}
         if rpm_yaml.exists():
@@ -151,12 +161,18 @@ class Discovery:
             except yaml.YAMLError as e:
                 logger.warning("Invalid YAML in %s: %s", rpm_yaml, e)
 
+        # 根据目录来源确定 source type
+        # mcp_center 目录通常在 /usr/lib/sysagent/mcp_center/mcp_config/
+        source = SourceType.RPM
+        if "mcp_center" in str(server_dir) or config_file.name == "config.json":
+            source = SourceType.ADMIN
+
         # 标准化配置
         return self.normalizer.normalize(
             server_dir=server_dir,
             raw_config=raw_config,
             rpm_metadata=rpm_metadata,
-            source=SourceType.RPM,
+            source=source,
         )
 
     def _create_admin_server(self, admin_source: AdminSource) -> ServerRecord | None:

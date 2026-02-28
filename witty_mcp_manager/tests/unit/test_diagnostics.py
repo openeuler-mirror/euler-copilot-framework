@@ -226,40 +226,28 @@ class TestChecker:
         assert "src/" in missing
 
     def test_check_config_validity_stdio_missing_command(self, checker):
-        """STDIO 配置缺少 command"""
-        server = ServerRecord(
-            id="test",
-            name="Test",
-            source=SourceType.RPM,
-            install_root="/tmp/test",
-            upstream_key="test",
-            transport=TransportType.STDIO,
-            default_config=NormalizedConfig(
-                transport=TransportType.STDIO,
-                stdio=StdioConfig(command="", args=[]),  # 空 command
-            ),
-        )
+        """STDIO 配置缺少 command - Pydantic 验证阶段即失败"""
+        from pydantic import ValidationError
 
-        errors = checker.check_config_validity(server)
-        assert any("missing command" in e for e in errors)
+        # Pydantic v2 的严格验证在模型构建阶段就会拒绝空 command
+        # 空字符串触发 min_length=1 约束
+        with pytest.raises(ValidationError, match="String should have at least 1 character"):
+            StdioConfig(command="", args=[])
+
+        # 使用 whitespace-only command 触发 field_validator
+        with pytest.raises(ValidationError, match="command cannot be empty"):
+            StdioConfig(command="   ", args=[])
 
     def test_check_config_validity_transport_mismatch(self, checker):
-        """传输类型与配置不匹配"""
-        server = ServerRecord(
-            id="test",
-            name="Test",
-            source=SourceType.RPM,
-            install_root="/tmp/test",
-            upstream_key="test",
-            transport=TransportType.STDIO,
-            default_config=NormalizedConfig(
+        """传输类型与配置不匹配 - Pydantic 验证阶段即失败"""
+        from pydantic import ValidationError
+
+        # Pydantic v2 的 model_validator 在构建阶段就会检查一致性
+        with pytest.raises(ValidationError, match="STDIO transport requires stdio config"):
+            NormalizedConfig(
                 transport=TransportType.STDIO,
                 stdio=None,  # STDIO 传输但没有 stdio 配置
-            ),
-        )
-
-        errors = checker.check_config_validity(server)
-        assert any("no stdio config" in e for e in errors)
+            )
 
     def test_validate_full(self, checker, server_with_files):
         """完整校验"""

@@ -150,7 +150,7 @@ class PreflightChecker:
             if not self.check_command_allowlist(command):
                 diagnostics.command_allowed = False
                 diagnostics.errors.append(
-                    f"Command '{command}' is not in allowlist. Allowed: {', '.join(self.config.command_allowlist)}"
+                    f"Command '{command}' is not in allowlist. Allowed: {', '.join(self.config.command_allowlist)}",
                 )
 
             # 存在性检查
