@@ -323,7 +323,7 @@ scp -r /home/eulercopilot/images/* root@target-server:/home/eulercopilot/images/
 
 ### 构建专有领域智能问答
 
-知识库专注于文档的高效管理和智能解析，支持包括xlsx,pdf,doc,docx,pptx,html,json,yaml,md,zip以及txt在内的多种文件格式。本平台搭载的先进文档处理技术，结合 Witty Assistant 的强大检索功能，旨在为您提供卓越的智能问答服务体验。详细操作可访问 [知识库管理使用指南](https://atomgit.com/openeuler/euler-copilot-framework/blob/master/docs/zh/openeuler_intelligence/intelligent_assistant/advance/knowledge_base/user_guide/knowledge_base_guidance.md)
+知识库专注于文档的高效管理和智能解析，支持包括xlsx,pdf,doc,docx,pptx,html,json,yaml,md,zip以及txt在内的多种文件格式。本平台搭载的先进文档处理技术，结合 Witty Assistant 的强大检索功能，旨在为您提供卓越的智能问答服务体验。详细操作可访问 [知识库管理使用指南](https://atomgit.com/openeuler/euler-copilot-framework/blob/master/docs/zh/witty_assistant/witty_web/user_guide/knowledge_guide.md)
 
 - **进入知识库管理系统**：
   - 点击知识库
