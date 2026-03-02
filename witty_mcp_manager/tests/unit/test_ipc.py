@@ -246,7 +246,7 @@ class TestToolCallRequest:
 
     def test_defaults(self) -> None:
         """测试默认值"""
-        request = ToolCallRequest()
+        request = ToolCallRequest(timeout_ms=None)
         assert request.arguments == {}
         assert request.timeout_ms is None
 
@@ -353,7 +353,7 @@ class TestIPCServerHelpers:
 
         status, reason = _determine_server_status(server)
         assert status == "unavailable"
-        assert "bash" in reason
+        assert "bash" in reason  # type: ignore[operator]
 
     def test_determine_server_status_degraded(self) -> None:
         """测试降级状态"""
@@ -367,7 +367,7 @@ class TestIPCServerHelpers:
 
         status, reason = _determine_server_status(server)
         assert status == "degraded"
-        assert "jq" in reason
+        assert "jq" in reason  # type: ignore[operator]
 
     def test_calculate_idle_time(self) -> None:
         """测试空闲时间计算"""

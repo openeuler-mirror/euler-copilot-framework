@@ -7,9 +7,13 @@ from __future__ import annotations
 import os
 import tempfile
 from pathlib import Path
+from typing import TYPE_CHECKING
 from unittest.mock import patch
 
 import pytest
+
+if TYPE_CHECKING:
+    from collections.abc import Generator
 
 from witty_mcp_manager.exceptions import CommandNotAllowedError, ConfigError
 from witty_mcp_manager.security.allowlist import CommandAllowlist
@@ -221,7 +225,7 @@ class TestSecretsManager:
     """SecretsManager 测试"""
 
     @pytest.fixture
-    def temp_state_dir(self) -> Path:
+    def temp_state_dir(self) -> Generator[Path, None, None]:
         """创建临时 state 目录"""
         with tempfile.TemporaryDirectory() as tmpdir:
             yield Path(tmpdir)

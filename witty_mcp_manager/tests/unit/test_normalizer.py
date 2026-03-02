@@ -10,6 +10,8 @@
 - MCP 协议: https://modelcontextprotocol.io/specification/latest/basic/transports
 """
 
+from typing import Any
+
 import pytest
 
 from witty_mcp_manager.registry.models import SourceType, TransportType
@@ -234,7 +236,7 @@ class TestEdgeCases:
         server_dir = tmp_path / "empty_mcp"
         server_dir.mkdir()
 
-        config = {"mcpServers": {}}
+        config: dict[str, Any] = {"mcpServers": {}}
         record = normalizer.normalize(server_dir, config, {}, SourceType.RPM)
 
         assert record is None

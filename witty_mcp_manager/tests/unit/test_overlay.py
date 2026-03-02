@@ -6,8 +6,12 @@ from __future__ import annotations
 
 import tempfile
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
+
+if TYPE_CHECKING:
+    from collections.abc import Generator
 
 from witty_mcp_manager.overlay.resolver import OverlayResolver
 from witty_mcp_manager.overlay.storage import OverlayStorage
@@ -26,7 +30,7 @@ class TestOverlayStorage:
     """OverlayStorage 测试"""
 
     @pytest.fixture
-    def temp_state_dir(self) -> Path:
+    def temp_state_dir(self) -> Generator[Path, None, None]:
         """创建临时 state 目录"""
         with tempfile.TemporaryDirectory() as tmpdir:
             yield Path(tmpdir)
@@ -155,7 +159,7 @@ class TestOverlayResolver:
     """OverlayResolver 测试"""
 
     @pytest.fixture
-    def temp_state_dir(self) -> Path:
+    def temp_state_dir(self) -> Generator[Path, None, None]:
         """创建临时 state 目录"""
         with tempfile.TemporaryDirectory() as tmpdir:
             yield Path(tmpdir)
@@ -324,6 +328,7 @@ class TestOverlayResolver:
         )
 
         effective = resolver.resolve(sample_server)
+        assert effective.config.stdio is not None
         assert "--verbose" in effective.config.stdio.args
 
     def test_arg_patches_remove(
@@ -342,6 +347,7 @@ class TestOverlayResolver:
         )
 
         effective = resolver.resolve(sample_server)
+        assert effective.config.stdio is not None
         assert "server.py" not in effective.config.stdio.args
 
     def test_get_enabled_servers(
