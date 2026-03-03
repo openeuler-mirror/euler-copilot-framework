@@ -41,14 +41,18 @@ def file_tool(
         if action == FileActionEnum.LS:
             result["result"] = fm.ls(path.strip(), detail=detail)
             result["success"] = True
-            result[
-                "message"] = f"本地文件列表查询完成（路径：{path}）" if is_zh else f"Local file list queried (path: {path})"
+            result["message"] = (
+                f"本地文件列表查询完成（路径：{path}）"
+                if is_zh
+                else f"Local file list queried (path: {path})")
 
         elif action == FileActionEnum.CAT:
             result["result"] = fm.cat(path.strip(), encoding=encoding)
             result["success"] = True
-            result[
-                "message"] = f"本地文件内容读取完成（路径：{path}）" if is_zh else f"Local file content read (path: {path})"
+            result["message"] = (
+                f"本地文件内容读取完成（路径：{path}）"
+                if is_zh
+                else f"Local file content read (path: {path})")
 
         elif action == FileActionEnum.ADD:
             add_content = content.strip() if content is not None else None
@@ -61,18 +65,23 @@ def file_tool(
             result["success"] = True
             # 优化提示：区分是否写入内容
             if add_content:
-                result[
-                    "message"] = f"本地文件创建并写入内容成功（路径：{path}）" if is_zh else f"Local file created and content written (path: {path})"
+                result["message"] = (
+                    f"本地文件创建并写入内容成功（路径：{path}）"
+                    if is_zh
+                    else f"Local file created and content written (path: {path})")
             else:
-                result[
-                    "message"] = f"本地文件创建成功（路径：{path}）" if is_zh else f"Local file created (path: {path})"
+                result["message"] = (
+                    f"本地文件创建成功（路径：{path}）"
+                    if is_zh
+                    else f"Local file created (path: {path})")
         elif action == FileActionEnum.MKDIR:
             fm.mkdir(
                 dir_path=path
             )
             result["success"] = True
             result["message"] = (
-                f"本地目录创建成功（路径：{path}）" if is_zh
+                f"本地目录创建成功（路径：{path}）"
+                if is_zh
                 else f"Local directory created successfully (path: {path})"
             )
 
@@ -82,8 +91,10 @@ def file_tool(
                 return result
             fm.append(path.strip(), content.strip(), encoding=encoding)
             result["success"] = True
-            result[
-                "message"] = f"本地文件内容追加成功（路径：{path}）" if is_zh else f"Local file content appended (path: {path})"
+            result["message"] = (
+                f"本地文件内容追加成功（路径：{path}）"
+                if is_zh
+                else f"Local file content appended (path: {path})")
 
         elif action == FileActionEnum.EDIT:
             if not content:
@@ -91,8 +102,10 @@ def file_tool(
                 return result
             fm.edit(path.strip(), content.strip(), encoding=encoding)
             result["success"] = True
-            result[
-                "message"] = f"本地文件内容覆盖成功（路径：{path}）" if is_zh else f"Local file content overwritten (path: {path})"
+            result["message"] = (
+                f"本地文件内容覆盖成功（路径：{path}）"
+                if is_zh
+                else f"Local file content overwritten ("f"path: {path})")
 
         elif action == FileActionEnum.RENAME:
             if not new_path:
@@ -101,8 +114,10 @@ def file_tool(
             fm.rename(path.strip(), new_path.strip())
             result["success"] = True
             result["path"] = new_path.strip()
-            result[
-                "message"] = f"本地文件重命名成功（{path} → {new_path}）" if is_zh else f"Local file renamed ({path} → {new_path})"
+            result["message"] = (
+                f"本地文件重命名成功（{path} → {new_path}）"
+                if is_zh
+                else f"Local file renamed ("f"{path} → {new_path})")
 
         elif action == FileActionEnum.CHMOD:
             if not mode:
@@ -110,14 +125,15 @@ def file_tool(
                 return result
             fm.chmod(path.strip(), mode.strip())
             result["success"] = True
-            result[
-                "message"] = f"本地文件权限修改成功（路径：{path}，权限：{mode}）" if is_zh else f"Local file permission modified (path: {path}, mode: {mode})"
+            result["message"] = f"本地文件权限修改成功（路径：{path}，权限：{mode}）" if is_zh else (
+                f"Local file permission modified ("
+                f"path: {path}, "
+                f"mode: {mode})")
 
         elif action == FileActionEnum.DELETE:
             fm.delete(path.strip(), recursive=recursive)
             result["success"] = True
-            result[
-                "message"] = f"本地文件删除成功（路径：{path}）" if is_zh else f"Local file deleted (path: {path})"
+            result["message"] = f"本地文件删除成功（路径：{path}）" if is_zh else f"Local file deleted (path: {path})"
 
     except Exception as e:
         result["message"] = f"操作失败：{str(e)}" if is_zh else f"Operation failed: {str(e)}"
