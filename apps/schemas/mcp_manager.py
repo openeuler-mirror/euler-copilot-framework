@@ -1,5 +1,7 @@
+"""MCP_Manager相关数据模型定义"""
+from enum import StrEnum
+
 from pydantic import BaseModel, Field  # noqa: D100
-from pyparsing import Enum
 
 
 class MCPManagerConfig(BaseModel):  # noqa: D101
@@ -7,16 +9,18 @@ class MCPManagerConfig(BaseModel):  # noqa: D101
     user_id: str = Field()
     timeout: int = Field(default=30)
 
-class MCPStatus(str, Enum):  # noqa: D101, SLOT000
-    READY = "ready"
-    DEGRADED = "degraded"
-    UNAVAILABELE = "unavailable"
 
-class MCPServerInfo(BaseModel):  # noqa: D101
+class MCPStatus(StrEnum):
+    DEGRADED = "degraded"
+    UNAVAILABLE = "unavailable"
+    READY = "ready"
+
+
+class MCPServerInfo(BaseModel):
     mcp_id: str = Field(...)
     name: str = Field(...)
     summary: str = Field(...)
     source: str = Field(...)
     status: MCPStatus = Field(...)
-    status_reason:str | None = Field(None)
+    status_reason: str | None = Field(None)
     user_enabled: bool = Field(...)
