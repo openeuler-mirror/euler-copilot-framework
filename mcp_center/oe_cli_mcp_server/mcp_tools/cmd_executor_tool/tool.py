@@ -1,15 +1,16 @@
 import asyncio
 from typing import Optional
 from oe_cli_mcp_server.mcp_tools.cmd_executor_tool.base import init_response, get_msg, get_final_timeout, local_exec_sync, ssh_exec_sync
+from pydantic import Field
 
 
 # Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 
 
 async def cmd_executor_tool(
-        command: str = "",
-        timeout: Optional[int] = None,
-        host: str = "127.0.0.1"  # 新增：执行目标主机，默认本地
+        command: str = Field(..., description="要执行的命令（必填）"),
+        timeout: Optional[int] = Field(None, description="执行超时时间（秒）"),
+        host: str = Field("127.0.0.1", description="执行目标主机，默认本地")
 ) -> dict:
     """
     命令执行工具（支持本地/SSH远程执行）
