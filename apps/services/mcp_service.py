@@ -21,9 +21,8 @@ from apps.scheduler.pool.loader.mcp import MCPLoader
 from apps.schemas.enum_var import SearchType
 from apps.schemas.mcp import (
     MCPServerConfig,
-    UpdateMCPServiceRequest,
+    UpdateMCPServiceRequest, MCPServerInfo,
 )
-from apps.schemas.mcp_manager import MCPServerInfo
 from apps.schemas.mcp_service import MCPServiceCardItem
 from apps.services.mcp_manager_service import MCPManagerAPI
 from apps.services.user import UserManager

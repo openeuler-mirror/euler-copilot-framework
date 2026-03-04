@@ -59,7 +59,12 @@ class Scheduler(
     async def run(self) -> None:
         """运行调度器"""
         _logger.info("[Scheduler] 开始执行")
-
+        try:
+            await self._ensure_conversation_exists()
+            record_id = await self._create_empty_record()
+        except Exception:
+            _logger.exception("[Scheduler] 确保Conversation存在失败")
+            return
         kill_event = asyncio.Event()
         monitor = asyncio.create_task(self._monitor_activity(kill_event, self.task.metadata.userId))
 
@@ -96,12 +101,7 @@ class Scheduler(
         await self._check_and_handle_executor_result()
 
         try:
-            await self._ensure_conversation_exists()
-        except Exception:
-            _logger.exception("[Scheduler] 确保Conversation存在失败")
-
-        try:
-            await self._save_data()
+            await self._save_data(record_id)
         except Exception:
             _logger.exception("[Scheduler] 保存数据失败")
 

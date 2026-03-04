@@ -52,22 +52,24 @@ class DataMixin:
 
     def _build_record(
         self,
+        record_id: uuid.UUID | None,
         encrypt_data: str,
         encrypt_config: dict[str, Any],
         current_time: float,
     ) -> tuple[PgRecord, PgRecordMetadata]:
         """构建记录对象和元数据对象"""
         # 若Executor状态为WAITING，则使用task中的recordId；否则生成新UUID
-        if (
-            self.task.state
-            and self.task.state.executorStatus == ExecutorStatus.WAITING
-            and self.task.metadata.recordId
-        ):
-            record_id = self.task.metadata.recordId
-        else:
-            record_id = uuid.uuid4()
-            # 更新task中的recordId
-            self.task.metadata.recordId = record_id
+        if record_id is None:
+            if (
+                self.task.state
+                and self.task.state.executorStatus == ExecutorStatus.WAITING
+                and self.task.metadata.recordId
+            ):
+                record_id = self.task.metadata.recordId
+            else:
+                record_id = uuid.uuid4()
+                # 更新task中的recordId
+                self.task.metadata.recordId = record_id
 
         if self.task.metadata.conversationId is None:
             msg = "conversationId cannot be None"
@@ -103,7 +105,30 @@ class DataMixin:
         if used_docs:
             await DocumentManager.save_answer_doc(user_id, record_id, used_docs)
 
-    async def _save_record_data(self, record_content: RecordContent, current_time: float) -> UUID | None:
+    async def _create_empty_record(self) -> UUID | None:
+        """创建空记录以生成recordId"""
+        if not self.task.metadata.conversationId:
+            _logger.error("[Scheduler] 无法创建空记录，conversationId为None")
+            return None
+
+        empty_content = RecordContent(question="", answer="", facts=[], data={})
+        encrypt_data, encrypt_config = Security.encrypt(empty_content.model_dump_json(by_alias=True))
+
+        pg_record, pg_metadata = self._build_record(
+            record_id=None,
+            encrypt_data=encrypt_data,
+            encrypt_config=encrypt_config,
+            current_time=round(datetime.now(UTC).timestamp(), 2),
+        )
+
+        await RecordManager.insert_record_data(
+            self.task.metadata.userId,
+            self.task.metadata.conversationId,
+            pg_record,
+            pg_metadata,
+        )
+        return pg_record.id
+    async def _save_record_data(self,record_id: UUID | None, record_content: RecordContent, current_time: float) -> UUID | None:
         """加密并保存记录数据,返回记录ID"""
         # 加密记录内容
         try:
@@ -113,7 +138,10 @@ class DataMixin:
             return None
 
         # 构建记录对象和元数据对象
-        pg_record, pg_metadata = self._build_record(encrypt_data, encrypt_config, current_time)
+        pg_record, pg_metadata = self._build_record(record_id=record_id,
+                                                    encrypt_data=encrypt_data,
+                                                    encrypt_config=encrypt_config,
+                                                    current_time=current_time)
 
         # 保存记录
         if self.post_body.conversation_id:
@@ -126,7 +154,7 @@ class DataMixin:
             return pg_record.id
         return None
 
-    async def _save_data(self) -> None:
+    async def _save_data(self,record_id: UUID | None) -> None:
         """保存当前Executor、Task、Record等的数据"""
         task = self.task
 
@@ -143,7 +171,7 @@ class DataMixin:
 
         current_time = round(datetime.now(UTC).timestamp(), 2)
         # 先保存record,获取record_id
-        record_id = await self._save_record_data(record_content, current_time)
+        record_id = await self._save_record_data(record_id,record_content, current_time)
         # 再处理文档管理,传入record_id
         if record_id:
             await self._handle_document_management(used_docs, record_id)
