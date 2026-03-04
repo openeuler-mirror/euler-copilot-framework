@@ -75,20 +75,6 @@ class ContextManager:
         ContextManager._removed_messages = []
 
     # ==============================
-    # 核心工具方法：计算指定消息列表的Token数
-    # ==============================
-    @staticmethod
-    def _calc_token(msgs: List[Dict[str, Any]]) -> int:
-        """计算消息列表Token数"""
-        if not msgs:
-            return 0
-        try:
-            return token_calculator.calculate_token_length(msgs, pure_text=False)
-        except Exception as e:
-            logger.exception(f"计算Token数失败: {e}")
-            return -1
-
-    # ==============================
     # 核心判断方法
     # ==============================
     @staticmethod
@@ -98,7 +84,7 @@ class ContextManager:
             return False
 
         try:
-            total = ContextManager._calc_token(messages)
+            total = token_calculator.calculate_token_length(messages)
         except Exception as e:
             logger.exception(f"计算token失败: {e}")
             return False
@@ -127,16 +113,16 @@ class ContextManager:
             logger.info(f"【摘要替换】对话ID: {conv_id_str} | 无待替换消息片段")
             return messages
 
-        removed_token = ContextManager._calc_token(removed_msgs)
+        removed_token = token_calculator.calculate_token_length(removed_msgs)
         logger.info(f"【摘要替换】对话ID: {conv_id_str} | 待替换片段轮数: {n} | 原始Token数: {removed_token}")
 
         # 2. 获取摘要并统计摘要的Token
         abstract_msgs = await ContextManager.build_new_messages_with_abstract(messages, n)
         # 提取新增的摘要消息（system类型）
         abstract_only = [msg for msg in abstract_msgs if msg in abstract_msgs and msg not in messages]
-        abstract_token = ContextManager._calc_token(abstract_only)
+        abstract_token = token_calculator.calculate_token_length(abstract_only)
 
-        # 3. 输出摘要替换的Token变化
+        # 3. 输出摘要替换的Token变化token_calculator.calculate_token_length
         token_reduction = removed_token - abstract_token
         reduction_ratio = (token_reduction / removed_token * 100) if removed_token > 0 else 0.0
         logger.info(
@@ -169,7 +155,7 @@ class ContextManager:
             return messages
 
         # 4. 统计过滤前的Token数
-        before_filter_token = ContextManager._calc_token(filter_targets)
+        before_filter_token = token_calculator.calculate_token_length(filter_targets)
 
         # 5. 执行停用词过滤
         original_system = []
@@ -192,7 +178,7 @@ class ContextManager:
 
         # 6. 统计过滤后的Token数（仅针对原过滤目标）
         filtered_targets = [msg for msg in filtered_messages if msg["role"] == "system"]
-        after_filter_token = ContextManager._calc_token(filtered_targets)
+        after_filter_token = token_calculator.calculate_token_length(filtered_targets)
 
         # 7. 输出停用词过滤的Token变化
         token_reduction = before_filter_token - after_filter_token
@@ -214,7 +200,7 @@ class ContextManager:
         target = int(ContextManager._config.ctx_length * ContextManager._config.token_safety_ratio * 0.9)
 
         # 1. 统计截断前的全量Token（用于对比）
-        before_trunc_token = ContextManager._calc_token(messages)
+        before_trunc_token = token_calculator.calculate_token_length(messages)
         logger.info(
             f"【智能截断】对话ID: {conv_id_str} | 开始截断 | 截断前Token: {before_trunc_token} | 目标Token: {target}")
 
@@ -228,7 +214,7 @@ class ContextManager:
         current = 0
         truncated_count = 0
         for msg in reversed(real_msg):
-            tok = ContextManager._calc_token([msg])
+            tok = token_calculator.calculate_token_length([msg])
             if current + tok > target:
                 # 记录被截断的消息数
                 truncated_count = len(real_msg) - len(truncated) - 1
@@ -242,7 +228,7 @@ class ContextManager:
         truncated_messages = system_msg + list(reversed(truncated))
 
         # 2. 统计截断后的Token数
-        after_trunc_token = ContextManager._calc_token(truncated_messages)
+        after_trunc_token = token_calculator.calculate_token_length(truncated_messages)
         token_reduction = before_trunc_token - after_trunc_token
         reduction_ratio = (token_reduction / before_trunc_token * 100) if before_trunc_token > 0 else 0.0
         logger.info(
@@ -336,7 +322,7 @@ class ContextManager:
         conv_id_str = str(conversation_id) if conversation_id else "未指定"
 
         # 全量消息Token统计（仅用于整体参考）
-        total_before = ContextManager._calc_token(messages)
+        total_before = token_calculator.calculate_token_length(messages)
         logger.info(f"【上下文压缩】开始处理 | 对话ID: {conv_id_str} | 全量消息原始Token: {total_before}")
 
         current = [m.copy() for m in messages]
@@ -359,7 +345,7 @@ class ContextManager:
 
         res_messages = ContextManager.merge_system_messages(current)
         # 全量消息最终Token（参考）
-        total_after = ContextManager._calc_token(res_messages)
+        total_after = token_calculator.calculate_token_length(res_messages)
         logger.info(
             f"【上下文压缩】处理完成 | 对话ID: {conv_id_str} | "
             f"全量消息最终Token: {total_after} | 整体减少Token: {total_before - total_after}"
