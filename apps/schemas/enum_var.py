@@ -122,3 +122,11 @@ class AppFilterType(str, Enum):
     ALL = "all"
     USER = "user"
     FAVORITE = "favorite"
+
+
+class PromptType(str, Enum):
+    """提示词类型枚举类"""
+    PART = "part"
+    CALL = "call"
+    FUNC = "func"
+    ROLE = "role"

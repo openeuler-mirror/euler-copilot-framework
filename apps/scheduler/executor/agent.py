@@ -28,7 +28,7 @@ from apps.scheduler.mcp_agent.func import READ_TOOL_FUNCTION, UPDATE_TOOL_FUNCTI
 from apps.scheduler.mcp_agent.host import MCPHost
 from apps.scheduler.mcp_agent.plan import MCPPlanner
 from apps.scheduler.pool.mcp.pool import mcp_pool
-from apps.schemas.enum_var import EventType
+from apps.schemas.enum_var import EventType, PromptType
 from apps.schemas.flow import AgentAppMetadata, FlowAppMetadata
 from apps.schemas.llm import LLMToolCall
 from apps.schemas.mcp import MCPRiskConfirm
@@ -61,12 +61,12 @@ class MCPAgentPrompt:
         self._prompt_base_dir = Path(config.deploy.data_dir) / "prompts" / "system"
         self._prompt_call_dir = Path(config.deploy.data_dir) / "prompts" / "call"
 
-    def load_prompt(self, prompt_id: str, prompt_type: str = "part") -> str:
+    def load_prompt(self, prompt_id: str, prompt_type: PromptType = PromptType.PART) -> str:
         """加载提示词"""
-        if prompt_type == "call":
+        if prompt_type == PromptType.CALL:
             prompt_file = self._prompt_call_dir / f"{prompt_id}.{self.language.value}.txt"
         else:
-            prompt_file = self._prompt_base_dir / prompt_type / f"{prompt_id}.{self.language.value}.txt"
+            prompt_file = self._prompt_base_dir / prompt_type.value / f"{prompt_id}.{self.language.value}.txt"
         if not prompt_file.exists():
             err = f"[MCPAgentPrompt] 提示词文件不存在: {prompt_file}"
             _logger.error(err)
@@ -103,7 +103,7 @@ class MCPAgentPrompt:
     def _format_agent(self, agent_metadata: AgentAppMetadata) -> str:
         """格式化Agent信息（严格对齐_format_env的设计模式）"""
         # 加载agent模块的提示词模板（需新建agent.txt提示词文件）
-        agent_prompt_template = self.load_prompt(prompt_type="role", prompt_id="main")
+        agent_prompt_template = self.load_prompt(prompt_type=PromptType.ROLE, prompt_id="main")
         template = self._env.from_string(agent_prompt_template)
 
         # 兜底默认值（和现有逻辑保持一致）
@@ -136,10 +136,10 @@ class MCPAgentPrompt:
                 replacement = self._format_env()
             elif prompt_id == "tool" and tools:
                 replacement = self.format_tools(tools)
-            elif prompt_type == "role" and agent_metadata and isinstance(agent_metadata, AgentAppMetadata):
+            elif prompt_type == PromptType.ROLE.value and agent_metadata and isinstance(agent_metadata, AgentAppMetadata):
                 replacement = self._format_agent(agent_metadata)
             else:
-                replacement = self.load_prompt(prompt_id, prompt_type=prompt_type)
+                replacement = self.load_prompt(prompt_id, prompt_type=PromptType(prompt_type))
 
             result = result.replace(placeholder, replacement)
 
@@ -153,7 +153,7 @@ class MCPAgentPrompt:
             current_result: str,
             finish: bool,  # noqa: FBT001
     ) -> str:
-        summary_template = self.load_prompt("stream_summary", prompt_type="call")
+        summary_template = self.load_prompt("stream_summary", prompt_type=PromptType.CALL)
         template = self._env.from_string(summary_template)
         return template.render(
             current_tool=current_tool_name,
@@ -246,7 +246,7 @@ class MCPAgentExecutor(BaseExecutor):
         tool_list[update_todo_func["name"]] = MCPTools(
             mcpId="",
             toolName=update_todo_func["name"],
-            description=self._prompt_mgmt.load_prompt("update_todo_list", "func"),
+            description=self._prompt_mgmt.load_prompt("update_todo_list", PromptType.FUNC),
             inputSchema=update_todo_func["parameters"],
             outputSchema=update_todo_func["output"],
         )
@@ -256,7 +256,7 @@ class MCPAgentExecutor(BaseExecutor):
         tool_list[read_todo_func["name"]] = MCPTools(
             mcpId="",
             toolName=read_todo_func["name"],
-            description=self._prompt_mgmt.load_prompt("read_todo_list", "func"),
+            description=self._prompt_mgmt.load_prompt("read_todo_list", PromptType.FUNC),
             inputSchema=read_todo_func["parameters"],
             outputSchema=read_todo_func["output"],
         )
@@ -266,7 +266,7 @@ class MCPAgentExecutor(BaseExecutor):
         tool_list[stream_output_func["name"]] = MCPTools(
             mcpId="",
             toolName=stream_output_func["name"],
-            description=self._prompt_mgmt.load_prompt("stream_output", "func"),
+            description=self._prompt_mgmt.load_prompt("stream_output", PromptType.FUNC),
             inputSchema=stream_output_func["parameters"],
             outputSchema=stream_output_func["output"],
         )
@@ -275,7 +275,7 @@ class MCPAgentExecutor(BaseExecutor):
         tool_list[self_introduce_func["name"]] = MCPTools(
             mcpId="",
             toolName=self_introduce_func["name"],
-            description=self._prompt_mgmt.load_prompt("self_introduce", "func"),
+            description=self._prompt_mgmt.load_prompt("self_introduce", PromptType.FUNC),
             inputSchema=self_introduce_func["parameters"],
             outputSchema=self_introduce_func["output"],
         )
@@ -525,7 +525,7 @@ class MCPAgentExecutor(BaseExecutor):
         """  # noqa: D205
         try:
             # 构建标准聊天消息
-            system_prompt = self._prompt_mgmt.load_prompt("stream_summary", prompt_type="call")
+            system_prompt = self._prompt_mgmt.load_prompt("stream_summary", prompt_type=PromptType.CALL)
             messages = [
                 {"role": "system", "content": system_prompt},  # 你的专业提示词
                 {"role": "user", "content": prompt},  # 结构化参数（current_tool/step等）
