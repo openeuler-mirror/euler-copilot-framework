@@ -14,16 +14,18 @@ from apps.services.abstract_manager import AbstractManager
 
 logger = logging.getLogger(__name__)
 
+
 @dataclass
 class ContextConfig:
     """上下文压缩配置"""
-    short_window_size: int = 5                  # 滑动窗口：保留最近 N 轮对话
-    ctx_length: int = 128000                      # 模型最大上下文长度
-    token_safety_ratio: float = 0.8             # Token 安全占比
-    enable_abstract_replace: bool = True        # 开启摘要替换
-    enable_stopword_filter: bool = True         # 开启停用词过滤
-    enable_smart_truncation: bool = True        # 开启兜底截断
+    short_window_size: int = 5  # 滑动窗口：保留最近 N 轮对话
+    ctx_length: int = 128000  # 模型最大上下文长度
+    token_safety_ratio: float = 0.8  # Token 安全占比
+    enable_abstract_replace: bool = True  # 开启摘要替换
+    enable_stopword_filter: bool = True  # 开启停用词过滤
+    enable_smart_truncation: bool = True  # 开启兜底截断
     stop_words_path: Path = Path.cwd() / "apps" / "common" / "stopwords.txt"
+
 
 class ContextManager:
     """上下文管理工具类"""
@@ -33,6 +35,28 @@ class ContextManager:
     _config: ContextConfig = ContextConfig()
     # 临时存储被移除的消息片段（用于Token统计）
     _removed_messages: List[Dict[str, Any]] = []
+    # 静态缓存：加载后的停用词集合（仅初始化一次）
+    _stopwords: set[str] | None = None
+
+    # ==============================
+    # 懒加载停用词的辅助方法
+    # ==============================
+    @staticmethod
+    def _lazy_load_stopwords():
+        """懒加载停用词：仅在首次使用时加载"""
+        if ContextManager._stopwords is not None:
+            return
+        try:
+            with Path.open(ContextManager._config.stop_words_path, encoding="utf-8") as f:
+                ContextManager._stopwords = {
+                    line.strip()
+                    for line in f
+                    if line.strip() and not line.strip().startswith("#")
+                }
+            logger.info(f"成功加载停用词表 | 路径: {ContextManager._config.stop_words_path} | 数量: {len(ContextManager._stopwords)}")
+        except Exception as e:
+            logger.exception(f"【停用词过滤】加载停用词失败: {e}")
+            ContextManager._stopwords = set()
 
     # ==============================
     # 对外初始化方法（仅需调用一次）
@@ -43,6 +67,9 @@ class ContextManager:
         if conversation_id:
             ContextManager._conversation_id = conversation_id
         if config:
+            # 若路径变化，清空缓存（下次使用时重新加载）
+            if ContextManager._config.stop_words_path != config.stop_words_path:
+                ContextManager._stopwords = None
             ContextManager._config = config
         # 重置被移除的消息片段
         ContextManager._removed_messages = []
@@ -127,23 +154,24 @@ class ContextManager:
     def _stopword_filter_strategy(messages: list[dict[str, Any]]) -> list[dict[str, Any]]:
         conv_id_str = str(ContextManager._conversation_id) if ContextManager._conversation_id else "未指定"
 
-        # 1. 提取需要过滤的片段（system消息：主要是摘要内容）
+        # 1. 先懒加载停用词
+        ContextManager._lazy_load_stopwords()
+
+        # 2. 提取需要过滤的片段（system消息：主要是摘要内容）
         filter_targets = [msg for msg in messages if msg["role"] == "system"]
         if not filter_targets:
             logger.info(f"【停用词过滤】对话ID: {conv_id_str} | 无需过滤（无system消息）")
             return messages
 
-        # 2. 统计过滤前的Token数
-        before_filter_token = ContextManager._calc_token(filter_targets)
-
-        # 3. 执行停用词过滤
-        try:
-            with Path.open(ContextManager._config.stop_words_path, encoding="utf-8") as f:
-                stopwords = {line.strip() for line in f if line.strip()}
-        except Exception as e:
-            logger.exception(f"【停用词过滤】加载停用词失败: {e}")
+        # 3. 空停用词表直接返回
+        if not ContextManager._stopwords:
+            logger.info(f"【停用词过滤】对话ID: {conv_id_str} | 无可用停用词表，跳过过滤")
             return messages
 
+        # 4. 统计过滤前的Token数
+        before_filter_token = ContextManager._calc_token(filter_targets)
+
+        # 5. 执行停用词过滤
         original_system = []
         history = messages
         if messages and messages[0]["role"] == "system":
@@ -155,18 +183,18 @@ class ContextManager:
             if msg["role"] == "system":
                 content = msg.get("content", "")
                 words = jieba.cut(str(content))
-                filtered = [w for w in words if w not in stopwords]
-                processed.append({**msg, "content": " ".join(filtered)})
+                filtered = [w for w in words if w not in ContextManager._stopwords]
+                processed.append({**msg, "content": "".join(filtered)})
             else:
                 processed.append(msg)
 
         filtered_messages = original_system + processed
 
-        # 4. 统计过滤后的Token数（仅针对原过滤目标）
+        # 6. 统计过滤后的Token数（仅针对原过滤目标）
         filtered_targets = [msg for msg in filtered_messages if msg["role"] == "system"]
         after_filter_token = ContextManager._calc_token(filtered_targets)
 
-        # 5. 输出停用词过滤的Token变化
+        # 7. 输出停用词过滤的Token变化
         token_reduction = before_filter_token - after_filter_token
         reduction_ratio = (token_reduction / before_filter_token * 100) if before_filter_token > 0 else 0.0
         logger.info(
@@ -187,7 +215,8 @@ class ContextManager:
 
         # 1. 统计截断前的全量Token（用于对比）
         before_trunc_token = ContextManager._calc_token(messages)
-        logger.info(f"【智能截断】对话ID: {conv_id_str} | 开始截断 | 截断前Token: {before_trunc_token} | 目标Token: {target}")
+        logger.info(
+            f"【智能截断】对话ID: {conv_id_str} | 开始截断 | 截断前Token: {before_trunc_token} | 目标Token: {target}")
 
         system_msg = []
         real_msg = messages
@@ -225,7 +254,7 @@ class ContextManager:
         return truncated_messages
 
     # ==============================
-    # 基础工具方法（改造：记录被移除的消息）
+    # 基础工具方法（记录被移除的消息）
     # ==============================
     @staticmethod
     def get_oldest_record_message(messages: list[dict[str, Any]], n: int = 1) -> list[dict[str, Any]] | None:
@@ -266,9 +295,10 @@ class ContextManager:
     async def build_new_messages_with_abstract(messages: list[dict[str, Any]], n: int = 1) -> list[dict[str, Any]]:
         """构建新的消息列表：在开头插入最旧n条记录的摘要（如果有）"""
         abstracts = await ContextManager.get_oldest_record_abstract(n)
-        if abstracts:
-            return messages[:1] + abstracts + messages[1:]
-        return messages
+        if not abstracts:
+            return messages
+
+        return messages[:1] + abstracts + messages[1:]
 
     @staticmethod
     def calculate_n_by_round_threshold(messages: list[dict[str, Any]], max_rounds: int | None = None) -> int:
@@ -296,9 +326,9 @@ class ContextManager:
 
     @staticmethod
     async def build(
-        messages: list[dict[str, Any]],
-        conversation_id: uuid.UUID | None = None,
-        config: ContextConfig | None = None,
+            messages: list[dict[str, Any]],
+            conversation_id: uuid.UUID | None = None,
+            config: ContextConfig | None = None,
     ) -> list[dict[str, Any]]:
         """对外统一入口：聚焦被压缩片段的Token统计"""
         # 初始化（重置被移除消息记录）
@@ -320,18 +350,55 @@ class ContextManager:
                 res = strategy_func(current)
                 current = await res if inspect.isawaitable(res) else res
             except Exception as e:
-                logger.exception(f"【上下文压缩】策略{idx+1}执行失败: {e}")
+                logger.exception(f"【上下文压缩】策略{idx + 1}执行失败: {e}")
             idx += 1
 
         # 兜底截断（内部已统计Token变化）
         if ContextManager.is_need_compress(current):
             current = ContextManager._smart_truncation_strategy(current)
 
+        res_messages = ContextManager.merge_system_messages(current)
         # 全量消息最终Token（参考）
-        total_after = ContextManager._calc_token(current)
+        total_after = ContextManager._calc_token(res_messages)
         logger.info(
             f"【上下文压缩】处理完成 | 对话ID: {conv_id_str} | "
             f"全量消息最终Token: {total_after} | 整体减少Token: {total_before - total_after}"
         )
 
-        return current
+        return res_messages
+
+
+    @staticmethod
+    def merge_system_messages(messages: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        """
+        合并所有system消息为单条
+        规则：
+        1. 第一条system保留核心角色设定
+        2. 其他system（摘要/记忆）追加到第一条末尾
+        3. 最终仅保留1条system消息，放在最开头
+        """
+        if not messages:
+            return messages
+
+        # 分离system消息和普通消息（user/assistant）
+        system_msgs = [msg for msg in messages if msg["role"] == "system"]
+        normal_msgs = [msg for msg in messages if msg["role"] != "system"]
+
+        if not system_msgs:
+            # 无system消息时，直接返回原普通消息
+            return normal_msgs
+
+        # 提取第一条system（核心角色设定）和其他system（摘要/记忆）
+        main_system = system_msgs[0]["content"].strip()
+        additional_systems = [msg["content"].strip() for msg in system_msgs[1:] if msg["content"].strip()]
+
+        if not additional_systems:
+            # 只有1条system，直接返回
+            return [system_msgs[0]] + normal_msgs
+
+        # 合并所有system内容（用分隔符区分，模型更容易理解）
+        merged_content = f"{main_system}\n\n# 历史对话摘要\n\n{chr(10).join(additional_systems)}"
+        merged_system = {"role": "system", "content": merged_content}
+
+        # 最终消息列表：合并后的system + 普通消息
+        return [merged_system] + normal_msgs

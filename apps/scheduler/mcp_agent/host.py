@@ -16,10 +16,10 @@ from apps.models.task import ExecutorHistory
 from apps.schemas.llm import LLMFunctions, LLMToolCall
 from apps.schemas.task import AgentHistoryExtra, TaskData
 
-from .base import MCPBase
-from .context import ContextConfig, ContextManager
-from ...schemas.mcp import MCPServerInfo
-from ...services.mcp_service import MCPServiceManager
+from apps.scheduler.mcp_agent.base import MCPBase
+from apps.scheduler.mcp_agent.context import ContextConfig, ContextManager
+from apps.schemas.mcp import MCPServerInfo
+from apps.services.mcp_service import MCPServiceManager
 
 _logger = logging.getLogger(__name__)
 _env = SandboxedEnvironment(

@@ -130,3 +130,6 @@ class PromptType(str, Enum):
     CALL = "call"
     FUNC = "func"
     ROLE = "role"
+    ALERT = "alert"
+    SCHEDULER = "scheduler"
+    MCP = "mcp"
