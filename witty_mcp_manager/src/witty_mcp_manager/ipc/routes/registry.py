@@ -58,7 +58,7 @@ def get_server() -> IPCServer:
     return _server
 
 
-def _determine_server_status(srv: ServerRecord) -> tuple[str, str | None]:
+def _determine_server_status(srv: ServerRecord) -> tuple[str, str | None]:  # noqa: C901, PLR0911
     """
     确定 Server 状态
 
@@ -94,6 +94,13 @@ def _determine_server_status(srv: ServerRecord) -> tuple[str, str | None]:
             missing_parts.append(f"Python 依赖: {', '.join(diag.deps_missing['python'])}")
         if missing_parts:
             return "degraded", f"缺少{'; '.join(missing_parts)}"
+
+    # SSE/HTTP 后端可达性检查
+    if diag.sse_reachable is False:
+        sse_url = ""
+        if srv.default_config.sse:
+            sse_url = srv.default_config.sse.url
+        return "unavailable", f"SSE/HTTP 后端不可达: {sse_url}"
 
     return "ready", None
 
@@ -254,6 +261,7 @@ async def get_server_detail(
             else None,
             files_valid=not diag.errors,
             errors=diag.errors,
+            sse_reachable=diag.sse_reachable,
         )
 
     # 构建生效配置信息

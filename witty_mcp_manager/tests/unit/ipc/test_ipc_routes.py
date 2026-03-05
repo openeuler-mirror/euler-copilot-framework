@@ -83,6 +83,39 @@ class TestDetermineServerStatusEdgeCases:
         server.diagnostics.command_allowed = True
         server.diagnostics.errors = []
         server.diagnostics.deps_missing = {"system": [], "python": []}
+        server.diagnostics.sse_reachable = None
+
+        status, reason = _determine_server_status(server)
+        assert status == "ready"
+        assert reason is None
+
+    def test_sse_backend_unreachable(self) -> None:
+        """SSE 后端不可达时返回 unavailable"""
+        from witty_mcp_manager.ipc.routes.registry import _determine_server_status
+
+        server = MagicMock()
+        server.diagnostics = MagicMock()
+        server.diagnostics.command_allowed = True
+        server.diagnostics.errors = []
+        server.diagnostics.deps_missing = {}
+        server.diagnostics.sse_reachable = False
+        server.default_config.sse = MagicMock()
+        server.default_config.sse.url = "http://127.0.0.1:19999/sse"
+
+        status, reason = _determine_server_status(server)
+        assert status == "unavailable"
+        assert "19999" in (reason or "")
+
+    def test_sse_backend_reachable(self) -> None:
+        """SSE 后端可达时返回 ready"""
+        from witty_mcp_manager.ipc.routes.registry import _determine_server_status
+
+        server = MagicMock()
+        server.diagnostics = MagicMock()
+        server.diagnostics.command_allowed = True
+        server.diagnostics.errors = []
+        server.diagnostics.deps_missing = {}
+        server.diagnostics.sse_reachable = True
 
         status, reason = _determine_server_status(server)
         assert status == "ready"
