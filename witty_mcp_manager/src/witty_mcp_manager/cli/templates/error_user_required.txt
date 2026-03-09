@@ -1,0 +1,3 @@
+[red]Error: --user <user_id> is required for {{ command }}.[/red]
+[yellow]Hint: System username is NOT used as user ID.[/yellow]
+[yellow]      User ID is a business identifier (OIDC sub, email, UUID, etc.).[/yellow]

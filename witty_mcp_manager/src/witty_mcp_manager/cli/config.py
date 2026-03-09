@@ -31,6 +31,7 @@ from .permissions import (
     get_current_identity,
     resolve_scope,
 )
+from .renderer import print_template
 
 UDS_PATH = "/run/witty/mcp-manager.sock"
 
@@ -40,9 +41,14 @@ app = typer.Typer(add_completion=False, help="Manage configuration")
 
 def _handle_permission_error(err: CliPermissionError) -> None:
     """Handle permission error with nice output."""
-    console.print(f"[red]Error: {err}[/red]")
-    if err.suggestion:
-        console.print(f"[yellow]{err.suggestion}[/yellow]")
+    print_template(
+        console,
+        "error_permission.txt",
+        {
+            "error": str(err),
+            "suggestion": err.suggestion or "",
+        },
+    )
     raise typer.Exit(code=1)
 
 
@@ -90,11 +96,13 @@ def show_config(
             )
             return
 
-        console.print("\n[bold cyan]Witty MCP Manager Configuration[/bold cyan]\n")
-        console.print(f"[bold]Scan Paths:[/bold] {', '.join(config.scan_paths)}")
-        console.print(f"[bold]Socket Path:[/bold] {config.socket_path}")
-        console.print(f"[bold]Idle Session TTL:[/bold] {config.idle_session_ttl}s")
-        console.print(f"[bold]Command Allowlist:[/bold] {', '.join(config.command_allowlist)}")
+        context = {
+            "scan_paths": ", ".join(config.scan_paths),
+            "socket_path": config.socket_path,
+            "idle_session_ttl": config.idle_session_ttl,
+            "command_allowlist": ", ".join(config.command_allowlist),
+        }
+        print_template(console, "config_status.txt", context)
 
     except Exception as e:  # noqa: BLE001
         console.print(f"[red]Error loading configuration: {e}[/red]")
@@ -284,7 +292,7 @@ def _apply_overlay_via_ipc(
         console.print("[yellow]Warning: No valid fields for IPC (only env/headers supported).[/yellow]")
         return
 
-    endpoint = f"/v1/me/servers/{mcp_id}:configure"
+    endpoint = f"/v1/me/servers/{mcp_id}/configure"
 
     with _get_client(user_id) as client:
         response = client.post(endpoint, json=filtered_payload)

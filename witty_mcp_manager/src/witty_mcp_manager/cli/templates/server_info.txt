@@ -1,0 +1,44 @@
+
+[bold cyan]Server ID: {{ mcp_id }}[/bold cyan]
+
+[bold]Display Name:[/bold] {{ name }}
+[bold]Summary:[/bold] {{ summary }}
+[bold]Transport:[/bold] {{ transport }}
+[bold]Source:[/bold] {{ source_label }}
+[bold]Install Root:[/bold] {{ install_root }}
+[bold]Upstream Key:[/bold] {{ upstream_key }}
+[bold]Status:[/bold] {{ status_label }}
+[bold]Health:[/bold] {{ health_status }}
+{% if health_reason %}
+[bold]Health Reason:[/bold] {{ health_reason }}
+{% endif %}
+{% if command_line %}
+
+[bold]Command:[/bold] {{ command_line }}
+{% endif %}
+{% if effective_config %}
+
+[bold]Effective Config:[/bold]
+  Tool Call Timeout: {{ effective_config.tool_call_timeout_sec }}s
+  Idle TTL: {{ effective_config.idle_ttl_sec }}s
+  Concurrency: {{ effective_config.max_concurrency }} per user
+{% if effective_config.env %}
+  Environment: {{ effective_config.env }}
+{% else %}
+  Environment: (none)
+{% endif %}
+{% endif %}
+{% if security_checks %}
+
+[bold]Security Checks:[/bold]
+{% for check in security_checks %}
+  {{ check }}
+{% endfor %}
+{% endif %}
+{% if diagnostics %}
+
+[bold]Diagnostics:[/bold]
+{% for diag in diagnostics %}
+  {{ diag }}
+{% endfor %}
+{% endif %}

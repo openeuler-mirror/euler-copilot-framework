@@ -1,0 +1,4 @@
+[red]Error: {{ error }}[/red]
+{% if suggestion %}
+[yellow]{{ suggestion }}[/yellow]
+{% endif %}

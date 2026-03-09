@@ -205,13 +205,18 @@ class TestIPCServerAdapters:
         mock_adapter = AsyncMock()
         mock_adapter.is_connected = True
 
+        mock_server = MagicMock()
+        mock_server.id = "test_mcp"
+        mock_server.default_config.transport = TransportType.STDIO
+
         mock_session = MagicMock()
+        mock_session.user_id = "user"
         mock_session.session_key = "user:test_mcp"
         mock_session.state.status = "running"
 
         ipc_server._adapters["user:test_mcp"] = mock_adapter  # noqa: SLF001
 
-        adapter = await ipc_server.get_or_create_adapter(MagicMock(), mock_session)
+        adapter = await ipc_server.get_or_create_adapter(mock_server, mock_session)
         assert adapter is mock_adapter
         mock_adapter.connect.assert_not_awaited()
 

@@ -23,9 +23,9 @@ class TestDiscovery:
         discovery = Discovery(mock_config)
         servers = discovery.scan_all()
 
-        assert len(servers) == 2
+        assert len(servers) == 4
 
-        # 验证 git_mcp
+        # 验证 git_mcp（标准格式，mcp_config.json）
         git_mcp = next((s for s in servers if s.id == "git_mcp"), None)
         assert git_mcp is not None
         # 标准格式没有顶层 name 字段，fallback 到 server_id
@@ -84,6 +84,28 @@ class TestDiscovery:
         # 应该不包含隐藏目录
         assert not any(s.id == ".hidden_mcp" for s in servers)
 
+    def test_discover_config_json_sse_servers(self, mock_config, mock_mcp_servers_dir):
+        """config.json 格式的 SSE 服务器被正确发现"""
+        discovery = Discovery(mock_config)
+        servers = discovery.scan_all()
+
+        # mcp_server_mcp（config.json + SSE）
+        mcp_server = next((s for s in servers if s.id == "mcp_server_mcp"), None)
+        assert mcp_server is not None
+        assert mcp_server.transport == TransportType.SSE
+        assert mcp_server.default_config.sse is not None
+        assert mcp_server.default_config.sse.url == "http://127.0.0.1:12555/sse"
+        assert mcp_server.name == "oe-智能运维工具"
+        assert mcp_server.source == SourceType.ADMIN  # config.json 被识别为 ADMIN
+
+        # rag_mcp（config.json + SSE）
+        rag_mcp = next((s for s in servers if s.id == "rag_mcp"), None)
+        assert rag_mcp is not None
+        assert rag_mcp.transport == TransportType.SSE
+        assert rag_mcp.default_config.sse is not None
+        assert rag_mcp.default_config.sse.url == "http://127.0.0.1:12311/sse"
+        assert rag_mcp.name == "轻量化知识库"
+
     def test_skip_invalid_json(self, mock_config, mock_mcp_servers_dir):
         """跳过无效 JSON 配置"""
         # 创建无效 JSON 的 server
@@ -96,8 +118,8 @@ class TestDiscovery:
 
         # 应该不包含无效配置的 server
         assert not any(s.id == "invalid_mcp" for s in servers)
-        # 但其他 server 应该正常
-        assert len(servers) == 2
+        # 但其他 server 应该正常（包括 config.json 格式的）
+        assert len(servers) == 4
 
     def test_upstream_key_different_from_dir_name(self, mock_config, tmp_path):
         """TC002: upstream_key 与目录名不一致的情况"""

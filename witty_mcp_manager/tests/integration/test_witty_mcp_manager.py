@@ -330,7 +330,7 @@ class TestIPCEnableDisable:
     ) -> None:
         """测试启用服务器"""
         mcp_id = first_ready_server["mcp_id"]
-        response = ipc_client.post(f"/v1/me/servers/{mcp_id}:enable")
+        response = ipc_client.post(f"/v1/me/servers/{mcp_id}/enable")
 
         assert response.status_code == 200
         data = response.json()
@@ -347,7 +347,7 @@ class TestIPCEnableDisable:
     ) -> None:
         """测试禁用服务器"""
         mcp_id = first_ready_server["mcp_id"]
-        response = ipc_client.post(f"/v1/me/servers/{mcp_id}:disable")
+        response = ipc_client.post(f"/v1/me/servers/{mcp_id}/disable")
 
         assert response.status_code == 200
         data = response.json()
@@ -366,18 +366,18 @@ class TestIPCEnableDisable:
         mcp_id = first_ready_server["mcp_id"]
 
         # 禁用
-        response = ipc_client.post(f"/v1/me/servers/{mcp_id}:disable")
+        response = ipc_client.post(f"/v1/me/servers/{mcp_id}/disable")
         assert response.status_code == 200
         assert response.json()["data"]["enabled"] is False
 
         # 启用
-        response = ipc_client.post(f"/v1/me/servers/{mcp_id}:enable")
+        response = ipc_client.post(f"/v1/me/servers/{mcp_id}/enable")
         assert response.status_code == 200
         assert response.json()["data"]["enabled"] is True
 
     def test_enable_non_existent_server(self, ipc_client: httpx.Client) -> None:
         """测试启用不存在的服务器"""
-        response = ipc_client.post("/v1/me/servers/non_existent_mcp_12345:enable")
+        response = ipc_client.post("/v1/me/servers/non_existent_mcp_12345/enable")
         assert response.status_code == 404
 
 
@@ -398,7 +398,7 @@ class TestIPCTools:
     ) -> dict[str, Any]:
         """确保服务器已启用"""
         mcp_id = first_ready_server["mcp_id"]
-        ipc_client.post(f"/v1/me/servers/{mcp_id}:enable")
+        ipc_client.post(f"/v1/me/servers/{mcp_id}/enable")
         return first_ready_server
 
     def test_list_tools(
@@ -454,14 +454,14 @@ class TestIPCTools:
         mcp_id = first_ready_server["mcp_id"]
 
         # 先禁用
-        ipc_client.post(f"/v1/me/servers/{mcp_id}:disable")
+        ipc_client.post(f"/v1/me/servers/{mcp_id}/disable")
 
         # 尝试获取工具列表
         response = ipc_client.get(f"/v1/servers/{mcp_id}/tools")
         assert response.status_code == 403
 
         # 恢复启用
-        ipc_client.post(f"/v1/me/servers/{mcp_id}:enable")
+        ipc_client.post(f"/v1/me/servers/{mcp_id}/enable")
 
 
 # ============================================================================
@@ -483,7 +483,7 @@ class TestIPCToolCall:
         mcp_id = first_ready_server["mcp_id"]
 
         # 启用服务器
-        ipc_client.post(f"/v1/me/servers/{mcp_id}:enable")
+        ipc_client.post(f"/v1/me/servers/{mcp_id}/enable")
 
         # 获取工具列表
         response = ipc_client.get(f"/v1/servers/{mcp_id}/tools")
@@ -530,7 +530,7 @@ class TestIPCToolCall:
                 arguments[prop] = {}
 
         response = ipc_client.post(
-            f"/v1/me/servers/{mcp_id}/tools/{tool_name}:call",
+            f"/v1/me/servers/{mcp_id}/tools/{tool_name}/call",
             json={"arguments": arguments},
         )
 
@@ -810,7 +810,7 @@ class TestEndToEnd:
         mcp_id = first_ready_server["mcp_id"]
 
         # 1. 启用服务器
-        response = ipc_client.post(f"/v1/me/servers/{mcp_id}:enable")
+        response = ipc_client.post(f"/v1/me/servers/{mcp_id}/enable")
         assert response.status_code == 200
 
         # 2. 获取工具列表
@@ -822,14 +822,14 @@ class TestEndToEnd:
         if tools:
             tool_name = tools[0]["name"]
             response = ipc_client.post(
-                f"/v1/me/servers/{mcp_id}/tools/{tool_name}:call",
+                f"/v1/me/servers/{mcp_id}/tools/{tool_name}/call",
                 json={"arguments": {}},
             )
             # 调用可能成功或失败，但 API 应该响应
             assert response.status_code in (200, 400, 500)
 
         # 4. 禁用服务器
-        response = ipc_client.post(f"/v1/me/servers/{mcp_id}:disable")
+        response = ipc_client.post(f"/v1/me/servers/{mcp_id}/disable")
         assert response.status_code == 200
 
     def test_full_workflow_cli(self, discovered_servers: list[dict[str, Any]]) -> None:
@@ -938,11 +938,11 @@ class TestErrorHandling:
         """测试发送无效的 JSON 请求体"""
         mcp_id = first_ready_server["mcp_id"]
         # 先启用服务器
-        ipc_client.post(f"/v1/me/servers/{mcp_id}:enable")
+        ipc_client.post(f"/v1/me/servers/{mcp_id}/enable")
 
         # 发送无效 JSON
         response = ipc_client.post(
-            f"/v1/me/servers/{mcp_id}/tools/some_tool:call",
+            f"/v1/me/servers/{mcp_id}/tools/some_tool/call",
             content="invalid json",
             headers={"Content-Type": "application/json"},
         )

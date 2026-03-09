@@ -41,6 +41,7 @@ from .permissions import (
     resolve_scope,
     resolve_user_for_ipc,
 )
+from .renderer import print_template
 
 UDS_PATH = "/run/witty/mcp-manager.sock"
 
@@ -66,9 +67,14 @@ def _get_client(user_id: str) -> httpx.Client:
 
 def _handle_permission_error(err: CliPermissionError) -> None:
     """Handle permission error with nice output."""
-    console.print(f"[red]Error: {err}[/red]")
-    if err.suggestion:
-        console.print(f"[yellow]{err.suggestion}[/yellow]")
+    print_template(
+        console,
+        "error_permission.txt",
+        {
+            "error": str(err),
+            "suggestion": err.suggestion or "",
+        },
+    )
     raise typer.Exit(code=1)
 
 
@@ -436,7 +442,7 @@ def list_servers(
             return
 
         if not servers:
-            console.print("[yellow]No servers found.[/yellow]")
+            print_template(console, "info_no_servers.txt", {})
             return
 
         table, enabled_count = _render_servers_table(
@@ -451,11 +457,18 @@ def list_servers(
         console.print(f"\nTotal: {total} servers ({enabled_count} enabled, {disabled_count} disabled)")
 
     except httpx.ConnectError:
-        console.print("[red]Error: Cannot connect to witty-mcp-manager daemon.[/red]")
+        print_template(console, "error_daemon_connect.txt", {})
         console.print("[yellow]Is the daemon running? Try: systemctl status witty-mcp-manager[/yellow]")
         raise typer.Exit(code=1) from None
     except httpx.HTTPStatusError as e:
-        console.print(f"[red]HTTP error {e.response.status_code}: {e.response.text}[/red]")
+        print_template(
+            console,
+            "error_http.txt",
+            {
+                "status_code": e.response.status_code,
+                "response_text": e.response.text,
+            },
+        )
         raise typer.Exit(code=1) from None
     except Exception as e:  # noqa: BLE001
         console.print(f"[red]Unexpected error: {e}[/red]")

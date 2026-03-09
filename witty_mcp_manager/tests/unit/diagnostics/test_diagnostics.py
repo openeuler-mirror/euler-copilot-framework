@@ -16,6 +16,7 @@ from witty_mcp_manager.registry.models import (
     NormalizedConfig,
     ServerRecord,
     SourceType,
+    SseConfig,
     StdioConfig,
     TransportType,
 )
@@ -182,7 +183,7 @@ class TestChecker:
         assert missing == []
 
     def test_check_files_missing_config(self, checker, tmp_path):
-        """缺少 mcp_config.json"""
+        """缺少 mcp_config.json 和 config.json"""
         server_dir = tmp_path / "no_config"
         server_dir.mkdir()
         (server_dir / "src").mkdir()
@@ -201,7 +202,7 @@ class TestChecker:
         )
 
         missing = checker.check_files(server)
-        assert "mcp_config.json" in missing
+        assert "mcp_config.json or config.json" in missing
 
     def test_check_files_missing_src(self, checker, tmp_path):
         """缺少 src 目录"""
@@ -255,3 +256,82 @@ class TestChecker:
 
         assert diagnostics.config_valid is True
         assert diagnostics.is_ready is True
+
+    def test_check_files_config_json_accepted(self, checker, tmp_path):
+        """config.json 也被接受为有效配置文件（mcp_center 格式）"""
+        server_dir = tmp_path / "sse_mcp"
+        server_dir.mkdir()
+        (server_dir / "config.json").write_text("{}")
+
+        server = ServerRecord(
+            id="sse_mcp",
+            name="SSE MCP",
+            source=SourceType.ADMIN,
+            install_root=str(server_dir),
+            upstream_key="sse_mcp",
+            transport=TransportType.SSE,
+            default_config=NormalizedConfig(
+                transport=TransportType.SSE,
+                sse=SseConfig(url="http://127.0.0.1:8080/sse"),
+            ),
+        )
+
+        missing = checker.check_files(server)
+        # config.json 存在；src/ 缺失会被报告，但 validate 中仅作为 warning
+        assert "mcp_config.json or config.json" not in missing
+        assert "src/" in missing
+
+    def test_missing_src_is_warning_not_error(self, checker, tmp_path):
+        """缺少 src/ 时 validate 产生 warning 而非 error，不影响 config_valid"""
+        server_dir = tmp_path / "no_src_server"
+        server_dir.mkdir()
+        (server_dir / "mcp_config.json").write_text("{}")
+        # 故意不创建 src/ 目录
+
+        server = ServerRecord(
+            id="no_src_server",
+            name="No Src Server",
+            source=SourceType.RPM,
+            install_root=str(server_dir),
+            upstream_key="no_src_server",
+            transport=TransportType.STDIO,
+            default_config=NormalizedConfig(
+                transport=TransportType.STDIO,
+                stdio=StdioConfig(command="uv", args=[]),
+            ),
+        )
+
+        # check_files 会报告 src/ 缺失
+        missing = checker.check_files(server)
+        assert "src/" in missing
+
+        # 但 validate 将其降级为 warning，config_valid 不受影响
+        diagnostics = checker.validate(server)
+        assert diagnostics.config_valid is True
+        assert diagnostics.is_ready is True
+        assert any("src/" in w for w in diagnostics.warnings)
+
+    def test_validate_sse_server_with_config_json(self, checker, tmp_path):
+        """完整校验：SSE 服务器使用 config.json（mcp_center 格式）"""
+        server_dir = tmp_path / "mcp_server_mcp"
+        server_dir.mkdir()
+        (server_dir / "config.json").write_text("{}")
+
+        server = ServerRecord(
+            id="mcp_server_mcp",
+            name="oe-智能运维工具",
+            source=SourceType.ADMIN,
+            install_root=str(server_dir),
+            upstream_key="mcp_server_mcp",
+            transport=TransportType.SSE,
+            default_config=NormalizedConfig(
+                transport=TransportType.SSE,
+                sse=SseConfig(url="http://127.0.0.1:12555/sse"),
+            ),
+        )
+
+        diagnostics = checker.validate(server)
+        assert diagnostics.config_valid is True
+        assert diagnostics.is_ready is True
+        # src/ 缺失仅为 warning
+        assert any("src/" in w for w in diagnostics.warnings)

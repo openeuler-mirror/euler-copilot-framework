@@ -127,6 +127,9 @@ NUITKA_OPTS=(
     # Include our package
     "--include-package=witty_mcp_manager"
     
+    # Include template files for CLI renderer
+    "--include-data-dir=${SRC_DIR}/witty_mcp_manager/cli/templates=witty_mcp_manager/cli/templates"
+    
     # Anti-bloat optimizations (reduce size) - plugin is auto-enabled
     "--noinclude-pytest-mode=nofollow"
     "--noinclude-setuptools-mode=nofollow"

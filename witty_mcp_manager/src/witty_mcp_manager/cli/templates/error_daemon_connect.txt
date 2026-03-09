@@ -1,0 +1,2 @@
+[red]Error: Cannot connect to witty-mcp-manager daemon.[/red]
+[yellow]Is the daemon running? Try: systemctl status witty-mcp-manager[/yellow]

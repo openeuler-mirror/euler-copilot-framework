@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 import signal
 import sys
+from pathlib import Path
 from typing import Annotated
 
 import typer
@@ -64,6 +65,21 @@ def daemon(
     try:
         config = load_config()
         logger.info("Configuration loaded from %s", config.socket_path)
+
+        # Ensure required directories exist
+        runtime_dir = Path(config.runtime_directory)
+        runtime_dir.mkdir(parents=True, exist_ok=True)
+        logger.info("Ensured runtime directory: %s", runtime_dir)
+
+        state_dir = Path(config.state_directory)
+        state_dir.mkdir(parents=True, exist_ok=True)
+        logger.info("Ensured state directory: %s", state_dir)
+
+        # Remove stale socket if it exists
+        socket_path = Path(config.socket_path)
+        if socket_path.exists():
+            logger.info("Removing stale socket: %s", socket_path)
+            socket_path.unlink()
 
         discovery = Discovery(config)
         checker = Checker()

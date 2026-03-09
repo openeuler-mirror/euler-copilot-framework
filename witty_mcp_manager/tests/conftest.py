@@ -158,13 +158,13 @@ def admin_sse_config():
 
 @pytest.fixture
 def mock_mcp_servers_dir(tmp_path, sample_mcp_config, sample_mcp_rpm_yaml):
-    """创建模拟的 /opt/mcp-servers/servers 目录（标准格式）"""
+    """创建模拟的 /opt/mcp-servers/servers 目录（RPM MCP 标准格式）"""
     import yaml
 
     servers_dir = tmp_path / "servers"
     servers_dir.mkdir()
 
-    # git_mcp（标准格式）
+    # git_mcp（标准格式，mcp_config.json）
     git_mcp = servers_dir / "git_mcp"
     git_mcp.mkdir()
     (git_mcp / "mcp_config.json").write_text(json.dumps(sample_mcp_config, indent=2))
@@ -192,6 +192,67 @@ def mock_mcp_servers_dir(tmp_path, sample_mcp_config, sample_mcp_rpm_yaml):
 
 
 @pytest.fixture
+def mock_mcp_center_dir(tmp_path):
+    """创建模拟的 /usr/lib/sysagent/mcp_center/mcp_config 目录
+
+    真实 VM 路径: /lib/sysagent/mcp_center/mcp_config/
+    目录内容:
+      mcp_server_mcp/config.json  (SSE)
+      rag_mcp/config.json         (SSE)
+      change.py                   (非 MCP 目录，应被跳过)
+      mcp_to_app_config.toml      (文件，应被跳过)
+    """
+    mcp_center = tmp_path / "mcp_config"
+    mcp_center.mkdir()
+
+    # mcp_server_mcp（SSE，config.json 格式）
+    mcp_server = mcp_center / "mcp_server_mcp"
+    mcp_server.mkdir()
+    mcp_server_config = {
+        "mcpServers": {
+            "mcp_server_mcp": {
+                "headers": {},
+                "autoApprove": [],
+                "autoInstall": True,
+                "timeout": 60,
+                "url": "http://127.0.0.1:12555/sse",
+            },
+        },
+        "name": "oe-智能运维工具",
+        "overview": "文件管理，文件操作，软件包管理",
+        "description": "文件管理，文件操作，软件包管理",
+        "mcpType": "sse",
+    }
+    (mcp_server / "config.json").write_text(json.dumps(mcp_server_config, indent=2))
+
+    # rag_mcp（SSE，config.json 格式）
+    rag_mcp = mcp_center / "rag_mcp"
+    rag_mcp.mkdir()
+    rag_config = {
+        "mcpServers": {
+            "rag_mcp": {
+                "headers": {},
+                "autoApprove": [],
+                "autoInstall": True,
+                "timeout": 60,
+                "url": "http://127.0.0.1:12311/sse",
+            },
+        },
+        "name": "轻量化知识库",
+        "overview": "轻量化知识库",
+        "description": "轻量化知识库 RAG 服务",
+        "mcpType": "sse",
+    }
+    (rag_mcp / "config.json").write_text(json.dumps(rag_config, indent=2))
+
+    # 非 MCP 文件（应被 discovery 跳过）
+    (mcp_center / "change.py").write_text("# not a server dir")
+    (mcp_center / "mcp_to_app_config.toml").write_text("[app]")
+
+    return mcp_center
+
+
+@pytest.fixture
 def mock_state_directory(tmp_path):
     """创建模拟的 StateDirectory"""
     state_dir = tmp_path / "witty-mcp-manager"
@@ -204,12 +265,17 @@ def mock_state_directory(tmp_path):
 
 
 @pytest.fixture
-def mock_config(mock_mcp_servers_dir, mock_state_directory):
-    """创建模拟配置"""
+def mock_config(mock_mcp_servers_dir, mock_mcp_center_dir, mock_state_directory):
+    """创建模拟配置
+
+    scan_paths 包含两个目录，对应真实 VM 的：
+    - /opt/mcp-servers/servers       (RPM MCP)
+    - /usr/lib/sysagent/mcp_center/mcp_config  (mcp_center MCP)
+    """
     from witty_mcp_manager.config.config import ManagerConfig
 
     return ManagerConfig(
-        scan_paths=[str(mock_mcp_servers_dir)],
+        scan_paths=[str(mock_mcp_servers_dir), str(mock_mcp_center_dir)],
         state_directory=str(mock_state_directory),
         runtime_directory=str(mock_state_directory / "runtime"),
         socket_path=str(mock_state_directory / "mcp-manager.sock"),
@@ -555,7 +621,7 @@ def mock_real_mcp_servers_dir(  # noqa: PLR0913
     real_cvekit_mcp_config,
     real_cvekit_mcp_rpm_yaml,
 ):
-    """创建模拟的真实 MCP 服务器目录（基于 VM 配置）"""
+    """创建模拟的 /opt/mcp-servers/servers 目录（RPM MCP）"""
     import yaml
 
     servers_dir = tmp_path / "real_servers"
@@ -597,12 +663,52 @@ def mock_real_mcp_servers_dir(  # noqa: PLR0913
 
 
 @pytest.fixture
-def mock_real_config(mock_real_mcp_servers_dir, mock_state_directory):
-    """创建使用真实 MCP 配置的 mock config"""
+def mock_real_mcp_center_dir(
+    tmp_path,
+    real_mcp_server_mcp_config,
+    real_rag_mcp_config,
+):
+    """创建模拟的 /usr/lib/sysagent/mcp_center/mcp_config 目录
+
+    真实 VM 路径: /lib/sysagent/mcp_center/mcp_config/
+    包含内容:
+      mcp_server_mcp/config.json
+      rag_mcp/config.json
+      change.py                   (非 MCP，应被跳过)
+      mcp_to_app_config.toml      (文件，应被跳过)
+    """
+    mcp_center = tmp_path / "real_mcp_config"
+    mcp_center.mkdir()
+
+    # mcp_server_mcp（SSE）
+    mcp_server = mcp_center / "mcp_server_mcp"
+    mcp_server.mkdir()
+    (mcp_server / "config.json").write_text(json.dumps(real_mcp_server_mcp_config, indent=2))
+
+    # rag_mcp（SSE）
+    rag_mcp = mcp_center / "rag_mcp"
+    rag_mcp.mkdir()
+    (rag_mcp / "config.json").write_text(json.dumps(real_rag_mcp_config, indent=2))
+
+    # 非 MCP 文件（真实 VM 中存在，应被跳过）
+    (mcp_center / "change.py").write_text("# conversion script, not mcp")
+    (mcp_center / "mcp_to_app_config.toml").write_text("[app]")
+
+    return mcp_center
+
+
+@pytest.fixture
+def mock_real_config(mock_real_mcp_servers_dir, mock_real_mcp_center_dir, mock_state_directory):
+    """创建使用真实 MCP 配置的 mock config
+
+    scan_paths 对应真实 VM 的两个目录：
+    - /opt/mcp-servers/servers                     (RPM MCP)
+    - /usr/lib/sysagent/mcp_center/mcp_config      (mcp_center MCP)
+    """
     from witty_mcp_manager.config.config import ManagerConfig
 
     return ManagerConfig(
-        scan_paths=[str(mock_real_mcp_servers_dir)],
+        scan_paths=[str(mock_real_mcp_servers_dir), str(mock_real_mcp_center_dir)],
         state_directory=str(mock_state_directory),
         runtime_directory=str(mock_state_directory / "runtime"),
         socket_path=str(mock_state_directory / "mcp-manager.sock"),

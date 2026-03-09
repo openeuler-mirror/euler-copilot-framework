@@ -378,3 +378,62 @@ def create_app(server: IPCServer) -> FastAPI:
         )
 
     return app
+
+
+def create_app_for_docs() -> FastAPI:
+    """
+    创建仅用于文档生成的 FastAPI 应用（不需要实际服务器实例）
+
+    Returns:
+        FastAPI 应用实例
+
+    """
+    app = FastAPI(
+        title="Witty MCP Manager API",
+        description="""
+# Witty MCP Manager API
+
+通用 MCP Host/Loader，为 Witty AI 助手提供 MCP Server 管理能力。
+
+## 核心功能
+
+- **Registry API**: 列出/查询 MCP Server，支持启用/禁用
+- **Tools API**: 发现 MCP Server 提供的工具
+- **Tool Call API**: 调用 MCP Server 的工具
+- **Configure API**: 用户级凭据配置（env/headers）
+- **Runtime API**: 查询运行时会话状态
+- **Health API**: 健康检查
+
+## 身份认证
+
+所有 API 需在请求头中携带 `X-Witty-User` 标识用户身份（仅本机 UDS 访问）。
+
+## 传输方式
+
+- **STDIO**: 子进程模式，使用 pipe 通信
+- **SSE**: Server-Sent Events，连接远程服务
+- **Streamable HTTP**: HTTP 流式传输（预留）
+
+## 配置层级
+
+- **系统层**: RPM 安装的默认配置（只读）
+- **全局层**: 管理员通过 CLI 配置（影响所有用户）
+- **用户层**: 用户通过 API 配置（仅影响自己）
+        """,
+        version=__version__,
+        contact={
+            "name": "openEuler SIG-Intelligence",
+            "url": "https://atomgit.com/openeuler/euler-copilot-framework",
+        },
+        license_info={
+            "name": "MulanPSL-2.0",
+            "url": "https://license.coscl.org.cn/MulanPSL2",
+        },
+    )
+
+    app.include_router(health_router)
+    app.include_router(registry_router)
+    app.include_router(tools_router)
+    app.include_router(runtime_router)
+
+    return app

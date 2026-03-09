@@ -556,7 +556,7 @@ class TestIPCServerIntegration:
     ) -> None:
         """测试启用 server"""
         response = test_client.post(
-            "/v1/me/servers/test_mcp:enable",
+            "/v1/me/servers/test_mcp/enable",
             headers={HEADER_USER_ID: "user123"},
         )
         assert response.status_code == 200
@@ -578,7 +578,7 @@ class TestIPCServerIntegration:
         mock_dependencies["runtime_manager"].get_session = AsyncMock(return_value=None)
 
         response = test_client.post(
-            "/v1/me/servers/test_mcp:disable",
+            "/v1/me/servers/test_mcp/disable",
             headers={HEADER_USER_ID: "user123"},
         )
         assert response.status_code == 200
@@ -591,7 +591,7 @@ class TestIPCServerIntegration:
     def test_enable_nonexistent_server(self, test_client: TestClient) -> None:
         """测试启用不存在的 server"""
         response = test_client.post(
-            "/v1/me/servers/nonexistent:enable",
+            "/v1/me/servers/nonexistent/enable",
             headers={HEADER_USER_ID: "user123"},
         )
         assert response.status_code == 404

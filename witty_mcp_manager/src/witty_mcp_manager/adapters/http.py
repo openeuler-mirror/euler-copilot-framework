@@ -46,51 +46,34 @@ class StreamableHTTPAdapter(BaseAdapter):
 
         """
         super().__init__(server, config)
-        logger.warning("StreamableHTTPAdapter is not implemented yet, this is a placeholder for future MCP protocol")
+        logger.warning("StreamableHTTPAdapter is a placeholder for future MCP protocol - not yet implemented")
 
     async def connect(self, session: Session) -> None:
         """
         建立连接
 
-        Args:
-            session: 会话实例
-
         Raises:
-            AdapterError: 尚未实现
+            AdapterError: 协议未实现
 
         """
-        msg = "StreamableHTTPAdapter is not implemented yet"
+        msg = "StreamableHTTPAdapter is not implemented - waiting for MCP protocol specification"
         raise AdapterError(msg, adapter_type="streamable_http")
 
     async def disconnect(self) -> None:
-        """
-        断开连接
-
-        Raises:
-            AdapterError: 尚未实现
-
-        """
+        """断开连接"""
         if not self._connected:
             return
-        # 预留实现
         self._connected = False
-        self._clear_cache()
 
     async def discover_tools(self, *, force_refresh: bool = False) -> list[Tool]:
         """
         发现可用的 Tools
 
-        Args:
-            force_refresh: 是否强制刷新
-
-        Returns:
-            Tool 列表
-
         Raises:
-            AdapterError: 尚未实现
+            AdapterError: 协议未实现
 
         """
-        msg = "StreamableHTTPAdapter is not implemented yet"
+        msg = "StreamableHTTPAdapter is not implemented - waiting for MCP protocol specification"
         raise AdapterError(msg, adapter_type="streamable_http")
 
     async def call_tool(
@@ -102,17 +85,9 @@ class StreamableHTTPAdapter(BaseAdapter):
         """
         调用 Tool
 
-        Args:
-            tool_name: Tool 名称
-            arguments: 调用参数
-            timeout_ms: 超时时间（毫秒）
-
-        Returns:
-            调用结果
-
         Raises:
-            AdapterError: 尚未实现
+            AdapterError: 协议未实现
 
         """
-        msg = "StreamableHTTPAdapter is not implemented yet"
+        msg = "StreamableHTTPAdapter is not implemented - waiting for MCP protocol specification"
         raise AdapterError(msg, adapter_type="streamable_http")
