@@ -19,7 +19,6 @@ from .check import FileChecker
 from .loader.app import AppLoader
 from .loader.call import CallLoader
 from .loader.flow import FlowLoader
-from .loader.mcp import MCPLoader
 from .loader.service import ServiceLoader
 
 logger = logging.getLogger(__name__)
@@ -36,7 +35,6 @@ class Pool:
         """初始化资源池"""
         self.app_loader = AppLoader()
         self.call_loader = CallLoader()
-        self.mcp_loader = MCPLoader()
         self.service_loader = ServiceLoader()
         self.flow_loader = FlowLoader()
 
@@ -64,7 +62,6 @@ class Pool:
             logger.warning("[Pool] MCP目录%s不存在，创建中", root_dir + "mcp")
             await Path(root_dir + "mcp").unlink(missing_ok=True)
             await Path(root_dir + "mcp").mkdir(parents=True, exist_ok=True)
-
 
     async def init(self) -> None:
         """
@@ -129,19 +126,12 @@ class Pool:
                     await self.app_loader.delete(app, is_reload=True)
                     logger.warning("[Pool] 加载App %s 失败: %s", app, str(e))
 
-        # 载入MCP
-        logger.info("[Pool] 载入MCP")
-        await self.mcp_loader.init()
-
-
     async def set_vector(self) -> None:
         """向数据库中写入向量化数据"""
         # 对所有的Loader进行向量化
         await self.call_loader.set_vector()
         await self.service_loader.set_vector()
-        await self.mcp_loader.set_vector()
         await self.flow_loader.set_vector()
-
 
     async def get_flow_metadata(self, app_id: uuid.UUID) -> list[FlowInfo]:
         """从数据库中获取特定App的全部Flow的元数据"""
@@ -150,12 +140,10 @@ class Pool:
                 select(FlowInfo).where(FlowInfo.appId == app_id),
             )).all())
 
-
     async def get_flow(self, app_id: uuid.UUID, flow_id: str) -> Flow | None:
         """从文件系统中获取单个Flow的全部数据"""
         logger.info("[Pool] 获取工作流 %s", flow_id)
         return await self.flow_loader.load(app_id, flow_id)
-
 
     async def get_call(self, call_id: str) -> Any:
         """[Exception] 拿到Call的信息"""

@@ -17,6 +17,8 @@ from apps.schemas.llm import LLMFunctions, LLMToolCall
 from apps.schemas.task import AgentHistoryExtra, TaskData
 
 from .base import MCPBase
+from ...schemas.mcp_manager import MCPServerInfo
+from ...services.mcp_service import MCPServiceManager
 
 _logger = logging.getLogger(__name__)
 _env = SandboxedEnvironment(
@@ -228,3 +230,47 @@ class MCPHost(MCPBase):
 
         _logger.info("[MCPHost] 为查询 '%s' 选择了 %d 个工具", query, len(tools))
         return tools
+
+    async def get_tools(
+        self,
+        mcp_list: list[str] | None = None,
+        user_id: str = "root",
+    ) -> dict[str, MCPTools]:
+        """
+        通过 get_mcp_tools 方法获取 MCPTools 信息（取消 Embedding 向量匹配）
+        :param mcp_list: 要过滤的 MCP ID 列表，None 则返回所有 MCP 的工具
+        :return: 以 toolName 为 key、MCPTools 实例为 value 的字典
+        """  # noqa: D205
+        all_tools: list[MCPTools] = []
+
+        target_mcp_ids: list[str] = mcp_list or []
+        if not target_mcp_ids:
+            mcp_servers: list[MCPServerInfo] = await MCPServiceManager.get_mcp_servers(user_id=user_id)
+            target_mcp_ids = [mcp.mcp_id for mcp in mcp_servers]
+        _logger.warning("[MCPHost] 获取工具 | 输入 MCP 列表: %s | 处理后目标 MCP 列表: %s", mcp_list, target_mcp_ids)
+
+        for mcp_id in target_mcp_ids:
+            # 过滤无效的 MCP ID（空字符串/非字符串）
+            if not isinstance(mcp_id, str) or not mcp_id:
+                _logger.warning("[MCPHost] 无效的 MCP ID：%s，跳过", mcp_id)
+                continue
+
+            try:
+                # 调用 get_mcp_tools 方法
+                mcp_tools = await MCPServiceManager.get_mcp_tools(
+                    mcp_id=mcp_id,  # 去除首尾空格，避免无效 ID
+                    user_id=user_id,
+                )
+                # 检查返回值类型
+                if isinstance(mcp_tools, list):
+                    all_tools.extend(mcp_tools)
+                else:
+                    _logger.warning("[MCPHost] MCP %s 的工具列表格式异常：%s", mcp_id, type(mcp_tools))
+                    continue
+
+            except Exception as e:  # noqa: BLE001
+                _logger.warning("[MCPHost] 获取 MCP %s 的工具失败：%s", mcp_id, str(e))
+                continue
+
+        # 构建工具字典（自动去重：相同 toolName 保留最后一个）
+        return {tool.toolName: tool for tool in all_tools}

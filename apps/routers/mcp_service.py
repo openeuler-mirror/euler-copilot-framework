@@ -46,13 +46,13 @@ admin_router = APIRouter(
 
 @router.get("", response_model=GetMCPServiceListRsp | ResponseData)
 async def get_mcpservice_list(  # noqa: PLR0913
-    request: Request,
-    searchType: SearchType = SearchType.ALL,  # noqa: N803
-    keyword: str | None = None,
-    page: Annotated[int, Query(ge=1)] = 1,
-    *,
-    isInstall: bool | None = None,  # noqa: N803
-    isActive: bool | None = None,  # noqa: N803
+        request: Request,
+        searchType: SearchType = SearchType.ALL,  # noqa: N803
+        keyword: str | None = None,
+        page: Annotated[int, Query(ge=1)] = 1,
+        *,
+        isInstall: bool | None = None,  # noqa: N803
+        isActive: bool | None = None,  # noqa: N803
 ) -> JSONResponse:
     """GET /mcp?searchType=xxx&keyword=xxx&page=xxx&isInstall=xxx&isActive=xxx: 获取服务列表"""
     user_id = request.state.user_id
@@ -96,8 +96,8 @@ async def get_mcpservice_list(  # noqa: PLR0913
 
 @admin_router.put("", response_model=UpdateMCPServiceRsp)
 async def create_or_update_mcpservice(
-    request: Request,
-    data: UpdateMCPServiceRequest,
+        request: Request,
+        data: UpdateMCPServiceRequest,
 ) -> JSONResponse:
     """PUT /mcp: 新建或更新MCP服务"""
     if not data.mcp_id:
@@ -182,15 +182,15 @@ async def install_mcp_service(
 
 @admin_router.get("/{serviceId}", response_model=GetMCPServiceDetailRsp)
 async def get_service_detail(
-    service_id: Annotated[str, Path(..., alias="serviceId", description="服务ID")],
-    *,
-    edit: Annotated[bool, Query(..., description="是否为编辑模式")] = False,
+        request: Request,
+        service_id: Annotated[str, Path(..., alias="serviceId", description="服务ID")],
+        *,
+        edit: Annotated[bool, Query(..., description="是否为编辑模式")] = False,
 ) -> JSONResponse:
     """获取MCP服务详情"""
     # 获取MCP服务详情
     try:
-        data = await MCPServiceManager.get_mcp_service(service_id)
-        config = await MCPServiceManager.get_mcp_config(service_id)
+        data = await MCPServiceManager.get_mcp_info(mcp_id=service_id, user_id=request.state.user_id)
     except Exception as e:
         err = f"[MCPService] 获取MCP服务API失败: {e}"
         _logger.exception(err)
@@ -205,7 +205,7 @@ async def get_service_detail(
             ),
         )
 
-    if data is None or config is None:
+    if not data:
         return JSONResponse(
             status_code=status.HTTP_404_NOT_FOUND,
             content=jsonable_encoder(
@@ -222,20 +222,20 @@ async def get_service_detail(
         detail = EditMCPServiceMsg(
             serviceId=service_id,
             name=data.name,
-            description=data.description,
-            overview=config.overview,
-            data=config.model_dump(by_alias=True, exclude_none=True),
-            mcpType=config.mcpType,
+            description=data.summary,
+            overview=data.summary,
+            data={},
+            mcpType=None,
         )
     else:
         # 组装详情所需信息
         # 从数据库获取工具列表替代data.tools
-        tools = await MCPServiceManager.get_mcp_tools(service_id)
+        tools = await MCPServiceManager.get_mcp_tools(mcp_id=service_id, user_id=request.state.user_id)
         detail = GetMCPServiceDetailMsg(
             serviceId=service_id,
             name=data.name,
-            description=data.description,
-            overview=config.overview,
+            description=data.summary,
+            overview=data.summary,
             status=data.status,
             tools=tools,
         )
@@ -284,14 +284,14 @@ async def delete_service(serviceId: Annotated[str, Path()]) -> JSONResponse:  # 
 
 @router.post("/{mcpId}", response_model=ActiveMCPServiceRsp)
 async def active_or_deactivate_mcp_service(
-    request: Request,
-    mcpId: Annotated[str, Path()],  # noqa: N803
-    data: ActiveMCPServiceRequest,
+        request: Request,
+        mcpId: Annotated[str, Path()],  # noqa: N803
+        data: ActiveMCPServiceRequest,
 ) -> JSONResponse:
     """激活/取消激活mcp"""
     try:
         if data.active:
-            await MCPServiceManager.active_mcpservice(request.state.user_id, mcpId, data.mcp_env)
+            await MCPServiceManager.active_mcpservice(request.state.user_id, mcpId)
         else:
             await MCPServiceManager.deactive_mcpservice(request.state.user_id, mcpId)
     except Exception as e:

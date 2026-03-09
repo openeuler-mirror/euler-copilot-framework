@@ -29,6 +29,7 @@ from apps.schemas.enum_var import EventType
 from apps.schemas.llm import LLMToolCall
 from apps.schemas.mcp import MCPRiskConfirm
 from apps.schemas.task import AgentCheckpointExtra, AgentHistoryExtra, TaskData
+from apps.services.mcp_service import MCPServiceManager
 from apps.services.user import UserManager
 
 _logger = logging.getLogger(__name__)
@@ -53,7 +54,6 @@ class MCPAgentPrompt:
         )
         self._prompt_base_dir = Path(config.deploy.data_dir) / "prompts" / "system"
 
-
     def load_prompt(self, prompt_id: str, prompt_type: str = "part") -> str:
         """加载提示词"""
         prompt_file = self._prompt_base_dir / prompt_type / f"{prompt_id}.{self.language.value}.txt"
@@ -64,7 +64,6 @@ class MCPAgentPrompt:
             raise FileNotFoundError(err)
 
         return prompt_file.read_text(encoding="utf-8")
-
 
     def _format_env(self) -> str:
         """格式化环境变量"""
@@ -83,7 +82,6 @@ class MCPAgentPrompt:
             user_id=user_id,
         )
 
-
     def format_tools(self, tools: dict[str, MCPTools]) -> str:
         """格式化工具列表"""
         tool_prompt_template = self.load_prompt("tool")
@@ -92,7 +90,6 @@ class MCPAgentPrompt:
         template = self._env.from_string(tool_prompt_template)
 
         return template.render(tools=sorted_tools)
-
 
     def format(self, template: str, tools: dict[str, MCPTools]) -> str:
         """格式化提示词模板"""
@@ -128,7 +125,6 @@ class MCPAgentExecutor(BaseExecutor):
         description="流执行过程中的参数补充",
         alias="params",
     )
-
 
     async def init(self) -> None:
         """初始化MCP Agent"""
@@ -174,7 +170,6 @@ class MCPAgentExecutor(BaseExecutor):
         else:
             await self._restore_checkpoint()
 
-
     async def _restore_checkpoint(self) -> None:
         """从checkpoint恢复步骤计数和todo列表到内存变量"""
         if not self.task.state or not self.task.state.extraData:
@@ -191,13 +186,10 @@ class MCPAgentExecutor(BaseExecutor):
         except Exception:
             _logger.exception("[MCPAgentExecutor] 恢复checkpoint失败")
 
-
     async def create_tool_list(self, query: str) -> dict[str, MCPTools]:
         """创建工具列表"""
         _logger.info("[MCPAgentExecutor] 创建工具列表")
-        # TODO：这里目前只使用了Embedding
-        # TODO：后续考虑方案一：Embedding + Reranker进行工具选择；方案二（推荐）：tool_search() function
-        tool_list = await self._host.select_tools(query=query, mcp_list=self._mcp_list, top_n=20)
+        tool_list = await self._host.get_tools(mcp_list=self._mcp_list, user_id=self.task.metadata.userId)
 
         # 添加用于创建/更新TODO列表的工具
         update_todo_func = UPDATE_TOOL_FUNCTION[self.task.runtime.language]
@@ -220,7 +212,6 @@ class MCPAgentExecutor(BaseExecutor):
         )
         return tool_list
 
-
     def _update_last_context_status(self, step_status: StepStatus, output_data: dict | None = None) -> None:
         """更新最后一个context的状态(如果是当前步骤)"""
         if not self.task.state:
@@ -232,13 +223,12 @@ class MCPAgentExecutor(BaseExecutor):
             if output_data is not None:
                 self.task.context[-1].outputData = output_data
 
-
     async def _finish_message(
-        self,
-        role: str,
-        step_status: StepStatus,
-        input_data: dict | None = None,
-        output_data: dict | None = None,
+            self,
+            role: str,
+            step_status: StepStatus,
+            input_data: dict | None = None,
+            output_data: dict | None = None,
     ) -> None:
         """保存消息到历史记录"""
         if not self.task.state:
@@ -275,9 +265,9 @@ class MCPAgentExecutor(BaseExecutor):
             ),
         )
 
-
     async def handle_waiting_status(self) -> bool:
         """处理WAITING状态，判断用户是否批准执行"""
+
         async def _cancel_and_cleanup() -> None:
             """取消任务并清理状态的内部函数"""
             if not self.task.state:
@@ -324,11 +314,10 @@ class MCPAgentExecutor(BaseExecutor):
 
         return True
 
-
     async def handle_update_todo_step(
-        self,
-        tool_arguments: dict[str, Any],
-        tool_history: ExecutorHistory,
+            self,
+            tool_arguments: dict[str, Any],
+            tool_history: ExecutorHistory,
     ) -> None:
         """处理更新TODO列表步骤，直接接受大模型Function Call的参数并存储todo list"""
         if not self.task.state:
@@ -353,7 +342,6 @@ class MCPAgentExecutor(BaseExecutor):
         tool_history.outputData = output_data
         await self._push_message(EventType.STEP_OUTPUT, output_data)
 
-
     async def handle_read_todo_step(self, tool_history: ExecutorHistory) -> None:
         """处理读取TODO步骤,返回当前todo list"""
         if not self.task.state:
@@ -373,12 +361,11 @@ class MCPAgentExecutor(BaseExecutor):
         tool_history.outputData = output_data
         await self._push_message(EventType.STEP_OUTPUT, output_data)
 
-
     async def _handle_special_tool(
-        self,
-        selected_tool: MCPTools,
-        tool_arguments: dict[str, Any],
-        tool_history: ExecutorHistory,
+            self,
+            selected_tool: MCPTools,
+            tool_arguments: dict[str, Any],
+            tool_history: ExecutorHistory,
     ) -> bool:
         """处理特殊工具（TODO相关工具）"""
         if selected_tool.toolName == UPDATE_TOOL_FUNCTION[self.task.runtime.language]["name"]:
@@ -391,11 +378,10 @@ class MCPAgentExecutor(BaseExecutor):
 
         return False
 
-
     async def _check_and_confirm_risk(
-        self,
-        selected_tool: MCPTools,
-        tool_params: dict[str, Any],
+            self,
+            selected_tool: MCPTools,
+            tool_params: dict[str, Any],
     ) -> bool:
         """检查并确认工具执行风险；需要确认为True，可以执行为False"""
         # 如果用户设置了自动执行，跳过风险检查
@@ -403,11 +389,10 @@ class MCPAgentExecutor(BaseExecutor):
             return False
 
         # 检查最后一个 history 是否为同一个工具且已确认风险
-        # TODO：目前还有问题
         if (self.task.context and
-            self.task.context[-1].extraData and
-            self.task.context[-1].stepName == selected_tool.toolName and
-            AgentHistoryExtra.model_validate(self.task.context[-1].extraData).risk_confirmed is True):
+                self.task.context[-1].extraData and
+                self.task.context[-1].stepName == selected_tool.toolName and
+                AgentHistoryExtra.model_validate(self.task.context[-1].extraData).risk_confirmed is True):
             # 已确认风险
             _logger.info("[MCPAgentExecutor] 工具 %s 已确认风险，跳过风险检查", selected_tool.toolName)
             return False
@@ -428,12 +413,11 @@ class MCPAgentExecutor(BaseExecutor):
         )
         return True
 
-
     async def _execute_single_tool(
-        self,
-        tool_call: LLMToolCall,
-        selected_tool: MCPTools,
-        tool_history: ExecutorHistory,
+            self,
+            tool_call: LLMToolCall,
+            selected_tool: MCPTools,
+            tool_history: ExecutorHistory,
     ) -> None:
         """执行单个工具"""
         tool_params = tool_call.arguments
@@ -448,8 +432,12 @@ class MCPAgentExecutor(BaseExecutor):
             return
 
         # 使用选择的工具和参数调用MCP
-        mcp_client = await mcp_pool.get(selected_tool.mcpId, self.task.metadata.userId)
-        output_data = await mcp_client.call_tool(selected_tool.toolName, tool_params)
+        output_data = await MCPServiceManager.call_tool(
+            mcp_id=selected_tool.mcpId,
+            user_id=self.task.metadata.userId,
+            tool_name=selected_tool.toolName,
+            parameter=tool_params,
+        )
 
         # 检查工具执行是否出错
         if output_data.isError:
@@ -480,7 +468,6 @@ class MCPAgentExecutor(BaseExecutor):
         tool_history.outputData = decoded_message
         await self._push_message(EventType.STEP_OUTPUT, decoded_message)
 
-
     def _assemble_user_prompt(self) -> str:
         """组装用户提示词"""
         if not self.task.state:
@@ -493,7 +480,7 @@ class MCPAgentExecutor(BaseExecutor):
         # 判断当前步骤数是否超过最大步骤数
         if self._current_step_count >= AGENT_MAX_STEPS:
             _logger.warning("[MCPAgentExecutor] 当前步骤数 %d 已达到最大步骤数 %d",
-                          self._current_step_count, AGENT_MAX_STEPS)
+                            self._current_step_count, AGENT_MAX_STEPS)
             user_template += r"""
                 {alert.max_step_reached}
             """
@@ -506,7 +493,6 @@ class MCPAgentExecutor(BaseExecutor):
             """
 
         return self._prompt_mgmt.format(template=user_template, tools=self._tool_list)
-
 
     async def _add_initial_user_message_if_needed(self) -> None:
         """判断是否需要添加初始 user 消息，如果需要则添加"""
@@ -533,7 +519,6 @@ class MCPAgentExecutor(BaseExecutor):
                 step_status=StepStatus.SUCCESS,
                 input_data={"user": user_prompt},
             )
-
 
     async def _call_llm_and_create_pending_histories(self) -> list[ExecutorHistory]:
         """调用 LLM 并创建待执行的 history 列表"""
@@ -602,7 +587,6 @@ class MCPAgentExecutor(BaseExecutor):
 
         return pending_histories
 
-
     def _find_pending_histories_from_context(self) -> list[ExecutorHistory]:
         """从 context 中查找所有连续的 WAITING 状态的 history"""
         _logger.info("[MCPAgentExecutor] resume=True，从history中查找WAITING状态的记录")
@@ -615,7 +599,6 @@ class MCPAgentExecutor(BaseExecutor):
                 # 遇到第一个非WAITING状态就停止
                 break
         return pending_histories
-
 
     async def _execute_pending_histories(self, pending_histories: list[ExecutorHistory]) -> None:
         """统一执行所有待执行的 history"""
@@ -648,13 +631,12 @@ class MCPAgentExecutor(BaseExecutor):
 
             # 风险检查（非特殊工具才需要）
             if (
-                selected_tool.toolName not in IGNORE_RISK_TOOL
-                and await self._check_and_confirm_risk(selected_tool, tool_arguments)
+                    selected_tool.toolName not in IGNORE_RISK_TOOL
+                    and await self._check_and_confirm_risk(selected_tool, tool_arguments)
             ):
                 _logger.info("[MCPAgentExecutor] 工具 %s 需要风险确认，暂停执行", tool_name)
                 # 等待用户确认
                 break
-
 
             tool_call = LLMToolCall(
                 id=tool_call_id,
@@ -678,7 +660,6 @@ class MCPAgentExecutor(BaseExecutor):
                 # 继续执行，不中断整个流程
                 continue
 
-
     async def run_step(self, *, resume: bool = False) -> None:
         """执行步骤"""
         if not self.task.state:
@@ -695,8 +676,6 @@ class MCPAgentExecutor(BaseExecutor):
 
         await self._execute_pending_histories(pending_histories)
 
-
-    # TODO：当前还未接入和测试
     async def generate_params_with_null(self) -> None:
         """生成参数补充"""
         if not self.task.state:
@@ -734,8 +713,6 @@ class MCPAgentExecutor(BaseExecutor):
             {"message": error_msg, "params": params_with_null},
         )
 
-    # TODO：当前还未接入和测试
-    # TODO：考虑改为ask_user() function，让用户用自然语言澄清信息
     async def handle_param_status(self, history: ExecutorHistory) -> bool:
         """处理PARAM状态的逻辑"""
         if not self.task.state:
@@ -762,7 +739,6 @@ class MCPAgentExecutor(BaseExecutor):
         _logger.info("[MCPAgentExecutor] PARAM状态，参数已整合，状态改为WAITING")
         return True
 
-
     def _save_checkpoint(self) -> None:
         """保存步骤计数和todo列表到checkpoint"""
         if not self.task.state:
@@ -784,7 +760,6 @@ class MCPAgentExecutor(BaseExecutor):
             self.llm.input_tokens,
             self.llm.output_tokens,
         )
-
 
     async def run(self) -> None:
         """执行MCP Agent的主逻辑"""

@@ -35,7 +35,6 @@ class BaseExecutor(BaseModel, ABC):
         extra="allow",
     )
 
-
     @abstractmethod
     async def init(self) -> None:
         """初始化Executor"""
