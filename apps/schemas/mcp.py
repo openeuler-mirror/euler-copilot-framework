@@ -1,7 +1,7 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2023-2025. All rights reserved.
 """MCP 相关数据结构"""
 
-from enum import Enum
+from enum import Enum, StrEnum
 from typing import Any
 
 from pydantic import BaseModel, Field
@@ -142,3 +142,19 @@ class ActiveMCPServiceRequest(BaseModel):
 
     active: bool = Field(description="是否激活mcp服务")
     mcp_env: dict[str, Any] | None = Field(default=None, description="MCP服务环境变量", alias="mcpEnv")
+
+
+class MCPServerStatus(StrEnum):
+    DEGRADED = "degraded"
+    UNAVAILABLE = "unavailable"
+    READY = "ready"
+
+
+class MCPServerInfo(BaseModel):
+    mcp_id: str = Field(...)
+    name: str = Field(...)
+    summary: str = Field(...)
+    source: str = Field(...)
+    status: MCPServerStatus = Field(...)
+    status_reason: str | None = Field(None)
+    user_enabled: bool = Field(...)

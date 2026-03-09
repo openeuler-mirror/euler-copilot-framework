@@ -211,7 +211,7 @@ async def get_recently_used_applications(
 
 
 @router.get("/{appId}", response_model=GetAppPropertyRsp | ResponseData)
-async def get_application(appId: Annotated[uuid.UUID, Path()]) -> JSONResponse:  # noqa: N803
+async def get_application(request: Request,appId: Annotated[uuid.UUID, Path()]) -> JSONResponse:  # noqa: N803
     """获取应用详情"""
     try:
         app_data = await AppCenterManager.fetch_app_metadata_by_id(appId)
@@ -271,15 +271,16 @@ async def get_application(appId: Annotated[uuid.UUID, Path()]) -> JSONResponse: 
     elif isinstance(app_data, AgentAppMetadata):
         # 处理智能体应用（AGENT类型）
         mcp_service = []
+        mcp_servers = await MCPServiceManager.get_mcp_servers(request.state.user_id)
+        mcp_dict = {item.mcp_id: item for item in mcp_servers}
         if app_data.mcp_service:
-            for service in app_data.mcp_service:
-                mcp_collection = await MCPServiceManager.get_mcp_service(service)
+            for mcp_id in app_data.mcp_service:
                 # 当 mcp_collection 为 None 时忽略当前的 MCP Server
-                if mcp_collection is not None:
+                if mcp_id in mcp_dict:
                     mcp_service.append(AppMcpServiceInfo(
-                        id=uuid.UUID(service) if isinstance(service, str) else service,
-                        name=mcp_collection.name,
-                        description=mcp_collection.description,
+                        id=uuid.UUID(mcp_id) if isinstance(mcp_id, str) else mcp_id,
+                        name=mcp_dict[mcp_id].name,
+                        description=mcp_dict[mcp_id].summary,
                     ))
         result_msg = GetAppPropertyMsg(
             appId=str(app_data.id),

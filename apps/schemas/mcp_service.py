@@ -6,6 +6,7 @@ from typing import Any
 from pydantic import BaseModel, Field
 
 from apps.models.mcp import MCPInstallStatus, MCPTools, MCPType
+from apps.schemas.mcp_manager import MCPStatus
 from apps.schemas.response_data import ResponseData
 
 
@@ -60,10 +61,7 @@ class GetMCPServiceDetailMsg(BaseModel):
     description: str = Field(description="MCP服务描述")
     overview: str = Field(description="MCP服务概述")
     tools: list[MCPTools] = Field(description="MCP服务Tools列表", default=[])
-    status: MCPInstallStatus = Field(
-        description="MCP服务状态",
-        default=MCPInstallStatus.INIT,
-    )
+    status: MCPStatus = Field(...)
 
 
 class EditMCPServiceMsg(BaseModel):
@@ -74,7 +72,7 @@ class EditMCPServiceMsg(BaseModel):
     description: str = Field(description="MCP服务描述")
     overview: str = Field(description="MCP服务概述")
     data: dict[str, Any] = Field(description="MCP服务配置")
-    mcp_type: MCPType = Field(alias="mcpType", description="MCP 类型")
+    mcp_type: MCPType | None = Field(alias="mcpType", description="MCP 类型")
 
 
 class GetMCPServiceDetailRsp(ResponseData):

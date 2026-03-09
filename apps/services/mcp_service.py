@@ -2,15 +2,12 @@
 """MCP服务（插件中心）管理"""
 
 import logging
-import re
-import uuid
 from typing import Any
 
 from sqlalchemy import and_, delete, or_, select
 
 from apps.common.postgres import postgres
 from apps.constants import (
-    MCP_PATH,
     SERVICE_PAGE_SIZE,
 )
 from apps.models import (
@@ -18,19 +15,17 @@ from apps.models import (
     MCPInfo,
     MCPInstallStatus,
     MCPTools,
-    MCPType,
 )
 from apps.models.app import AppMCP
 from apps.scheduler.pool.loader.mcp import MCPLoader
-from apps.scheduler.pool.mcp.pool import mcp_pool
 from apps.schemas.enum_var import SearchType
 from apps.schemas.mcp import (
     MCPServerConfig,
-    MCPServerSSEConfig,
-    MCPServerStdioConfig,
     UpdateMCPServiceRequest,
 )
+from apps.schemas.mcp_manager import MCPServerInfo
 from apps.schemas.mcp_service import MCPServiceCardItem
+from apps.services.mcp_manager_service import MCPManagerAPI
 from apps.services.user import UserManager
 
 logger = logging.getLogger(__name__)
@@ -59,7 +54,6 @@ class MCPServiceManager:
             if mcp_info:
                 return mcp_info.status
             return MCPInstallStatus.FAILED
-
 
     @staticmethod
     async def fetch_mcp_services(  # noqa: PLR0913
@@ -91,26 +85,32 @@ class MCPServiceManager:
             for item in mcpservice_pools
         ]
 
+    @staticmethod
+    async def get_mcp_servers(user_id: str) -> list[MCPServerInfo]:
+        """获取所有MCP服务列表"""
+        async with MCPManagerAPI() as api:
+            return await api.get_mcp_list(user_id=user_id)
 
     @staticmethod
-    async def get_mcp_service(mcp_id: str) -> MCPInfo | None:
-        """获取MCP服务详细信息"""
-        async with postgres.session() as session:
-            return (await session.scalars(select(MCPInfo).where(MCPInfo.id == mcp_id))).one_or_none()
-
-
-    @staticmethod
-    async def get_mcp_config(mcp_id: str) -> MCPServerConfig:
-        """获取MCP服务配置"""
-        return await MCPLoader.get_config(mcp_id)
-
+    async def get_mcp_info(mcp_id: str, user_id: str) -> MCPServerInfo | None:
+        """获取MCP服务信息"""
+        async with MCPManagerAPI() as api:
+            mcp_list = await api.get_mcp_list(user_id=user_id)
+            for mcp in mcp_list:
+                if mcp.mcp_id == mcp_id:
+                    return mcp
+            return None
 
     @staticmethod
-    async def get_mcp_tools(mcp_id: str) -> list[MCPTools]:
-        """获取MCP可用工具"""
-        async with postgres.session() as session:
-            return list((await session.scalars(select(MCPTools).where(MCPTools.mcpId == mcp_id))).all())
+    async def call_tool(mcp_id: str, user_id: str, tool_name: str, parameter: dict) -> Any:
+        """调用MCP工具"""
+        async with MCPManagerAPI() as api:
+            return await api.call_tool(mcp_id=mcp_id, user_id=user_id, tool_name=tool_name, params=parameter)
 
+    @staticmethod
+    async def get_mcp_tools(mcp_id: str, user_id: str) -> list[MCPTools]:  # noqa: D102
+        async with MCPManagerAPI() as api:
+            return await api.get_mcp_tools(mcp_id=mcp_id, user_id=user_id)
 
     @staticmethod
     async def _build_search_conditions(
@@ -138,7 +138,6 @@ class MCPServiceManager:
             return MCPInfo.authorId.in_(author_user_ids)
         return None
 
-
     @staticmethod
     def _apply_user_filters(
             sql: Any,
@@ -157,7 +156,6 @@ class MCPServiceManager:
                 select(MCPActivated.mcpId).where(MCPActivated.userId == user_id),
             ))
         return sql
-
 
     @staticmethod
     async def _search_mcpservice(  # noqa: PLR0913
@@ -196,64 +194,6 @@ class MCPServiceManager:
 
         return result
 
-
-    @staticmethod
-    async def create_mcpservice(data: UpdateMCPServiceRequest, user_id: str) -> str:
-        """创建MCP服务"""
-        if data.mcp_type == MCPType.SSE:
-            config = MCPServerSSEConfig.model_validate(data.config)
-        else:
-            config = MCPServerStdioConfig.model_validate(data.config)
-
-        mcp_server = MCPServerConfig(
-            name=await MCPServiceManager.clean_name(data.name),
-            overview=data.overview,
-            description=data.description,
-            mcpServers={
-                data.mcp_id: config,
-            },
-            mcpType=data.mcp_type,
-            author=user_id,
-        )
-
-        async with postgres.session() as session:
-            mcp_info = (await session.scalars(select(MCPInfo).where(MCPInfo.name == mcp_server.name))).one_or_none()
-            if mcp_info:
-                mcp_server.name = f"{mcp_server.name}-{uuid.uuid4().hex[:6]}"
-                logger.warning("[MCPServiceManager] 已存在相同ID或名称的MCP服务")
-
-        logger.info("[MCPServiceManager] 创建mcp: %s", mcp_server.name)
-        mcp_path = MCP_PATH / "template" / data.mcp_id / "project"
-        index = None
-        if isinstance(config, MCPServerStdioConfig):
-            index = None
-            for i in range(len(config.args)):
-                if config.args[i] != "--directory":
-                    continue
-                index = i + 1
-                break
-            if index is not None:
-                if index >= len(config.args):
-                    config.args.append(str(mcp_path))
-                else:
-                    config.args[index] = str(mcp_path)
-            else:
-                config.args += ["--directory", str(mcp_path)]
-        async with postgres.session() as session:
-            await session.merge(MCPInfo(
-                id=data.mcp_id,
-                name=mcp_server.name,
-                overview=mcp_server.overview,
-                description=mcp_server.description,
-                mcpType=mcp_server.mcpType,
-                authorId=mcp_server.author or "",
-            ))
-            await session.commit()
-        await MCPLoader.save_one(data.mcp_id, mcp_server)
-        await MCPLoader.update_template_status(data.mcp_id, MCPInstallStatus.INIT)
-        return data.mcp_id
-
-
     @staticmethod
     async def update_mcpservice(data: UpdateMCPServiceRequest, user_id: str) -> str:
         """更新MCP服务"""
@@ -278,7 +218,7 @@ class MCPServiceManager:
             ))).all()
 
         for activated_user in activated_users:
-            await MCPServiceManager.deactive_mcpservice(user_id=activated_user.userId, mcp_id=data.mcp_id)
+            await MCPServiceManager.deactivate_mcpservice(user_id=activated_user.userId, mcp_id=data.mcp_id)
 
         mcp_config = MCPServerConfig(
             name=data.name,
@@ -304,7 +244,6 @@ class MCPServiceManager:
         await MCPLoader.update_template_status(data.mcp_id, MCPInstallStatus.INIT)
         return data.mcp_id
 
-
     @staticmethod
     async def delete_mcpservice(mcp_id: str) -> None:
         """删除MCP服务"""
@@ -315,46 +254,22 @@ class MCPServiceManager:
             await session.execute(stmt)
             await session.commit()
 
-
     @staticmethod
     async def active_mcpservice(
             user_id: str,
             mcp_id: str,
-            mcp_env: dict[str, Any] | None = None,
     ) -> None:
         """激活MCP服务"""
-        if mcp_env is None:
-            mcp_env = {}
-
-        async with postgres.session() as session:
-            mcp_info = (await session.scalars(select(MCPInfo).where(MCPInfo.id == mcp_id))).one_or_none()
-            if not mcp_info:
-                err = "[MCPServiceManager] MCP服务未找到"
-                raise ValueError(err)
-            if mcp_info.status != MCPInstallStatus.READY:
-                err = "[MCPServiceManager] MCP服务未准备就绪"
-                raise RuntimeError(err)
-        await MCPLoader.user_active_template(user_id, mcp_id, mcp_env)
-
+        async with MCPManagerAPI() as api:
+            await api.activate_mcp(mcp_id=mcp_id, user_id=user_id)
 
     @staticmethod
-    async def deactive_mcpservice(
+    async def deactive_mcpservice(  # noqa: D102
             user_id: str,
             mcp_id: str,
     ) -> None:
-        """取消激活MCP服务"""
-        try:
-            await mcp_pool.stop(mcp_id=mcp_id, user_id=user_id)
-        except KeyError:
-            logger.warning("[MCPServiceManager] MCP服务无进程")
-        await MCPLoader.user_deactive_template(user_id, mcp_id)
-
-
-    @staticmethod
-    async def clean_name(name: str) -> str:
-        """移除MCP服务名称中的特殊字符"""
-        invalid_chars = r'[\\\/:*?"<>|]'
-        return re.sub(invalid_chars, "_", name)
+        async with MCPManagerAPI() as api:
+            await api.deactivate_mcp(mcp_id=mcp_id, user_id=user_id)
 
     @staticmethod
     async def is_user_actived(user_id: str, mcp_id: str) -> bool:
@@ -367,14 +282,6 @@ class MCPServiceManager:
                 ),
             ))).one_or_none()
             return bool(mcp_info)
-
-
-    @staticmethod
-    async def query_mcp_tools(mcp_id: str) -> list[MCPTools]:
-        """查询MCP工具"""
-        async with postgres.session() as session:
-            return list((await session.scalars(select(MCPTools).where(MCPTools.mcpId == mcp_id))).all())
-
 
     @staticmethod
     async def install_mcpservice(user_id: str, service_id: str, *, install: bool) -> None:
