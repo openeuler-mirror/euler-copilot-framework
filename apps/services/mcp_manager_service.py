@@ -8,7 +8,7 @@ import mcp.types as types
 from aiohttp import ClientError, ClientResponseError
 
 from apps.models.mcp import MCPTools
-from apps.schemas.mcp_manager import MCPServerInfo
+from apps.schemas.mcp import MCPServerInfo
 
 UDS_PATH = "/run/witty/mcp-manager.sock"
 API_BASE_URL = "http://localhost"

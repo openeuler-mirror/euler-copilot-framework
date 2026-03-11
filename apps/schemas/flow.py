@@ -133,6 +133,8 @@ class AgentAppMetadata(AppMetadataBase):
     """智能体App的元数据"""
 
     app_type: AppType = Field(default=AppType.AGENT, description="应用类型", frozen=True)
+    name: str | None = Field(default=None, description="Agent名称，如OE-智能运维助手")
+    description: str | None = Field(default=None, description="Agent核心能力描述")
     mcp_service: list[str] = Field(default=[], description="MCP服务id列表")
 
 

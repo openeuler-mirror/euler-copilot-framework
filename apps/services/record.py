@@ -6,7 +6,7 @@ import logging
 import uuid
 from typing import Literal
 
-from sqlalchemy import and_, select
+from sqlalchemy import and_, select, delete
 
 from apps.common.postgres import postgres
 from apps.common.security import Security
@@ -23,9 +23,9 @@ class RecordManager:
 
     @staticmethod
     async def get_conversation_and_record(
-        user_id: str,
-        conversation_id: uuid.UUID,
-        record_id: uuid.UUID | None = None,
+            user_id: str,
+            conversation_id: uuid.UUID,
+            record_id: uuid.UUID | None = None,
     ) -> tuple[bool, PgRecord | None]:
         """
         验证对话是否存在且获取已存在的记录
@@ -81,16 +81,15 @@ class RecordManager:
                         PgRecord.userId == user_id,
                         PgRecord.conversationId == conversation_id,
                     ),
-            ))).one_or_none()
+                ))).one_or_none()
             return result is not None
-
 
     @staticmethod
     async def insert_record_data(
-        user_id: str,
-        conversation_id: uuid.UUID,
-        record: PgRecord,
-        metadata: PgRecordMetadata,
+            user_id: str,
+            conversation_id: uuid.UUID,
+            record: PgRecord,
+            metadata: PgRecordMetadata,
     ) -> uuid.UUID | None:
         """Record和RecordMetadata插入PostgreSQL"""
         # 验证对话存在并检查是否有同ID的记录
@@ -108,11 +107,11 @@ class RecordManager:
             if existing_record:
                 logger.warning("[RecordManager] 记录已存在,删除旧记录后重新保存: %s", record.id)
                 # 删除已存在的记录及其元数据
-                existing_metadata = (await session.scalars(
-                    select(PgRecordMetadata).where(PgRecordMetadata.recordId == record.id),
-                )).one_or_none()
-                if existing_metadata:
-                    await session.delete(existing_metadata)
+                if record.id is not None:
+                    delete_metadata_stmt = delete(PgRecordMetadata).where(
+                        PgRecordMetadata.recordId == record.id
+                    )
+                    await session.execute(delete_metadata_stmt)
                 await session.delete(existing_record)
                 await session.flush()
 
@@ -122,13 +121,12 @@ class RecordManager:
 
         return record.id
 
-
     @staticmethod
     async def query_record_by_conversation_id(
-        user_id: str,
-        conversation_id: uuid.UUID,
-        total_pairs: int | None = None,
-        order: Literal["desc", "asc"] = "desc",
+            user_id: str,
+            conversation_id: uuid.UUID,
+            total_pairs: int | None = None,
+            order: Literal["desc", "asc"] = "desc",
     ) -> list[RecordData]:
         """查询ConversationID的最后n条问答对"""
         # 验证对话是否存在
