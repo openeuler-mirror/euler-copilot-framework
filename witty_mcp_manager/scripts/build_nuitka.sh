@@ -99,6 +99,8 @@ if ! "${PYTHON_CMD[@]}" -c "import nuitka" 2>/dev/null; then
     exit 1
 fi
 
+NUITKA_VERSION="$("${PYTHON_CMD[@]}" -m nuitka --version 2>/dev/null)"
+
 echo "=============================================="
 echo "Witty MCP Manager - Nuitka Build"
 echo "=============================================="
@@ -106,7 +108,7 @@ echo "Mode:        ${MODE}"
 echo "Output:      ${OUTPUT_DIR}"
 echo "Entry:       ${ENTRY_POINT}"
 echo "Python:      $("${PYTHON_CMD[@]}" --version)"
-echo "Nuitka:      $("${PYTHON_CMD[@]}" -m nuitka --version | head -1)"
+echo "Nuitka:      $(printf '%s\n' "${NUITKA_VERSION}" | sed -n '1p')"
 echo "=============================================="
 
 # Clean if requested
@@ -144,11 +146,10 @@ NUITKA_OPTS=(
     # Anti-bloat optimizations (reduce size) - plugin is auto-enabled
     "--noinclude-pytest-mode=nofollow"
     "--noinclude-setuptools-mode=nofollow"
-    "--noinclude-custom-mode=setuptools:nofollow"
-    "--noinclude-custom-mode=pip:nofollow"
-    "--noinclude-custom-mode=wheel:nofollow"
-    "--noinclude-custom-mode=distutils:nofollow"
-    "--noinclude-custom-mode=pkg_resources:nofollow"
+    "--nofollow-import-to=pip"
+    "--nofollow-import-to=wheel"
+    "--nofollow-import-to=distutils"
+    "--nofollow-import-to=pkg_resources"
     
     # Remove debug/test code
     "--python-flag=no_docstrings"
