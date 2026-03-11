@@ -16,6 +16,7 @@ class FileActionEnum(str, Enum):
     LS = "ls"          # 查看文件/目录
     CAT = "cat"        # 读取文件内容
     ADD = "add"        # 新建空文件
+    MKDIR = "mkdir"    # 创建目录
     APPEND = "append"  # 追加内容
     EDIT = "edit"      # 覆盖内容
     RENAME = "rename"  # 重命名
@@ -251,3 +252,24 @@ class FileManager:
                 raise IsADirectoryError(self._get_error_msg(f"路径是目录，需开启recursive=True递归删除：{file_path}", f"Path is directory, set recursive=True to delete: {file_path}"))
             shutil.rmtree(file_path)
         logger.info(self._get_error_msg(f"路径删除成功：{file_path}", f"Path deleted successfully: {file_path}"))
+
+    def mkdir(self,
+              dir_path: str,
+              parents: bool = Field(True, description="是否递归创建父目录（类似mkdir -p）"),
+              exist_ok: bool = Field(True, description="目录已存在时是否忽略错误")) -> None:
+        """
+        创建目录（Python实现mkdir功能）
+        :param dir_path: 目录路径（必填）
+        :param parents: 是否递归创建父目录（默认False，设置为True则类似mkdir -p）
+        :param exist_ok: 目录已存在时是否忽略错误（默认True）
+        """
+        try:
+            # 递归创建（parents=True）或仅创建单层目录（parents=False）
+            os.makedirs(dir_path, exist_ok=exist_ok) if parents else os.mkdir(dir_path)
+            logger.info(self._get_error_msg(f"目录创建成功：{dir_path}", f"Directory created successfully: {dir_path}"))
+        except FileExistsError:
+            if not exist_ok:
+                raise FileExistsError(self._get_error_msg(f"目录已存在：{dir_path}", f"Directory already exists: {dir_path}"))
+            logger.info(self._get_error_msg(f"目录已存在，跳过创建：{dir_path}", f"Directory exists, skip creation: {dir_path}"))
+        except NotADirectoryError:
+            raise NotADirectoryError(self._get_error_msg(f"路径包含非目录文件，无法创建目录：{dir_path}", f"Path contains non-directory file, cannot create directory: {dir_path}"))
