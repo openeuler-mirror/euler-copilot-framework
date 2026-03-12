@@ -1,0 +1,23 @@
+Tool Name: stream_output
+Tool Description:
+1. Core Function: 
+   Real-time output of task execution process/results, generate human-readable natural language content, covering all stages including self-introduction and task execution;
+2. Calling Timing (Must be strictly followed):
+   - Self-introduction scenario: Call immediately after invoking the self_introduce tool, and only call once;
+   - Task execution scenario: Call separately after the completion of each stage: task planning / execution initialization / content generation / result feedback / verification feedback / completion result;
+3. Parameter Specifications (Required Fields):
+   - content: Fixed stage identifier, only the following values are allowed:
+     <Self-introduction> / <Task Planning> / <Execution Process - Initialization> / <Execution Process - Content Generation> / <Execution Process - Result Feedback> / <Verification Feedback> / <Completion Result>;
+   - is_final_summary: Only fill in True for the <Completion Result> stage, fill in False for all other stages;
+4. Prohibited Scenarios:
+   - Repeated calls during the self-introduction stage;
+   - Calls when there is no substantive content;
+   - Calls when the stage identifier is customized/incorrect.
+
+Input Parameter Examples:
+# Self-introduction stage
+{"content": "<Self-introduction>", "is_final_summary": false}
+# Task planning stage
+{"content": "<Task Planning>", "is_final_summary": false}
+# Completion result stage
+{"content": "<Completion Result>", "is_final_summary": true}
