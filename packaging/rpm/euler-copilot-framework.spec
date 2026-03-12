@@ -203,7 +203,7 @@ fi
 
 
 %changelog
-* Thu Mar 12 2026 cui-gaoleng <tangshunan1@huawei.com> - 2.2.0-2
+* Fri Mar 13 2026 cui-gaoleng <tangshunan1@huawei.com> - 2.2.0-2
 - Update Framework for context
 * Tue Feb 24 2026 Hongyu Shi <shywzt@iCloud.com> - 2.2.0-1
 - Add main package alias witty-framework-lite
