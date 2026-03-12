@@ -8,17 +8,18 @@ from typing import Any
 from jinja2 import BaseLoader
 from jinja2.sandbox import SandboxedEnvironment
 from sqlalchemy import select
-
+from pathlib import Path
 from apps.common.postgres import postgres
-from apps.llm import LLM, embedding
+from apps.llm import LLM, embedding, token_calculator
 from apps.models import MCPTools
 from apps.models.task import ExecutorHistory
 from apps.schemas.llm import LLMFunctions, LLMToolCall
 from apps.schemas.task import AgentHistoryExtra, TaskData
 
-from .base import MCPBase
-from ...schemas.mcp_manager import MCPServerInfo
-from ...services.mcp_service import MCPServiceManager
+from apps.scheduler.mcp_agent.base import MCPBase
+from apps.scheduler.mcp_agent.context import ContextConfig, ContextManager
+from apps.schemas.mcp import MCPServerInfo
+from apps.services.mcp_service import MCPServiceManager
 
 _logger = logging.getLogger(__name__)
 _env = SandboxedEnvironment(
@@ -27,6 +28,17 @@ _env = SandboxedEnvironment(
     trim_blocks=True,
     lstrip_blocks=True,
 )
+config = ContextConfig(
+    short_window_size=5,  # 滑动窗口：保留最近 N 轮对话
+    ctx_length=128000,  # 模型最大上下文长度
+    token_safety_ratio=0.8,  # Token 安全占比
+    enable_abstract_replace=True,  # 开启摘要替换
+    enable_stopword_filter=True,  # 开启停用词过滤
+    enable_smart_truncation=True,  # 开启兜底截断
+    stop_words_path=Path.cwd() / "apps" / "common" / "stopwords.txt",
+)
+NO_INTERMEDIATE_STREAM_TOOLS = {"self_introduce", "update_todo_list", "read_todo_list"}
+
 
 class MCPHost(MCPBase):
     """MCP宿主服务"""
@@ -41,7 +53,6 @@ class MCPHost(MCPBase):
         except Exception:
             _logger.exception("[MCPHost] 解析上下文extraData失败")
             return None
-
 
     def _collect_tool_calls(self, context: list[ExecutorHistory], start_index: int) -> list[dict[str, Any]]:
         """收集从 start_index 开始的所有连续 tool 消息，构建 tool_calls 列表"""
@@ -70,12 +81,11 @@ class MCPHost(MCPBase):
             j += 1
         return tool_calls
 
-
     def _build_assistant_message_from_ctx(
-        self,
-        ctx: ExecutorHistory,
-        context: list[ExecutorHistory],
-        current_index: int,
+            self,
+            ctx: ExecutorHistory,
+            context: list[ExecutorHistory],
+            current_index: int,
     ) -> dict[str, Any] | None:
         """从 context 构建 assistant 消息（包含 tool_calls）"""
         assistant_content = ctx.inputData.get("assistant", "")
@@ -92,7 +102,6 @@ class MCPHost(MCPBase):
 
         return assistant_msg
 
-
     @staticmethod
     def _build_tool_message_from_ctx(ctx: ExecutorHistory, tool_call_id: str) -> dict[str, Any] | None:
         """从 context 构建 tool 消息"""
@@ -106,19 +115,19 @@ class MCPHost(MCPBase):
         }
 
     def build_messages(
-        self,
-        task: TaskData,
-        system_prompt: str,
+            self,
+            task: TaskData,
+            system_prompt: str,
     ) -> list[dict[str, Any]]:
         """构建LLM消息列表"""
         # 首先添加系统提示词
         messages: list[dict[str, Any]] = [
             {"role": "system", "content": system_prompt},
         ]
+        system_prompt_token_length = token_calculator.calculate_token_length(messages)
+        _logger.info("[MCPHost] 系统提示词(Token长度: %d)", system_prompt_token_length)
 
         # 遍历历史记录，构建消息
-        # TODO：此处没有考虑Token长度（包括单个工具返回超长）的问题
-        # TODO：后续演进考虑上下文压缩方案和单条过长截断方案
         msg_index = 0
         while msg_index < len(task.context):
             ctx = task.context[msg_index]
@@ -144,15 +153,29 @@ class MCPHost(MCPBase):
         return messages
 
     async def call_llm_and_parse_tools(
-        self,
-        task: TaskData,
-        llm: LLM,
-        tool_list: dict[str, MCPTools],
-        system_prompt: str,
+            self,
+            task: TaskData,
+            llm: LLM,
+            tool_list: dict[str, MCPTools],
+            system_prompt: str,
     ) -> tuple[str, list[LLMToolCall] | None]:
         """调用LLM并解析工具调用"""
         # 构建消息
         messages = self.build_messages(task, system_prompt)
+        _logger.info("[MCPHost] LLM最大上下文窗口大小: %d，LLM总上下文长度: %d", llm.config.maxToken,
+                     llm.config.ctxLength)
+
+        messages = self.build_messages(task, system_prompt)
+        before_token_length = token_calculator.calculate_token_length(messages)
+        _logger.info("[MCPHost] 构建消息完成，Token长度: %d，消息数量: %d", before_token_length, len(messages))
+
+        # 获取当前llm上下文长度
+        config.ctx_length = llm.config.ctxLength
+
+        fixed_messages = await ContextManager.build(messages=messages, conversation_id=task.metadata.conversationId,
+                                                    config=config)  # noqa: E501
+        after_token_length = token_calculator.calculate_token_length(fixed_messages)
+        _logger.info("[MCPHost] 消息修正完成，Token长度: %d，消息数量: %d", after_token_length, len(fixed_messages))
 
         # 创建工具列表
         llm_tools = [
@@ -165,7 +188,6 @@ class MCPHost(MCPBase):
         ]
 
         # 非流式调用LLM，获取thinking和tool_call
-        # TODO：之后应演进为流式调用
         full_response = None
         async for chunk in llm.call(messages, streaming=False, tools=llm_tools, include_thinking=True, temperature=0):
             full_response = chunk
@@ -188,12 +210,11 @@ class MCPHost(MCPBase):
 
         return text_response, full_response.tool_call
 
-
     async def select_tools(
-        self,
-        query: str,
-        mcp_list: list[str] | None = None,
-        top_n: int = 15,
+            self,
+            query: str,
+            mcp_list: list[str] | None = None,
+            top_n: int = 15,
     ) -> dict[str, MCPTools]:
         """使用 Embedding 选择最贴近 query 的 top N 工具"""
         # 检查 embedding 是否已初始化
@@ -232,9 +253,9 @@ class MCPHost(MCPBase):
         return tools
 
     async def get_tools(
-        self,
-        mcp_list: list[str] | None = None,
-        user_id: str = "root",
+            self,
+            mcp_list: list[str] | None = None,
+            user_id: str = "root",
     ) -> dict[str, MCPTools]:
         """
         通过 get_mcp_tools 方法获取 MCPTools 信息（取消 Embedding 向量匹配）
