@@ -1219,10 +1219,4 @@ class MCPAgentExecutor(BaseExecutor):
                     )
 
             save_abstract.add_done_callback(_handle_abstract_task_done)
-        # 运行结束清理MCP客户端
-        for mcp_service in self._mcp_list:
-            try:
-                await mcp_pool.stop(mcp_service.id, self.task.metadata.userId)
-            except Exception:
-                _logger.exception("[MCPAgentExecutor] 停止MCP客户端时发生错误")
         self._save_checkpoint()
