@@ -183,7 +183,7 @@ class MCPAgentExecutor(BaseExecutor):
 
         # 初始化必要变量
         self._tool_calls = []
-        self._mcp_list: list = []
+        self._mcp_list: list = self.app_metadata.mcp_service
         self._tool_list: dict[str, MCPTools] = {}
         self._system_prompt = ""
         self._step_tool_call_id = ""
