@@ -91,6 +91,7 @@ class DiagnosticsInfo(BaseModel):
     deps_missing: DepsMissing | None = Field(default=None, description="缺失的依赖")
     files_valid: bool = Field(default=True, description="文件是否有效")
     errors: list[str] = Field(default_factory=list, description="错误列表")
+    sse_reachable: bool | None = Field(default=None, description="SSE/HTTP 后端是否可达")
 
 
 class DepsMissing(BaseModel):

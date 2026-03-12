@@ -83,6 +83,39 @@ class TestDetermineServerStatusEdgeCases:
         server.diagnostics.command_allowed = True
         server.diagnostics.errors = []
         server.diagnostics.deps_missing = {"system": [], "python": []}
+        server.diagnostics.sse_reachable = None
+
+        status, reason = _determine_server_status(server)
+        assert status == "ready"
+        assert reason is None
+
+    def test_sse_backend_unreachable(self) -> None:
+        """SSE 后端不可达时返回 unavailable"""
+        from witty_mcp_manager.ipc.routes.registry import _determine_server_status
+
+        server = MagicMock()
+        server.diagnostics = MagicMock()
+        server.diagnostics.command_allowed = True
+        server.diagnostics.errors = []
+        server.diagnostics.deps_missing = {}
+        server.diagnostics.sse_reachable = False
+        server.default_config.sse = MagicMock()
+        server.default_config.sse.url = "http://127.0.0.1:19999/sse"
+
+        status, reason = _determine_server_status(server)
+        assert status == "unavailable"
+        assert "19999" in (reason or "")
+
+    def test_sse_backend_reachable(self) -> None:
+        """SSE 后端可达时返回 ready"""
+        from witty_mcp_manager.ipc.routes.registry import _determine_server_status
+
+        server = MagicMock()
+        server.diagnostics = MagicMock()
+        server.diagnostics.command_allowed = True
+        server.diagnostics.errors = []
+        server.diagnostics.deps_missing = {}
+        server.diagnostics.sse_reachable = True
 
         status, reason = _determine_server_status(server)
         assert status == "ready"
@@ -124,43 +157,91 @@ class TestValidateConfigureRequest:
 class TestApplyConfigureRequest:
     """_apply_configure_request 测试"""
 
-    def test_apply_env(self) -> None:
-        """测试应用 env"""
-        override = Override(scope="user/alice")
-        request = ConfigureRequest(env={"API_KEY": "secret"})
-        _apply_configure_request(override, request)
-        assert override.env == {"API_KEY": "secret"}
+    def _make_secrets(self) -> MagicMock:
+        """构造一个简单的 SecretsManager mock"""
+        secrets = MagicMock()
+        secrets.save_secret = MagicMock(return_value=None)
+        return secrets
 
-    def test_apply_headers(self) -> None:
-        """测试应用 headers"""
+    def test_apply_env_stores_secret_refs(self) -> None:
+        """env 明文应被存入 SecretsManager，override 中保存 ${secrets:...} 引用"""
         override = Override(scope="user/alice")
-        request = ConfigureRequest(headers={"Authorization": "Bearer tok"})
-        _apply_configure_request(override, request)
-        assert override.headers == {"Authorization": "Bearer tok"}
+        plaintext = "MY_PLAINTEXT_VALUE_xyz987"
+        request = ConfigureRequest(env={"API_KEY": plaintext})
+        secrets = self._make_secrets()
+        _apply_configure_request(override, request, secrets, "alice", "git_mcp")
+        # SecretsManager.save_secret 应被调用，第二个参数是明文值
+        assert secrets.save_secret.called
+        call_args = secrets.save_secret.call_args
+        assert call_args[0][1] == plaintext
+        # override.env 应存储 ${secrets:...} 引用，而非明文
+        ref = override.env.get("API_KEY", "")
+        assert ref.startswith("${secrets:")
+        assert plaintext not in ref  # 明文值不出现在引用中
+
+    def test_apply_headers_stores_secret_refs(self) -> None:
+        """headers 明文应被存入 SecretsManager，override 中保存 ${secrets:...} 引用"""
+        override = Override(scope="user/alice")
+        plaintext = "Bearer MY_TOKEN_abc123"
+        request = ConfigureRequest(headers={"Authorization": plaintext})
+        secrets = self._make_secrets()
+        _apply_configure_request(override, request, secrets, "alice", "sse_mcp")
+        ref = override.headers.get("Authorization", "")
+        assert ref.startswith("${secrets:")
+        assert plaintext not in ref
 
     def test_apply_none_fields_unchanged(self) -> None:
         """测试 None 字段不修改"""
         override = Override(scope="user/alice", env={"EXISTING": "val"})
         request = ConfigureRequest()  # env=None, headers=None
-        _apply_configure_request(override, request)
+        secrets = self._make_secrets()
+        _apply_configure_request(override, request, secrets, "alice", "git_mcp")
         assert override.env == {"EXISTING": "val"}
+        secrets.save_secret.assert_not_called()
+
+    def test_secret_key_sanitizes_special_chars(self) -> None:
+        """user_id、mcp_id 或 key 中的特殊字符应被替换为安全字符"""
+        from witty_mcp_manager.ipc.routes.registry import _make_secret_key
+
+        key = _make_secret_key("user@example.com", "my-mcp/v2", "env", "KEY.NAME")
+        # 不包含 @、/、. 等字符
+        assert "@" not in key
+        assert "/" not in key
+        assert "." not in key
 
 
 class TestBuildConfigureResult:
     """_build_configure_result 测试"""
 
-    def test_basic(self) -> None:
-        """测试基本结果构建"""
+    def test_secret_refs_masked_in_response(self) -> None:
+        """${secrets:...} 引用在响应中应被替换为 secret://***"""
         override = Override(
             scope="user/alice",
-            env={"KEY": "val"},
-            headers={"Auth": "tok"},
+            env={"API_KEY": "${secrets:alice__git_mcp__env__API_KEY}"},
+            headers={"Authorization": "${secrets:alice__git_mcp__hdr__Authorization}"},
         )
         result = _build_configure_result("git_mcp", override)
         assert result.mcp_id == "git_mcp"
-        assert result.env == {"KEY": "val"}
-        assert result.headers == {"Auth": "tok"}
+        assert result.env["API_KEY"] == "secret://***"
+        assert result.headers["Authorization"] == "secret://***"
         assert result.updated_at is not None
+
+    def test_non_secret_values_pass_through(self) -> None:
+        """非 ${secrets:...} 值应原样返回"""
+        override = Override(
+            scope="user/alice",
+            env={"MODE": "debug"},
+            headers={},
+        )
+        result = _build_configure_result("git_mcp", override)
+        assert result.env["MODE"] == "debug"
+
+    def test_empty_dicts(self) -> None:
+        """空 env/headers 不报错"""
+        override = Override(scope="user/alice")
+        result = _build_configure_result("git_mcp", override)
+        assert result.env == {}
+        assert result.headers == {}
 
 
 # =============================================================================
@@ -351,6 +432,9 @@ class TestIPCServerConfigureEndpoint:
             timeouts=Timeouts(),
             concurrency=Concurrency(),
         )
+        # SecretsManager mock：configure 路由需要 overlay_resolver.secrets
+        overlay_resolver.secrets = MagicMock()
+        overlay_resolver.secrets.save_secret = MagicMock(return_value=None)
 
         runtime_manager = MagicMock(spec=RuntimeManager)
         runtime_manager.list_sessions = AsyncMock(return_value=[])
@@ -421,15 +505,21 @@ class TestIPCServerConfigureEndpoint:
         test_client: TestClient,
         mock_deps: dict[str, Any],
     ) -> None:
-        """测试配置 env"""
+        """测试配置 env：明文不回显，返回 secret://*** 引用"""
         response = test_client.post(
             "/v1/me/servers/test_mcp/configure",
             headers={HEADER_USER_ID: "user123"},
-            json={"env": {"API_KEY": "secret"}},
+            json={"env": {"API_KEY": "my_plaintext_token"}},
         )
         assert response.status_code == 200
         data = response.json()
         assert data["success"]
+        # 明文不应出现在响应中
+        env = data["data"]["env"]
+        assert env.get("API_KEY") == "secret://***"
+        assert "my_plaintext_token" not in str(data)
+        # SecretsManager.save_secret 应被调用
+        mock_deps["overlay_resolver"].secrets.save_secret.assert_called()
         mock_deps["overlay_storage"].save_override.assert_called()
 
     def test_list_servers_with_disabled(

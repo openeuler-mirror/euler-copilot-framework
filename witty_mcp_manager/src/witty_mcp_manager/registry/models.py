@@ -178,6 +178,10 @@ class Diagnostics(BaseModel):
     command_allowed: bool = Field(default=True, description="命令是否在白名单中")
     command_exists: bool = Field(default=True, description="命令是否存在")
     config_valid: bool = Field(default=True, description="配置是否有效")
+    sse_reachable: bool | None = Field(
+        default=None,
+        description="SSE/HTTP 后端是否可达（None=未检测，True=可达，False=不可达）",
+    )
     deps_missing: dict[str, list[str]] = Field(
         default_factory=_default_deps_missing,
         description="缺失的依赖",

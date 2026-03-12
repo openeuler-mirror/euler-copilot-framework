@@ -8,6 +8,7 @@ Registry 路由
 from __future__ import annotations
 
 import logging
+import re
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Annotated
 
@@ -33,6 +34,7 @@ from witty_mcp_manager.registry.models import Override, ServerRecord, TransportT
 
 if TYPE_CHECKING:
     from witty_mcp_manager.ipc.server import IPCServer
+    from witty_mcp_manager.security.secrets import SecretsManager
 
 logger = logging.getLogger(__name__)
 
@@ -56,7 +58,7 @@ def get_server() -> IPCServer:
     return _server
 
 
-def _determine_server_status(srv: ServerRecord) -> tuple[str, str | None]:
+def _determine_server_status(srv: ServerRecord) -> tuple[str, str | None]:  # noqa: C901, PLR0911
     """
     确定 Server 状态
 
@@ -93,7 +95,26 @@ def _determine_server_status(srv: ServerRecord) -> tuple[str, str | None]:
         if missing_parts:
             return "degraded", f"缺少{'; '.join(missing_parts)}"
 
+    # SSE/HTTP 后端可达性检查
+    if diag.sse_reachable is False:
+        sse_url = ""
+        if srv.default_config.sse:
+            sse_url = srv.default_config.sse.url
+        return "unavailable", f"SSE/HTTP 后端不可达: {sse_url}"
+
     return "ready", None
+
+
+_SECRET_REF_RE = re.compile(r"^\$\{secrets:.+\}$")
+_SAFE_CHARS = re.compile(r"[^a-zA-Z0-9_\-]")
+
+
+def _make_secret_key(user_id: str, mcp_id: str, field: str, key: str) -> str:
+    """生成稳定唯一的 secret key 名（避免路径穿越等问题）"""
+    safe_user = _SAFE_CHARS.sub("_", user_id)
+    safe_mcp = _SAFE_CHARS.sub("_", mcp_id)
+    safe_key = _SAFE_CHARS.sub("_", key)
+    return f"{safe_user}__{safe_mcp}__{field}__{safe_key}"
 
 
 def _validate_configure_request(transport: TransportType, request: ConfigureRequest) -> None:
@@ -119,20 +140,37 @@ def _validate_configure_request(transport: TransportType, request: ConfigureRequ
 def _apply_configure_request(
     override: Override,
     request: ConfigureRequest,
+    secrets: SecretsManager,
+    user_id: str,
+    mcp_id: str,
 ) -> None:
-    """应用配置请求到 override"""
+    """应用配置请求到 override，将明文凭据存入 SecretsManager 并保存引用"""
     if request.env is not None:
-        override.env = request.env
+        new_env: dict[str, str] = {}
+        for k, v in request.env.items():
+            secret_key = _make_secret_key(user_id, mcp_id, "env", k)
+            secrets.save_secret(secret_key, v)
+            new_env[k] = f"${{secrets:{secret_key}}}"
+        override.env = new_env
     if request.headers is not None:
-        override.headers = request.headers
+        new_headers: dict[str, str] = {}
+        for k, v in request.headers.items():
+            secret_key = _make_secret_key(user_id, mcp_id, "hdr", k)
+            secrets.save_secret(secret_key, v)
+            new_headers[k] = f"${{secrets:{secret_key}}}"
+        override.headers = new_headers
 
 
 def _build_configure_result(mcp_id: str, override: Override) -> ConfigureResult:
-    """构建配置结果（返回 secret:// 引用）"""
+    """构建配置结果，将内部 ${secrets:...} 引用替换为用户可见的 secret:// 形式"""
+
+    def _mask(d: dict[str, str]) -> dict[str, str]:
+        return {k: "secret://***" if _SECRET_REF_RE.match(v) else v for k, v in d.items()}
+
     return ConfigureResult(
         mcp_id=mcp_id,
-        env=override.env,
-        headers=override.headers,
+        env=_mask(override.env),
+        headers=_mask(override.headers),
         updated_at=datetime.now(UTC),
     )
 
@@ -223,6 +261,7 @@ async def get_server_detail(
             else None,
             files_valid=not diag.errors,
             errors=diag.errors,
+            sse_reachable=diag.sse_reachable,
         )
 
     # 构建生效配置信息
@@ -359,7 +398,7 @@ async def configure_server(
     if override is None:
         override = Override(scope=scope)
 
-    _apply_configure_request(override, request)
+    _apply_configure_request(override, request, server.overlay_resolver.secrets, user.user_id, mcp_id)
 
     server.overlay_storage.save_override(mcp_id, override, user.user_id)
 
