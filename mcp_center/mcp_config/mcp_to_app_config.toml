@@ -4,7 +4,7 @@ name = "OE-已知问题分析Agent"
 description = "提供日志故障解析，运维故障解析，知识库系统，故障报告生成，解决方案提供等"
 mcpPath = [
     "rag",
-    "log_dection"
+    "log_detection"
 ]
 published = true
 
