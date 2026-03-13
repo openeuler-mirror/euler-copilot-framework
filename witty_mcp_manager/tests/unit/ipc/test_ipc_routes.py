@@ -13,7 +13,7 @@ import pytest
 from fastapi import HTTPException
 from fastapi.testclient import TestClient
 
-from witty_mcp_manager.ipc.auth import HEADER_USER_ID
+from witty_mcp_manager.ipc.auth import HEADER_USER_ID, UserContext
 from witty_mcp_manager.ipc.routes.registry import (
     _apply_configure_request,
     _build_configure_result,
@@ -21,7 +21,7 @@ from witty_mcp_manager.ipc.routes.registry import (
 )
 from witty_mcp_manager.ipc.routes.tools import _ensure_server_ready, _get_cache_info
 from witty_mcp_manager.ipc.schemas import ConfigureRequest
-from witty_mcp_manager.registry.models import Override, TransportType
+from witty_mcp_manager.registry.models import Diagnostics, Override, TransportType
 
 # =============================================================================
 # Registry 路由辅助函数补充测试
@@ -629,3 +629,109 @@ class TestIPCServerClass:
         # StreamableHTTPAdapter 应被创建
         adapter = ipc_server._create_adapter(mock_srv, MagicMock())  # noqa: SLF001
         assert adapter is not None
+
+    def test_refresh_server_reachability_updates_diagnostics(self) -> None:
+        """刷新可达性时应更新诊断状态"""
+        from witty_mcp_manager.ipc.server import IPCServer, IPCServerConfig
+        from witty_mcp_manager.registry.models import NormalizedConfig, ServerRecord, SourceType, SseConfig
+
+        checker = MagicMock()
+        checker.check_sse_reachable.return_value = True
+
+        server_config = IPCServerConfig(
+            config=MagicMock(),
+            discovery=MagicMock(),
+            checker=checker,
+            overlay_storage=MagicMock(),
+            overlay_resolver=MagicMock(),
+            runtime_manager=MagicMock(),
+        )
+        ipc_server = IPCServer(server_config)
+
+        srv = ServerRecord(
+            id="test_sse",
+            name="Test SSE",
+            summary="",
+            source=SourceType.ADMIN,
+            install_root="/tmp/test_sse",
+            upstream_key="test_sse",
+            transport=TransportType.SSE,
+            default_config=NormalizedConfig(
+                transport=TransportType.SSE,
+                sse=SseConfig(url="http://127.0.0.1:12555/sse"),
+            ),
+            diagnostics=Diagnostics(sse_reachable=False),
+        )
+
+        ipc_server.refresh_server_reachability(srv)
+
+        checker.check_sse_reachable.assert_called_once_with(srv, log_failure=False)
+        assert srv.diagnostics.sse_reachable is True
+
+
+class TestRegistryRoutesRefreshReachability:
+    """Registry 路由应在返回状态前刷新 SSE 可达性"""
+
+    @pytest.mark.asyncio
+    async def test_list_servers_refreshes_reachability(self) -> None:
+        from witty_mcp_manager.ipc.routes import registry as registry_routes
+
+        srv = MagicMock()
+        srv.id = "test_sse"
+        srv.name = "Test SSE"
+        srv.summary = ""
+        srv.source.value = "admin"
+        srv.diagnostics.command_allowed = True
+        srv.diagnostics.errors = []
+        srv.diagnostics.deps_missing = {}
+        srv.diagnostics.sse_reachable = None
+
+        server = MagicMock()
+        server.list_servers.return_value = [srv]
+        server.refresh_server_reachability = MagicMock()
+        server.overlay_resolver.resolve.return_value = MagicMock(disabled=False)
+        server.overlay_storage.load_override.return_value = None
+
+        registry_routes.set_server(server)
+
+        user = UserContext(user_id="alice")
+        await registry_routes.list_servers(user, include_disabled=False)
+
+        server.refresh_server_reachability.assert_called_once_with(srv)
+
+    @pytest.mark.asyncio
+    async def test_get_server_detail_refreshes_reachability(self) -> None:
+        from witty_mcp_manager.ipc.routes import registry as registry_routes
+
+        diagnostics = Diagnostics()
+        srv = MagicMock()
+        srv.id = "test_sse"
+        srv.name = "Test SSE"
+        srv.summary = ""
+        srv.source.value = "admin"
+        srv.default_config.transport.value = "sse"
+        srv.default_config.stdio = None
+        srv.default_config.sse = MagicMock(url="http://127.0.0.1:12555/sse")
+        srv.install_root = "/tmp/test_sse"
+        srv.upstream_key = "test_sse"
+        srv.diagnostics = diagnostics
+
+        effective = MagicMock()
+        effective.disabled = False
+        effective.config.transport.value = "sse"
+        effective.timeouts.tool_call = 30
+        effective.timeouts.idle_ttl = 600
+        effective.concurrency.max_per_user = 5
+        effective.env = {}
+
+        server = MagicMock()
+        server.get_server.return_value = srv
+        server.refresh_server_reachability = MagicMock()
+        server.overlay_resolver.resolve.return_value = effective
+
+        registry_routes.set_server(server)
+
+        user = UserContext(user_id="alice")
+        await registry_routes.get_server_detail("test_sse", user)
+
+        server.refresh_server_reachability.assert_called_once_with(srv)

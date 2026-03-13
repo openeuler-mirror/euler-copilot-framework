@@ -171,6 +171,25 @@ class IPCServer:
         """列出所有 Server"""
         return list(self._servers.values())
 
+    def refresh_server_reachability(self, server: ServerRecord) -> None:
+        """刷新 SSE/HTTP 后端可达性，避免启动阶段的瞬时误判长期残留。"""
+        diagnostics = server.diagnostics
+        refreshed = self.checker.check_sse_reachable(server, log_failure=False)
+        if refreshed is None:
+            return
+
+        previous = diagnostics.sse_reachable
+        if previous == refreshed:
+            return
+
+        server.diagnostics = diagnostics.model_copy(update={"sse_reachable": refreshed})
+
+        if refreshed:
+            logger.info("SSE/HTTP 后端恢复可达: %s", server.id)
+        elif previous is not False:
+            sse_url = server.default_config.sse.url if server.default_config.sse else ""
+            logger.warning("SSE/HTTP 后端不可达: %s → %s", server.id, sse_url)
+
     async def get_or_create_adapter(
         self,
         server: ServerRecord,
@@ -201,14 +220,27 @@ class IPCServer:
         if adapter_key in self._adapters:
             adapter = self._adapters[adapter_key]
             if adapter.is_connected:
+                self.refresh_server_reachability(server)
                 return adapter
             # 如果适配器存在但未连接，重新连接
-            await adapter.connect(session)
+            try:
+                await adapter.connect(session)
+            except Exception:
+                if server.default_config.transport in (TransportType.SSE, TransportType.STREAMABLE_HTTP):
+                    self.refresh_server_reachability(server)
+                raise
+            self.refresh_server_reachability(server)
             return adapter
 
         # 创建新适配器
         adapter = self._create_adapter(server, session.config)
-        await adapter.connect(session)
+        try:
+            await adapter.connect(session)
+        except Exception:
+            if server.default_config.transport in (TransportType.SSE, TransportType.STREAMABLE_HTTP):
+                self.refresh_server_reachability(server)
+            raise
+        self.refresh_server_reachability(server)
 
         # 缓存适配器
         self._adapters[adapter_key] = adapter

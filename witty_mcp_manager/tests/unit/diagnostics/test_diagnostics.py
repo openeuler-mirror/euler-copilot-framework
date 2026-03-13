@@ -330,7 +330,8 @@ class TestChecker:
             ),
         )
 
-        diagnostics = checker.validate(server)
+        with patch("socket.create_connection", side_effect=OSError("connection refused")):
+            diagnostics = checker.validate(server)
         assert diagnostics.config_valid is True
         assert diagnostics.is_ready is True
         # src/ 缺失仅为 warning
