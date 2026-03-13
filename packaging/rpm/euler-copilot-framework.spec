@@ -85,6 +85,7 @@ mkdir -p %{buildroot}%{_datadir}/doc/sysagent
 cp -ar docs/* %{buildroot}%{_datadir}/doc/sysagent
 mkdir -p %{buildroot}%{_sharedstatedir}/sysagent
 cp -ar data/* %{buildroot}%{_sharedstatedir}/sysagent/
+mkdir -p %{buildroot}%{_sharedstatedir}/sysagent/semantics/app
 rm -f %{buildroot}%{_sharedstatedir}/sysagent/config.example.toml
 rm -f %{buildroot}%{_sharedstatedir}/sysagent/sysagent.service
 install -D -m 0444 LICENSE %{buildroot}%{_datadir}/licenses/sysagent/LICENSE
