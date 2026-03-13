@@ -190,6 +190,8 @@ async def list_servers(
     result: list[ServerSummary] = []
 
     for srv in server.list_servers():
+        server.refresh_server_reachability(srv)
+
         # 解析生效配置
         effective = server.overlay_resolver.resolve(srv, user.user_id)
 
@@ -237,6 +239,8 @@ async def get_server_detail(
 
     # 解析生效配置
     effective = server.overlay_resolver.resolve(srv, user.user_id)
+
+    server.refresh_server_reachability(srv)
 
     # 确定状态
     status, status_reason = _determine_server_status(srv)

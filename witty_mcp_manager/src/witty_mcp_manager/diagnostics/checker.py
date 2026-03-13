@@ -89,7 +89,7 @@ class Checker:
 
         return errors
 
-    def check_sse_reachable(self, server: ServerRecord) -> bool | None:
+    def check_sse_reachable(self, server: ServerRecord, *, log_failure: bool = True) -> bool | None:
         """
         TCP 级别探测 SSE/Streamable HTTP 后端是否可达（超时 3s）
 
@@ -97,6 +97,7 @@ class Checker:
 
         Args:
             server: ServerRecord
+            log_failure: 不可达时是否记录 warning
 
         Returns:
             True=可达，False=不可达，None=不适用
@@ -119,7 +120,8 @@ class Checker:
             with socket.create_connection((host, port), timeout=3):
                 return True
         except OSError:
-            logger.warning("SSE/HTTP 后端不可达: %s → %s", server.id, url)
+            if log_failure:
+                logger.warning("SSE/HTTP 后端不可达: %s → %s", server.id, url)
             return False
 
     def validate(self, server: ServerRecord) -> Diagnostics:
