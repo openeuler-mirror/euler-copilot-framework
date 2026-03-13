@@ -3,7 +3,7 @@
 
 Name:               euler-copilot-framework
 Version:            2.2.0
-Release:            2
+Release:            3
 Summary:            Intelligent framework Engine Based On LLM (lite)
 License:            MulanPSL-2.0
 URL:                https://atomgit.com/openeuler/euler-copilot-framework
@@ -57,6 +57,7 @@ BuildRequires:  uv
 Requires:   glibc
 Requires:   libstdc++
 Requires(pre):  shadow-utils
+Requires(pre):  pcre2
 
 %description -n witty-mcp-manager
 Universal MCP Host/Loader compiled as a single static binary via Nuitka.
@@ -203,6 +204,8 @@ fi
 
 
 %changelog
+* Fri Mar 13 2026 Hongyu Shi <shywzt@iCloud.com> - 2.2.0-3
+- Add explicit pre-install dependency on pcre2 for witty-mcp-manager account creation scriptlet
 * Fri Mar 13 2026 cui-gaoleng <tangshunan1@huawei.com> - 2.2.0-2
 - Update Framework for context
 * Tue Feb 24 2026 Hongyu Shi <shywzt@iCloud.com> - 2.2.0-1
