@@ -330,8 +330,85 @@ class TestChecker:
             ),
         )
 
-        diagnostics = checker.validate(server)
+        with patch("socket.create_connection", side_effect=OSError("connection refused")):
+            diagnostics = checker.validate(server)
         assert diagnostics.config_valid is True
         assert diagnostics.is_ready is True
         # src/ 缺失仅为 warning
         assert any("src/" in w for w in diagnostics.warnings)
+        # SSE 后端未监听，应被检测为不可达
+        assert diagnostics.sse_reachable is False
+
+
+class TestCheckerSseReachability:
+    """Checker.check_sse_reachable 测试"""
+
+    @pytest.fixture
+    def checker(self):
+        return Checker()
+
+    def _make_sse_server(self, url: str) -> "ServerRecord":
+        return ServerRecord(
+            id="sse_mcp",
+            name="SSE MCP",
+            source=SourceType.ADMIN,
+            install_root="/tmp/sse_mcp",
+            upstream_key="sse_mcp",
+            transport=TransportType.SSE,
+            default_config=NormalizedConfig(
+                transport=TransportType.SSE,
+                sse=SseConfig(url=url),
+            ),
+        )
+
+    def _make_stdio_server(self) -> "ServerRecord":
+        return ServerRecord(
+            id="stdio_mcp",
+            name="STDIO MCP",
+            source=SourceType.RPM,
+            install_root="/tmp/stdio_mcp",
+            upstream_key="stdio_mcp",
+            transport=TransportType.STDIO,
+            default_config=NormalizedConfig(
+                transport=TransportType.STDIO,
+                stdio=StdioConfig(command="uv", args=[]),
+            ),
+        )
+
+    def test_stdio_returns_none(self, checker):
+        """STDIO 服务返回 None（不适用）"""
+        server = self._make_stdio_server()
+        assert checker.check_sse_reachable(server) is None
+
+    def test_sse_unreachable_port(self, checker):
+        """TCP 连接被拒返回 False"""
+        # 使用一个必然未监听的高端口
+        server = self._make_sse_server("http://127.0.0.1:19998/sse")
+        result = checker.check_sse_reachable(server)
+        assert result is False
+
+    def test_sse_reachable_port(self, checker):
+        """TCP 连接成功返回 True"""
+        import socket as _socket
+        import threading
+
+        # 临时监听一个端口
+        srv = _socket.socket(_socket.AF_INET, _socket.SOCK_STREAM)
+        srv.setsockopt(_socket.SOL_SOCKET, _socket.SO_REUSEADDR, 1)
+        srv.bind(("127.0.0.1", 0))
+        srv.listen(1)
+        port = srv.getsockname()[1]
+
+        def accept_and_close():
+            conn, _ = srv.accept()
+            conn.close()
+            srv.close()
+
+        t = threading.Thread(target=accept_and_close, daemon=True)
+        t.start()
+        try:
+            server = self._make_sse_server(f"http://127.0.0.1:{port}/sse")
+            result = checker.check_sse_reachable(server)
+            assert result is True
+        finally:
+            t.join(timeout=5)

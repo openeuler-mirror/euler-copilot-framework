@@ -7,8 +7,10 @@
 from __future__ import annotations
 
 import logging
+import socket
 from pathlib import Path
 from typing import TYPE_CHECKING
+from urllib.parse import urlparse
 
 from witty_mcp_manager.registry.models import TransportType
 
@@ -87,6 +89,41 @@ class Checker:
 
         return errors
 
+    def check_sse_reachable(self, server: ServerRecord, *, log_failure: bool = True) -> bool | None:
+        """
+        TCP 级别探测 SSE/Streamable HTTP 后端是否可达（超时 3s）
+
+        仅对 SSE / STREAMABLE_HTTP 传输有效，STDIO 返回 None。
+
+        Args:
+            server: ServerRecord
+            log_failure: 不可达时是否记录 warning
+
+        Returns:
+            True=可达，False=不可达，None=不适用
+
+        """
+        config = server.default_config
+        if config.transport not in (TransportType.SSE, TransportType.STREAMABLE_HTTP):
+            return None
+
+        url: str | None = None
+        if config.sse:
+            url = config.sse.url
+        if not url:
+            return None
+
+        try:
+            parsed = urlparse(url)
+            host = parsed.hostname or "127.0.0.1"
+            port = parsed.port or (443 if parsed.scheme == "https" else 80)
+            with socket.create_connection((host, port), timeout=3):
+                return True
+        except OSError:
+            if log_failure:
+                logger.warning("SSE/HTTP 后端不可达: %s → %s", server.id, url)
+            return False
+
     def validate(self, server: ServerRecord) -> Diagnostics:
         """
         完整校验
@@ -117,5 +154,10 @@ class Checker:
         if config_errors:
             diagnostics.errors.extend(config_errors)
             diagnostics.config_valid = False
+
+        # SSE/HTTP 后端可达性探测
+        sse_reachable = self.check_sse_reachable(server)
+        if sse_reachable is not None:
+            diagnostics = diagnostics.model_copy(update={"sse_reachable": sse_reachable})
 
         return diagnostics

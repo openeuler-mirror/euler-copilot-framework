@@ -191,3 +191,92 @@ READ_TOOL_FUNCTION: dict[LanguageType, dict] = {
         },
     },
 }
+
+STREAM_OUTPUT_FUNCTION = {
+    LanguageType.CHINESE: {
+        "name": "stream_output",
+        "description": "向前端流式输出文本内容，用于实时展示Agent的思考过程或执行结果",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "content": {
+                    "type": "string",
+                    "description": "要推送的文本内容（必须非空，调用工具时直接填充完整内容）",
+                },
+                "finish": {
+                    "type": "boolean",
+                    "description": "是否结束流式输出，默认为False",
+                    "default": False,
+                },
+            },
+            "required": ["content"],
+        },
+        "output": {
+            "type": "object",
+            "properties": {  # 保持和你的其他工具一致的层级结构
+                "status": {"type": "string"},
+                "sent_content": {"type": "string"},
+            },
+            "required": ["status"],
+        },
+    },
+}
+
+SELF_INTRODUCE_FUNCTION: dict[LanguageType, dict] = {
+    LanguageType.CHINESE: {
+        "name": "self_introduce",
+        "description": "Agent标准化自我介绍，输出自身能力、可用MCP工具、核心技能、使用场景。该工具仅允许调用1次，执行成功后禁止重复调用；若历史上下文已有该工具执行记录，请勿再次调用。",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "content": {
+                    "type": "string",
+                    "description": "自我介绍的完整文本内容（必须非空）",
+                },
+            },
+            "required": ["content"],
+        },
+        "output": {
+            "type": "object",
+            "properties": {
+                "status": {
+                    "type": "string",
+                    "description": "执行状态，固定返回success",
+                },
+                "content": {
+                    "type": "string",
+                    "description": "自我介绍内容",
+                },
+            },
+            "required": ["status", "content"],
+        },
+    },
+    LanguageType.ENGLISH: {
+        "name": "self_introduce",
+        "description": "Agent standardized self-introduction, output own capabilities, available MCP tools, core skills, usage scenarios. This tool can only be called once, repeated calls are prohibited after successful execution; do not call again if there is an execution record of this tool in the historical context.",  # noqa: E501
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "content": {
+                    "type": "string",
+                    "description": "Complete text content of self-introduction (must not be empty)",
+                },
+            },
+            "required": ["content"],
+        },
+        "output": {
+            "type": "object",
+            "properties": {
+                "status": {
+                    "type": "string",
+                    "description": "Execution status, fixed return success",
+                },
+                "content": {
+                    "type": "string",
+                    "description": "Self-introduction content",
+                },
+            },
+            "required": ["status", "content"],
+        },
+    },
+}

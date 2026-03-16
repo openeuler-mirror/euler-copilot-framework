@@ -107,10 +107,6 @@ class ServiceLoader:
     async def delete(service_id: uuid.UUID, *, is_reload: bool = False) -> None:
         """删除Service，并更新数据库"""
         async with postgres.session() as session:
-            await session.execute(delete(NodeInfo).where(NodeInfo.serviceId == service_id))
-            await session.execute(delete(ServiceACL).where(ServiceACL.serviceId == service_id))
-            await session.execute(delete(ServiceHashes).where(ServiceHashes.serviceId == service_id))
-
             if embedding.ServicePoolVector is not None:
                 await session.execute(
                     delete(embedding.ServicePoolVector).where(embedding.ServicePoolVector.id == service_id),
@@ -121,6 +117,10 @@ class ServiceLoader:
                         embedding.NodePoolVector,
                     ).where(embedding.NodePoolVector.serviceId == service_id),
                 )
+            await session.execute(delete(NodeInfo).where(NodeInfo.serviceId == service_id))
+            await session.execute(delete(ServiceACL).where(ServiceACL.serviceId == service_id))
+            await session.execute(delete(ServiceHashes).where(ServiceHashes.serviceId == service_id))
+
             await session.execute(delete(Service).where(Service.id == service_id))
             await session.commit()
 

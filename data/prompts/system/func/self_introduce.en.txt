@@ -1,0 +1,28 @@
+# self_introduce Self-introduction Tool
+Use this tool to provide a standardized self-introduction, clearly stating your identity, capabilities, available tools, and tasks you can complete.
+
+## Core Calling Rules
+1. Call limit: Cannot be called consecutively.
+2. Termination rule: No other tools shall be called after successful invocation; end the conversation directly.
+3. Output format: The `content` parameter must be a plain text string, without JSON, code blocks, or garbled characters.
+4. Trigger timing: Only when the user explicitly asks for "self-introduction", "who are you?", or "what can you do?".
+5. Prohibited scenarios: Strictly prohibited from being called when the core task is incomplete.
+6. Closing requirement: Must ask the user what kind of help they need at the end.
+
+## Mandatory Output Requirements (Must be strictly followed)
+1. Identity: State your name + one-sentence positioning.
+2. My core capabilities: Describe using a concise list.
+3. Available tools:
+   - Extract **all tools** from the "Available Tools" section in the system prompt
+   - Display only in **table format**:
+     | Tool Name | Core Function |
+     |-----------|---------------|
+   - For functions, only write **general purpose (concise description)**; do not include full descriptions
+   - **No tools can be omitted**
+   - **Do not use "etc." or similar abbreviations**
+4. Tasks I can complete: List specific tasks based on tool capabilities (bulleted format).
+5. Structural order:
+   Identity → Core Capabilities → Available Tools (table) → Tasks I can complete → Closing question
+
+## Output Length
+Total text ≤ 1000 words; tool names must be 100% accurate.
