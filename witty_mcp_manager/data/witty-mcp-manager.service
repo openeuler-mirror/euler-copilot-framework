@@ -5,7 +5,15 @@ After=network.target
 
 [Service]
 Type=simple
-ExecStart=/usr/bin/witty-mcp daemon
+User=witty-mcp
+Group=witty-mcp
+WorkingDirectory=/usr/lib/witty-mcp-manager
+Environment=HOME=/var/lib/witty-mcp-manager
+Environment=WITTY_MCP_CONFIG=/etc/witty/mcp-manager.yaml
+Environment=UV_PROJECT_ENVIRONMENT=/var/lib/witty-mcp-manager/.venv
+Environment=UV_CACHE_DIR=/var/lib/witty-mcp-manager/cache/uv
+ExecStartPre=/usr/bin/uv sync --locked --no-dev --no-editable --project /usr/lib/witty-mcp-manager
+ExecStart=/usr/bin/uv run --locked --no-sync --project /usr/lib/witty-mcp-manager witty-mcp daemon
 Restart=on-failure
 RestartSec=5s
 
@@ -14,6 +22,7 @@ NoNewPrivileges=true
 PrivateTmp=true
 ProtectSystem=strict
 ProtectHome=true
+ReadOnlyPaths=/usr/lib/witty-mcp-manager
 ReadWritePaths=/run /var/lib/witty-mcp-manager
 
 # Resource limits
