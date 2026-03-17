@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
-from unittest.mock import MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -309,6 +309,72 @@ class TestSSEAdapter:
         """测试未连接时断开连接"""
         adapter = SSEAdapter(sse_server_record, mock_sse_effective_config)
         await adapter.disconnect()
+        assert adapter.is_connected is False
+
+    def test_get_connection_urls_adds_ipv4_loopback_fallback(
+        self,
+        sse_server_record,
+        mock_sse_effective_config,
+    ):
+        """localhost 应优先规范化为 127.0.0.1"""
+        adapter = SSEAdapter(sse_server_record, mock_sse_effective_config)
+
+        assert adapter._get_connection_urls() == [  # noqa: SLF001
+            "http://127.0.0.1:8080/sse",
+        ]
+
+    def test_get_sse_url_normalizes_localhost_to_ipv4_loopback(
+        self,
+        sse_server_record,
+        mock_sse_effective_config,
+    ):
+        """SSE URL 应直接规范化为 127.0.0.1，绕开 localhost 解析差异"""
+        adapter = SSEAdapter(sse_server_record, mock_sse_effective_config)
+
+        assert adapter._get_sse_url() == "http://127.0.0.1:8080/sse"  # noqa: SLF001
+
+    @pytest.mark.asyncio
+    async def test_connect_retries_with_ipv4_loopback_fallback(
+        self,
+        sse_server_record,
+        mock_sse_effective_config,
+    ):
+        """localhost 连接失败后应回退到 127.0.0.1 重试"""
+        adapter = SSEAdapter(sse_server_record, mock_sse_effective_config)
+        session = MagicMock()
+        session.mark_running = AsyncMock()
+        session.stop = AsyncMock()
+
+        good_client_context = AsyncMock()
+        good_client_context.__aenter__.return_value = ("read", "write")
+        good_client_context.__aexit__.return_value = None
+
+        sse_client_calls: list[str] = []
+
+        def fake_sse_client(*, url: str, headers: dict[str, str] | None = None):
+            del headers
+            sse_client_calls.append(url)
+            if url == "http://127.0.0.1:8080/sse":
+                failing_context = AsyncMock()
+                failing_context.__aenter__.side_effect = OSError("connection refused")
+                failing_context.__aexit__.return_value = None
+                return failing_context
+            return good_client_context
+
+        client_session_context = AsyncMock()
+        client_session_context.__aenter__.return_value = AsyncMock(initialize=AsyncMock())
+        client_session_context.__aexit__.return_value = None
+
+        with (
+            patch("witty_mcp_manager.adapters.sse.sse_client", side_effect=fake_sse_client),
+            patch("witty_mcp_manager.adapters.sse.ClientSession", return_value=client_session_context),
+        ):
+            with pytest.raises(AdapterError, match="Failed to connect"):
+                await adapter.connect(session)
+
+        assert sse_client_calls == ["http://127.0.0.1:8080/sse"]
+        session.mark_running.assert_not_awaited()
+        session.stop.assert_awaited_once()
         assert adapter.is_connected is False
 
 

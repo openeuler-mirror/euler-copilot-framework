@@ -3,7 +3,7 @@
 
 Name:               euler-copilot-framework
 Version:            2.2.0
-Release:            3
+Release:            6%{?dist}
 Summary:            Intelligent framework Engine Based On LLM (lite)
 License:            MulanPSL-2.0
 URL:                https://atomgit.com/openeuler/euler-copilot-framework
@@ -48,19 +48,13 @@ Formerly known as euler-copilot-framework.
 
 %package -n witty-mcp-manager
 Summary:    Universal MCP Host/Loader for Witty AI Assistant
-BuildRequires:  gcc
-BuildRequires:  gcc-c++
-BuildRequires:  patchelf
-BuildRequires:  ccache
-# uv manages the Python venv (nuitka + all deps) from witty_mcp_manager/pyproject.toml
-BuildRequires:  uv
-Requires:   glibc
-Requires:   libstdc++
+Requires:   python3
+Requires:   uv
 Requires(pre):  shadow-utils
 Requires(pre):  pcre2
 
 %description -n witty-mcp-manager
-Universal MCP Host/Loader compiled as a single static binary via Nuitka.
+Universal MCP Host/Loader deployed from source and managed via uv.
 Manages RPM-packaged MCP servers, legacy SSE adapters, and third-party
 MCP sources with overlay configuration, session pooling, and security
 sandboxing.
@@ -71,11 +65,7 @@ sandboxing.
 
 
 %build
-# witty-mcp-manager: compile to standalone deployment directory via Nuitka
-pushd witty_mcp_manager
-UV_INDEX_URL=https://mirrors.huaweicloud.com/repository/pypi/simple \
-    bash scripts/build_nuitka.sh --mode standalone --output-dir dist
-popd
+# Source deployment only; witty-mcp-manager runtime environment is created by uv.
 
 
 %install
@@ -95,12 +85,45 @@ install -D -m 0644 data/sysagent.service %{buildroot}%{_sysconfdir}/systemd/syst
 find %{buildroot}%{_prefix}/lib/sysagent -type d -exec chmod 755 {} \;
 find %{buildroot}%{_prefix}/lib/sysagent -type f -exec chmod 644 {} \;
 
-# Install standalone deployment directory, then symlink the binary to /usr/bin
+# Install witty-mcp-manager source project and wrapper
 install -d -m 0755 %{buildroot}%{_prefix}/lib/witty-mcp-manager
-cp -ar witty_mcp_manager/dist/__main__.dist/. %{buildroot}%{_prefix}/lib/witty-mcp-manager/
-chmod 0755 %{buildroot}%{_prefix}/lib/witty-mcp-manager/witty-mcp
-install -d -m 0755 %{buildroot}%{_bindir}
-ln -sf %{_prefix}/lib/witty-mcp-manager/witty-mcp %{buildroot}%{_bindir}/witty-mcp
+cp -ar witty_mcp_manager/src %{buildroot}%{_prefix}/lib/witty-mcp-manager/
+install -D -m 0644 witty_mcp_manager/pyproject.toml \
+    %{buildroot}%{_prefix}/lib/witty-mcp-manager/pyproject.toml
+if [ -f witty_mcp_manager/uv.lock ]; then
+    install -D -m 0644 witty_mcp_manager/uv.lock \
+        %{buildroot}%{_prefix}/lib/witty-mcp-manager/uv.lock
+fi
+install -D -m 0644 witty_mcp_manager/README.md \
+    %{buildroot}%{_prefix}/lib/witty-mcp-manager/README.md
+find %{buildroot}%{_prefix}/lib/witty-mcp-manager -type d -exec chmod 755 {} \;
+find %{buildroot}%{_prefix}/lib/witty-mcp-manager -type f -exec chmod 644 {} \;
+install -D -m 0755 /dev/stdin %{buildroot}%{_bindir}/witty-mcp <<'WRAPPER'
+#!/usr/bin/bash
+set -euo pipefail
+
+PROJECT_DIR=/usr/lib/witty-mcp-manager
+STATE_DIR=/var/lib/witty-mcp-manager
+
+export UV_PROJECT_ENVIRONMENT="${UV_PROJECT_ENVIRONMENT:-${STATE_DIR}/.venv}"
+export UV_CACHE_DIR="${UV_CACHE_DIR:-${STATE_DIR}/cache/uv}"
+export WITTY_MCP_CONFIG="${WITTY_MCP_CONFIG:-/etc/witty/mcp-manager.yaml}"
+
+if [ ! -x "${UV_PROJECT_ENVIRONMENT}/bin/python" ]; then
+    UV_SYNC_ARGS=(sync --no-dev --no-editable --project "${PROJECT_DIR}")
+    if [ -f "${PROJECT_DIR}/uv.lock" ]; then
+        UV_SYNC_ARGS=(sync --locked --no-dev --no-editable --project "${PROJECT_DIR}")
+    fi
+    /usr/bin/uv "${UV_SYNC_ARGS[@]}"
+fi
+
+UV_RUN_ARGS=(run --no-sync --project "${PROJECT_DIR}" witty-mcp "$@")
+if [ -f "${PROJECT_DIR}/uv.lock" ]; then
+    UV_RUN_ARGS=(run --locked --no-sync --project "${PROJECT_DIR}" witty-mcp "$@")
+fi
+
+exec /usr/bin/uv "${UV_RUN_ARGS[@]}"
+WRAPPER
 install -D -m 0644 witty_mcp_manager/data/witty-mcp-manager.service \
     %{buildroot}%{_unitdir}/witty-mcp-manager.service
 install -D -m 0444 LICENSE \
@@ -159,6 +182,17 @@ exit 0
 
 %post -n witty-mcp-manager
 %systemd_post witty-mcp-manager.service
+export UV_PROJECT_ENVIRONMENT=%{_sharedstatedir}/witty-mcp-manager/.venv
+export UV_CACHE_DIR=%{_sharedstatedir}/witty-mcp-manager/cache/uv
+export WITTY_MCP_CONFIG=%{_sysconfdir}/witty/mcp-manager.yaml
+
+UV_SYNC_ARGS=(sync --no-dev --no-editable --project %{_prefix}/lib/witty-mcp-manager)
+if [ -f %{_prefix}/lib/witty-mcp-manager/uv.lock ]; then
+    UV_SYNC_ARGS=(sync --locked --no-dev --no-editable --project %{_prefix}/lib/witty-mcp-manager)
+fi
+
+/usr/bin/uv "${UV_SYNC_ARGS[@]}" || :
+chown -R witty-mcp:witty-mcp %{_sharedstatedir}/witty-mcp-manager 2>/dev/null || :
 systemd-tmpfiles --create %{_tmpfilesdir}/witty-mcp-manager.conf 2>/dev/null || :
 
 %preun -n witty-mcp-manager
@@ -205,6 +239,12 @@ fi
 
 
 %changelog
+* Tue Mar 17 2026 Hongyu Shi <shywzt@iCloud.com> - 2.2.0-6
+- Deploy witty-mcp-manager from source and run it via uv service
+* Tue Mar 17 2026 Hongyu Shi <shywzt@iCloud.com> - 2.2.0-5
+- Fix url handling in witty-mcp-manager diagnostics checker
+* Mon Mar 16 2026 cui-gaoleng <tangshunan1@huawei.com> - 2.2.0-4
+- Fix Framework about mcp
 * Fri Mar 13 2026 Hongyu Shi <shywzt@iCloud.com> - 2.2.0-3
 - Add explicit pre-install dependency on pcre2 for witty-mcp-manager account creation scriptlet
 * Fri Mar 13 2026 cui-gaoleng <tangshunan1@huawei.com> - 2.2.0-2

@@ -29,7 +29,7 @@ classifiers = [
     "Topic :: Software Development :: Libraries :: Python Modules",
     "License :: OSI Approved :: Mulan Permissive Software License v2 (MulanPSL-2.0)",
 ]
-requires-python = ">=3.11"
+requires-python = ">=3.11, <3.12"
 
 dependencies = [
     "pydantic>=2.12.5",
@@ -52,7 +52,7 @@ dev = [
     "ruff>=0.14.14",
     "mypy>=1.19.1",
     "types-PyYAML>=6.0.12",
-    "nuitka>=2.8.10",
+    "nuitka>=4.0.4",
 ]
 
 [project.scripts]

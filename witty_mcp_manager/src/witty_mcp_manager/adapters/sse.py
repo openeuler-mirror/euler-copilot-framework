@@ -24,6 +24,7 @@ from witty_mcp_manager.adapters.base import (
     update_global_cached_tools,
 )
 from witty_mcp_manager.exceptions import AdapterError, ToolCallError
+from witty_mcp_manager.url_utils import get_url_candidates, normalize_loopback_url
 
 if TYPE_CHECKING:
     from witty_mcp_manager.overlay.resolver import EffectiveConfig
@@ -68,7 +69,11 @@ class SSEAdapter(BaseAdapter):
         if not sse_config:
             msg = f"SSE config not found for {self.mcp_id}"
             raise AdapterError(msg, adapter_type="sse")
-        return sse_config.url
+        return normalize_loopback_url(sse_config.url)
+
+    def _get_connection_urls(self) -> list[str]:
+        """返回连接候选 URL 列表。"""
+        return get_url_candidates(self._get_sse_url())
 
     def _get_headers(self) -> dict[str, str]:
         """
@@ -106,35 +111,57 @@ class SSEAdapter(BaseAdapter):
             logger.debug("Already connected to %s", self.mcp_id)
             return
 
-        url = self._get_sse_url()
         headers = self._get_headers()
+        candidate_urls = self._get_connection_urls()
 
-        try:
-            logger.info("Connecting to SSE MCP: %s (url=%s)", self.mcp_id, url)
+        last_error: Exception | None = None
+        for index, url in enumerate(candidate_urls):
+            try:
+                logger.info("Connecting to SSE MCP: %s (url=%s)", self.mcp_id, url)
 
-            # 创建 SSE client 上下文
-            self._client_context = sse_client(url=url, headers=headers if headers else None)
-            read_stream, write_stream = await self._client_context.__aenter__()
+                # 创建 SSE client 上下文
+                self._client_context = sse_client(url=url, headers=headers or None)
+                read_stream, write_stream = await self._client_context.__aenter__()
 
-            # 创建 session 上下文
-            self._session_context = ClientSession(read_stream, write_stream)
-            self._session = await self._session_context.__aenter__()
+                # 创建 session 上下文
+                self._session_context = ClientSession(read_stream, write_stream)
+                connected_session = await self._session_context.__aenter__()
+                self._session = connected_session
 
-            # 初始化会话
-            await self._session.initialize()
+                # 初始化会话
+                await connected_session.initialize()
 
-            self._connected = True
-            logger.info("Connected to SSE MCP: %s", self.mcp_id)
+                self._connected = True
+                logger.info("Connected to SSE MCP: %s", self.mcp_id)
 
-            # 更新 session 状态
-            await session.mark_running()
+                # 更新 session 状态
+                await session.mark_running()
 
-        except Exception as e:
-            logger.exception("Failed to connect to SSE MCP %s", self.mcp_id)
-            await self._cleanup()
-            msg = f"Failed to connect to {self.mcp_id}: {e}"
+            except Exception as e:
+                last_error = e
+                await self._cleanup()
+                if index < len(candidate_urls) - 1:
+                    logger.warning(
+                        "Failed to connect to SSE MCP %s via %s, retrying with %s",
+                        self.mcp_id,
+                        url,
+                        candidate_urls[index + 1],
+                    )
+                    logger.debug("SSE connect retry cause for %s", self.mcp_id, exc_info=e)
+                    continue
+
+                logger.exception("Failed to connect to SSE MCP %s", self.mcp_id)
+            else:
+                return
+
+        if last_error is None:
+            msg = f"Failed to connect to {self.mcp_id}: no candidate URLs available"
             await session.stop(error=msg)
-            raise AdapterError(msg, adapter_type="sse") from e
+            raise AdapterError(msg, adapter_type="sse")
+
+        msg = f"Failed to connect to {self.mcp_id}: {last_error}"
+        await session.stop(error=msg)
+        raise AdapterError(msg, adapter_type="sse") from last_error
 
     async def disconnect(self) -> None:
         """
