@@ -6,7 +6,7 @@
 - TC005: 依赖缺失探测
 """
 
-from unittest.mock import patch
+from unittest.mock import MagicMock, call, patch
 
 import pytest
 
@@ -412,3 +412,26 @@ class TestCheckerSseReachability:
             assert result is True
         finally:
             t.join(timeout=5)
+
+    def test_sse_localhost_falls_back_to_ipv4_loopback(self, checker):
+        """localhost 探测应优先使用 127.0.0.1"""
+        server = self._make_sse_server("http://localhost:12311/sse")
+
+        with patch("witty_mcp_manager.diagnostics.checker.socket.create_connection") as mock_create_connection:
+            mock_socket = MagicMock()
+
+            def side_effect(address, timeout):
+                del timeout
+                if address == ("127.0.0.1", 12311):
+                    return mock_socket
+                msg = f"unexpected address: {address}"
+                raise AssertionError(msg)
+
+            mock_create_connection.side_effect = side_effect
+
+            result = checker.check_sse_reachable(server)
+
+        assert result is True
+        assert mock_create_connection.call_args_list == [
+            call(("127.0.0.1", 12311), timeout=3),
+        ]

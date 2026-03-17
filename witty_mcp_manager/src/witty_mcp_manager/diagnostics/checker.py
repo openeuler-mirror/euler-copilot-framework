@@ -13,6 +13,7 @@ from typing import TYPE_CHECKING
 from urllib.parse import urlparse
 
 from witty_mcp_manager.registry.models import TransportType
+from witty_mcp_manager.url_utils import get_url_host_candidates
 
 if TYPE_CHECKING:
     from witty_mcp_manager.registry.models import Diagnostics, ServerRecord
@@ -113,16 +114,19 @@ class Checker:
         if not url:
             return None
 
-        try:
-            parsed = urlparse(url)
-            host = parsed.hostname or "127.0.0.1"
-            port = parsed.port or (443 if parsed.scheme == "https" else 80)
-            with socket.create_connection((host, port), timeout=3):
-                return True
-        except OSError:
-            if log_failure:
-                logger.warning("SSE/HTTP 后端不可达: %s → %s", server.id, url)
-            return False
+        parsed = urlparse(url)
+        port = parsed.port or (443 if parsed.scheme == "https" else 80)
+
+        for host in get_url_host_candidates(url):
+            try:
+                with socket.create_connection((host, port), timeout=3):
+                    return True
+            except OSError:
+                continue
+
+        if log_failure:
+            logger.warning("SSE/HTTP 后端不可达: %s → %s", server.id, url)
+        return False
 
     def validate(self, server: ServerRecord) -> Diagnostics:
         """
