@@ -90,8 +90,10 @@ install -d -m 0755 %{buildroot}%{_prefix}/lib/witty-mcp-manager
 cp -ar witty_mcp_manager/src %{buildroot}%{_prefix}/lib/witty-mcp-manager/
 install -D -m 0644 witty_mcp_manager/pyproject.toml \
     %{buildroot}%{_prefix}/lib/witty-mcp-manager/pyproject.toml
-install -D -m 0644 witty_mcp_manager/uv.lock \
-    %{buildroot}%{_prefix}/lib/witty-mcp-manager/uv.lock
+if [ -f witty_mcp_manager/uv.lock ]; then
+    install -D -m 0644 witty_mcp_manager/uv.lock \
+        %{buildroot}%{_prefix}/lib/witty-mcp-manager/uv.lock
+fi
 install -D -m 0644 witty_mcp_manager/README.md \
     %{buildroot}%{_prefix}/lib/witty-mcp-manager/README.md
 find %{buildroot}%{_prefix}/lib/witty-mcp-manager -type d -exec chmod 755 {} \;
@@ -108,10 +110,19 @@ export UV_CACHE_DIR="${UV_CACHE_DIR:-${STATE_DIR}/cache/uv}"
 export WITTY_MCP_CONFIG="${WITTY_MCP_CONFIG:-/etc/witty/mcp-manager.yaml}"
 
 if [ ! -x "${UV_PROJECT_ENVIRONMENT}/bin/python" ]; then
-    /usr/bin/uv sync --locked --no-dev --no-editable --project "${PROJECT_DIR}"
+    UV_SYNC_ARGS=(sync --no-dev --no-editable --project "${PROJECT_DIR}")
+    if [ -f "${PROJECT_DIR}/uv.lock" ]; then
+        UV_SYNC_ARGS=(sync --locked --no-dev --no-editable --project "${PROJECT_DIR}")
+    fi
+    /usr/bin/uv "${UV_SYNC_ARGS[@]}"
 fi
 
-exec /usr/bin/uv run --locked --no-sync --project "${PROJECT_DIR}" witty-mcp "$@"
+UV_RUN_ARGS=(run --no-sync --project "${PROJECT_DIR}" witty-mcp "$@")
+if [ -f "${PROJECT_DIR}/uv.lock" ]; then
+    UV_RUN_ARGS=(run --locked --no-sync --project "${PROJECT_DIR}" witty-mcp "$@")
+fi
+
+exec /usr/bin/uv "${UV_RUN_ARGS[@]}"
 WRAPPER
 install -D -m 0644 witty_mcp_manager/data/witty-mcp-manager.service \
     %{buildroot}%{_unitdir}/witty-mcp-manager.service
@@ -175,7 +186,12 @@ export UV_PROJECT_ENVIRONMENT=%{_sharedstatedir}/witty-mcp-manager/.venv
 export UV_CACHE_DIR=%{_sharedstatedir}/witty-mcp-manager/cache/uv
 export WITTY_MCP_CONFIG=%{_sysconfdir}/witty/mcp-manager.yaml
 
-/usr/bin/uv sync --locked --no-dev --no-editable --project %{_prefix}/lib/witty-mcp-manager || :
+UV_SYNC_ARGS=(sync --no-dev --no-editable --project %{_prefix}/lib/witty-mcp-manager)
+if [ -f %{_prefix}/lib/witty-mcp-manager/uv.lock ]; then
+    UV_SYNC_ARGS=(sync --locked --no-dev --no-editable --project %{_prefix}/lib/witty-mcp-manager)
+fi
+
+/usr/bin/uv "${UV_SYNC_ARGS[@]}" || :
 chown -R witty-mcp:witty-mcp %{_sharedstatedir}/witty-mcp-manager 2>/dev/null || :
 systemd-tmpfiles --create %{_tmpfilesdir}/witty-mcp-manager.conf 2>/dev/null || :
 
