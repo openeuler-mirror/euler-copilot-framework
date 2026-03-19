@@ -120,7 +120,7 @@ witty llm
 
 >[!NOTE]说明：
 >
-> 操作的细节，包括 witty logs 日志等，参考 shell 的 [readme](https://atomgit.com/openeuler/euler-copilot-shell)
+> 操作的细节，包括 witty logs 日志等，参考 shell 的 [README](https://atomgit.com/openeuler/euler-copilot-shell)
 
 ## 平台演示
 
