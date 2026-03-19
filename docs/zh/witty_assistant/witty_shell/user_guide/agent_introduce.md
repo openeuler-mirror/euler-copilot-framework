@@ -87,25 +87,25 @@ LLM chat 核心依托用户配置的主流 LLM 大语言模型，具备高效、
 
 #### witty_log_detection
 
-<div style="overflow-x: auto; max-width: 100%;">
+<div style="overflow-x: auto; overflow-y: hidden; width: 100%; max-width: 1200px; white-space: nowrap;">
 
 | MCP_Server 名称 | MCP_Tool 列表 | 工具功能 | 核心输入参数 | 关键返回内容 |
-|----------------|---------------|-----------------------------------|--------------|--------------|
-| witty_log_detection | **create_log_parse_task** | 日志解析任务创建器。支持创建不同类型的日志解析任务（基础/关键词检测/聚类检测/LLM检测），可指定日志文件范围、时间范围及异常检测规则。 | **必填：** `file_path_list`（日志文件路径列表）<br>**可选：** <br>`task_type`（任务类型：base/log_detection_base_on_keywords/<br>log_detection_base_on_clustering/log_detection_base_on_llm）、<br>`query`（异常现象查询语句）、<br>`max_anomaly_log_count`（最大异常日志数量，默认64）、<br>`anomaly_keywords`（异常关键词列表）、<br>`time_start`（时间起始，格式YYYY-MM-DD HH:MM）、<br>`time_end`（时间结束，格式YYYY-MM-DD HH:MM） | `task_id`（uuid4格式的任务ID） |
-| witty_log_detection | **get_task_message** | 任务信息查询器。查询指定日志解析任务的基本信息，包括任务状态、完成进度、创建时间及任务参数。 | **必填：** <br>`task_id`（任务ID） | `task_id`（任务ID）、<br>`task_name`（任务名称）、<br>`task_type`（任务类型）、<br>`completion_percent`（完成进度0.0-100.0）、<br>`status`（任务状态）、<br>`task_related_params`（任务参数JSON字符串）、<br>`created_at`（创建时间） |
-| witty_log_detection | **stop_task** | 任务终止器。终止指定ID的日志解析任务，返回操作是否成功。 | **必填：** `task_id`（任务ID） | `success`（是否成功，布尔值） |
-| witty_log_detection | **get_task_result** | 任务结果获取器。分页查询指定日志解析任务的结果，可筛选异常/正常日志，返回日志内容、异常原因及异常分数等信息。 | **必填：** <br>`task_id`（任务ID）<br>**可选：** <br>`offset`（分页偏移量）、<br>`limit`（分页返回数量）、<br>`is_anomalous`（是否仅返回异常日志） | `total`（总结果数量）<br>**results（列表）：** <br>`id`（日志解析结果ID）、<br>`file_path`（日志文件路径）、<br>`task_id`（任务ID）、<br>`is_anomalous`（是否异常）、<br>`content`（日志内容）、<br>`anomaly_reason`（异常原因）、<br>`anomaly_score`（异常分数0.0-100.0） |
+|----------------|---------------|---------------------------------------------|--------------|--------------|
+| witty_log_detection | **create_log_parse_task** | 日志解析任务创建器。支持多类型检测（基础/关键词/聚类/LLM），可指定日志文件、时间范围及异常规则。 | **必填：** `file_path_list`（日志文件路径列表）<br>**可选：** `task_type`（检测类型）、`query`（异常描述）、`max_anomaly_log_count`（默认64）、`anomaly_keywords`、`time_start`/`time_end`（YYYY-MM-DD HH:MM） | `task_id`（uuid4格式任务ID） |
+| witty_log_detection | **get_task_message** | 任务信息查询器。查询任务状态、进度、创建时间及参数。 | **必填：** `task_id`（任务ID） | `task_id`、`task_name`、`task_type`、`completion_percent`、`status`、`task_related_params`、`created_at` |
+| witty_log_detection | **stop_task** | 任务终止器。终止指定日志解析任务，返回操作结果。 | **必填：** `task_id`（任务ID） | `success`（布尔值，是否成功） |
+| witty_log_detection | **get_task_result** | 任务结果获取器。分页查询解析结果，可筛选异常日志。 | **必填：** `task_id`（任务ID）<br>**可选：** `offset`（偏移量）、`limit`（返回数量）、`is_anomalous`（仅异常日志） | `total`（总数量）<br>**results：** `id`、`file_path`、`is_anomalous`、`content`、`anomaly_reason`、`anomaly_score` |
 
 </div>
 
 #### light_rag
 
-<div style="overflow-x: auto; max-width: 100%;">
+<div style="overflow-x: auto; overflow-y: hidden; width: 100%; max-width: 1200px; white-space: nowrap;">
 
 | MCP_Server 名称 | MCP_Tool 列表 | 工具功能 | 核心输入参数 | 关键返回内容 |
-|----------------|---------------|---------------------------------------------|--------------|--------------|
-| light_rag | **Knowledge_base_manager** | 知识库管理器。支持创建知识库和列出知识库。通过 `action` 参数控制操作。创建时可配置 chunk 大小及向量化模型。 | **必填：** `action`（`"add"` 创建 / `"list"` 列出）<br>**创建时必填：** `kb_name`（知识库名称，需唯一）、`chunk_size`（chunk 大小，单位 token）<br>**可选：** `embedding_model`、`embedding_endpoint`、`embedding_api_key`<br>**列出时可选：** `keyword`（模糊过滤知识库名称） | `success`（是否成功）、`message`（描述）<br>**创建时 data：** `kb_id`、`kb_name`、`chunk_size`<br>**列出时 data：** `knowledge_bases`（列表）、`count`、`keyword` |
-| light_rag | **document_manager** | 文档管理器。支持将文档导入指定知识库，或获取文档的解析结果（chunks）。支持 TXT、DOCX、DOC、PDF、MD 等格式，自动解析、分块与向量化。 | **必填：** `action`（`"add"` 导入 / `"getchunks"` 获取解析结果）、`kb_name`（知识库名称）<br>**导入时必填：** `file_paths`（绝对路径列表，支持 1~n 个文件）<br>**导入时可选：** `chunk_size`（默认使用知识库配置）<br>**获取解析时必填：** `doc_name`（文档名称） | `success`、`message`<br>**导入时 data：** `total`、`success_count`、`failed_count`、`success_files`、`failed_files`<br>**获取解析时 data：** `doc_id`、`doc_name`、`kb_name`、`chunks`、`count` |
-| light_rag | **search** | 在指定知识库中进行混合检索。结合关键词检索（FTS5）与向量检索（sqlite-vec），加权合并、去重后按 Jaccard 相似度重排序，返回 top-k 结果。可选启用 GitHub Issues/Commits 线上检索。 | **必填：** `query`（查询文本）、`kb_names`（知识库名称列表）<br>**可选：** `top_k`（返回数量，默认 5）、`keyword_weight`（关键词权重 0–1，默认 0.3）、`banned_chunk_ids`（排除的 chunk ID 列表）、`online`（是否启用 GitHub 检索）、`online_top_k`（GitHub 返回数量） | `success`、`message`<br>**data：** `chunks`（chunk 列表，含 id、content、score、doc_name 等）、`count`、`github_results`（仅 `online=true` 时返回） |
+|----------------|---------------|----------------------------------------|--------------|--------------|
+| light_rag | **Knowledge_base_manager** | 知识库管理器。支持创建/列出知识库，可配置chunk大小、向量化模型。 | **必填：** `action`（add/list）<br>**创建必填：** `kb_name`（唯一名称）、`chunk_size`（token数）<br>**可选：** `embedding_model`、`keyword`（模糊筛选） | `success`、`message`<br>**创建：** `kb_id`/`kb_name`/`chunk_size`<br>**列出：** `knowledge_bases`/`count`/`keyword` |
+| light_rag | **document_manager** | 文档管理器。支持多格式文档导入/解析结果查询，自动分块向量化。 | **必填：** `action`（add/getchunks）、`kb_name`<br>**导入必填：** `file_paths`（绝对路径列表）<br>**可选：** `chunk_size`（默认知识库配置） | `success`、`message`<br>**导入：** `total`/`success_count`/`failed_files`<br>**解析：** `doc_id`/`doc_name`/`chunks`/`count` |
+| light_rag | **search** | 混合检索工具。关键词+向量检索，加权排序，支持GitHub线上检索。 | **必填：** `query`（查询文本）、`kb_names`（知识库列表）<br>**可选：** `top_k`（默认5）、`keyword_weight`（0-1）、`online`（GitHub检索） | `success`、`message`<br>**data：** `chunks`（含score/doc_name）、`count`、`github_results`（线上检索时） |
 
 </div>
