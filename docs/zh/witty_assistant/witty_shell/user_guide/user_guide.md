@@ -25,17 +25,23 @@ witty
 
 ### 选择智能体
 
-点击选择智能体（ ctrl + t ），默认为 基础运维Agent，按上下键选择，回车确认，ESC 取消，高亮表示选中，智能体详情参照[智能体介绍]()。
+点击选择智能体（ ctrl + t ），默认为 已知问题分析Agent，按上下键选择，回车确认，ESC 取消，高亮表示选中，智能体详情参照[智能体介绍]()。
 
 <img src=pictures/default_agent.png width=1200 />
 
 ### 使用智能体
 
-进行智能体的使用，此处以基础运维Agent举例，回车确认，进入对话界面。
+进行智能体的使用，此处以已知问题分析Agent举例，回车确认，进入对话界面。
 
 <img src=pictures/open_Witty.png width=1200 />
 
-在左下角输入栏输入命令或问题，如帮我查看内存使用情况，智能体会根据提问自动选择合适的 MCP 工具，并询问是否执行，此处点击确认。
+在左下角输入栏输入命令或问题，如:
+
+```txt
+帮我把/home/oe-运维/batch_1下的25年10月_row_32_海思驱动导致系统挂死.txt和25年10月_row_5_无法进入openEuler系统.txt导入知识库
+```
+
+智能体会根据提问自动选择合适的 MCP 工具，并询问是否执行，此处点击确认。
 
 <img src=pictures/agent_use.png width=1200 />
 
@@ -158,16 +164,13 @@ witty
 
 ## 使用案例
 
-以“Nginx服务启动”为例，演示智能助手 cli的进阶用法：
+以“无法进入openEuler系统问题”为例，演示智能助手 cli的进阶用法：
 
-**自然语言交互**：启动 Witty Assistant ，切换至“基础运维Agent”，即OE-智能运维助手，输入“安装nginx并启动”；
+**自然语言交互**：启动 Witty Assistant ，切换至“已知问题分析Agent”，输入“你帮我去知识库查询一下无法进入openEuler系统应该怎么办”；
 
-<img src=pictures/nginx_install.png width=1200 />
+<img src=pictures/case1.png width=1200 />
 
-**查看nginx进程**：输入“查看nginx的进程情况”，查看nginx进程来看是否安装启动成功；
+**查看执行结果**：等待执行结束，会分析并生成解决方案；
 
-<img src=pictures/nginx_check.png width=1200 />
+<img src=pictures/case2.png width=1200 />
 
-**使用命令行验证结果**：通过`systemctl status nginx`验证nginx是否被成功启动。
-
-<img src=pictures/nginx_result.png width=1200 />
