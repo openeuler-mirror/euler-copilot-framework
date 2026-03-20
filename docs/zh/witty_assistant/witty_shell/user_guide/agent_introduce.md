@@ -58,7 +58,7 @@ LLM chat 核心依托用户配置的主流 LLM 大语言模型，具备高效、
   帮我把/home/oe-运维/batch_1下的25年10月_row_32_海思驱动导致系统挂死.txt和25年10月_row_5_无法进入openEuler系统.txt导入知识库
   ```
 
-<img src=pictures/agent_use.png width=1200 />
+<img src="pictures/agent_use.png" width="1200" />
 
 - 场景 ：问题分析诊断
 
@@ -66,11 +66,11 @@ LLM chat 核心依托用户配置的主流 LLM 大语言模型，具备高效、
   你帮我去知识库查询一下无法进入openEuler系统应该怎么办
   ```
 
-<img src=pictures/case1.png width=1200 />
+<img src="pictures/case1.png" width="1200" />
 
 ---
 
-<img src=pictures/case2.png width=1200 />
+<img src="pictures/case2.png" width="1200" />
 
 ## MCP 总览
 

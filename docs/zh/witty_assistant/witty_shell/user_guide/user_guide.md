@@ -21,19 +21,19 @@
 witty
 ```
 
-<img src=pictures/open_Witty.png width=1200 />
+<img src="pictures/open_Witty.png" width="1200" />
 
 ### 选择智能体
 
 点击选择智能体（ ctrl + t ），默认为 已知问题分析Agent，按上下键选择，回车确认，ESC 取消，高亮表示选中，智能体详情参照[智能体介绍]()。
 
-<img src=pictures/default_agent.png width=1200 />
+<img src="pictures/default_agent.png" width="1200" />
 
 ### 使用智能体
 
 进行智能体的使用，此处以已知问题分析Agent举例，回车确认，进入对话界面。
 
-<img src=pictures/open_Witty.png width=1200 />
+<img src="pictures/open_Witty.png" width="1200" />
 
 在左下角输入栏输入命令或问题，如:
 
@@ -43,11 +43,11 @@ witty
 
 智能体会根据提问自动选择合适的 MCP 工具，并询问是否执行，此处点击确认。
 
-<img src=pictures/agent_use.png width=1200 />
+<img src="pictures/agent_use.png" width="1200" />
 
 结果输出：
 
-<img src=pictures/output.png width=1200 />
+<img src="pictures/output.png" width="1200" />
 
 >[!NOTE]说明：
 >
@@ -106,7 +106,7 @@ witty logs
 witty llm
 ```
 
-<img src=pictures/set_llm.png width=1200 />
+<img src="pictures/set_llm.png" width="1200" />
 
 ### 界面操作快捷键
 
@@ -132,35 +132,35 @@ witty llm
 witty
 ```
 
-<img src=pictures/open_Witty.png width=1200 />
+<img src="pictures/open_Witty.png" width="1200" />
 
 #### 选择智能体
 
-<img src=pictures/default_agent.png width=1200 />
+<img src="pictures/default_agent.png" width="1200" />
 
 #### 使用智能体
 
-<img src=pictures/agent_use.png width=1200 />
+<img src="pictures/agent_use.png" width="1200" />
 
 智能体根据工具调用结果输出结果
 
-<img src=pictures/output.png width=1200 />
+<img src="pictures/output.png" width="1200" />
 
 ### 使用vscode
 
 #### 打开 Witty Assistant
 
-<img src=pictures/vscode_open.png width=1200 />
+<img src="pictures/vscode_open.png" width="1200" />
 
 #### 选择智能体
 
 使用方法参上面，以下主要为演示部分页面：
 
-<img src=pictures/vscode_agent_set.png width=1200 />
+<img src="pictures/vscode_agent_set.png" width="1200" />
 
 #### 使用智能体
 
-<img src=pictures/vscode_use.png width=1200 />
+<img src="pictures/vscode_use.png" width="1200" />
 
 ## 使用案例
 
@@ -168,9 +168,9 @@ witty
 
 **自然语言交互**：启动 Witty Assistant ，切换至“已知问题分析Agent”，输入“你帮我去知识库查询一下无法进入openEuler系统应该怎么办”；
 
-<img src=pictures/case1.png width=1200 />
+<img src="pictures/case1.png" width="1200" />
 
 **查看执行结果**：等待执行结束，会分析并生成解决方案；
 
-<img src=pictures/case2.png width=1200 />
+<img src="pictures/case2.png" width="1200" />
 
