@@ -173,4 +173,3 @@ witty
 **查看执行结果**：等待执行结束，会分析并生成解决方案；
 
 <img src="pictures/case2.png" width="1200" />
-

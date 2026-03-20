@@ -34,7 +34,8 @@ LLM chat 核心依托用户配置的主流 LLM 大语言模型，具备高效、
 
 已知问题分析 Agent 通过整合两大核心 MCP 服务，实现 “日志异常检测 + 知识检索” 的一站式诊断中枢。所有工具均遵循标准 MCP 规范，具备严格的参数规范与统一的返回格式，可直接集成到运维诊断流程中。
 
->[!NOTE]说明：Witty 提供开源[运维案例库](https://atomgit.com/openeuler/witty-ops-cases)
+>[!NOTE]
+> 说明：Witty 提供开源[运维案例库](https://atomgit.com/openeuler/witty-ops-cases)
 
 ### 核心能力介绍
 
