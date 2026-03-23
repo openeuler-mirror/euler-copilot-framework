@@ -86,7 +86,7 @@ databases:
     # 性能限制设置
     resourceLimits:
       cpu: 0.5
-      memory: 1024Mi
+      memory: 2048Mi
     # Service设置
     service:
       # Service类型，如NodePort
