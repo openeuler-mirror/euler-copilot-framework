@@ -1,7 +1,8 @@
 [Unit]
 Description=Witty MCP Manager - Universal MCP Host/Loader
 Documentation=https://atomgit.com/openeuler/euler-copilot-framework
-After=network.target
+Wants=network-online.target
+After=network-online.target
 
 [Service]
 Type=simple
@@ -12,8 +13,8 @@ Environment=HOME=/var/lib/witty-mcp-manager
 Environment=WITTY_MCP_CONFIG=/etc/witty/mcp-manager.yaml
 Environment=UV_PROJECT_ENVIRONMENT=/var/lib/witty-mcp-manager/.venv
 Environment=UV_CACHE_DIR=/var/lib/witty-mcp-manager/cache/uv
-ExecStartPre=/usr/bin/uv sync --locked --no-dev --no-editable --project /usr/lib/witty-mcp-manager
-ExecStart=/usr/bin/uv run --locked --no-sync --project /usr/lib/witty-mcp-manager witty-mcp daemon
+ExecStartPre=/usr/bin/bash -lc 'if [ -f /usr/lib/witty-mcp-manager/uv.lock ]; then exec /usr/bin/uv sync --locked --no-dev --no-editable --project /usr/lib/witty-mcp-manager; else exec /usr/bin/uv sync --no-dev --no-editable --project /usr/lib/witty-mcp-manager; fi'
+ExecStart=/usr/bin/bash -lc 'if [ -f /usr/lib/witty-mcp-manager/uv.lock ]; then exec /usr/bin/uv run --locked --no-sync --project /usr/lib/witty-mcp-manager witty-mcp daemon; else exec /usr/bin/uv run --no-sync --project /usr/lib/witty-mcp-manager witty-mcp daemon; fi'
 Restart=on-failure
 RestartSec=5s
 

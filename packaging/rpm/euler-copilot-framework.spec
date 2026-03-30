@@ -3,7 +3,7 @@
 
 Name:               euler-copilot-framework
 Version:            2.2.0
-Release:            6%{?dist}
+Release:            7%{?dist}
 Summary:            Intelligent framework Engine Based On LLM (lite)
 License:            MulanPSL-2.0
 URL:                https://atomgit.com/openeuler/euler-copilot-framework
@@ -191,7 +191,10 @@ if [ -f %{_prefix}/lib/witty-mcp-manager/uv.lock ]; then
     UV_SYNC_ARGS=(sync --locked --no-dev --no-editable --project %{_prefix}/lib/witty-mcp-manager)
 fi
 
-/usr/bin/uv "${UV_SYNC_ARGS[@]}" || :
+if ! /usr/bin/uv "${UV_SYNC_ARGS[@]}"; then
+    echo "warning: witty-mcp-manager virtual environment bootstrap failed during RPM installation" >&2
+    echo "warning: service startup will retry /usr/bin/uv sync; ensure network/package access is available" >&2
+fi
 chown -R witty-mcp:witty-mcp %{_sharedstatedir}/witty-mcp-manager 2>/dev/null || :
 systemd-tmpfiles --create %{_tmpfilesdir}/witty-mcp-manager.conf 2>/dev/null || :
 
@@ -239,6 +242,9 @@ fi
 
 
 %changelog
+* Fri Mar 27 2026 Hongyu Shi <shywzt@iCloud.com> - 2.2.0-7
+- Wait for network-online before starting witty-mcp-manager service
+- Warn explicitly when RPM post-install uv bootstrap fails
 * Tue Mar 17 2026 Hongyu Shi <shywzt@iCloud.com> - 2.2.0-6
 - Deploy witty-mcp-manager from source and run it via uv service
 * Tue Mar 17 2026 Hongyu Shi <shywzt@iCloud.com> - 2.2.0-5
