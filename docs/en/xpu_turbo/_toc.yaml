@@ -1,0 +1,6 @@
+label: XPU Turbo
+isManual: true
+description: Heterogeneous collaborative acceleration runtime
+sections:
+  - label: Deploying XPU Turbo
+    href: ./deploy_guide/deployment.md
