@@ -1,0 +1,18 @@
+label: Witty Assistant Web User Manual
+isManual: true
+description: Web interface for Witty Assistant, providing an AI-driven web interaction experience
+sections: 
+  - label: Introduction
+    href: ./user_guide/introduction.md
+  - label: One-Click Deployment
+    href: ./deploy_guide/deployment.md
+  - label: Usage Instructions
+    sections:
+      - label: Registration and Login
+        href: ./user_guide/registration_and_login.md
+      - label: Intelligent Q&A User Guide
+        href: ./user_guide/qa_guide.md
+      - label: Knowledge Base User Guide
+        href: ./user_guide/knowledge_guide.md
+      - label: MCP User Guide
+        href: ./user_guide/mcp_guide.md

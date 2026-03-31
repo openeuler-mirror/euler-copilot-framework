@@ -1,0 +1,16 @@
+# Witty Assistant CLI User Manual
+
+label: Witty Assistant CLI User Manual
+isManual: true
+description: Command-line interface for Witty Assistant, providing AI-driven command-line interaction experience
+sections:
+  - label: Introduction
+    href: ./user_guide/introduce.md
+  - label: One-Click Deployment
+    href: ./deploy_guide/deployment.md
+  - label: Usage Instructions
+    sections:
+      - label: Using Witty Assistant CLI
+        href: ./user_guide/user_guide.md
+      - label: Using Witty Assistant CLI Agent
+        href: ./user_guide/agent_introduce.md

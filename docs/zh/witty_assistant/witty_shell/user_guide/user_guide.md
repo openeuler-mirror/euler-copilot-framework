@@ -25,7 +25,7 @@ witty
 
 ### 选择智能体
 
-点击选择智能体（ ctrl + t ），默认为 已知问题分析Agent，按上下键选择，回车确认，ESC 取消，高亮表示选中，智能体详情参照[智能体介绍]()。
+点击选择智能体（ ctrl + t ），默认为 已知问题分析Agent，按上下键选择，回车确认，ESC 取消，高亮表示选中，智能体详情参照[智能体介绍](https://atomgit.com/openeuler/euler-copilot-framework/blob/master/docs/zh/witty_assistant/witty_shell/user_guide/agent_introduce.md)。
 
 <img src="pictures/default_agent.png" width="1200" />
 
