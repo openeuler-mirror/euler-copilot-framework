@@ -1,6 +1,6 @@
-# 智能助手 CLI（Witty Assistant）安装指南
+# Witty OpenCode 安装指南
 
-本手册适用于 Witty Assistant 2.0.0 版本。
+本手册适用于 Witty OpenCode 2.0.0 版本。
 
 ## 环境要求
 
@@ -15,113 +15,133 @@
 
 ## 快速开始
 
-### 安装 Witty Assistant
+### 配置 repo 源
 
-openEuler 24.03 LTS SP3 标准镜像已预装 Witty Assistant。开始使用前，请先运行以下命令更新系统软件包：
+进入 **/etc/yum.repos.d** 中，在最后添加以下的 repo 源（如果有update-EPOL，则只用添加Witty-Builder）：
+
+```bash
+[update-EPOL]
+name=update-EPOL
+baseurl=https://repo.openeuler.org/openEuler-24.03-LTS-SP3/EPOL/update/main/$basearch/
+metadata_expire=1h
+enabled=1
+gpgcheck=1
+gpgkey=http://repo.openeuler.org/openEuler-24.03-LTS-SP3/OS/$basearch/RPM-GPG-KEY-openEuler
+
+[Witty-Builder]
+name=EulerMaker Witty Builder
+baseurl=https://eulermaker.openeuler.openatom.cn/api/ems5/repositories/witty-builder/openEuler:24.03-LTS-SP3/$basearch/
+metadata_expire=60
+enabled=1
+gpgcheck=1
+gpgkey=https://eulermaker.openeuler.openatom.cn/api/ems5/repositories/witty-builder/openEuler:24.03-LTS-SP3/$basearch/RPM-GPG-KEY-openEuler
+```
+
+### 安装 Witty OpenCode
+
+openEuler 24.03 LTS SP3 标准镜像已预装 Witty OpenCode。开始使用前，请先运行以下命令更新系统软件包：
 
 ```bash
 sudo dnf update -y
 ```
 
-如需手动安装 Witty Assistant，请执行：
+需手动安装 Witty OpenCode，请执行：
 
 ```bash
-sudo dnf install -y witty-assistant
+sudo dnf install witty-opencode-base
 ```
 
-### 初始化 Witty Assistant
+另外需要安装的知识库、日志检测等插件：
 
 ```bash
-sudo witty init
+sudo dnf install euler-copilot-rag
+sudo dnf install witty-lite-rag
+sudo dnf install witty-log-detection
 ```
 
-![选择连接现有服务或部署新服务](./pictures/witty-deploy-01-welcome.png)
+安装完成后输入：**opencode** ，即可进入对话界面：
 
-部署全新服务过程中涉及安装 RPM 包，请确保使用具有管理员权限的用户执行该命令。
+![开始界面](./pictures/开始界面.png)
 
-**说明**：命令行客户端的界面样式会因终端适配情况而异，建议使用支持 256 色及以上的终端模拟器以获得最佳体验。本文档示例基于 Windows 11 内置终端通过 SSH 连接 openEuler。
+可以看到左下角两个已经激活的MCP服务；输入 **/skills** ，可以查看到 **skill-creator** 存在；按 **tab** 切换Agent，能看到 **已知问题分析Agent**。
+如果以上都显示成功，那么代表您已经成功安装 **Witty OpenCode**。
 
-### 选择部署新服务
+### Witty OpenCode模型切换
 
-在欢迎界面选择“部署新服务”，Witty Assistant 将执行环境检查。
+输入 **ctrl+p** 可以进入 **command** 界面，选择其中 **Switch model**即可切换模型；输入 **ctrl+a** 可以切换提供商，之后输入您的APIKEY即可使用想要的模型。
 
-![选择部署新服务](./pictures/witty-deploy-02-env-check.png)
+![切换模型](./pictures/switch-model.png)
 
-选择“继续配置”，进入参数配置界面。
+这里强烈建议您使用较好的模型替代原本模型。好模型能带来更好的体验效果。
 
 ### 配置参数
 
-在参数配置界面中，请根据实际情况设置以下参数：
+如果您想更好的使用 **Witty OpenCode** 以及 **已知问题分析Agent**，请按下述操作配置两个 **MCP**。
 
-![LLM 配置标签页](./pictures/witty-deploy-03-llm-tab.png)
+进入 `/opt/mcp-servers/servers/` 中，对于 **light_rag** ，修改 `~/light_rag/src/config.toml` ，主要为其中 **embedding** 部分添加您的embedding模型服务：
 
-依次配置大模型服务参数：
+```bash
+# 向量化服务配置
+[embedding]
+type = "openai"
+api_key = ""
+endpoint = ""
+model_name = "text-embedding-v4"
+timeout = 30
+vector_dimension = 1024
+embedding_batch_size = 8
+```
 
-- **API 端点**：填写线上或本地大模型服务的 API 地址
-- **API 密钥**：根据所选大模型服务要求，填写 API Key 或 Token
-- **模型名称**：选择要使用的大模型
+对于 **witty_log_detection** ，修改 `~/witty_log_detection/src/common/config.toml` ，主要为其中的 **embedding** 和 **llm** 部分添加模型服务：
 
-请确保所选大模型支持工具调用功能，否则智能体将无法正常工作。
+```bash
+# Embedding模型配置
+[EMBEDDING_MODEL]
+EMBEDDING_PROVIDER = "openai"
+EMBEDDING_END_POINT = "https://api.siliconflow.cn/v1/embeddings"
+EMBEDDING_API_KEY = ""
+EMBEDDING_MODEL_NAME = "BAAI/bge-m3"
+EMBEDDING_BATCH_SIZE = 16
 
-![填写大模型信息](./pictures/witty-deploy-04-llm-fill-in.png)
+# LLM模型配置
+[LLM_MODEL]
+LLM_PROVIDER = "openai"
+LLM_END_POINT = "https://dashscope.aliyuncs.com/compatible-mode/v1"
+LLM_API_KEY = ""
+LLM_MODEL_NAME = "qwen3-max"
+LLM_MAX_TOKENS = 32000
+LLM_BATCH_SIZE = 32
+```
 
-**Embedding 模型配置：**
+若您想更加了解两个MCP相关的配置，可以去源仓库查看：**https://atomgit.com/openeuler/euler-copilot-rag/tree/dev** 
 
-切换至“Embedding 配置”标签页，填写 Embedding 相关参数：
+### 其他信息
 
-![Embedding 配置标签页](./pictures/witty-deploy-05-embd-tab.png)
+1. 输入 **ctrl+p** 进入 **command** 的界面中，可以通过 **Switch session** 来切换对话。
 
-![填写 Embedding 信息](./pictures/witty-deploy-06-embd-fill-in.png)
+2. 可以输入 `@` 来选择你想要的 **Agent**
 
-支持的 Embedding 端口格式包括 OpenAI 兼容格式和 TEI 格式，请根据实际情况填写。
+3. 如果想要修改 **Witty OpenCode** 相关配置，可以去 `/etc/opencode/opencode.json` 中修改，具体修改方式请自行常看相关文档。
 
-### 启动部署
-
-完成大模型配置后，点击下方“开始部署”按钮以启动部署程序。
-
-![开始部署](./pictures/witty-deploy-07-start.png)
-
-![部署进行中](./pictures/witty-deploy-08-ing.png)
-
-部署过程可能需要较长时间，请耐心等待。部署完成后，系统将提示成功信息。
-
-![部署完成](./pictures/witty-deploy-09-finish.png)
-
-轻量部署模式完成后，将显示已初始化的智能体以及自动配置的默认智能体。
-
-### 其他配置
-
-部署完成后，您可进行以下配置：
-
-- **设置默认智能体**（仅适用于 sysAgent 后端）：
-
-  ```bash
-  witty set-default agent
-  ```
-
-- **管理 LLM 配置**（需管理员权限，仅适用于 sysAgent 后端）：
-
-  ```bash
-  sudo witty llm
-  ```
-
-- **查看日志**：
-
-  ```bash
-  witty logs
-  ```
-
-- **设置日志级别**：
-
-  ```bash
-  witty set-default log-level INFO
-  ```
+4. 所有的 **Skill** 创建在 `/usr/share/witty/opencode/skills` 中。
 
 ## 附录
 
-### 离线环境使用大模型服务
+### 其他环境使用 Witty OpenCode
 
-#### 内网大模型 API 服务
+可手动下载相应的RPM包并安装使用，可以去该地址下面下载： `https://eulermaker.openeuler.openatom.cn/api/ems5/repositories/witty-builder/`
+
+其中主要的rpm包为以下几个：
+
+```bash
+euler-copilot-rag-0.10.2-3.oe2403sp3.x86_64.rpm
+witty-lite-rag-0.10.2-3.oe2403sp3.x86_64.rpm  
+witty-log-detection-0.10.2-3.oe2403sp3.x86_64.rpm
+witty-opencode-1.3.17-1.oe2403sp3.src.rpm 
+witty-opencode-base-1.3.17-1.oe2403sp3.noarch.rpm
+```
+
+### 内网大模型 API 服务
 
 若内网环境中的大模型服务需通过 HTTPS 访问，请确保证书已在系统中正确配置，以避免部署过程中出现证书验证失败的问题。如无法配置有效证书，请在环境变量中添加以下内容以跳过证书验证：
 
@@ -131,29 +151,11 @@ export OI_SKIP_SSL_VERIFY=true
 
 建议将上述命令添加至 `~/.bashrc` 或 `~/.bash_profile` 文件中，以确保每次登录时均设置该环境变量。
 
-#### 本地部署大模型服务
+### 本地部署大模型服务
 
 若无可用的大模型服务，可在本地部署一个支持工具调用能力的大模型服务。sysAgent 支持标准的 OpenAI API（v1/chat/completions）。
 
 若本地设备无 GPU，建议使用激活参数较少的 MoE 模型，例如 Qwen3-30B-A3B，以获得更佳的性能表现。本地部署大模型需要较大的计算资源，建议使用至少具备 32GB 内存和多核 CPU 的服务器或 PC 进行部署。
-
-#### 为 sysAgent 配置代理
-
-若内网环境需要通过代理服务器访问大模型服务，请在 `sysagent` 的服务文件（`/etc/systemd/system/sysagent.service`）中设置以下内容：
-
-```bash
-[Service]
-Environment="HTTP_PROXY=http://<proxy-server>:<port>"
-Environment="HTTPS_PROXY=http://<proxy-server>:<port>"
-Environment="NO_PROXY=localhost,127.0.0.1"
-```
-
-请将 `<proxy-server>` 和 `<port>` 替换为实际的代理服务器地址和端口号。保存文件后，执行以下命令以重新加载服务配置并重启 `sysagent` 服务：
-
-```bash
-sudo systemctl daemon-reload
-sudo systemctl restart sysagent
-```
 
 ### FAQ
 
@@ -165,14 +167,6 @@ sudo systemctl restart sysagent
 export LANG=zh_CN.UTF-8  # 设置为中文
 export LANG=en_US.UTF-8  # 设置为英文
 ```
-
-部署完成后，如需更改界面语言，可在命令行中使用以下命令：
-
-```bash
-witty set-default locale zh_CN  # 切换到中文
-witty set-default locale en_US  # 切换到英文
-```
-
 #### Q2：部署过程中 pip 包下载缓慢怎么办？
 
 **A2**：可使用国内 pip 镜像源，例如清华大学的镜像源。通过修改 pip 配置文件来使用清华镜像源：
