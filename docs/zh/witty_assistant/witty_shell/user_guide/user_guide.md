@@ -41,9 +41,11 @@ OpenCode
 <img src="pictures/运维案例导入.png" width="1200" />
 
 后续也支持在该知识库中进行查询，可以输入:
+
 ```txt
 我在测试时出现：未检测到org.qemu.guest_agent.0设备；这是什么问题？
 ```
+
 <img src="pictures/问题分析诊断.png" width="1200" />
 
 **已知问题分析Agent** 也支持故障日志的分析，在输入栏中输入:
@@ -93,4 +95,3 @@ skills
 - **Tab**: 切换智能体
 - **Esc**: 退出当前界面
 - **Esc+Esc**: 结束当前对话的生成
-

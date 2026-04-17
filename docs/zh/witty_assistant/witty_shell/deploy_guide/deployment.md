@@ -113,7 +113,7 @@ LLM_MAX_TOKENS = 32000
 LLM_BATCH_SIZE = 32
 ```
 
-若您想更加了解两个MCP相关的配置，可以去源仓库查看：**https://atomgit.com/openeuler/euler-copilot-rag/tree/dev** 
+若您想更加了解两个MCP相关的配置，可以去源仓库查看：`https://atomgit.com/openeuler/euler-copilot-rag/tree/dev` 
 
 ### 其他信息
 
@@ -167,6 +167,7 @@ export OI_SKIP_SSL_VERIFY=true
 export LANG=zh_CN.UTF-8  # 设置为中文
 export LANG=en_US.UTF-8  # 设置为英文
 ```
+
 #### Q2：部署过程中 pip 包下载缓慢怎么办？
 
 **A2**：可使用国内 pip 镜像源，例如清华大学的镜像源。通过修改 pip 配置文件来使用清华镜像源：
