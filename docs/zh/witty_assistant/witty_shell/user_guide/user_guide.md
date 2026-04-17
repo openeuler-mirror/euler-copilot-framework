@@ -17,7 +17,7 @@ Witty OpenCode 是一款基于 OpenCode 的智能体框架平台，支持多种 
 打开 Witty OpenCode，ctrl + c 中断，ctrl + p 打开设置，tab 切换智能体，支持鼠标选择。
 
 ```sh
-OpenCode
+opencode
 ```
 
 <img src="pictures/开始界面.png" width="1200" />

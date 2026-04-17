@@ -1,6 +1,6 @@
 # Witty OpenCode 安装指南
 
-本手册适用于 Witty OpenCode 2.0.0 版本。
+本手册适用于 Witty OpenCode 1.3.17 版本。后续与OpenCode保持同步更新。
 
 ## 环境要求
 
@@ -39,7 +39,7 @@ gpgkey=https://eulermaker.openeuler.openatom.cn/api/ems5/repositories/witty-buil
 
 ### 安装 Witty OpenCode
 
-openEuler 24.03 LTS SP3 标准镜像已预装 Witty OpenCode。开始使用前，请先运行以下命令更新系统软件包：
+开始使用前，请先运行以下命令更新系统软件包：
 
 ```bash
 sudo dnf update -y
@@ -153,7 +153,7 @@ export OI_SKIP_SSL_VERIFY=true
 
 ### 本地部署大模型服务
 
-若无可用的大模型服务，可在本地部署一个支持工具调用能力的大模型服务。sysAgent 支持标准的 OpenAI API（v1/chat/completions）。
+若无可用的大模型服务，可在本地部署一个支持工具调用能力的大模型服务。
 
 若本地设备无 GPU，建议使用激活参数较少的 MoE 模型，例如 Qwen3-30B-A3B，以获得更佳的性能表现。本地部署大模型需要较大的计算资源，建议使用至少具备 32GB 内存和多核 CPU 的服务器或 PC 进行部署。
 
