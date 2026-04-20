@@ -12,3 +12,9 @@ sections:
         href: ./user_guide/user_guide.md
       - label: 使用智能助手 CLI Agent
         href: ./user_guide/agent_introduce.md
+  - label: 社交软件对接指南
+    sections:
+      - label: 桥接器介绍
+        href: ./social_software_guide/bridge_introduce.md
+      - label: 飞书对接指南
+        href: ./social_software_guide/feishu_guide.md
