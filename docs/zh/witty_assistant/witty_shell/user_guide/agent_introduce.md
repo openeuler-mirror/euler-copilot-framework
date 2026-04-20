@@ -1,34 +1,15 @@
-# 智能助手 CLI (Witty Assistant) 智能体介绍
+# 智能助手 CLI (Witty OpenCode) 智能体介绍
 
 ## 引言
 
-本手册聚焦 智能助手 CLI（ Witty Assistant ） 智能体能力体系展开全面介绍，智能体系列是 Witty Assistant 平台面向垂直业务场景打造的智能交互工具，依托专属技术架构与 MCP 服务能力底座，深度适配业务场景需求，实现轻量化、场景化的智能服务落地。
-现阶段 Witty Assistant 平台已集成LLM chat、已知问题分析Agent两款智能体，其中 LLM chat聚焦智能对话问询能力，为用户提供自然语言交互支撑；已知问题分析Agent是面向日志异常检测与知识库检索领域的专用工具，其核心优势在于整合两大 MCP 服务能力，实现日志异常检测全流程管理与轻量化知识检索的有机结合；已知问题分析Agent将面向已知问题诊断场景开发。手册通过标准化的能力说明与实操案例，为运维人员提供 “即查即用” 的操作指引，助力降低运维门槛、提升运维工作的标准化与高效化水平。
+本手册聚焦 智能助手 CLI（ Witty OpenCode ） 智能体能力体系展开全面介绍，智能体系列是 Witty OpenCode 平台面向垂直业务场景打造的智能交互工具，依托专属技术架构与 MCP 服务能力底座，深度适配业务场景需求，实现轻量化、场景化的智能服务落地。
+现阶段 Witty OpenCode 平台已集成 **已知问题分析Agent** 智能体；已知问题分析Agent是面向日志异常检测与知识库检索领域的专用工具，其核心优势在于整合两大 MCP 服务能力，实现日志异常检测全流程管理与轻量化知识检索的有机结合；已知问题分析Agent将面向已知问题诊断场景开发。手册通过标准化的能力说明与实操案例，为运维人员提供 “即查即用” 的操作指引，助力降低运维门槛、提升运维工作的标准化与高效化水平。
 
 ### 默认智能体总汇表
 
 | Agent 名称 | 核心适用场景 | 核心能力模块 |
 | --------- | ----------- | ----------- |
-| LLM chat | 智能对话问询 | LLM模型 |
 | 已知问题分析Agent | 日志异常检测 + 轻量化知识检索 | 1. witty_log_detection：日志异常检测全流程工具集 <br> 2. light_rag：轻量化知识库管理与检索工具集 |
-
-## LLM chat
-
-LLM chat 是 Witty Assistant 平台集成的智能对话类智能体，核心依托 LLM 大语言模型能力，无需依赖 MCP 服务支撑，专注为用户提供高效、自然的智能对话问询服务，是 Witty Assistant 平台智能交互体系的基础支撑模块。
-
-### 核心能力介绍
-
-LLM chat 核心依托用户配置的主流 LLM 大语言模型，具备高效、精准的自然语言对话与问询能力，无需依赖 MCP 服务及复杂配置。其定位为“轻量化智能对话助手”，无专业操作门槛，用户可通过自然语言直接发起问询，快速获取清晰、精准的应答反馈。
-
-### 使用案例
-
-以下展示基础的使用案例
-
-```markdown
-介绍一下openEuler
-```
-
-![llm_case.png](pictures/llm_case.png)
 
 ## 已知问题分析Agent
 
@@ -54,22 +35,18 @@ LLM chat 核心依托用户配置的主流 LLM 大语言模型，具备高效、
 - 场景 ：运维案例导入
 
   ```text
-  帮我把/home/oe-运维/batch_1下的25年10月_row_32_海思驱动导致系统挂死.txt和25年10月_row_5_无法进入openEuler系统.txt导入知识库
+  帮我将https://atomgit.com/openeuler/witty-ops-cases/这个仓库的openEuler-test相关案例导入知识库中。
   ```
 
-<img src="pictures/agent_use.png" width="1200" />
+<img src="pictures/运维案例导入.png" width="1200" />
 
 - 场景 ：问题分析诊断
 
   ```text
-  你帮我去知识库查询一下无法进入openEuler系统应该怎么办
+  我在测试时出现：未检测到org.qemu.guest_agent.0设备；这是什么问题？
   ```
 
-<img src="pictures/case1.png" width="1200" />
-
----
-
-<img src="pictures/case2.png" width="1200" />
+<img src="pictures/问题分析诊断.png" width="1200" />
 
 ## MCP 总览
 
