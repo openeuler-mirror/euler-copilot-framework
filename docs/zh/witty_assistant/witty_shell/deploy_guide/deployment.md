@@ -15,6 +15,20 @@
 
 ## 快速开始
 
+### 配置 repo 源 
+
+进入 **/etc/yum.repos.d** 中，在最后添加以下的 repo 源（如果有update-EPOL，则只用添加Witty-Builder）： 
+ 
+```bash 
+[update-EPOL] 
+name=update-EPOL 
+baseurl=https://repo.openeuler.org/openEuler-24.03-LTS-SP3/EPOL/update/main/$basearch/ 
+metadata_expire=1h 
+enabled=1 
+gpgcheck=1 
+gpgkey=http://repo.openeuler.org/openEuler-24.03-LTS-SP3/OS/$basearch/RPM-GPG-KEY-openEuler
+```
+
 ### 安装 Witty OpenCode
 
 开始使用前，请先运行以下命令更新系统软件包：
