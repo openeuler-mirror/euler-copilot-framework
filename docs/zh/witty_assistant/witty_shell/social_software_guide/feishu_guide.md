@@ -1,12 +1,12 @@
 # 飞书连接openCode部署教程
 
-# 一、概述
+## 一、概述
 
 本部署教程旨在将openCode与飞书进行连接，以实现飞书内的智能助手功能。通过以下步骤，您将能够在飞书中使用openCode提供的智能服务，核心依赖飞书CLI工具（飞书开放平台命令行工具）、openCode-bridge桥接器及相关基础环境，确保各组件正常联动。
 
-# 二、安装步骤
+## 二、安装步骤
 
-## 1. 前提条件
+### 1. 前提条件
 
 - 已有飞书企业账号，并具备管理员权限（需开放飞书开放平台相关权限，部分操作需组织认证账号）。
 
@@ -16,11 +16,11 @@
 
 - 已安装openCode和Witty Assistant，并完成基础部署（参考[Witty Assistant 安装教程](../deploy_guide/deployment.md)）。
 
-## 2. 安装飞书CLI（选装，推荐安装）
+### 2. 安装飞书CLI（选装，推荐安装）
 
 飞书CLI是面向飞书开放平台的命令行工具，专为人类与AI智能体打造，涵盖消息、云文档、多维表格等核心业务领域，提供200+命令及19项AI智能体技能，安装后可更便捷地进行应用管理、权限配置等操作，助力openCode与飞书的高效集成。
 
-### 步骤2.1 下载并安装飞书CLI
+#### 步骤2.1 下载并安装飞书CLI
 
 执行以下命令安装：
 
@@ -32,7 +32,7 @@ npm install -g @larksuite/cli --registry=https://registry.npmmirror.com
 npx skills add https://gitcode.com/gh_mirrors/cli414/cli.git -y -g
 ```
 
-### 步骤2.2 登录飞书应用并获取密钥
+#### 步骤2.2 登录飞书应用并获取密钥
 
 ```sh
 # 初始化飞书CLI配置
@@ -50,9 +50,10 @@ lark-cli auth login --recommend
 
 ![获取App ID和App Secret](./pictures/获取飞书CLI机器人的App_ID和App_Secrect.png)
 
-Tip：很多权限（如群聊、私聊相关操作权限）需要组织认证账号才会开放，若操作中提示权限不足，请确认飞书账号已完成组织认证。
+> [!TIP]须知：
+> 很多权限（如群聊、私聊相关操作权限）需要组织认证账号才会开放，若操作中提示权限不足，请确认飞书账号已完成组织认证。
 
-## 3. 通过openCode-bridge配置飞书
+### 3. 通过openCode-bridge配置飞书
 
 1. 进入openCode-bridge配置中心，依次点击「平台接入」→「配置飞书」；
 
@@ -71,7 +72,7 @@ cd openCode-bridge
 ./scripts/start.sh
 ```
 
-## 4. 验证连接
+### 4. 验证连接
 
 1. 在飞书中创建一个新的群聊；
 
