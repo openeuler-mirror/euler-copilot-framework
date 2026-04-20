@@ -17,7 +17,7 @@
 
 ### 配置 repo 源 
 
-进入 **/etc/yum.repos.d** 中，在最后添加以下的 repo 源（如果有update-EPOL，则只用添加Witty-Builder）： 
+进入 **/etc/yum.repos.d** 中，在最后添加以下的 repo 源： 
  
 ```bash 
 [update-EPOL] 
