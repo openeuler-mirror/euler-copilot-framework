@@ -117,6 +117,133 @@ LLM_BATCH_SIZE = 32
 
 4. 所有的 **Skill** 创建在 `/usr/share/witty/opencode/skills` 中。
 
+## 源码部署
+
+源码部署可用于非 **openEuler** 或者非 **witty-opencode** 环境中
+
+所有的代码都在 `https://atomgit.com/openeuler/euler-copilot-rag` 仓库下，主要是其中 light_rag 、witty_log_detection 和 opencode
+
+```bash
+git clone -b dev https://atomgit.com/openeuler/euler-copilot-rag.git
+```
+
+### light_rag & log_detection 源码部署
+
+#### 基础环境准备
+
+在 openEuler 机器上安装基础工具，并准备源码目录，将代码git clone到相应的目录下：
+
+```bash
+sudo dnf install -y python3 python3-pip uv python3-mcp
+sudo yum install -y mesa-libGL 
+# 假设源码根目录在以下路径
+export SRC_ROOT=/path/to/euler-copilot-rag-source
+```
+
+#### 安装目录并复制源码
+
+假设mcp部署在 `/opt/mcp-servers/servers/` 下
+
+```bash
+sudo mkdir -p /opt/mcp-servers/servers/light_rag
+sudo mkdir -p /opt/mcp-servers/servers/witty_log_detection
+
+sudo cp -r "$SRC_ROOT/light_rag/"* /opt/mcp-servers/servers/light_rag/
+sudo cp -r "$SRC_ROOT/witty_log_detection/"* /opt/mcp-servers/servers/witty_log_detection/
+
+sudo find /opt/mcp-servers/servers/light_rag -type d -exec chmod 755 {} \;
+sudo find /opt/mcp-servers/servers/light_rag -type f -exec chmod 644 {} \;
+sudo find /opt/mcp-servers/servers/witty_log_detection -type d -exec chmod 755 {} \;
+sudo find /opt/mcp-servers/servers/witty_log_detection -type f -exec chmod 644 {} \;
+```
+
+#### uv安装子包依赖
+
+```bash
+mkdir /usr/share/witty/opencode
+mkdir /usr/share/witty/opencode/config.d/
+mkdir /usr/share/witty/opencode/agents
+mkdir /usr/share/witty/opencode/agents/known-issue-agent/
+mkdir /usr/share/witty/opencode/skills
+
+sudo uv sync --project /opt/mcp-servers/servers/light_rag/src \
+  --cache-dir /opt/mcp-servers/servers/light_rag/.uv_cache \
+  --index-url https://mirrors.huaweicloud.com/repository/pypi/simple
+
+sudo uv sync --project /opt/mcp-servers/servers/witty_log_detection/src \
+  --cache-dir /opt/mcp-servers/servers/witty_log_detection/.uv_cache \
+  --index-url https://mirrors.huaweicloud.com/repository/pypi/simple
+```
+
+#### 启动服务
+
+```bash
+sudo cp /opt/mcp-servers/servers/light_rag/light_rag.service /etc/systemd/system/light_rag.service
+sudo cp /opt/mcp-servers/servers/witty_log_detection/witty_log_detection.service /etc/systemd/system/witty_log_detection.service
+
+sudo systemctl daemon-reload
+sudo systemctl enable --now light_rag.service
+sudo systemctl enable --now witty_log_detection.service
+```
+
+### agents 源码部署
+
+以下源码都在名叫 ‘opencode’ 的文件夹中：
+
+```bash
+sudo install -m 0644 "$SRC_ROOT/opencode/config.d/opencode.json" \
+  /usr/share/witty/opencode/config.d/known-issue-agent.json
+
+sudo install -m 0644 "$SRC_ROOT/opencode/agents/已知问题分析Agent.md" \
+  /usr/share/witty/opencode/agents/known-issue-agent/known-issue-agent.md
+
+sudo cp -a "$SRC_ROOT/opencode/skills/skill-creator" \
+  /usr/share/witty/opencode/skills/
+```
+
+在 `/etc/opencode` 下的 opencode.json 中写入以下代码，若没有，则创建：
+
+```bash
+{
+  "$schema": "https://opencode.ai/config.json",
+  "skills": {
+    "paths": [
+      "/usr/share/witty/opencode/skills"
+    ]
+  },
+  "agent": {
+    "已知问题分析Agent": {
+      "description": "对故障日志进行分析，使用witty_log_detection工具进行分析，使用light_rag工具进行检索，生成分析报告",
+      "prompt": "{file:/usr/share/witty/opencode/agents/known-issue-agent/known-issue-agent.md}",
+      "color": "#00AFFF",
+      "light_rag_*": "allow",
+      "witty_log_detection_*": "allow",
+      "edit": "allow",
+      "bash": {
+        "*": "allow"
+      },
+      "read": {
+        "*": "allow",
+        "*.env": "ask",
+        "*.env.*": "ask"
+      }
+    }
+  },
+  "mcp": {
+    "light_rag": {
+      "type": "remote",
+      "url": "http://localhost:12311/sse",
+      "enabled": true
+    },
+    "witty_log_detection": {
+      "type": "remote",
+      "url": "http://localhost:12144/sse",
+      "enabled": true
+    }
+  }
+}
+```
+
 ## 附录
 
 ### 其他环境使用 Witty OpenCode
