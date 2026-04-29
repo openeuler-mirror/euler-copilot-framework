@@ -20,7 +20,7 @@
 进入 **/etc/yum.repos.d** 中，在最后添加以下的 repo 源：
 
 ```bash
-[update-EPOL] 
+[update-EPOL]
 name=update-EPOL
 baseurl=https://repo.openeuler.org/openEuler-24.03-LTS-SP3/EPOL/update/main/$basearch/
 metadata_expire=1h
