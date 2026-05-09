@@ -69,9 +69,13 @@
   将本次排查沉淀为 Wiki
   ```
 
-  Agent 会调用 `create-skill` 能力，自动生成标准化 Wiki文档并注册到经验库。
+  Agent 会调用 `create-skill` 能力，自动生成标准化 Wiki 文档并注册到经验库。
 
   <img src="pictures/experience_skill_2.png" width="1200" />
+
+  生成的 Wiki 文档可以在**8080端口**查看。
+
+  <img src="pictures/experience_skill_3.png" width="1200" />
 
 ## 核心能力总览
 
