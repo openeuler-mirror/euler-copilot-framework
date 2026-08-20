@@ -1,0 +1,5 @@
+[codespell]
+skip = .git,*.lock,node_modules,.next,coverage,build,dist,vendor,third_party,.ruff_cache,**/assets/tiktoken/*,*.png,*.jpg,*.jpeg,*.gif,*.svg
+# 项目术语/专有名词与误报：ans=变量名(答案)、nin=MongoDB $nin 操作符、
+# therefrom=合法英文词、cann=昇腾 CANN 工具链
+ignore-words-list = ans,cann,nin,therefrom
