@@ -1,0 +1,10 @@
+# markdownlint 配置：先放宽适配存量文档，后续按需收紧
+default: true
+MD013: false   # 行宽（存量 CJK 文档/长链接为主；格式化 PR 后按需收紧）
+MD033: false   # inline HTML
+MD041: false   # 首行必须是一级标题
+MD024: false   # 重复标题
+MD040: false   # 代码块缺语言标签（存量文档常见且不可自动修复；清理 PR 补语言后再收紧）
+MD055: false   # 表格管道样式（存量表格风格不统一且 --fix 不可修复；格式化 PR 统一后收紧）
+MD060: false   # 表格列对齐（存量表格未对齐管道且 --fix 不可修复；格式化 PR 后收紧）
+# 按基线预检结果补充豁免；真实格式问题进清理 PR

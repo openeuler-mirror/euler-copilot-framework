@@ -3,8 +3,10 @@ indent-width = 4
 target-version = "py311"
 
 [lint]
-select = ["ALL"]
+# 存量仓库先只开错误类规则（E/F/I）；清理 PR 后按阶段收紧：B → UP/SIM → RUF → ALL
+select = ["E", "F", "I"]
 ignore = [
+    "E501",
     "ANN401",
     "ARG002",
     "D400",
